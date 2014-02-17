@@ -4,7 +4,7 @@
   "description": "game framework",
   "private": true,
   "scripts": {
-    "start": "NODE_PORT=3000 NODE_GAMECONF=/config/parts/tank.js NODE_ENV=development nodemon server.js"
+    "start": "NODE_PORT=3000 NODE_ENV=development nodemon server.js"
   },
   "dependencies": {
     "socket.io": "~0.9.16",

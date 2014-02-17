@@ -33,7 +33,7 @@ module.exports = {
         name: 'name',
         value: '',
         options: {
-          regExp: /^[a-zA-Z]([\w\s#]{0,13})[\w]{1}$/,
+          regExp: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
           storage: 'userName'
         }
       },

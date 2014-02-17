@@ -86,11 +86,6 @@ require([
     , radarUserCache = null
 
       // DOM
-    , auth = document.getElementById(AUTH_ID)
-    , authForm = document.getElementById(AUTH_FORM_ID)
-    , authName = document.getElementById(AUTH_NAME_INPUT_ID)
-    , authError = document.getElementById(AUTH_ERROR_ID)
-    , authEnter = document.getElementById(AUTH_ENTER_ID)
     , back = document.getElementById(CANVAS_BACK_ID)
     , vimp = document.getElementById(CANVAS_VIMP_ID)
     , radar = document.getElementById(CANVAS_RADAR_ID)
@@ -112,32 +107,45 @@ require([
   ;
 
   // авторизация пользователя
-  socket.on('connect', function (data) {
+  socket.on('auth', function (data) {
     if (typeof data !== 'object') {
       console.log('authorization error');
       return;
     }
 
-    var viewData = data.elems
+    var viewData
+      , elems = data.elems
       , params = data.params
       , authModel
       , authView
       , authCtrl
-      , i
+      , i = 0
       , len = params.length
-      , storage;
+      , storage
+      , regExp;
 
     for (; i < len; i += 1) {
       storage = params[i].options.storage;
+      regExp = params[i].options.regExp;
 
       if (storage) {
         params[i].value = window.localStorage[storage] || '';
       }
+
+      if (regExp) {
+        params[i].options.regExp = new RegExp(regExp);
+      }
     }
 
-    viewData.window = window;
+    viewData = {
+      window: window,
+      auth: document.getElementById(elems.authId),
+      form: document.getElementById(elems.formId),
+      error: document.getElementById(elems.errorId),
+      enter: document.getElementById(elems.enterId)
+    };
 
-    authModel = new AuthModel({socket: socket});
+    authModel = new AuthModel(socket);
     authView = new AuthView(authModel, viewData);
     authCtrl = new AuthCtrl(authModel, authView);
 
@@ -264,9 +272,6 @@ require([
     //Factory.add('Radar', RadarParts);
     //Factory.add('Halk', HalkParts);
     //Factory.add('Flat', FlatParts);
-
-    // запись авторизационных данных в хранилище
-    userName = localStorage.userName = serverData.user.name;
 
     // загрузка графических файлов
     loader = new LoadQueue(false);

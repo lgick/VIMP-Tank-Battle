@@ -24,7 +24,7 @@ define([], function () {
       , len = data.length;
 
     for (; i < len; i += 1) {
-      this.update(data[i]);
+      this._model.add(data[i]);
     }
 
     this._view.showAuth();

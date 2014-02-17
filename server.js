@@ -1,5 +1,4 @@
 // TODO: логирование в файл
-// TODO: при авторизации если выбрать модель flat и поставить все цвета в #333 модель сливается в фоном
 // TODO: капча на форму авторизации
 // TODO: сделать рамку на радаре, отображаемую видимую область (учесть зум!!!)
 // TODO: Все данные авторизации пришедшие на сервер проверять!
@@ -21,8 +20,7 @@ var path = require('path');
 var config = require('./config');
 
 config.set('basic', require(path.join(__dirname, '/config/basic.js')));
-config.set('game', require(path.join(__dirname, process.env.NODE_GAMECONF)));
-config.set('basic:port', process.env.NODE_PORT);
+config.set('game', require(path.join(__dirname, '/game/config.js')));
 
 
 // EXPRESS
