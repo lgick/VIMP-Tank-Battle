@@ -1,0 +1,43 @@
+meta(charset='UTF-8')
+title= title
+link(rel='stylesheet', href= '/css/style.css')
+script(
+  data-main= '/js/app',
+  src= '/js/vendor/requirejs-bower/require.js'
+)
+script.
+  require.config({
+    paths: {
+      io:          'vendor/socket.io-client/dist/socket.io.min',
+      preloadjs:   'vendor/createjs-preloadjs/lib/preloadjs-NEXT.min',
+      createjs:    'vendor/easeljs/lib/easeljs-NEXT.min',
+
+      Publisher:   'lib/publisher',
+      Factory:     'lib/factory',
+
+      AuthView:    'view/auth',
+      UserView:    'view/user',
+      GameView:    'view/game',
+
+      AuthModel:   'model/auth',
+      UserModel:   'model/user',
+      GameModel:   'model/game',
+
+      AuthCtrl:    'controller/auth',
+      UserCtrl:    'controller/user',
+
+      VimpCtrl:    'controller/vimp',
+      BackCtrl:    'controller/back',
+      RadarCtrl:   'controller/radar',
+
+      BackParts:   'parts/back',
+      RadarParts:  'parts/radar',
+      TankParts:   'parts/tank'
+    },
+    shim: {
+      'createjs': {
+        deps: ['preloadjs'],
+        exports: 'createjs'
+      }
+    }
+  });

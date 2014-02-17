@@ -1,0 +1,15 @@
+{
+  "name": "VIMP",
+  "version": "0.0.1",
+  "homepage": "https://github.com/lgick/VIMP",
+  "authors": [
+    "lgick <lgick@yandex.ru>"
+  ],
+  "description": "game framework",
+  "dependencies": {
+    "socket.io-client": "~0.9.16",
+    "requirejs-bower": "latest",
+    "easeljs": "latest",
+    "createjs-preloadjs": "latest"
+  }
+}
