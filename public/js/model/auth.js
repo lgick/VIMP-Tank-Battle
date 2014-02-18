@@ -88,14 +88,14 @@ define(['Publisher'], function (Publisher) {
   };
 
   // разбор ответа сервера
-  AuthModel.prototype.parseRes = function (res) {
+  AuthModel.prototype.parseRes = function (err, auth) {
     var arr = []
       , data = this._data
       , p
       , name;
 
     // если авторизация успешна
-    if (res.auth === true) {
+    if (auth === true) {
       for (p in data) {
         if (data.hasOwnProperty(p)) {
           name = this._options[p].storage;
@@ -109,7 +109,7 @@ define(['Publisher'], function (Publisher) {
       this.publisher.emit('ok', arr);
     // иначе
     } else {
-      this.publisher.emit('error', res.errors);
+      this.publisher.emit('error', err);
       this._sendStatus = false;
     }
   };

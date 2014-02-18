@@ -25,21 +25,35 @@ module.exports = function (server) {
     // авторизация
     socket.on('auth', function (data, cb) {
       if (!data) {
-        cb({auth: false});
+        cb([{name: 'Authorization', error: 'is failed'}], false);
         return;
       }
 
-      // если имя уже есть
-      // иначе
-      cb({
-        auth: false,
-        errors: [{
-          name: data.name,
-          error: 'Это имя уже используется!'
-        }]
-      });
+      var errors = [];
+      var params = auth.params;
+      var name;
+      var value;
+      var regExp;
 
-      log.info(data);
+      // проверка на regExp
+      for (var i = 0, len = params.length; i < len; i += 1) {
+        name = params[i].name;
+        value = data[name];
+
+        if (params[i].options.regExp) {
+          regExp = new RegExp(params[i].options.regExp);
+
+          if (!regExp.test(value)) {
+            errors.push({name: name, error: 'not valid' });
+          }
+        }
+      }
+
+      if (errors.length) {
+        cb(errors, false);
+      } else {
+        cb(null, true);
+      }
     });
 
     // получение команд
