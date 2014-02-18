@@ -266,7 +266,7 @@ require([
   // поступление начальных данных игры
   // (срабатывает в начале игры)
   // активация игры
-  socket.on('init', function (serverData) {
+  socket.on('init', function (data) {
     // инициализация конструкторов игры
     //Factory.add('Back', BackParts);
     //Factory.add('Radar', RadarParts);
@@ -279,7 +279,7 @@ require([
 
     // событие при завершении загрузки
     loader.on("complete", function () {
-      var game = serverData.game;
+      var game = data.game;
 
       // запуск игры
       startGame();
@@ -296,8 +296,8 @@ require([
 
       // инициализация
       userCtrl.init({
-        keys: serverData.keys,
-        panel: serverData.panel,
+        keys: data.keys,
+        panel: data.panel,
         size: {
           width: window.innerWidth,
           height: window.innerHeight

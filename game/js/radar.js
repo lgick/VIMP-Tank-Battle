@@ -1,4 +1,4 @@
-define(['createjs'], function (createjs) {
+module.exports = function (createjs) {
   var Shape = createjs.Shape
     , Shadow = createjs.Shadow
     , p;
@@ -60,4 +60,4 @@ define(['createjs'], function (createjs) {
   };
 
   return Radar;
-});
+};

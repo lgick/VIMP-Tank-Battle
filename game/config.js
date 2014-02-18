@@ -9,15 +9,15 @@ module.exports = {
     maxPlayer: 16,
     backImage: {
       id: 'background',
-      src: '/tank/img/back.jpg',
+      src: '/game/img/back.jpg',
       width: 500,
       height: 500
     }
   },
 
   parts: {
-    T34: '/tank/js/t34.js',
-    Panther: '/tank/js/panther.js'
+    Tank: '/game/js/tank.js',
+    Radar: '/game/js/radar.js'
   },
 
   // ***** authorization ***** //
@@ -33,7 +33,7 @@ module.exports = {
         name: 'name',
         value: '',
         options: {
-          regExp: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
+          regExp: /^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$/,
           storage: 'userName'
         }
       },
@@ -50,6 +50,32 @@ module.exports = {
 
   // ***** user ***** //
   user: {
+    elems: {
+      chat: {
+        box: 'chat-box',
+        cmd: 'cmd'
+      },
+      panel: {
+        health: 'panel-health',
+        score: 'panel-score',
+        rank: 'panel-rank'
+      }
+    },
+    params: {
+      chat: {
+        listLimit: 5,
+        lineTime: 15000,
+        cacheMin: 200,
+        cacheMax: 300
+      },
+      panel: {
+        health: 100,
+        score: 0,
+        rank: 10
+      }
+    }
+  },
+  userX: {
     name: null,
     team: null,
     constructor: null,
