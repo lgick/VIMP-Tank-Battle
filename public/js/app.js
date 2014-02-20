@@ -1,12 +1,12 @@
 require([
-  'io', 'createjs',
+  'require', 'io', 'createjs',
   'AuthModel', 'AuthView', 'AuthCtrl',
   'UserModel', 'UserView', 'UserCtrl',
   'GameModel', 'GameView',
   'VimpCtrl', 'BackCtrl', 'RadarCtrl',
   'Factory'
 ], function (
-  io, createjs,
+  require, io, createjs,
   AuthModel, AuthView, AuthCtrl,
   UserModel, UserView, UserCtrl,
   GameModel, GameView,
@@ -106,51 +106,6 @@ require([
     , radarCtrl = null
   ;
 
-  // авторизация пользователя
-  socket.on('auth', function (data) {
-    if (typeof data !== 'object') {
-      console.log('authorization error');
-      return;
-    }
-
-    var viewData
-      , elems = data.elems
-      , params = data.params
-      , authModel
-      , authView
-      , authCtrl
-      , i = 0
-      , len = params.length
-      , storage
-      , regExp;
-
-    for (; i < len; i += 1) {
-      storage = params[i].options.storage;
-      regExp = params[i].options.regExp;
-
-      if (storage) {
-        params[i].value = window.localStorage[storage] || '';
-      }
-
-      if (regExp) {
-        params[i].options.regExp = new RegExp(regExp);
-      }
-    }
-
-    viewData = {
-      window: window,
-      auth: document.getElementById(elems.authId),
-      form: document.getElementById(elems.formId),
-      error: document.getElementById(elems.errorId),
-      enter: document.getElementById(elems.enterId)
-    };
-
-    authModel = new AuthModel(socket);
-    authView = new AuthView(authModel, viewData);
-    authCtrl = new AuthCtrl(authModel, authView);
-
-    authCtrl.init(params);
-  });
 
   // стартует игру
   function startGame() {
@@ -263,15 +218,81 @@ require([
 
 // ДАННЫЕ С СЕРВЕРА
 
+  // авторизация пользователя
+  socket.on('auth', function (data) {
+    if (typeof data !== 'object') {
+      console.log('authorization error');
+      return;
+    }
+
+    var viewData
+      , elems = data.elems
+      , params = data.params
+      , authModel
+      , authView
+      , authCtrl
+      , i = 0
+      , len = params.length
+      , storage
+      , regExp;
+
+    for (; i < len; i += 1) {
+      storage = params[i].options.storage;
+      regExp = params[i].options.regExp;
+
+      if (storage) {
+        params[i].value = window.localStorage[storage] || '';
+      }
+
+      if (regExp) {
+        params[i].options.regExp = new RegExp(regExp);
+      }
+    }
+
+    viewData = {
+      window: window,
+      auth: document.getElementById(elems.authId),
+      form: document.getElementById(elems.formId),
+      error: document.getElementById(elems.errorId),
+      enter: document.getElementById(elems.enterId)
+    };
+
+    authModel = new AuthModel(socket);
+    authView = new AuthView(authModel, viewData);
+    authCtrl = new AuthCtrl(authModel, authView);
+
+    authCtrl.init(params);
+  });
+
+  // дозагрузка зависимостей
+  socket.on('deps', function (data) {
+    var arr = []
+      , names = []
+      , p;
+
+    for (p in data) {
+      if (data.hasOwnProperty(p)) {
+        names.push(p);
+        arr.push(data[p]);
+      }
+    }
+
+    require(arr, function () {
+      var i = 0
+        , len = arguments.length;
+
+      for (; i < len; i += 1) {
+        Factory.add(names[i], arguments[i]);
+      }
+
+      socket.emit('deps', true);
+    });
+  });
+
   // поступление начальных данных игры
   // (срабатывает в начале игры)
   // активация игры
   socket.on('init', function (data) {
-    // инициализация конструкторов игры
-    //Factory.add('Back', BackParts);
-    //Factory.add('Radar', RadarParts);
-    //Factory.add('Halk', HalkParts);
-    //Factory.add('Flat', FlatParts);
 
     // загрузка графических файлов
     loader = new LoadQueue(false);

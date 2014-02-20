@@ -1,4 +1,4 @@
-module.exports = function (createjs) {
+define(['createjs'], function (createjs) {
   var Container = createjs.Container
     , Shape = createjs.Shape
     , p;
@@ -95,4 +95,4 @@ module.exports = function (createjs) {
   };
 
   return Tank;
-};
+});

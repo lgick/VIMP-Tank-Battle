@@ -31,6 +31,7 @@ app.set('view engine', 'jade');
 
 app.use(express.favicon(path.join(__dirname, '/public/img/favicon.ico')));
 app.use(express.static(path.join(__dirname, '/public')));
+app.use(express.static(path.join(__dirname, '/game')));
 
 require('./routes')(app);
 

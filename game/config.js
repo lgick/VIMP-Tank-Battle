@@ -1,3 +1,5 @@
+// regExp строкой
+// dependencies пути
 module.exports = {
 
   name: 'VIMP Tank Battle',
@@ -15,9 +17,9 @@ module.exports = {
     }
   },
 
-  parts: {
-    Tank: '/game/js/tank.js',
-    Radar: '/game/js/radar.js'
+  dependencies: {
+    Tank: 'tank',
+    Radar: 'radar'
   },
 
   // ***** authorization ***** //
@@ -33,7 +35,7 @@ module.exports = {
         name: 'name',
         value: '',
         options: {
-          regExp: /^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$/,
+          regExp: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
           storage: 'userName'
         }
       },

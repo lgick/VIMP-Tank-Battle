@@ -53,6 +53,38 @@ module.exports = function (server) {
         cb(errors, false);
       } else {
         cb(null, true);
+        socket.emit('deps', config.get('game:dependencies'));
+      }
+    });
+
+    // ответ клиента о подгрузке зависимых модулей
+    socket.on('deps', function (res) {
+      if (res === true) {
+        socket.emit('init', {
+          game: {
+            vimp: {
+              player: {
+                constructor: 'Tank',
+                colorA: '#ffffff',
+                colorB: '#666666',
+                scale: 1,
+                x: 100,
+                y: 100,
+                rotation: 100
+              }
+            },
+
+            radar: {
+              constructor: 'Radar',
+              colorA: '#ffffff',
+              colorB: '#666666',
+              scale: 1,
+              x: 100,
+              y: 100,
+              rotation: 100
+            }
+          }
+        });
       }
     });
 
