@@ -40,7 +40,7 @@ define(['Publisher'], function (Publisher) {
       if (regExp.test(value)) {
         this._data[name] = value;
       } else {
-        value = this._data[name] || '';
+        this._data[name] = value = '';
       }
     } else {
       this._data[name] = value;
