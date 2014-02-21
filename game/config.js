@@ -9,17 +9,39 @@ module.exports = {
     width: 5000,
     height: 3000,
     maxPlayer: 16,
-    backImage: {
-      id: 'background',
-      src: '/game/img/back.jpg',
-      width: 500,
-      height: 500
-    }
+    manifest: [
+      {
+        id: 'tiles',
+        src: '/img/tiles.png',
+        width: 32,
+        height: 32
+      }
+    ]
   },
 
+  // ***** dependencies ***** //
   dependencies: {
     Tank: 'tank',
     Radar: 'radar'
+  },
+
+  // ***** general ***** //
+  general: {
+    moduleId: {
+      back: 'back',
+      vimp: 'vimp',
+      radar: 'radar',
+      panel: 'panel',
+      chat: 'chat',
+      errWS: 'errWS'
+    },
+    sizeRatio: {
+      vimp: 1,
+      back: 1,
+      radar: 0.15
+    },
+    radarScaleRatio: 20,
+    memoryIterationLimit: 100
   },
 
   // ***** authorization ***** //
@@ -50,53 +72,29 @@ module.exports = {
     ]
   },
 
-  // ***** user ***** //
-  user: {
-    elems: {
-      chat: {
-        box: 'chat-box',
-        cmd: 'cmd'
-      },
-      panel: {
-        health: 'panel-health',
-        score: 'panel-score',
-        rank: 'panel-rank'
-      }
-    },
-    params: {
-      chat: {
-        listLimit: 5,
-        lineTime: 15000,
-        cacheMin: 200,
-        cacheMax: 300
-      },
-      panel: {
-        health: 100,
-        score: 0,
-        rank: 10
-      }
-    }
-  },
-  userX: {
-    name: null,
-    team: null,
-    constructor: null,
-    data: {
-      x: null,
-      y: null,
-      scale: 1,
-      rotation: null,
-      gRotation: null
-    },
-    panel: {
-      health: 100,
-      score: 0,
-      rank: 10
-    },
-    chat: null
+  // ***** panel ***** //
+  panel: {
+    health: 'panel-health',
+    score: 'panel-score',
+    rank: 'panel-rank'
   },
 
-  game: {
+  // ***** chat ***** //
+  chat: {
+    elems: {
+      box: 'chat-box',
+      cmd: 'cmd'
+    },
+    params: {
+      listLimit: 5,
+      lineTime: 15000,
+      cacheMin: 200,
+      cacheMax: 300
+    }
+  },
+
+  // ***** user ***** //
+  user: {
     keys: {
       game: {
         87: 'forward',
@@ -120,6 +118,27 @@ module.exports = {
         40: 'down'
       }
     }
-  }
+  },
 
+  // ***** game ***** //
+  game: {
+    model: {
+      name: null,
+      team: null,
+      constructor: null,
+      data: {
+        x: null,
+        y: null,
+        scale: 1,
+        rotation: null,
+        gRotation: null
+      },
+      panel: {
+        health: 100,
+        score: 0,
+        rank: 10
+      },
+      chat: null
+    }
+  }
 };
