@@ -4,8 +4,7 @@ var config = require('../config');
 
 var port = config.get('basic:port');
 var auth = config.get('game:auth');
-var mapWidth = config.get('game:map:width');
-var mapHeight = config.get('game:map:height');
+var deps = config.get('game:dependencies');
 
 var users = {};
 
@@ -53,7 +52,7 @@ module.exports = function (server) {
         cb(errors, false);
       } else {
         cb(null, true);
-        socket.emit('deps', config.get('game:dependencies'));
+        socket.emit('deps', deps);
       }
     });
 
@@ -65,12 +64,13 @@ module.exports = function (server) {
             vimp: {
               player: {
                 constructor: 'Tank',
-                colorA: '#ffffff',
+                colorA: '#3030DB',
                 colorB: '#666666',
                 scale: 1,
                 x: 100,
                 y: 100,
-                rotation: 100
+                rotation: 0,
+                gunRotation: 0
               }
             },
 

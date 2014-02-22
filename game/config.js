@@ -3,12 +3,23 @@
 module.exports = {
 
   name: 'VIMP Tank Battle',
+  version: '0.0.1',
 
   // ***** map ***** //
   map: {
     width: 5000,
     height: 3000,
     maxPlayer: 16,
+    color: {
+      t1: {
+        colorA: '#DB3030',
+        colorB: '#333333'
+      },
+      t2: {
+        colorA: '#3030DB',
+        colorB: '#333333'
+      }
+    },
     manifest: [
       {
         id: 'tiles',
@@ -93,52 +104,48 @@ module.exports = {
     }
   },
 
-  // ***** user ***** //
-  user: {
-    keys: {
-      game: {
-        87: 'forward',
-        83: 'back',
-        65: 'left',
-        68: 'right',
-        72: 'gLeft',
-        74: 'gRight',
-        67: 'gCenter',
-        75: 'fire',
-        80: 'zoomPlus',
-        79: 'zoomMinus',
-        81: 'zoomDefault',
-        78: 'nitro',
-        67: 'cmd'
-      },
-      cmd: {
-        27: 'game',
-        13: 'enter',
-        38: 'up',
-        40: 'down'
-      }
+  // ***** keys ***** //
+  keys: {
+    game: {
+      87: 'forward',
+      83: 'back',
+      65: 'left',
+      68: 'right',
+      72: 'gLeft',
+      74: 'gRight',
+      67: 'gCenter',
+      75: 'fire',
+      80: 'zoomPlus',
+      79: 'zoomMinus',
+      81: 'zoomDefault',
+      78: 'nitro',
+      67: 'cmd'
+    },
+    cmd: {
+      27: 'game',
+      13: 'enter',
+      38: 'up',
+      40: 'down'
     }
   },
 
-  // ***** game ***** //
-  game: {
-    model: {
-      name: null,
-      team: null,
-      constructor: null,
-      data: {
-        x: null,
-        y: null,
-        scale: 1,
-        rotation: null,
-        gRotation: null
-      },
-      panel: {
-        health: 100,
-        score: 0,
-        rank: 10
-      },
-      chat: null
-    }
+  // ***** gameModel ***** //
+  gameModel: {
+    name: null,
+    team: null,
+    layer: 1,
+    data: {
+      x: null,
+      y: null,
+      scale: 1,
+      rotation: null,
+      gunRotation: null
+    },
+    panel: {
+      health: 100,
+      score: 0,
+      rank: 10
+    },
+    chat: null
   }
 };
