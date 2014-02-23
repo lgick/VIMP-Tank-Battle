@@ -156,7 +156,10 @@ define(['Publisher'], function (Publisher) {
       name = this._panel[i];
 
       if (data[name]) {
-        this.publisher.emit(name, data[name]);
+        this.publisher.emit('panel', {
+          name: name,
+          value: data[name]
+        });
       }
     }
   };
@@ -165,7 +168,6 @@ define(['Publisher'], function (Publisher) {
   UserModel.prototype.resize = function (data) {
     var width = data.width
       , height = data.height
-      , sizes = {}
       , ratio
       , p;
 
@@ -173,14 +175,13 @@ define(['Publisher'], function (Publisher) {
       if (this._sizeRatio.hasOwnProperty(p)) {
         ratio = this._sizeRatio[p];
 
-        sizes[p] = {
+        this.publisher.emit('resize', {
+          name: p,
           width: Math.round(width * ratio),
           height: Math.round(height * ratio)
-        };
+        });
       }
     }
-
-    this.publisher.emit('resize', sizes);
   };
 
   return UserModel;

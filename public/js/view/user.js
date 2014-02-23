@@ -10,19 +10,11 @@ define(['Publisher'], function (Publisher) {
     userView = this;
 
     this._window = data.window;
-
-    this._back = data.back;
-    this._vimp = data.vimp;
-    this._radar = data.radar;
+    this._modules = data.modules;
+    this._panel = data.panel;
 
     this._cmd = data.cmd;
-    this._chat = data.chat;
     this._chatBox = data.chatBox;
-
-    this._panel = data.panel;
-    this._panelHealth = data.panelHealth;
-    this._panelScore = data.panelScore;
-    this._panelRank = data.panelRank;
 
     this.publisher = new Publisher();
 
@@ -51,19 +43,18 @@ define(['Publisher'], function (Publisher) {
     this._mPublic.on('oldLine', 'removeLine', this);
     this._mPublic.on('newTimer', 'createTimer', this);
     this._mPublic.on('oldTimer', 'removeTimer', this);
-    this._mPublic.on('health', 'updateHealth', this);
-    this._mPublic.on('score', 'updateScore', this);
-    this._mPublic.on('rank', 'updateRank', this);
+    this._mPublic.on('panel', 'updatePanel', this);
     this._mPublic.on('resize', 'resize', this);
   }
 
   // инициализация
   UserView.prototype.init = function () {
-    this._back.style.display = 'block';
-    this._vimp.style.display = 'block';
-    this._radar.style.display = 'block';
-    this._chat.style.display = 'block';
-    this._panel.style.display = 'block';
+    var i = 0
+      , len = this._modules.length;
+
+    for (; i < len; i += 1) {
+      this._modules[i].style.display = 'block';
+    }
   };
 
   // переключает режим игры
@@ -130,36 +121,27 @@ define(['Publisher'], function (Publisher) {
     this._window.clearTimeout(timer);
   };
 
-  // обновляет пользовательскую панель (здоровье)
-  UserView.prototype.updateHealth = function (health) {
-    this._panelHealth.innerHTML = health + '%';
-  };
+  // обновляет пользовательскую панель
+  UserView.prototype.updatePanel = function (data) {
+    var elem = this._panel[data.name];
 
-  // обновляет пользовательскую панель (счет)
-  UserView.prototype.updateScore = function (score) {
-    this._panelScore.innerHTML = score;
-  };
-
-  // обновляет пользовательскую панель (рейтинг)
-  UserView.prototype.updateRank = function (rank) {
-    this._panelRank.innerHTML = rank;
+    if (elem) {
+      elem.innerHTML = data.value;
+    }
   };
 
   // изменение размеров
   UserView.prototype.resize = function (data) {
-    if (data.vimp) {
-      this._vimp.width = data.vimp.width;
-      this._vimp.height = data.vimp.height;
-    }
+    var document = this._window.document
+      , elem = document.getElementById(data.name);
 
-    if (data.back) {
-      this._back.width = data.back.width;
-      this._back.height = data.back.height;
-    }
-
-    if (data.radar) {
-      this._radar.width = this._radar.height =
-        data.radar.width;
+    if (elem) {
+      if (data.name === 'radar') {
+        elem.width = elem.height = data.width;
+      } else {
+        elem.width = data.width;
+        elem.height = data.height;
+      }
     }
   };
 
