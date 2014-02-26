@@ -75,16 +75,20 @@ require([
 
     userView = new UserView(userModel, {
       window: window,
-      back: back,
-      vimp: vimp,
-      radar: radar,
+      modules: [
+        back,
+        vimp,
+        radar,
+        document.getElementById(CHAT_ID),
+        document.getElementById(PANEL_ID)
+      ],
+      panel: {
+        health: panelHealth,
+        score: panelScore,
+        rank: panelRank
+      },
       cmd: document.getElementById(CMD_ID),
-      chat: document.getElementById(CHAT_ID),
-      chatBox: document.getElementById(CHAT_BOX_ID),
-      panel: document.getElementById(PANEL_ID),
-      panelHealth: panelHealth,
-      panelScore: panelScore,
-      panelRank: panelRank
+      chatBox: document.getElementById(CHAT_BOX_ID)
     });
 
     userCtrl = new UserCtrl(userModel, userView);
@@ -212,44 +216,28 @@ require([
         Factory.add(names[i], arguments[i]);
       }
 
-      socket.emit('deps', true);
+      // запрос пользовательских данных
+      socket.emit('user');
     });
   });
 
-  // активация игры
-  socket.on('init', function (data) {
+  // получение пользовательских данных
+  socket.on('user', function (data) {
+  });
 
+  // получение медиаданных
+  socket.on('media', function (data) {
     // загрузка графических файлов
     loader = new LoadQueue(false);
     loader.loadManifest(data.manifest);
 
     // событие при завершении загрузки
     loader.on("complete", function () {
-      var game = data.game;
-
-      // запуск игры
-      startGame();
-
-      // создание игрока пользователя
-      vimpCtrl.parse(userName, game.vimp);
-      radarCtrl.parse(userName, game.radar);
-
-      // кеширование
-      vimpUserCache = game.vimp.player;
-      radarUserCache = game.radar;
-
-      userModel.publisher.on('resize', resize);
-
-      // инициализация
-      userCtrl.init({
-        keys: data.keys,
-        panel: data.panel,
-        size: {
-          width: window.innerWidth,
-          height: window.innerHeight
-        }
-      });
     });
+  });
+
+  // активация игры
+  socket.on('model', function (data) {
   });
 
   // обновление данных
@@ -257,6 +245,7 @@ require([
   });
 
 
+  // Ошибки соединения
   function showConnectStatus(message) {
     if (errWS) {
       if (message) {
@@ -269,7 +258,6 @@ require([
     }
   }
 
-  // Ошибки соединения
   socket.on('connect', function () {
     showConnectStatus();
   });

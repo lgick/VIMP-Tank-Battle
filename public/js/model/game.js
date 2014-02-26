@@ -13,9 +13,9 @@ define([
   }
 
   // Создает экземпляры вида:
-  // this._data['player']['Bob'] - игрок Bob
-  // this._data['bullet']['Bob'] - пули игрока Bob
-  // this._data['radar']['Bob']  - игрок Bob на радаре
+  // this._data['Tank']['Bob'] - игрок Bob
+  // this._data['Bullets']['Bob'] - пули игрока Bob
+  // this._data['Radar']['Bob']  - игрок Bob на радаре
   //
   // type        - тип экземпляра
   // name        - имя экземпляра

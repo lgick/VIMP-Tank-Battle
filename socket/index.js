@@ -56,36 +56,13 @@ module.exports = function (server) {
       }
     });
 
-    // ответ клиента о подгрузке зависимых модулей
-    socket.on('deps', function (res) {
-      if (res === true) {
-        socket.emit('init', {
-          game: {
-            vimp: {
-              player: {
-                constructor: 'Tank',
-                colorA: '#3030DB',
-                colorB: '#666666',
-                scale: 1,
-                x: 100,
-                y: 100,
-                rotation: 0,
-                gunRotation: 0
-              }
-            },
+    // данные для user модели
+    socket.on('user', function () {
+    });
 
-            radar: {
-              constructor: 'Radar',
-              colorA: '#ffffff',
-              colorB: '#666666',
-              scale: 1,
-              x: 100,
-              y: 100,
-              rotation: 100
-            }
-          }
-        });
-      }
+    // медиаданные
+    socket.on('media', function () {
+      socket.emit('media', 'mediadata');
     });
 
     // получение команд
