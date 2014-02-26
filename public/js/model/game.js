@@ -1,12 +1,5 @@
-define([
-  'Publisher',
-  'Factory'
-], function (
-  Publisher,
-  Factory
-) {
+define(['Publisher', 'Factory'], function (Publisher, Factory) {
   // Работает с данными игры.
-  // CRUD-функционал (create, read, update, remove):
   function GameModel() {
     this._data = {};
     this.publisher = new Publisher();
@@ -14,43 +7,58 @@ define([
 
   // Создает экземпляры вида:
   // this._data['Tank']['Bob'] - игрок Bob
-  // this._data['Bullets']['Bob'] - пули игрока Bob
-  // this._data['Radar']['Bob']  - игрок Bob на радаре
+  // this._data['Radar']['Bob'] - игрок Bob на радаре
   //
-  // type        - тип экземпляра
-  // name        - имя экземпляра
   // constructor - имя конструктора для экземпляра
+  // name        - имя экземпляра
   // data        - данные для создания экземпляра
-  GameModel.prototype.create = function (
-    type, name, constructor, data
-  ) {
-    this._data[type] = this._data[type] || {};
+  GameModel.prototype.createSingle = function (constructor, name, data) {
+    this._data[constructor] = this._data[constructor] || {};
+    this._data[constructor][name] = Factory(constructor, data);
+    this.publisher.emit('create', this._data[constructor][name]);
+  };
 
-    this._data[type][name] = Factory(constructor, data);
+  // Создает экземпляры вида:
+  // this._data['Bullets']['Bob'][number] - пули игрока Bob
+  //
+  // constructor - имя конструктора для экземпляра
+  // name        - имя экземпляра
+  // data        - данные для создания экземпляра
+  GameModel.prototype.createKit = function (constructor, name, data) {
+    var i = 0
+      , len = data.length;
+     // , kit;
 
-    this.publisher.emit(
-      'create', this._data[type][name]
-    );
+    // this._data[constructor] = this._data[constructor] || {};
+
+    // kit = this._data[constructor][name] = {};
+
+    for (; i < len; i += 1) {
+      // kit[i] = Factory(constructor, data[i]);
+      // this.publisher.emit('create', kit[i]);
+      // TODO: проверить
+      this.publisher.emit('create', Factory(constructor, data[i]));
+    }
   };
 
   // Возвращает данные:
-  // - данные конкретного типа и имени
-  // - данные конкетного типа
+  // - данные конкретного конструктора и имени
+  // - данные конкетного конструктора
   // - все данные
   // - ничего (если запрашиваемых данных нет)
-  GameModel.prototype.read = function (type, name) {
+  GameModel.prototype.read = function (constructor, name) {
     // если нужны данные по типу
-    if (type) {
+    if (constructor) {
       // .. и они существуют
-      if (this._data[type]) {
+      if (this._data[constructor]) {
         // .. и также нужны данные конкретного имени
         if (name) {
           // .. и они существуют
-          if (this._data[type][name]) {
-            return this._data[type][name];
+          if (this._data[constructor][name]) {
+            return this._data[constructor][name];
           }
         } else {
-          return this._data[type];
+          return this._data[constructor];
         }
       }
     } else {
@@ -59,33 +67,37 @@ define([
   };
 
   // Обновляет данные экземпляра
-  GameModel.prototype.update = function (
-    type, name, data
-  ) {
-    this._data[type][name].update(data);
+  GameModel.prototype.update = function (constructor, name, data) {
+    this._data[constructor][name].update(data);
   };
 
   // Удаляет данные:
-  // - по имени экземпляра в каждом типе
+  // - по имени экземпляра в каждом конструкторе
+  // - по имени экземпляра во всех конструкторах
   // - полностью
   //
   // name - имя экземпляра (необязательно)
-  GameModel.prototype.remove = function (name) {
-    if (name) {
-      for (var prop in this._data) {
-        if (this._data.hasOwnProperty(prop)) {
-          if (this._data[prop][name]) {
-            this.publisher.emit(
-              'remove', this._data[prop][name]
-            );
+  GameModel.prototype.remove = function (name, constructor) {
+    var p;
 
-            delete this._data[prop][name];
+    if (name) {
+      if (constructor) {
+        if (this._data[constructor] && this._data[constructor][name]) {
+          this.publisher.emit('remove', this._data[constructor][name]);
+          delete this._data[constructor][name];
+        }
+      } else {
+        for (p in this._data) {
+          if (this._data.hasOwnProperty(p)) {
+            if (this._data[p][name]) {
+              this.publisher.emit('remove', this._data[p][name]);
+              delete this._data[p][name];
+            }
           }
         }
       }
     } else {
       this._data = {};
-
       this.publisher.emit('clear');
     }
   };

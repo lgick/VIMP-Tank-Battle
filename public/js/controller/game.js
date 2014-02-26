@@ -48,6 +48,34 @@ define([], function () {
     }
   };
 
+  // парсит данные с сервера учитывая кэш
+  GameCtrl.prototype.parseWithCache = function (data) {
+    var constructors = data.constructors
+      , instances = data.instances
+      , i = 0
+      , len = constructors.length
+      , constructor
+      , p;
+
+    for (; i < len; i += 1) {
+      constructor = constructors[i];
+
+      for (p in instances) {
+        if (instances.hasOwnProperty(p)) {
+          // TODO: проверить
+          // this._model.remove(p, constructor);
+          this._model.createKit(constructor, p, instances[p]);
+        }
+      }
+    }
+  };
+
+  // парсит данные с сервера не учитывая кэш
+  GameCtrl.prototype.parseWithoutCache = function (data) {
+    var constructors = data.constructors
+      , instances = data.instances;
+  };
+
   // обновляет представление относительно пользователя
   GameCtrl.prototype.update = function (data) {
     var coords = GameCtrl.getUserCoords(data);

@@ -242,6 +242,18 @@ require([
 
   // обновление данных
   socket.on('game', function (data) {
+    var user = data.userObj  // персональные данные (координаты, панель, чат)
+      , data = data.dataArr  // данные для отрисовки кадра игры
+      , i = 0
+      , len = data.length;
+
+    for (; i < len; i += 1) {
+      if (data[i].cache === true) {
+        gameCtrl.parseWithCache(data[i]);
+      } else {
+        gameCtrl.parseWithoutCache(data[i]);
+      }
+    }
   });
 
 
