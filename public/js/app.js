@@ -2,15 +2,13 @@ require([
   'require', 'io', 'createjs',
   'AuthModel', 'AuthView', 'AuthCtrl',
   'UserModel', 'UserView', 'UserCtrl',
-  'GameModel', 'GameView',
-  'VimpCtrl', 'BackCtrl', 'RadarCtrl',
+  'GameModel', 'GameView', 'GameCtrl',
   'Factory'
 ], function (
   require, io, createjs,
   AuthModel, AuthView, AuthCtrl,
   UserModel, UserView, UserCtrl,
-  GameModel, GameView,
-  VimpCtrl, BackCtrl, RadarCtrl,
+  GameModel, GameView, GameCtrl,
   Factory
 ) {
 
@@ -31,6 +29,9 @@ require([
     , iterations = 0
     , vimpUserCache = null
     , radarUserCache = null
+
+    // используется для маршрутизации данных в экземпляры игры
+    , router = {}
 
     , userModel = null
     , userCtrl = null
@@ -92,21 +93,25 @@ require([
     });
 
     userCtrl = new UserCtrl(userModel, userView);
+  }
 
-    // старт vimp
-    vimpModel = new GameModel();
-    vimpView = new GameView(vimpModel, vimp);
-    vimpCtrl = new VimpCtrl(vimpModel, vimpView);
+  // создает экземпляр игры
+  function makeInstanceGame(canvasId) {
+    var canvas = document.getElementById(canvasId)
+      , model = new GameModel()
+      , view = new GameView(model, canvas)
+      , controller = new GameCtrl(model, view);
 
-    // старт back
-    backModel = new GameModel();
-    backView = new GameView(backModel, back);
-    backCtrl = new BackCtrl(backModel, backView);
+    return controller;
+  }
 
-    // старт radar
-    radarModel = new GameModel();
-    radarView = new GameView(radarModel, radar);
-    radarCtrl = new RadarCtrl(radarModel, radarView);
+  // возвращает нужный экземпляр игры
+  function getInstanceGame(constructor) {
+    if (router[constructor]) {
+      return router[constructor];
+    } else {
+      console.log('router error');
+    }
   }
 
   // отрисовывает фон игры при ресайзе
@@ -223,6 +228,14 @@ require([
 
   // получение пользовательских данных
   socket.on('user', function (data) {
+    var routes = data.routes
+      , constructor;
+
+    for (constructor in routes) {
+      if (routes.hasOwnProperty(constructor)) {
+        router[constructor] = makeInstanceGame(routes[constructor]);
+      }
+    }
   });
 
   // получение медиаданных
@@ -242,16 +255,25 @@ require([
 
   // обновление данных
   socket.on('game', function (data) {
-    var user = data.userObj  // персональные данные (координаты, панель, чат)
-      , data = data.dataArr  // данные для отрисовки кадра игры
+    var user = data.user  // объект персональных данных (координаты, панель, чат)
+      , data = data.data  // массив данных для отрисовки кадра игры
       , i = 0
-      , len = data.length;
+      , len = data.length
+      , constructors
+      , instances
+      , cache
+      , constructor
+      , i2
+      , len2;
 
     for (; i < len; i += 1) {
-      if (data[i].cache === true) {
-        gameCtrl.parseWithCache(data[i]);
-      } else {
-        gameCtrl.parseWithoutCache(data[i]);
+      constructors = data[i].constructors;
+      instances = data[i].instances;
+      cache = data[i].cache;
+
+      for (i2 = 0, len2 = constructors.length; i2 < len2; i2 += 1) {
+        constructor = constructors[i2];
+        getInstanceGame(constructor).parse(constructor, instances, cache);
       }
     }
   });

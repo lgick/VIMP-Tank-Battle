@@ -13,67 +13,28 @@ define([], function () {
     this._view = view;
   }
 
-  // преобразует данные с сервера в данные для модели
-  GameCtrl.prototype.parse = function (data) {
-    var constructors = data.constructors
-      , instances = data.instances
-      , i = 0
-      , len = constructors.length
-      , constructor
-      , instance
-      , p
-      , i2
-      , len2;
+  // парсит данные
+  GameCtrl.prototype.parse = function (constructor, instances, cache) {
+    var name;
 
-    for (; i < len; i += 1) {
-      constructor = constructors[i];
-
-      for (p in instances) {
-        if (instances.hasOwnProperty(p)) {
-          instance = instances[p];
-          i2 = 0;
-          len2 = instance.length;
-
-          for (; i2 < len2; i2 += 1) {
-            if (this._model.read(p, name)) {
-              this._model.update(p, name, data[p]);
-            } else {
-              this._model.create(
-                p, name, data[p].constructor, data[p]
-              );
-            }
+    if (cache) {
+      for (name in instances) {
+        if (instances.hasOwnProperty(name)) {
+          if (this._model.read(constructor, name)) {
+            this._model.update(constructor, name, instances[name]);
+          } else {
+            this._model.create(constructor, name, instances[name]);
           }
         }
       }
-    }
-  };
-
-  // парсит данные с сервера учитывая кэш
-  GameCtrl.prototype.parseWithCache = function (data) {
-    var constructors = data.constructors
-      , instances = data.instances
-      , i = 0
-      , len = constructors.length
-      , constructor
-      , p;
-
-    for (; i < len; i += 1) {
-      constructor = constructors[i];
-
-      for (p in instances) {
-        if (instances.hasOwnProperty(p)) {
-          // TODO: проверить
-          // this._model.remove(p, constructor);
-          this._model.createKit(constructor, p, instances[p]);
+    } else {
+      for (name in instances) {
+        if (instances.hasOwnProperty(name)) {
+          this._model.remove(name, constructor);
+          this._model.create(constructor, name, instances[name]);
         }
       }
     }
-  };
-
-  // парсит данные с сервера не учитывая кэш
-  GameCtrl.prototype.parseWithoutCache = function (data) {
-    var constructors = data.constructors
-      , instances = data.instances;
   };
 
   // обновляет представление относительно пользователя

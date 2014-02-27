@@ -38,8 +38,13 @@ module.exports = {
 
   // ***** general ***** //
   general: {
+    // маршруты конструктор: canvas id
+    routes: {
+      Tank: 'vimp',
+      Back: 'vimp',
+      Radar: 'radar'
+    },
     moduleId: {
-      back: 'back',
       vimp: 'vimp',
       radar: 'radar',
       panel: 'panel',
@@ -48,7 +53,6 @@ module.exports = {
     },
     sizeRatio: {
       vimp: 1,
-      back: 1,
       radar: 0.15
     },
     radarScaleRatio: 20,

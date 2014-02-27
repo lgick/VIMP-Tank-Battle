@@ -7,38 +7,16 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
 
   // Создает экземпляры вида:
   // this._data['Tank']['Bob'] - игрок Bob
+  // this._data['Bullets']['Bob'] - пули игрока Bob
   // this._data['Radar']['Bob'] - игрок Bob на радаре
   //
   // constructor - имя конструктора для экземпляра
   // name        - имя экземпляра
   // data        - данные для создания экземпляра
-  GameModel.prototype.createSingle = function (constructor, name, data) {
+  GameModel.prototype.create = function (constructor, name, data) {
     this._data[constructor] = this._data[constructor] || {};
     this._data[constructor][name] = Factory(constructor, data);
     this.publisher.emit('create', this._data[constructor][name]);
-  };
-
-  // Создает экземпляры вида:
-  // this._data['Bullets']['Bob'][number] - пули игрока Bob
-  //
-  // constructor - имя конструктора для экземпляра
-  // name        - имя экземпляра
-  // data        - данные для создания экземпляра
-  GameModel.prototype.createKit = function (constructor, name, data) {
-    var i = 0
-      , len = data.length;
-     // , kit;
-
-    // this._data[constructor] = this._data[constructor] || {};
-
-    // kit = this._data[constructor][name] = {};
-
-    for (; i < len; i += 1) {
-      // kit[i] = Factory(constructor, data[i]);
-      // this.publisher.emit('create', kit[i]);
-      // TODO: проверить
-      this.publisher.emit('create', Factory(constructor, data[i]));
-    }
   };
 
   // Возвращает данные:
@@ -47,7 +25,7 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
   // - все данные
   // - ничего (если запрашиваемых данных нет)
   GameModel.prototype.read = function (constructor, name) {
-    // если нужны данные по типу
+    // если нужны данные по конструктору
     if (constructor) {
       // .. и они существуют
       if (this._data[constructor]) {
