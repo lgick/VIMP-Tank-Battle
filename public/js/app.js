@@ -26,73 +26,48 @@ require([
     , userName
     , errWS
     , loader
-    , iterations = 0
-    , vimpUserCache = null
-    , radarUserCache = null
 
     // используется для маршрутизации данных в экземпляры игры
     , router = {}
 
-    , userModel = null
-    , userCtrl = null
-
-    , vimpCtrl = null
-    , backCtrl = null
-    , radarCtrl = null
+    , user
   ;
 
 
-  // стартует игру
-  function startGame(data) {
-    var userView
-      , vimpModel
-      , vimpView
-      , backModel
-      , backView
-      , radarModel
-      , radarView;
+  // создает пользователя
+  function createUser(data) {
+    var userModel
+      , userView
+      , userCtrl
+      , chat = data.chat
+      , panel = data.panel
+      , sizeRatio = data.sizeRatio
+      , modules = data.modules
+    ;
 
-    var back = document.getElementById(CANVAS_BACK_ID)
-      , vimp = document.getElementById(CANVAS_VIMP_ID)
-      , radar = document.getElementById(CANVAS_RADAR_ID);
-
-    // TODO: сделать абстракцию
-    var panelHealth = document.getElementById(PANEL_HEALTH_ID)
-      , panelScore = document.getElementById(PANEL_SCORE_ID)
-      , panelRank = document.getElementById(PANEL_RANK_ID);
-
-    // старт user
     userModel = new UserModel({
-      chatListLimit: CHAT_LIST_LIMIT,
-      chatLineTime: CHAT_LINE_TIME,
-      chatCacheMin: CHAT_CACHE_MIN,
-      chatCacheMax: CHAT_CACHE_MAX,
+      chatListLimit: chat.params.listLimit || 5,
+      chatLineTime: chat.params.lineTime || 15000,
+      chatCacheMin: chat.params.cacheMin || 200,
+      chatCacheMax: chat.params.cacheMax || 300,
       mode: 'game',
-      panel: USER_PANEL,
-      sizeRatio: SIZE_RATIO,
+      panel: panel.params,
+      sizeRatio: sizeRatio,
       socket: socket,
       ticker: ticker
     });
 
     userView = new UserView(userModel, {
       window: window,
-      modules: [
-        back,
-        vimp,
-        radar,
-        document.getElementById(CHAT_ID),
-        document.getElementById(PANEL_ID)
-      ],
-      panel: {
-        health: panelHealth,
-        score: panelScore,
-        rank: panelRank
-      },
-      cmd: document.getElementById(CMD_ID),
-      chatBox: document.getElementById(CHAT_BOX_ID)
+      modules: modules,
+      panel: panel.elems,
+      cmd: document.getElementById(chat.elems.box),
+      chatBox: document.getElementById(chat.elems.chatBox)
     });
 
     userCtrl = new UserCtrl(userModel, userView);
+
+    return userCtrl;
   }
 
   // создает экземпляр игры
@@ -114,43 +89,6 @@ require([
     }
   }
 
-  // отрисовывает фон игры при ресайзе
-  function drawBack(data) {
-  }
-
-  // ресайз игры
-  function resize(data) {
-    drawBack(data);
-
-    gameUpdateAllView();
-  }
-
-  // обновляет все представления
-  function gameUpdateAllView() {
-    backCtrl.update();
-
-    vimpCtrl.update({
-      user: vimpUserCache,
-      width: vimp.width,
-      height: vimp.height
-    });
-
-    radarCtrl.update({
-      user: radarUserCache,
-      ratio: RADAR_SCALE_RATIO,
-      width: radar.width,
-      height: radar.height
-    });
-  }
-
-  // переподключение к серверу
-  function reconnect() {
-    socket.once('error', function () {
-      window.setTimeout(reconnect, 500);
-    });
-
-    socket.socket.connect();
-  }
 
 // ДАННЫЕ С СЕРВЕРА
 
@@ -236,6 +174,9 @@ require([
         router[constructor] = makeInstanceGame(routes[constructor]);
       }
     }
+
+    errWS = document.getElementById(data.errWS);
+    user = createUser(data);
   });
 
   // получение медиаданных
@@ -263,6 +204,7 @@ require([
       , instances
       , cache
       , constructor
+      , controller
       , i2
       , len2;
 
@@ -273,13 +215,15 @@ require([
 
       for (i2 = 0, len2 = constructors.length; i2 < len2; i2 += 1) {
         constructor = constructors[i2];
-        getInstanceGame(constructor).parse(constructor, instances, cache);
+        controller = getInstanceGame(constructor);
+        controller.parse(constructor, instances, cache);
+        controller.update(user);
       }
     }
   });
 
 
-  // Ошибки соединения
+  // вывод сообщения о разрыве соединения
   function showConnectStatus(message) {
     if (errWS) {
       if (message) {
@@ -290,6 +234,15 @@ require([
         errWS.style.display = 'none';
       }
     }
+  }
+
+  // переподключение к серверу
+  function reconnect() {
+    socket.once('error', function () {
+      window.setTimeout(reconnect, 500);
+    });
+
+    socket.socket.connect();
   }
 
   socket.on('connect', function () {

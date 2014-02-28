@@ -190,7 +190,7 @@ body {
 
 /*error*/
 
-#error {
+#errWS {
   display: none;
   position: absolute;
   top: 0;

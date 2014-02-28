@@ -12,7 +12,6 @@ define(['Publisher'], function (Publisher) {
     this._window = data.window;
     this._modules = data.modules;
     this._panel = data.panel;
-
     this._cmd = data.cmd;
     this._chatBox = data.chatBox;
 
@@ -50,10 +49,13 @@ define(['Publisher'], function (Publisher) {
   // инициализация
   UserView.prototype.init = function () {
     var i = 0
-      , len = this._modules.length;
+      , len = this._modules.length
+      , document = this._window.document
+      , elem;
 
     for (; i < len; i += 1) {
-      this._modules[i].style.display = 'block';
+      elem = document.getElementById(this._modules[i]);
+      elem.style.display = 'block';
     }
   };
 
@@ -80,9 +82,7 @@ define(['Publisher'], function (Publisher) {
 
     line.id = 'line_' + id;
     line.className = 'line';
-    line.setAttribute(
-      'data-name', message.name + ': '
-    );
+    line.setAttribute('data-name', message.name + ': ');
     line.innerHTML = message.text;
 
     this._chatBox.appendChild(line);
@@ -123,7 +123,8 @@ define(['Publisher'], function (Publisher) {
 
   // обновляет пользовательскую панель
   UserView.prototype.updatePanel = function (data) {
-    var elem = this._panel[data.name];
+    var document = this._window.document
+      , elem = document.getElementById(this._panel[data.name]);
 
     if (elem) {
       elem.innerHTML = data.value;

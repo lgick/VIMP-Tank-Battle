@@ -38,8 +38,8 @@ define([], function () {
   };
 
   // обновляет представление относительно пользователя
-  GameCtrl.prototype.update = function (data) {
-    var coords = GameCtrl.getUserCoords(data);
+  GameCtrl.prototype.update = function (user, sizes, ratio) {
+    var coords = GameCtrl.getUserCoords(user, sizes, ratio);
     this._view.update(coords);
   };
 
@@ -56,16 +56,12 @@ define([], function () {
 
   // возвращает координаты для отображения
   // пользователя по центру игры (нужно для view)
-  GameCtrl.getUserCoords = function (data) {
-    var user = data.user
-      , ratio = data.ratio
-      , width = data.width
-      , height = data.height
-      , coords = {};
+  GameCtrl.getUserCoords = function (user, sizes, ratio) {
+    var coords = {};
 
     coords.scale = +(user.scale / ratio).toFixed(10);
-    coords.x = -(user.x * coords.scale - width / 2);
-    coords.y = -(user.y * coords.scale - height / 2);
+    coords.x = -(user.x * coords.scale - sizes.width / 2);
+    coords.y = -(user.y * coords.scale - sizes.height / 2);
 
     // устранение неточности
     coords.x = +(coords.x).toFixed(10);

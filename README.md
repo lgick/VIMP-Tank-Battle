@@ -136,6 +136,7 @@ var data = {
 ``` js
 {
   user: {
+    scale: 1,
     x: 399,
     y: 34
   },

@@ -30,35 +30,6 @@ module.exports = {
     ]
   },
 
-  // ***** dependencies ***** //
-  dependencies: {
-    Tank: 'tank',
-    Radar: 'radar'
-  },
-
-  // ***** general ***** //
-  general: {
-    // маршруты конструктор: canvas id
-    routes: {
-      Tank: 'vimp',
-      Back: 'vimp',
-      Radar: 'radar'
-    },
-    moduleId: {
-      vimp: 'vimp',
-      radar: 'radar',
-      panel: 'panel',
-      chat: 'chat',
-      errWS: 'errWS'
-    },
-    sizeRatio: {
-      vimp: 1,
-      radar: 0.15
-    },
-    radarScaleRatio: 20,
-    memoryIterationLimit: 100
-  },
-
   // ***** authorization ***** //
   auth: {
     elems: {
@@ -87,26 +58,52 @@ module.exports = {
     ]
   },
 
-  // ***** panel ***** //
-  panel: {
-    health: 'panel-health',
-    score: 'panel-score',
-    rank: 'panel-rank'
+  // ***** dependencies ***** //
+  dependencies: {
+    Tank: 'tank',
+    Radar: 'radar',
+    Back: 'back'
   },
 
-  // ***** chat ***** //
-  chat: {
-    elems: {
-      box: 'chat-box',
-      cmd: 'cmd'
+  // ***** user ***** //
+  user: {
+    // маршруты конструктор: canvas id
+    routes: {
+      Tank: 'vimp',
+      Back: 'vimp',
+      Radar: 'radar'
     },
-    params: {
-      listLimit: 5,
-      lineTime: 15000,
-      cacheMin: 200,
-      cacheMax: 300
-    }
+    errWS: 'errWS',
+    // chat
+    chat: {
+      elems: {
+        box: 'chat-box',
+        cmd: 'cmd'
+      },
+      params: {
+        listLimit: 5,
+        lineTime: 15000,
+        cacheMin: 200,
+        cacheMax: 300
+      }
+    },
+    // panel
+    panel: {
+      elems: {
+        health: 'panel-health',
+        score: 'panel-score',
+        rank: 'panel-rank'
+      },
+      params: ['health', 'score', 'rank']
+    },
+    sizeRatio: {
+      vimp: 1,
+      radar: 0.15
+    },
+    modules: ['vimp', 'radar', 'panel', 'chat']
   },
+
+  radarScaleRatio: 20,
 
   // ***** keys ***** //
   keys: {

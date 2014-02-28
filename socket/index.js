@@ -5,6 +5,7 @@ var config = require('../config');
 var port = config.get('basic:port');
 var auth = config.get('game:auth');
 var deps = config.get('game:dependencies');
+var userConfig = config.get('game:user');
 
 var users = {};
 
@@ -58,6 +59,7 @@ module.exports = function (server) {
 
     // данные для user модели
     socket.on('user', function () {
+      socket.emit('user', userConfig);
     });
 
     // медиаданные
