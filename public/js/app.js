@@ -43,6 +43,7 @@ require([
       , panel = data.panel
       , sizeRatio = data.sizeRatio
       , modules = data.modules
+      , keys = data.keys
     ;
 
     userModel = new UserModel({
@@ -51,7 +52,6 @@ require([
       chatCacheMin: chat.params.cacheMin || 200,
       chatCacheMax: chat.params.cacheMax || 300,
       mode: 'game',
-      panel: panel.params,
       sizeRatio: sizeRatio,
       socket: socket,
       ticker: ticker
@@ -66,6 +66,18 @@ require([
     });
 
     userCtrl = new UserCtrl(userModel, userView);
+
+    userModel.publisher.on('resize', resize);
+
+    // инициализация
+    userCtrl.init({
+      keys: keys,
+      panel: panel.params,
+      size: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      }
+    });
 
     return userCtrl;
   }
@@ -89,6 +101,10 @@ require([
     }
   }
 
+  // resize
+  function resize() {
+    console.log('hello world');
+  }
 
 // ДАННЫЕ С СЕРВЕРА
 

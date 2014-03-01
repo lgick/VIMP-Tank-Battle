@@ -94,41 +94,44 @@ module.exports = {
         score: 'panel-score',
         rank: 'panel-rank'
       },
-      params: ['health', 'score', 'rank']
+      params: {
+        health: 100,
+        score: 0,
+        rank: ''
+      }
     },
     sizeRatio: {
       vimp: 1,
       radar: 0.15
     },
-    modules: ['vimp', 'radar', 'panel', 'chat']
+    modules: ['vimp', 'radar', 'panel', 'chat'],
+    // ***** keys ***** //
+    keys: {
+      game: {
+        87: 'forward',
+        83: 'back',
+        65: 'left',
+        68: 'right',
+        72: 'gLeft',
+        74: 'gRight',
+        67: 'gCenter',
+        75: 'fire',
+        80: 'zoomPlus',
+        79: 'zoomMinus',
+        81: 'zoomDefault',
+        78: 'nitro',
+        67: 'cmd'
+      },
+      cmd: {
+        27: 'game',
+        13: 'enter',
+        38: 'up',
+        40: 'down'
+      }
+    }
   },
 
   radarScaleRatio: 20,
-
-  // ***** keys ***** //
-  keys: {
-    game: {
-      87: 'forward',
-      83: 'back',
-      65: 'left',
-      68: 'right',
-      72: 'gLeft',
-      74: 'gRight',
-      67: 'gCenter',
-      75: 'fire',
-      80: 'zoomPlus',
-      79: 'zoomMinus',
-      81: 'zoomDefault',
-      78: 'nitro',
-      67: 'cmd'
-    },
-    cmd: {
-      27: 'game',
-      13: 'enter',
-      38: 'up',
-      40: 'down'
-    }
-  },
 
   // ***** gameModel ***** //
   gameModel: {

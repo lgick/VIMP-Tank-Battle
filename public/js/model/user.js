@@ -14,9 +14,7 @@ define(['Publisher'], function (Publisher) {
     this._chatListLimit = data.chatListLimit;
     this._chatLineTime = data.chatLineTime;
     this._mode = data.mode;
-    this._panel = data.panel;
     this._sizeRatio = data.sizeRatio;
-
     this._socket = data.socket;
     this._ticker = data.ticker;
 
@@ -148,18 +146,11 @@ define(['Publisher'], function (Publisher) {
 
   // обновляет данные панели пользователя
   UserModel.prototype.updatePanel = function (data) {
-    var i = 0
-      , len = this._panel.length
-      , name;
+    var name;
 
-    for (; i < len; i += 1) {
-      name = this._panel[i];
-
-      if (data[name]) {
-        this.publisher.emit('panel', {
-          name: name,
-          value: data[name]
-        });
+    for (name in data) {
+      if (data.hasOwnProperty(name)) {
+        this.publisher.emit('panel', {name: name, value: data[name]});
       }
     }
   };
