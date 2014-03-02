@@ -30,9 +30,8 @@ define([], function () {
   };
 
   // обновляет представление относительно пользователя
-  GameCtrl.prototype.update = function (user, sizes, ratio) {
-    var coords = GameCtrl.getUserCoords(user, sizes, ratio);
-    this._view.update(coords);
+  GameCtrl.prototype.update = function (user, zoom) {
+    this._view.update(user, zoom);
   };
 
   // удаляет экземпляр из модели
@@ -44,22 +43,6 @@ define([], function () {
     } else {
       this._model.remove();
     }
-  };
-
-  // возвращает координаты для отображения
-  // пользователя по центру игры (нужно для view)
-  GameCtrl.getUserCoords = function (user, sizes, ratio) {
-    var coords = {};
-
-    coords.scale = +(user.scale / ratio).toFixed(10);
-    coords.x = -(user.x * coords.scale - sizes.width / 2);
-    coords.y = -(user.y * coords.scale - sizes.height / 2);
-
-    // устранение неточности
-    coords.x = +(coords.x).toFixed(10);
-    coords.y = +(coords.y).toFixed(10);
-
-    return coords;
   };
 
   return GameCtrl;

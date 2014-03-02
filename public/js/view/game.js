@@ -15,31 +15,41 @@ define(['createjs'], function (createjs) {
     this._mPublic.on('clear', 'clear', this);
   }
 
-  GameView.prototype = {
-    // создает экземпляр на полотне
-    add: function (instance) {
-      this._stage.addChild(instance);
-    },
-    // обновляет полотно
-    update: function (data) {
-      if (data) {
-        this._stage.x = data.x;
-        this._stage.y = data.y;
+  // создает экземпляр на полотне
+  GameView.prototype.add = function (instance) {
+    this._stage.addChild(instance);
+  };
 
-        this._stage.scaleX = data.scale;
-        this._stage.scaleY = data.scale;
-      }
+  // вычисляет координаты для отображения
+  // пользователя по центру игры и обновляет полотно
+  GameView.prototype.update = function (user, zoom) {
+    var width = this._stage.canvas.width
+      , height = this._stage.canvas.height
+      , zoom = zoom || 1
+      , scale = +(user.scale * zoom).toFixed(10)
+      , x = -(user.x * scale - width / 2)
+      , y = -(user.y * scale - height / 2);
 
-      this._stage.update();
-    },
-    // удаляет экземпляр с полотна
-    remove: function (instance) {
-      this._stage.removeChild(instance);
-    },
-    // полностью очищает полотно
-    clear: function () {
-      this._stage.removeAllChildren();
-    }
+    // устранение неточности
+    x = +(x).toFixed(10);
+    y = +(y).toFixed(10);
+
+    this._stage.x = x;
+    this._stage.y = y;
+
+    this._stage.scaleX = this._stage.scaleY = scale;
+
+    this._stage.update();
+  };
+
+  // удаляет экземпляр с полотна
+  GameView.prototype.remove = function (instance) {
+    this._stage.removeChild(instance);
+  };
+
+  // полностью очищает полотно
+  GameView.prototype.clear = function () {
+    this._stage.removeAllChildren();
   };
 
   return GameView;
