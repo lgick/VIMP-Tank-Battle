@@ -1,14 +1,6 @@
 define([], function () {
-  // Singleton GameCtrl
-  var gameCtrl;
-
+  // Контроллер игры
   function GameCtrl(model, view) {
-    if (gameCtrl) {
-      return gameCtrl;
-    }
-
-    gameCtrl = this;
-
     this._model = model;
     this._view = view;
   }
