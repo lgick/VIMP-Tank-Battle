@@ -137,12 +137,8 @@ define(['Publisher'], function (Publisher) {
       , elem = document.getElementById(data.name);
 
     if (elem) {
-      if (data.name === 'radar') {
-        elem.width = elem.height = data.width;
-      } else {
-        elem.width = data.width;
-        elem.height = data.height;
-      }
+      elem.width = data.width;
+      elem.height = data.height;
     }
   };
 

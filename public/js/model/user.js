@@ -14,7 +14,7 @@ define(['Publisher'], function (Publisher) {
     this._chatListLimit = data.chatListLimit;
     this._chatLineTime = data.chatLineTime;
     this._mode = data.mode;
-    this._sizeRatio = data.sizeRatio;
+    this._sizeOptions = data.sizeOptions;
     this._socket = data.socket;
     this._ticker = data.ticker;
 
@@ -157,19 +157,29 @@ define(['Publisher'], function (Publisher) {
 
   // рассчитывает размеры элементов с учетом пропорций
   UserModel.prototype.resize = function (data) {
-    var width = data.width
-      , height = data.height
+    var screenWidth = data.width
+      , screenHeight = data.height
       , ratio
+      , width
+      , height
       , p;
 
-    for (p in this._sizeRatio) {
-      if (this._sizeRatio.hasOwnProperty(p)) {
-        ratio = this._sizeRatio[p];
+    for (p in this._sizeOptions) {
+      if (this._sizeOptions.hasOwnProperty(p)) {
+        ratio = this._sizeOptions[p].ratio || 1;
+        square = this._sizeOptions[p].square;
+
+        if (square) {
+          width = height = Math.round(screenWidth * ratio);
+        } else {
+          width = Math.round(screenWidth * ratio);
+          height = Math.round(screenHeight * ratio);
+        }
 
         this.publisher.emit('resize', {
           name: p,
-          width: Math.round(width * ratio),
-          height: Math.round(height * ratio)
+          width: width,
+          height: height
         });
       }
     }

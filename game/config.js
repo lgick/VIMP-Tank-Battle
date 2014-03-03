@@ -9,25 +9,7 @@ module.exports = {
   map: {
     width: 5000,
     height: 3000,
-    maxPlayer: 16,
-    color: {
-      t1: {
-        colorA: '#DB3030',
-        colorB: '#333333'
-      },
-      t2: {
-        colorA: '#3030DB',
-        colorB: '#333333'
-      }
-    },
-    manifest: [
-      {
-        id: 'tiles',
-        src: '/img/tiles.png',
-        width: 32,
-        height: 32
-      }
-    ]
+    maxPlayer: 16
   },
 
   // ***** authorization ***** //
@@ -67,6 +49,18 @@ module.exports = {
 
   // ***** user ***** //
   user: {
+    canvasOptions: {
+      vimp: {
+        id: 'vimp',
+        deps: ['Tank', 'Back'],
+        zoom: 1
+      },
+      radar: {
+        id: 'radar',
+        deps: ['Radar'],
+        zoom: 0.05
+      }
+    },
     // маршруты конструктор: canvas id
     routes: {
       Tank: 'vimp',
@@ -100,9 +94,15 @@ module.exports = {
         rank: ''
       }
     },
-    sizeRatio: {
-      vimp: 1,
-      radar: 0.15
+    sizeOptions: {
+      vimp: {
+        ratio: 1,
+        square: false
+      },
+      radar: {
+        ratio: 0.15,
+        square: true
+      }
     },
     modules: ['vimp', 'radar', 'panel', 'chat'],
     // ***** keys ***** //
@@ -131,7 +131,17 @@ module.exports = {
     }
   },
 
-  radarScaleRatio: 20,
+  // ***** media ***** //
+  media: {
+    manifest: [
+      {
+        id: 'tiles',
+        src: '/img/tiles.png',
+        width: 32,
+        height: 32
+      }
+    ]
+  },
 
   // ***** gameModel ***** //
   gameModel: {

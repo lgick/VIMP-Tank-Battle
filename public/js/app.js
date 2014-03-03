@@ -41,7 +41,7 @@ require([
       , userCtrl
       , chat = data.chat
       , panel = data.panel
-      , sizeRatio = data.sizeRatio
+      , sizeOptions = data.sizeOptions
       , modules = data.modules
       , keys = data.keys
     ;
@@ -52,10 +52,12 @@ require([
       chatCacheMin: chat.params.cacheMin || 200,
       chatCacheMax: chat.params.cacheMax || 300,
       mode: 'game',
-      sizeRatio: sizeRatio,
+      sizeOptions: sizeOptions,
       socket: socket,
       ticker: ticker
     });
+
+    userModel.publisher.on('resize', updateGameControllers);
 
     userView = new UserView(userModel, {
       window: window,
