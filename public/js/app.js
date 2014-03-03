@@ -27,9 +27,16 @@ require([
     , errWS
     , loader
 
-    // используется для маршрутизации данных в экземпляры игры
-    , router = {}
+    , userController
+    , controllers = {}
 
+    // объект с опциями для полотна (id, deps, zoom и тп)
+    , canvasOptions
+
+    // объект с информацией на каком полотне отрисовывать конструктор
+    , routes
+
+    // координаты игрока
     , user
   ;
 
@@ -57,8 +64,6 @@ require([
       ticker: ticker
     });
 
-    userModel.publisher.on('resize', updateGameControllers);
-
     userView = new UserView(userModel, {
       window: window,
       modules: modules,
@@ -67,9 +72,9 @@ require([
       chatBox: document.getElementById(chat.elems.chatBox)
     });
 
-    userCtrl = new UserCtrl(userModel, userView);
+    userView.publisher.on('redraw', updateGameControllers);
 
-    userModel.publisher.on('resize', resize);
+    userCtrl = new UserCtrl(userModel, userView);
 
     // инициализация
     userCtrl.init({
@@ -85,7 +90,7 @@ require([
   }
 
   // создает экземпляр игры
-  function makeInstanceGame(canvasId) {
+  function makeGameController(canvasId) {
     var canvas = document.getElementById(canvasId)
       , model = new GameModel()
       , view = new GameView(model, canvas)
@@ -94,18 +99,15 @@ require([
     return controller;
   }
 
-  // возвращает нужный экземпляр игры
-  function getInstanceGame(constructor) {
-    if (router[constructor]) {
-      return router[constructor];
-    } else {
-      console.log('router error');
-    }
-  }
+  // обновляет полотна
+  function updateGameControllers() {
+    var name;
 
-  // resize
-  function resize() {
-    console.log('hello world');
+    for (name in controllers) {
+      if (controllers.hasOwnProperty(name)) {
+        controllers[name].update(user, canvasOptions[name].zoom);
+      }
+    }
   }
 
 // ДАННЫЕ С СЕРВЕРА
@@ -184,17 +186,21 @@ require([
 
   // получение пользовательских данных
   socket.on('user', function (data) {
-    var routes = data.routes
-      , constructor;
+    canvasOptions = data.canvasOptions;
+    routes = data.routes;
+    errWS = document.getElementById(data.errWS);
+    userController = createUser(data);
 
-    for (constructor in routes) {
-      if (routes.hasOwnProperty(constructor)) {
-        router[constructor] = makeInstanceGame(routes[constructor]);
+    var canvas;
+
+    for (canvas in canvasOptions) {
+      if (canvasOptions.hasOwnProperty(canvas)) {
+        controllers[canvas] = makeGameController(canvasOptions[canvas].id);
       }
     }
 
-    errWS = document.getElementById(data.errWS);
-    user = createUser(data);
+    // запрос медиаданных
+    socket.emit('media');
   });
 
   // получение медиаданных
@@ -205,6 +211,41 @@ require([
 
     // событие при завершении загрузки
     loader.on("complete", function () {
+      var tank = controllers[routes['Tank']];
+      var radar = controllers[routes['Radar']];
+
+      radar.parse(['Radar'],
+        {
+          bob: {
+            layer: 1,
+            team: 'team1',
+            x: 50,
+            y: 50,
+            scale: 1,
+            rotation: 200
+          }
+        }, true);
+
+      tank.parse(['Tank'],
+        {
+          bob: {
+            layer: 1,
+            team: 'team1',
+            x: 50,
+            y: 50,
+            scale: 1,
+            rotation: 200,
+            gunRotation: 0
+          }
+        }, true);
+
+        user = {
+          x: 50,
+          y: 50,
+          scale: 1
+        };
+
+        updateGameControllers();
     });
   });
 
@@ -233,9 +274,10 @@ require([
 
       for (i2 = 0, len2 = constructors.length; i2 < len2; i2 += 1) {
         constructor = constructors[i2];
-        controller = getInstanceGame(constructor);
-        controller.parse(constructor, instances, cache);
-        controller.update(user);
+       // controller = getInstanceGame(constructor);
+       // controller.parse(constructor, instances, cache);
+       // // делать по завершению!!!
+       // controller.update(user);
       }
     }
   });

@@ -132,14 +132,23 @@ define(['Publisher'], function (Publisher) {
   };
 
   // изменение размеров
-  UserView.prototype.resize = function (data) {
+  UserView.prototype.resize = function (sizes) {
     var document = this._window.document
-      , elem = document.getElementById(data.name);
+      , id
+      , elem;
 
-    if (elem) {
-      elem.width = data.width;
-      elem.height = data.height;
+    for (id in sizes) {
+      if (sizes.hasOwnProperty(id)) {
+        elem = document.getElementById(id);
+
+        if (elem) {
+          elem.width = sizes[id].width;
+          elem.height = sizes[id].height;
+        }
+      }
     }
+
+    this.publisher.emit('redraw');
   };
 
   return UserView;

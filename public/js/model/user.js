@@ -159,6 +159,7 @@ define(['Publisher'], function (Publisher) {
   UserModel.prototype.resize = function (data) {
     var screenWidth = data.width
       , screenHeight = data.height
+      , sizes = {}
       , ratio
       , width
       , height
@@ -176,13 +177,14 @@ define(['Publisher'], function (Publisher) {
           height = Math.round(screenHeight * ratio);
         }
 
-        this.publisher.emit('resize', {
-          name: p,
+        sizes[p] = {
           width: width,
           height: height
-        });
+        };
       }
     }
+
+    this.publisher.emit('resize', sizes);
   };
 
   return UserModel;

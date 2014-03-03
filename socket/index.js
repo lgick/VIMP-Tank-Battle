@@ -6,6 +6,8 @@ var port = config.get('basic:port');
 var auth = config.get('game:auth');
 var deps = config.get('game:dependencies');
 var userConfig = config.get('game:user');
+var media = config.get('game:media');
+var map = config.get('game:map');
 
 var users = {};
 
@@ -64,7 +66,11 @@ module.exports = function (server) {
 
     // медиаданные
     socket.on('media', function () {
-      socket.emit('media', 'mediadata');
+      socket.emit('media', media);
+    });
+
+    socket.on('map', function () {
+      socket.emit('map', map);
     });
 
     // получение команд
