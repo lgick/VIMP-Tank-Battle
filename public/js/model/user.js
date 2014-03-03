@@ -167,8 +167,8 @@ define(['Publisher'], function (Publisher) {
 
     for (p in this._sizeOptions) {
       if (this._sizeOptions.hasOwnProperty(p)) {
-        ratio = this._sizeOptions[p].ratio || 1;
-        square = this._sizeOptions[p].square;
+        ratio = this._sizeOptions[p].sizeRatio || 1;
+        square = this._sizeOptions[p].squareForm;
 
         if (square) {
           width = height = Math.round(screenWidth * ratio);

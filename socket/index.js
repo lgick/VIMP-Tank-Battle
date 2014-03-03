@@ -9,6 +9,8 @@ var userConfig = config.get('game:user');
 var media = config.get('game:media');
 var map = config.get('game:map');
 
+var test = config.get('game:test');
+
 var users = {};
 
 module.exports = function (server) {
@@ -67,6 +69,8 @@ module.exports = function (server) {
     // медиаданные
     socket.on('media', function () {
       socket.emit('media', media);
+
+      socket.emit('game', test);
     });
 
     socket.on('map', function () {

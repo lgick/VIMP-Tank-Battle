@@ -52,17 +52,19 @@ module.exports = {
     canvasOptions: {
       vimp: {
         id: 'vimp',
-        deps: ['Tank', 'Back'],
-        zoom: 1
+        zoomView: 1,
+        sizeRatio: 1,
+        squareForm: false
       },
       radar: {
         id: 'radar',
-        deps: ['Radar'],
-        zoom: 0.05
+        zoomView: 0.05,
+        sizeRatio: 0.15,
+        squareForm: true
       }
     },
     // маршруты конструктор: canvas id
-    routes: {
+    paths: {
       Tank: 'vimp',
       Back: 'vimp',
       Radar: 'radar'
@@ -92,16 +94,6 @@ module.exports = {
         health: 100,
         score: 0,
         rank: ''
-      }
-    },
-    sizeOptions: {
-      vimp: {
-        ratio: 1,
-        square: false
-      },
-      radar: {
-        ratio: 0.15,
-        square: true
       }
     },
     modules: ['vimp', 'radar', 'panel', 'chat'],
@@ -161,5 +153,38 @@ module.exports = {
       rank: 10
     },
     chat: null
+  },
+
+  test: {
+    user: {
+      scale: 1,
+      x: 200,
+      y: 499
+    },
+    data: [
+      {
+        constructors: ['Tank', 'Radar'],
+        instances: {
+          bob: {
+            layer: 1,
+            team: 'team1',
+            x: 200,
+            y: 499,
+            rotation: 180,
+            gunRotation: 40
+          },
+          jek: {
+            layer: 1,
+            team: 'team1',
+            x: 150,
+            y: 599,
+            rotation: 180,
+            gunRotation: 40
+          }
+        },
+        cache: true
+      }
+    ]
   }
+
 };

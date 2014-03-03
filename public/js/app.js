@@ -28,15 +28,17 @@ require([
     , loader
 
     , userController
-    , controllers = {}
 
-    // объект с опциями для полотна (id, deps, zoom и тп)
+      // контроллеры холстов
+    , CTRL = {}
+
+      // объект с опциями для полотна (id, zoomView и др)
     , canvasOptions
 
-    // объект с информацией на каком полотне отрисовывать конструктор
-    , routes
+      // объект с информацией на каком полотне отрисовывать конструктор
+    , paths
 
-    // координаты игрока
+      // координаты игрока
     , user
   ;
 
@@ -48,7 +50,7 @@ require([
       , userCtrl
       , chat = data.chat
       , panel = data.panel
-      , sizeOptions = data.sizeOptions
+      , canvasOptions = data.canvasOptions
       , modules = data.modules
       , keys = data.keys
     ;
@@ -59,7 +61,7 @@ require([
       chatCacheMin: chat.params.cacheMin || 200,
       chatCacheMax: chat.params.cacheMax || 300,
       mode: 'game',
-      sizeOptions: sizeOptions,
+      sizeOptions: canvasOptions,
       socket: socket,
       ticker: ticker
     });
@@ -103,9 +105,13 @@ require([
   function updateGameControllers() {
     var name;
 
-    for (name in controllers) {
-      if (controllers.hasOwnProperty(name)) {
-        controllers[name].update(user, canvasOptions[name].zoom);
+    if (!user) {
+      return;
+    }
+
+    for (name in CTRL) {
+      if (CTRL.hasOwnProperty(name)) {
+        CTRL[name].update(user, canvasOptions[name].zoomView);
       }
     }
   }
@@ -186,16 +192,16 @@ require([
 
   // получение пользовательских данных
   socket.on('user', function (data) {
+    var canvas;
+
     canvasOptions = data.canvasOptions;
-    routes = data.routes;
+    paths = data.paths;
     errWS = document.getElementById(data.errWS);
     userController = createUser(data);
 
-    var canvas;
-
     for (canvas in canvasOptions) {
       if (canvasOptions.hasOwnProperty(canvas)) {
-        controllers[canvas] = makeGameController(canvasOptions[canvas].id);
+        CTRL[canvas] = makeGameController(canvasOptions[canvas].id);
       }
     }
 
@@ -211,41 +217,6 @@ require([
 
     // событие при завершении загрузки
     loader.on("complete", function () {
-      var tank = controllers[routes['Tank']];
-      var radar = controllers[routes['Radar']];
-
-      radar.parse(['Radar'],
-        {
-          bob: {
-            layer: 1,
-            team: 'team1',
-            x: 50,
-            y: 50,
-            scale: 1,
-            rotation: 200
-          }
-        }, true);
-
-      tank.parse(['Tank'],
-        {
-          bob: {
-            layer: 1,
-            team: 'team1',
-            x: 50,
-            y: 50,
-            scale: 1,
-            rotation: 200,
-            gunRotation: 0
-          }
-        }, true);
-
-        user = {
-          x: 50,
-          y: 50,
-          scale: 1
-        };
-
-        updateGameControllers();
     });
   });
 
@@ -254,32 +225,41 @@ require([
   });
 
   // обновление данных
-  socket.on('game', function (data) {
-    var user = data.user  // объект персональных данных (координаты, панель, чат)
-      , data = data.data  // массив данных для отрисовки кадра игры
+  socket.on('game', function (serverData) {
+    var data = serverData.data  // массив данных для отрисовки кадра игры
       , i = 0
       , len = data.length
+
       , constructors
       , instances
       , cache
+
       , constructor
       , controller
       , i2
       , len2;
 
+    // объект персональных данных (координаты, панель, чат)
+    user = serverData.user
+
     for (; i < len; i += 1) {
+
       constructors = data[i].constructors;
       instances = data[i].instances;
       cache = data[i].cache;
 
-      for (i2 = 0, len2 = constructors.length; i2 < len2; i2 += 1) {
+      i2 = 0;
+      len2 = constructors.length;
+
+      for (; i2 < len2; i2 += 1) {
         constructor = constructors[i2];
-       // controller = getInstanceGame(constructor);
-       // controller.parse(constructor, instances, cache);
-       // // делать по завершению!!!
-       // controller.update(user);
+        controller = CTRL[paths[constructor]];
+
+        controller.parse(constructor, instances, cache);
       }
     }
+
+    updateGameControllers();
   });
 
 
