@@ -1,3 +1,6 @@
+![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
+
+
 # Данные с сервера
 
 ## Данные с сервера для создания кадра игры
