@@ -4,13 +4,7 @@ module.exports = {
 
   name: 'VIMP Tank Battle',
   version: '0.0.1',
-
-  // ***** map ***** //
-  map: {
-    width: 5000,
-    height: 3000,
-    maxPlayer: 16
-  },
+  maxPlayer: 16,
 
   // ***** authorization ***** //
   auth: {
@@ -40,11 +34,17 @@ module.exports = {
     ]
   },
 
-  // ***** dependencies ***** //
-  dependencies: {
+  // ***** parts ***** //
+  parts: {
     Tank: 'tank',
-    Radar: 'radar',
-    Back: 'back'
+    Radar: 'radar'
+  },
+
+  // ***** paths ***** //
+  paths: {
+    Tank: 'vimp',
+    Map: 'vimp',
+    Radar: 'radar'
   },
 
   // ***** user ***** //
@@ -62,12 +62,6 @@ module.exports = {
         sizeRatio: 0.15,
         squareForm: true
       }
-    },
-    // маршруты конструктор: canvas id
-    paths: {
-      Tank: 'vimp',
-      Back: 'vimp',
-      Radar: 'radar'
     },
     errWS: 'errWS',
     // chat
@@ -128,11 +122,28 @@ module.exports = {
     manifest: [
       {
         id: 'tiles',
-        src: '/img/tiles.png',
-        width: 32,
-        height: 32
+        src: '/img/tiles.png'
       }
     ]
+  },
+
+  // ***** map ***** //
+  map: {
+    images: ['/img/tiles.png'],
+    frames: [
+      [256, 32, 32, 32, 0],
+      [0, 256, 32, 32, 0],
+      [160, 0, 32, 32, 0],
+      [288, 0, 32, 32, 0]
+    ],
+    map: require('./maps/arena'),
+    options: {
+      width: 512,
+      height: 512,
+      borderColor: '#333',
+      borderThickness: 30,
+      backgroundColor: '#ff0000'
+    }
   },
 
   // ***** gameModel ***** //
@@ -158,8 +169,8 @@ module.exports = {
   test: {
     user: {
       scale: 1,
-      x: 200,
-      y: 499
+      x: 256,
+      y: 256
     },
     data: [
       {
@@ -168,18 +179,18 @@ module.exports = {
           bob: {
             layer: 1,
             team: 'team1',
-            x: 200,
-            y: 499,
+            x: 256,
+            y: 256,
             rotation: 180,
-            gunRotation: 40
+            gunRotation: 0
           },
           jek: {
             layer: 1,
             team: 'team1',
             x: 150,
-            y: 599,
-            rotation: 180,
-            gunRotation: 40
+            y: 50,
+            rotation: 80,
+            gunRotation: -30
           }
         },
         cache: true

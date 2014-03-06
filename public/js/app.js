@@ -165,7 +165,7 @@ require([
   });
 
   // дозагрузка зависимостей
-  socket.on('deps', function (data) {
+  socket.on('parts', function (data) {
     var arr = []
       , names = []
       , p;
@@ -185,9 +185,16 @@ require([
         Factory.add(names[i], arguments[i]);
       }
 
-      // запрос пользовательских данных
-      socket.emit('user');
+      // запрос маршрутизации
+      socket.emit('paths');
     });
+  });
+
+  // пути
+  socket.on('paths', function (data) {
+    paths = data;
+    // запрос пользовательских данных
+    socket.emit('user');
   });
 
   // получение пользовательских данных
@@ -195,7 +202,6 @@ require([
     var canvas;
 
     canvasOptions = data.canvasOptions;
-    paths = data.paths;
     errWS = document.getElementById(data.errWS);
     userController = createUser(data);
 
@@ -217,11 +223,24 @@ require([
 
     // событие при завершении загрузки
     loader.on("complete", function () {
+      // запрос карты
+      socket.emit('map');
     });
   });
 
-  // активация игры
-  socket.on('model', function (data) {
+  // активация карты
+  socket.on('map', function (data) {
+    CTRL[paths['Map']].parse(['Map'], {
+      map: {
+        images: data.images,
+        frames: data.frames,
+        map: data.map,
+        options: data.options
+      }
+    }, true);
+
+    // запрос game
+    socket.emit('game');
   });
 
   // обновление данных

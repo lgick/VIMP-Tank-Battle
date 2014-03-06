@@ -4,7 +4,8 @@ var config = require('../config');
 
 var port = config.get('basic:port');
 var auth = config.get('game:auth');
-var deps = config.get('game:dependencies');
+var parts = config.get('game:parts');
+var paths = config.get('game:paths');
 var userConfig = config.get('game:user');
 var media = config.get('game:media');
 var map = config.get('game:map');
@@ -26,6 +27,7 @@ module.exports = function (server) {
 
   io.sockets.on('connection', function (socket) {
     socket.emit('auth', auth);
+
     // авторизация
     socket.on('auth', function (data, cb) {
       if (!data) {
@@ -57,8 +59,13 @@ module.exports = function (server) {
         cb(errors, false);
       } else {
         cb(null, true);
-        socket.emit('deps', deps);
+        socket.emit('parts', parts);
       }
+    });
+
+    // пути
+    socket.on('paths', function () {
+      socket.emit('paths', paths);
     });
 
     // данные для user модели
@@ -69,12 +76,14 @@ module.exports = function (server) {
     // медиаданные
     socket.on('media', function () {
       socket.emit('media', media);
-
-      socket.emit('game', test);
     });
 
     socket.on('map', function () {
       socket.emit('map', map);
+    });
+
+    socket.on('game', function () {
+      socket.emit('game', test);
     });
 
     // получение команд

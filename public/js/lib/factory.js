@@ -1,4 +1,4 @@
-define([], function () {
+define(['MapParts'], function (Map) {
   // Фабрика для строительства объектов игры
   // создает объект игры указанного типа
   // по заданным параметрам
@@ -35,6 +35,9 @@ define([], function () {
       console.log(this.color);
     }
   };
+
+  // дефолтные конструкторы
+  Factory.add('Map', Map);
 
   return Factory;
 });
