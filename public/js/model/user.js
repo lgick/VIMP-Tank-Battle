@@ -165,6 +165,15 @@ define(['Publisher'], function (Publisher) {
       , height
       , p;
 
+    // четные размеры для устранения артефактов
+    if (screenWidth % 2) {
+      screenWidth -= 1;
+    }
+
+    if (screenHeight % 2) {
+      screenHeight -= 1;
+    }
+
     for (p in this._sizeOptions) {
       if (this._sizeOptions.hasOwnProperty(p)) {
         ratio = this._sizeOptions[p].sizeRatio || 1;
