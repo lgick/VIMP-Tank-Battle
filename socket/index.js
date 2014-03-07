@@ -7,7 +7,6 @@ var auth = config.get('game:auth');
 var parts = config.get('game:parts');
 var paths = config.get('game:paths');
 var userConfig = config.get('game:user');
-var media = config.get('game:media');
 var map = config.get('game:map');
 
 var test = config.get('game:test');
@@ -71,11 +70,6 @@ module.exports = function (server) {
     // данные для user модели
     socket.on('user', function () {
       socket.emit('user', userConfig);
-    });
-
-    // медиаданные
-    socket.on('media', function () {
-      socket.emit('media', media);
     });
 
     socket.on('map', function () {

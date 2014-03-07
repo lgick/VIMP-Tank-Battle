@@ -19,13 +19,8 @@ define(['createjs'], function (createjs) {
     this.Container_initialize();
 
     this.map = data.map;
-    this.x = 0;
-    this.y = 0;
 
-    var spriteSheet = new SpriteSheet({
-      images: data.images,
-      frames: data.frames
-    });
+    var spriteSheet = new SpriteSheet(data.spriteSheet);
 
     this.createBase(data.options);
     this.createMap(spriteSheet);

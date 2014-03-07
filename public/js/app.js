@@ -211,36 +211,41 @@ require([
       }
     }
 
-    // запрос медиаданных
-    socket.emit('media');
+    // запрос карты
+    socket.emit('map');
   });
 
-  // получение медиаданных
-  socket.on('media', function (data) {
+  // активация карты
+  socket.on('map', function (data) {
     // загрузка графических файлов
     loader = new LoadQueue(false);
     loader.loadManifest(data.manifest);
 
     // событие при завершении загрузки
     loader.on("complete", function () {
-      // запрос карты
-      socket.emit('map');
-    });
-  });
+      var images = []
+        , arrId = data.imgId
+        , i = 0
+        , len = arrId.length;
 
-  // активация карты
-  socket.on('map', function (data) {
-    CTRL[paths['Map']].parse(['Map'], {
-      map: {
-        images: data.images,
-        frames: data.frames,
-        map: data.map,
-        options: data.options
+      for (; i < len; i += 1) {
+        images.push(loader.getResult(arrId[i]));
       }
-    }, true);
 
-    // запрос game
-    socket.emit('game');
+      CTRL[paths['Map']].parse(['Map'], {
+        map: {
+          spriteSheet: {
+            images: images,
+            frames: data.frames
+          },
+          map: data.map,
+          options: data.options
+        }
+      }, true);
+
+      // запуск игры
+      socket.emit('game');
+    });
   });
 
   // обновление данных

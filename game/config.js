@@ -117,31 +117,25 @@ module.exports = {
     }
   },
 
-  // ***** media ***** //
-  media: {
-    manifest: [
-      {
-        id: 'tiles',
-        src: '/img/tiles.png'
-      }
-    ]
-  },
-
   // ***** map ***** //
   map: {
-    images: ['/img/tiles.png'],
+    manifest: [
+      {id: 'tiles', src: '/img/tiles.png'}
+    ],
+    imgId: ['tiles'],
     frames: [
-      [256, 32, 32, 32, 0],
+      [480, 64, 32, 32, 0],
       [0, 256, 32, 32, 0],
       [160, 0, 32, 32, 0],
-      [288, 0, 32, 32, 0]
+      [288, 0, 32, 32, 0],
+      [128, 224, 32, 32, 0]
     ],
     map: require('./maps/arena'),
     options: {
       width: 512,
       height: 512,
-      borderColor: '#333',
-      borderThickness: 30,
+      borderColor: '#fff',
+      borderThickness: 3,
       backgroundColor: '#ff0000'
     }
   },
@@ -186,10 +180,10 @@ module.exports = {
           },
           jek: {
             layer: 1,
-            team: 'team1',
-            x: 150,
-            y: 50,
-            rotation: 80,
+            team: 'team2',
+            x: 130,
+            y: 230,
+            rotation: 50,
             gunRotation: -30
           }
         },
