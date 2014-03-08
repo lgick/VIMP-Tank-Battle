@@ -22,22 +22,18 @@ define(['createjs'], function (createjs) {
 
   // вычисляет координаты для отображения
   // пользователя по центру игры и обновляет полотно
-  GameView.prototype.update = function (user, zoom) {
+  GameView.prototype.update = function (coords, scale) {
     var width = this._stage.canvas.width
       , height = this._stage.canvas.height
-      , zoom = zoom || 1
-      , scale = +(user.scale * zoom).toFixed(10)
-      , x = -(user.x * scale - width / 2)
-      , y = -(user.y * scale - height / 2);
+      , scale
+      , x
+      , y;
 
-    // устранение неточности
-    x = +(x).toFixed(10);
-    y = +(y).toFixed(10);
+    scale = +(scale).toFixed(10)
+    x = +(width / 2 - coords.x * scale).toFixed(10)
+    y = +(height / 2 - coords.y * scale).toFixed(10);
 
-    this._stage.x = x;
-    this._stage.y = y;
-
-    this._stage.scaleX = this._stage.scaleY = scale;
+    this._stage.setTransform(x, y, scale, scale);
 
     this._stage.update();
   };

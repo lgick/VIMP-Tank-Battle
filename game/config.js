@@ -162,7 +162,6 @@ module.exports = {
 
   test: {
     user: {
-      scale: 1,
       x: 256,
       y: 256
     },

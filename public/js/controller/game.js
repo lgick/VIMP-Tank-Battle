@@ -30,8 +30,8 @@ define([], function () {
   };
 
   // обновляет представление относительно пользователя
-  GameCtrl.prototype.update = function (user, zoom) {
-    this._view.update(user, zoom);
+  GameCtrl.prototype.update = function (coords, scale) {
+    this._view.update(coords, scale);
   };
 
   // удаляет экземпляр из модели
