@@ -50,6 +50,7 @@ body {
 #panel table td {
   border: 1px solid #555;
   background-color: rgba(0, 0, 0, 0.5);
+  width: 33%;
 }
 
 #panel table td#panel-health:before {

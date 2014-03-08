@@ -2,7 +2,6 @@ define(['createjs'], function (createjs) {
   var Container = createjs.Container
     , Shape = createjs.Shape
     , Sprite = createjs.Sprite
-    , SpriteSheet = createjs.SpriteSheet
     , p;
 
   function Map(data) {
@@ -20,10 +19,8 @@ define(['createjs'], function (createjs) {
 
     this.map = data.map;
 
-    var spriteSheet = new SpriteSheet(data.spriteSheet);
-
     this.createBase(data.options);
-    this.createMap(spriteSheet);
+    this.createMap(data.spriteSheet);
   };
 
   p.createMap = function (spriteSheet) {

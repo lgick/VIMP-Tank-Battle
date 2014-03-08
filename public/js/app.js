@@ -21,6 +21,7 @@ require([
       })
 
     , LoadQueue = createjs.LoadQueue
+    , SpriteSheet = createjs.SpriteSheet
     , ticker = createjs.Ticker
 
     , userName
@@ -40,6 +41,8 @@ require([
 
       // координаты игрока
     , user
+
+    , scale = 1
   ;
 
 
@@ -111,7 +114,7 @@ require([
 
     for (name in CTRL) {
       if (CTRL.hasOwnProperty(name)) {
-        CTRL[name].update(user, canvasOptions[name].zoomView);
+        CTRL[name].update(user, scale * canvasOptions[name].zoomView);
       }
     }
   }
@@ -211,41 +214,48 @@ require([
       }
     }
 
-    // запрос карты
-    socket.emit('map');
+    // запрос media
+    socket.emit('media');
   });
 
-  // активация карты
-  socket.on('map', function (data) {
+  // загрузка media
+  socket.on('media', function (data) {
     // загрузка графических файлов
     loader = new LoadQueue(false);
     loader.loadManifest(data.manifest);
 
     // событие при завершении загрузки
     loader.on("complete", function () {
-      var images = []
-        , arrId = data.imgId
-        , i = 0
-        , len = arrId.length;
+      // запуск map
+      socket.emit('map');
+    });
+  });
 
-      for (; i < len; i += 1) {
-        images.push(loader.getResult(arrId[i]));
-      }
+  // активация карты
+  socket.on('map', function (data) {
+    var spriteSheet = new SpriteSheet(data.spriteSheet);
 
+    if (!spriteSheet.complete) {
+      spriteSheet.addEventListener('complete', create);
+    } else {
+      create();
+    }
+
+    function create() {
       CTRL[paths['Map']].parse(['Map'], {
         map: {
-          spriteSheet: {
-            images: images,
-            frames: data.frames
-          },
+          name: data.name,
+          spriteSheet: spriteSheet,
           map: data.map,
           options: data.options
         }
       }, true);
 
+      spriteSheet.removeAllEventListeners();
+
       // запуск игры
       socket.emit('game');
-    });
+    }
   });
 
   // обновление данных

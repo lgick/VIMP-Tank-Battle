@@ -117,20 +117,27 @@ module.exports = {
     }
   },
 
-  // ***** map ***** //
-  map: {
+  // ***** media ***** //
+  media: {
     manifest: [
       {id: 'tiles', src: '/img/tiles.png'}
-    ],
-    imgId: ['tiles'],
-    frames: [
-      [480, 64, 32, 32, 0],
-      [0, 256, 32, 32, 0],
-      [160, 0, 32, 32, 0],
-      [288, 0, 32, 32, 0],
-      [128, 224, 32, 32, 0]
-    ],
+    ]
+  },
+
+  // ***** map ***** //
+  map: {
+    name: 'arena',
     map: require('./maps/arena'),
+    spriteSheet: {
+      images: ['/img/tiles.png'],
+      frames: [
+        [480, 64, 32, 32, 0],
+        [0, 256, 32, 32, 0],
+        [160, 0, 32, 32, 0],
+        [288, 0, 32, 32, 0],
+        [128, 224, 32, 32, 0]
+      ]
+    },
     options: {
       width: 512,
       height: 512,
