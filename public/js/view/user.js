@@ -148,7 +148,7 @@ define(['Publisher'], function (Publisher) {
       }
     }
 
-    this.publisher.emit('redraw');
+    this.publisher.emit('redraw', sizes);
   };
 
   return UserView;

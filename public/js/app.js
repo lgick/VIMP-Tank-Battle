@@ -33,16 +33,17 @@ require([
       // контроллеры холстов
     , CTRL = {}
 
-      // объект с опциями для полотна (id, zoomView и др)
-    , canvasOptions
+      // объект с опциями для полотна (scale, defaultSize и тд)
+    , canvasOptions = {}
+
+      // объект с размерами полотна (width, height)
+    , canvasSizes = {}
 
       // объект с информацией на каком полотне отрисовывать конструктор
     , paths
 
       // координаты игрока
     , user
-
-    , scale = 1
   ;
 
 
@@ -59,6 +60,7 @@ require([
     ;
 
     userModel = new UserModel({
+      window: window,
       chatListLimit: chat.params.listLimit || 5,
       chatLineTime: chat.params.lineTime || 15000,
       chatCacheMin: chat.params.cacheMin || 200,
@@ -77,7 +79,10 @@ require([
       chatBox: document.getElementById(chat.elems.chatBox)
     });
 
-    userView.publisher.on('redraw', updateGameControllers);
+    userView.publisher.on('redraw', function (sizes) {
+      canvasSizes = sizes;
+      updateGameControllers();
+    });
 
     userCtrl = new UserCtrl(userModel, userView);
 
@@ -106,7 +111,10 @@ require([
 
   // обновляет полотна
   function updateGameControllers() {
-    var name;
+    var name
+      , scale
+      , defaultSize
+      , sizes;
 
     if (!user) {
       return;
@@ -114,7 +122,19 @@ require([
 
     for (name in CTRL) {
       if (CTRL.hasOwnProperty(name)) {
-        CTRL[name].update(user, scale * canvasOptions[name].zoomView);
+        scale = canvasOptions[name].scale || 1;
+        defaultSize = canvasOptions[name].defaultSize;
+        sizes = canvasSizes[name];
+
+        if (sizes && defaultSize) {
+          scale = +(sizes.width / defaultSize * scale).toFixed(3);
+        }
+
+        if (name === 'vimp') {
+          console.log(scale);
+        }
+
+        CTRL[name].update(user, scale);
       }
     }
   }
@@ -210,7 +230,7 @@ require([
 
     for (canvas in canvasOptions) {
       if (canvasOptions.hasOwnProperty(canvas)) {
-        CTRL[canvas] = makeGameController(canvasOptions[canvas].id);
+        CTRL[canvas] = makeGameController(canvas);
       }
     }
 
@@ -242,7 +262,7 @@ require([
     }
 
     function create() {
-      CTRL[paths['Map']].parse(['Map'], {
+      CTRL[paths.Map].parse(['Map'], {
         map: {
           name: data.name,
           spriteSheet: spriteSheet,
@@ -274,7 +294,7 @@ require([
       , len2;
 
     // объект персональных данных (координаты, панель, чат)
-    user = serverData.user
+    user = serverData.user;
 
     for (; i < len; i += 1) {
 

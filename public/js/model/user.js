@@ -9,6 +9,7 @@ define(['Publisher'], function (Publisher) {
 
     userModel = this;
 
+    this._window = data.window;
     this._chatCacheMin = data.chatCacheMin;
     this._chatCacheMax = data.chatCacheMax;
     this._chatListLimit = data.chatListLimit;
@@ -159,36 +160,59 @@ define(['Publisher'], function (Publisher) {
   UserModel.prototype.resize = function (data) {
     var screenWidth = data.width
       , screenHeight = data.height
+      , Math = this._window.Math
+      , parseInt = this._window.parseInt
       , sizes = {}
-      , ratio
+      , screenRatio
+      , aspectRatio
+      , widthRatio
+      , heightRatio
       , width
       , height
       , p;
 
-    // четные размеры для устранения артефактов
-    if (screenWidth % 2) {
-      screenWidth -= 1;
-    }
-
-    if (screenHeight % 2) {
-      screenHeight -= 1;
-    }
-
     for (p in this._sizeOptions) {
       if (this._sizeOptions.hasOwnProperty(p)) {
-        ratio = this._sizeOptions[p].sizeRatio || 1;
-        square = this._sizeOptions[p].squareForm;
+        screenRatio = this._sizeOptions[p].screenRatio || 1;
+        aspectRatio = this._sizeOptions[p].aspectRatio;
 
-        if (square) {
-          width = height = Math.round(screenWidth * ratio);
+        // если задано соотношение сторон
+        if (aspectRatio) {
+          aspectRatio = aspectRatio.split(':');
+
+          // строку в число
+          widthRatio = parseInt(aspectRatio[0], 10);
+          heightRatio = parseInt(aspectRatio[1], 10);
+
+          width = Math.round(screenWidth * screenRatio);
+          height = width / widthRatio * heightRatio;
+
+          // если фактическая высота больше полученной,
+          // то вычисления производятся относительно высоты
+          if (height > screenHeight) {
+            height = Math.round(screenHeight * screenRatio);
+            width = height / heightRatio * widthRatio;
+          }
         } else {
-          width = Math.round(screenWidth * ratio);
-          height = Math.round(screenHeight * ratio);
+          width = Math.round(screenWidth * screenRatio);
+          height = Math.round(screenHeight * screenRatio);
+        }
+
+        width = +(width).toFixed();
+        height = +(height).toFixed();
+
+        // четные размеры для устранения искажений
+        if (width % 2) {
+          width -= 1;
+        }
+
+        if (height % 2) {
+          height -= 1;
         }
 
         sizes[p] = {
           width: width,
-          height: height
+          height: height,
         };
       }
     }

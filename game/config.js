@@ -51,16 +51,16 @@ module.exports = {
   user: {
     canvasOptions: {
       vimp: {
-        id: 'vimp',
-        zoomView: 1,
-        sizeRatio: 1,
-        squareForm: false
+        aspectRatio: '3:2',
+        screenRatio: 1,
+        scale: 1,
+        defaultSize: 612
       },
       radar: {
-        id: 'radar',
-        zoomView: 0.05,
-        sizeRatio: 0.15,
-        squareForm: true
+        aspectRatio: '1:1',
+        screenRatio: 0.15,
+        scale: 0.05,
+        defaultSize: null
       }
     },
     errWS: 'errWS',
@@ -143,7 +143,7 @@ module.exports = {
       height: 512,
       borderColor: '#fff',
       borderThickness: 3,
-      backgroundColor: '#ff0000'
+      backgroundColor: '#f00'
     }
   },
 

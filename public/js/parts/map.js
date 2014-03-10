@@ -57,7 +57,7 @@ define(['createjs'], function (createjs) {
     g.drawRect(0, 0, width, height);
 
     this.addChild(shape);
-  }
+  };
 
   return Map;
 });

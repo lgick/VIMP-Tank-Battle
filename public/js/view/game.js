@@ -25,11 +25,9 @@ define(['createjs'], function (createjs) {
   GameView.prototype.update = function (coords, scale) {
     var width = this._stage.canvas.width
       , height = this._stage.canvas.height
-      , scale
       , x
       , y;
 
-    scale = +(scale).toFixed(10)
     x = +(width / 2 - coords.x * scale).toFixed(10)
     y = +(height / 2 - coords.y * scale).toFixed(10);
 
