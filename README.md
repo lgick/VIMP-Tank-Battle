@@ -1,5 +1,30 @@
 ![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
 
+# GAME CONFIG
+
+## user
+
+### canvasOptions
+
+Объект данных для canvas. Свойства объекта id элементов canvas.
+
+#### aspectRatio
+
+Соотношение сторон canvas
+
+#### screenRatio
+
+Коэффициент размера canvas относительно размера окна
+
+#### scale
+
+Масштаб кадра игры
+
+#### defaultSize
+
+Размер окна при котором отрисовка кадра один к одному
+
+
 
 # Данные с сервера
 
@@ -40,7 +65,7 @@
 [
   {
     constructors: ['Tank', 'Radar'],
-    instances: {  
+    instances: {
       bob: {
         layer: 1,
         team: 'team1',
