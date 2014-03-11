@@ -18,6 +18,7 @@ define(['createjs'], function (createjs) {
     this.Container_initialize();
 
     this.map = data.map;
+    this.step = data.step;
 
     this.createBase(data.options);
     this.createMap(data.spriteSheet);
@@ -33,8 +34,8 @@ define(['createjs'], function (createjs) {
     for (y = 0; y < lenY; y += 1) {
       for (x = 0; x < lenX; x += 1) {
         sprite = new Sprite(spriteSheet);
-        sprite.x = x * 32;
-        sprite.y = y * 32;
+        sprite.x = x * this.step;
+        sprite.y = y * this.step;
         sprite.gotoAndStop(this.map[y][x]);
 
         this.addChild(sprite);

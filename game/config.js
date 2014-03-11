@@ -128,6 +128,7 @@ module.exports = {
   map: {
     name: 'arena',
     map: require('./maps/arena'),
+    step: 32,
     spriteSheet: {
       images: ['/img/tiles.png'],
       frames: [

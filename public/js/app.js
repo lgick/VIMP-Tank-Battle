@@ -266,6 +266,7 @@ require([
         map: {
           name: data.name,
           spriteSheet: spriteSheet,
+          step: data.step,
           map: data.map,
           options: data.options
         }
