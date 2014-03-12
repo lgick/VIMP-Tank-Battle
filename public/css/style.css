@@ -20,25 +20,26 @@ body {
   text-transform: uppercase;
   background-color: #fff;
   text-align: center;
-  font-size: 11px;
-  line-height: 14px;
+  font-size: 10px;
+  line-height: 12px;
   position: absolute;
   top: 0;
   left: 0;
   right: 20%;
-  height: 40px;
+  height: 24px;
   padding-left: 80px;
   z-index: 2;
+  overflow: hidden;
 }
 
 #logo {
   position: absolute;
   left: 5px;
-  top: 5px;
-  font-size: 24px;
-  line-height: 30px;
+  top: 0;
+  font-size: 16px;
+  line-height: 24px;
   width: 70px;
-  height: 30px;
+  height: 24px;
   margin: 0;
   text-align: center;
 }
@@ -141,6 +142,7 @@ body {
   outline: none;
   border: 3px solid #099;
   border-radius: 3px;
+  opacity: 0.9;
 }
 
 /*auth*/

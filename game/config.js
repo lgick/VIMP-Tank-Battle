@@ -54,7 +54,7 @@ module.exports = {
         aspectRatio: '3:2',
         screenRatio: 1,
         scale: 1,
-        defaultSize: 612
+        defaultSize: 1000
       },
       radar: {
         aspectRatio: '1:1',
@@ -136,12 +136,13 @@ module.exports = {
         [0, 256, 32, 32, 0],
         [160, 0, 32, 32, 0],
         [288, 0, 32, 32, 0],
-        [128, 224, 32, 32, 0]
+        [128, 224, 32, 32, 0],
+        [0, 64, 32, 32, 0]
       ]
     },
     options: {
-      width: 512,
-      height: 512,
+      width: 800,
+      height: 640,
       borderColor: '#fff',
       borderThickness: 3,
       backgroundColor: '#f00'
@@ -170,8 +171,8 @@ module.exports = {
 
   test: {
     user: {
-      x: 256,
-      y: 256
+      x: 64,
+      y: 320
     },
     data: [
       {
@@ -180,18 +181,18 @@ module.exports = {
           bob: {
             layer: 1,
             team: 'team1',
-            x: 256,
-            y: 256,
-            rotation: 180,
+            x: 64,
+            y: 320,
+            rotation: 0,
             gunRotation: 0
           },
           jek: {
             layer: 1,
             team: 'team2',
-            x: 130,
-            y: 230,
-            rotation: 50,
-            gunRotation: -30
+            x: 736,
+            y: 320,
+            rotation: 180,
+            gunRotation: 0
           }
         },
         cache: true
