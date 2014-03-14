@@ -53,12 +53,12 @@ module.exports = {
       vimp: {
         aspectRatio: '3:2',
         screenRatio: 1,
-        scale: 1
+        scale: '1:1'
       },
       radar: {
         aspectRatio: '1:1',
         screenRatio: 0.15,
-        scale: 0.05
+        scale: '1:20'
       }
     },
     errWS: 'errWS',

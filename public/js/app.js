@@ -14,6 +14,7 @@ require([
 
   var window = this
     , document = window.document
+    , parseInt = window.parseInt
     , localStorage = window.localStorage
 
     , socket = io.connect('', {
@@ -30,16 +31,13 @@ require([
 
     , userController
 
-      // контроллеры холстов
+      // контроллеры
     , CTRL = {}
 
-      // объект с опциями для полотна (scale, defaultSize и тд)
-    , canvasOptions = {}
+      // масштабы
+    , scale = {}
 
-      // объект с размерами полотна (width, height)
-    , canvasSizes = {}
-
-      // объект с информацией на каком полотне отрисовывать конструктор
+      // пути: полотно -> конструктор
     , paths
 
       // координаты игрока
@@ -79,10 +77,7 @@ require([
       chatBox: document.getElementById(chat.elems.chatBox)
     });
 
-    userView.publisher.on('redraw', function (sizes) {
-      canvasSizes = sizes;
-      updateGameControllers();
-    });
+    userView.publisher.on('redraw', updateGameControllers);
 
     userCtrl = new UserCtrl(userModel, userView);
 
@@ -110,8 +105,7 @@ require([
 
   // обновляет полотна
   function updateGameControllers() {
-    var name
-      , scale;
+    var name;
 
     if (!user) {
       return;
@@ -119,9 +113,7 @@ require([
 
     for (name in CTRL) {
       if (CTRL.hasOwnProperty(name)) {
-        scale = canvasOptions[name].scale || 1;
-
-        CTRL[name].update(user, scale);
+        CTRL[name].update(user, scale[name]);
       }
     }
   }
@@ -209,15 +201,22 @@ require([
 
   // получение пользовательских данных
   socket.on('user', function (data) {
-    var canvas;
+    var canvas
+      , canvasOptions = data.canvasOptions
+      , s;
 
-    canvasOptions = data.canvasOptions;
     errWS = document.getElementById(data.errWS);
     userController = createUser(data);
 
     for (canvas in canvasOptions) {
       if (canvasOptions.hasOwnProperty(canvas)) {
+        // создание контроллера полотна
         CTRL[canvas] = makeGameController(canvas);
+
+        // масштаб изображения на полотне
+        s = canvasOptions[canvas].scale || '1:1';
+        s = s.split(':');
+        scale[canvas] = parseInt(s[0], 10) / parseInt(s[1], 10);
       }
     }
 
@@ -285,7 +284,6 @@ require([
     user = serverData.user;
 
     for (; i < len; i += 1) {
-
       constructors = data[i].constructors;
       instances = data[i].instances;
       cache = data[i].cache;
