@@ -201,15 +201,6 @@ define(['Publisher'], function (Publisher) {
         width = +(width).toFixed();
         height = +(height).toFixed();
 
-        // четные размеры для устранения искажений
-        if (width % 2) {
-          width -= 1;
-        }
-
-        if (height % 2) {
-          height -= 1;
-        }
-
         sizes[p] = {
           width: width,
           height: height,

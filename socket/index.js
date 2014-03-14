@@ -83,7 +83,28 @@ module.exports = function (server) {
     });
 
     socket.on('game', function () {
-      socket.emit('game', test);
+      var x = 0;
+      var f = true;
+
+      setInterval( function () {
+        test.user.x = x;
+
+        if (f) {
+          x += 10;
+        } else {
+          x -= 10;
+        }
+
+        if (x === 1000) {
+          f = false;
+        }
+
+        if (x === 0) {
+          f = true;
+        }
+
+        socket.emit('game', test);
+      }, 30);
     });
 
     // получение команд

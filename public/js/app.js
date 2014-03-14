@@ -101,9 +101,8 @@ require([
 
   // создает экземпляр игры
   function makeGameController(canvasId) {
-    var canvas = document.getElementById(canvasId)
-      , model = new GameModel()
-      , view = new GameView(model, canvas)
+    var model = new GameModel()
+      , view = new GameView(model, canvasId)
       , controller = new GameCtrl(model, view);
 
     return controller;
@@ -112,9 +111,7 @@ require([
   // обновляет полотна
   function updateGameControllers() {
     var name
-      , scale
-      , defaultSize
-      , sizes;
+      , scale;
 
     if (!user) {
       return;
@@ -123,16 +120,6 @@ require([
     for (name in CTRL) {
       if (CTRL.hasOwnProperty(name)) {
         scale = canvasOptions[name].scale || 1;
-        defaultSize = canvasOptions[name].defaultSize;
-        sizes = canvasSizes[name];
-
-        if (sizes && defaultSize) {
-          scale = +(sizes.width / defaultSize * scale).toFixed(3);
-        }
-
-        if (name === 'vimp') {
-          console.log(scale);
-        }
 
         CTRL[name].update(user, scale);
       }

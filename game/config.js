@@ -53,14 +53,12 @@ module.exports = {
       vimp: {
         aspectRatio: '3:2',
         screenRatio: 1,
-        scale: 1,
-        defaultSize: 1000
+        scale: 1
       },
       radar: {
         aspectRatio: '1:1',
         screenRatio: 0.15,
-        scale: 0.05,
-        defaultSize: null
+        scale: 0.05
       }
     },
     errWS: 'errWS',
@@ -171,7 +169,7 @@ module.exports = {
 
   test: {
     user: {
-      x: 64,
+      x: 400,
       y: 320
     },
     data: [

@@ -142,8 +142,8 @@ define(['Publisher'], function (Publisher) {
         elem = document.getElementById(id);
 
         if (elem) {
-          elem.width = sizes[id].width;
-          elem.height = sizes[id].height;
+          elem.style.width = sizes[id].width + 'px';
+          elem.style.height = sizes[id].height + 'px';
         }
       }
     }
