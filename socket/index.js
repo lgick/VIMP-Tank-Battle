@@ -90,9 +90,9 @@ module.exports = function (server) {
         test.user.x = x;
 
         if (f) {
-          x += 10;
+          x += 5;
         } else {
-          x -= 10;
+          x -= 5;
         }
 
         if (x === 1000) {
@@ -109,6 +109,7 @@ module.exports = function (server) {
 
     // получение команд
     socket.on('cmds', function (data) {
+      console.log(data);
     });
 
     // получение сообщений

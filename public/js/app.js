@@ -63,7 +63,6 @@ require([
       chatLineTime: chat.params.lineTime || 15000,
       chatCacheMin: chat.params.cacheMin || 200,
       chatCacheMax: chat.params.cacheMax || 300,
-      mode: 'game',
       sizeOptions: canvasOptions,
       socket: socket,
       ticker: ticker

@@ -81,9 +81,7 @@ define([], function () {
   };
 
   // преобразует клавишу в команду
-  UserCtrl.prototype.parseKeyCode = function (
-    keyCode, mode
-  ) {
+  UserCtrl.prototype.parseKeyCode = function (keyCode, mode) {
     var keys = this._keys[mode]
         // преобразование в строку
       , key = keyCode.toString()

@@ -14,13 +14,13 @@ define(['Publisher'], function (Publisher) {
     this._chatCacheMax = data.chatCacheMax;
     this._chatListLimit = data.chatListLimit;
     this._chatLineTime = data.chatLineTime;
-    this._mode = data.mode;
     this._sizeOptions = data.sizeOptions;
     this._socket = data.socket;
     this._ticker = data.ticker;
 
     this._chatCache = []; // хранилище сообщений
     this._chatList = [];  // активный чат-лист
+    this._mode = 'game';  // активный режим
     this._count = 0;      // id для сообщения чат-листа
     this._keys = [];      // текущие команды в игре
     this._noKeys = false; // флаг отправки пустых команд
