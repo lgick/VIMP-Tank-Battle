@@ -72,8 +72,8 @@ require([
       window: window,
       modules: modules,
       panel: panel.elems,
-      cmd: document.getElementById(chat.elems.box),
-      chatBox: document.getElementById(chat.elems.chatBox)
+      cmd: document.getElementById(chat.elems.cmd),
+      chatBox: document.getElementById(chat.elems.box)
     });
 
     userView.publisher.on('redraw', updateGameControllers);

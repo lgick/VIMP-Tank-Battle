@@ -58,7 +58,6 @@ define([], function () {
       }
 
       if (key === 'enter') {
-        // тест для сообщений
         if (cmd.value) {
           this._model.sendMessage(cmd.value);
         }
