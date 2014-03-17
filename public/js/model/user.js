@@ -22,20 +22,16 @@ define(['Publisher'], function (Publisher) {
     this._chatList = [];  // активный чат-лист
     this._mode = 'game';  // активный режим
     this._count = 0;      // id для сообщения чат-листа
-    this._keys = [];      // текущие команды в игре
-    this._noKeys = false; // флаг отправки пустых команд
+    this._keySet = [];    // набор keyCode
+    this._keys = [];      // массив состояния клавиш
 
     this.publisher = new Publisher();
   }
 
   // инициализация
   UserModel.prototype.init = function () {
-    var that = this;
-
     // запуск счетчика игры
-    this._ticker.addEventListener('tick', function () {
-      that.sendKeys();
-    });
+    this._ticker.addEventListener('tick', this.sendKeys.bind(this));
   };
 
   // возвращает текущий режим
@@ -49,47 +45,41 @@ define(['Publisher'], function (Publisher) {
     this.publisher.emit('mode', mode);
   };
 
-  // добавляет команду
-  UserModel.prototype.addGameKey = function (key) {
-    var index = this._keys.indexOf(key);
+  // обновляет набор состояния клавиш
+  UserModel.prototype.updateKeysState = function (keyCode, press) {
+    var i = 0
+      , len = this._keySet.length;
 
-    if (!key || index !== -1) {
-      return;
+    for (; i < len; i += 1) {
+      if (this._keySet[i] === keyCode) {
+        if (press) {
+          this._keys[i] = 1;
+        } else {
+          this._keys[i] = 0;
+        }
+      }
     }
-
-    this._keys.push(key);
-  };
-
-  // удаляет команду
-  UserModel.prototype.removeGameKey = function (key) {
-    var index = this._keys.indexOf(key);
-
-    if (!key || index === -1) {
-      return;
-    }
-
-    this._keys.splice(index, 1);
   };
 
   // очищает список команд
-  UserModel.prototype.clearGameKey = function () {
-    this._keys = [];
+  UserModel.prototype.clearKeys = function () {
+    var i = 0
+      , len = this._keys.length;
+
+    for (; i < len; i += 1) {
+      this._keys[i] = 0;
+    }
   };
 
-  // отправляет список команд на сервер
-  // Если данных нет, то на сервер поступает
-  // пустой массив (но только 1 раз!)
+  // отправляет информацию о клавишах на сервер
   UserModel.prototype.sendKeys = function () {
-    // если массив команд не пуст
-    if (this._keys.length !== 0) {
-      this._socket.emit('cmds', this._keys);
-      this._noKeys = false;
-    // иначе, если флаг неактивен,
-    // отправить пустой массив команд
-    } else if (this._noKeys === false) {
-      this._socket.emit('cmds', this._keys);
-      this._noKeys = true;
-    }
+    var parseInt = this._window.parseInt
+      , str = this._keys.join('');
+
+    // первое число не должно быть 0
+    str = '1' + str;
+
+    this._socket.emit('cmds', parseInt(str, 2).toString(36));
   };
 
   // добавляет сообщение
@@ -143,6 +133,19 @@ define(['Publisher'], function (Publisher) {
   // отправляет сообщение
   UserModel.prototype.sendMessage = function (message) {
     this._socket.emit('chat', message);
+  };
+
+  // обновляет данные клавиш
+  UserModel.prototype.updateKeys = function (data) {
+    var i = 0
+      , len = data.length;
+
+    this._keySet = data;
+    this._keys.length = data.length;
+
+    for (; i < len; i += 1) {
+      this._keys[i] = 0;
+    }
   };
 
   // обновляет данные панели пользователя

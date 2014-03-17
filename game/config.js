@@ -91,26 +91,20 @@ module.exports = {
     modules: ['vimp', 'radar', 'panel', 'chat'],
     // ***** keys ***** //
     keys: {
-      game: {
-        87: 'forward',
-        83: 'back',
-        65: 'left',
-        68: 'right',
-        72: 'gLeft',
-        74: 'gRight',
-        67: 'gCenter',
-        75: 'fire',
-        80: 'zoomPlus',
-        79: 'zoomMinus',
-        81: 'zoomDefault',
-        78: 'nitro',
-        67: 'cmd'
-      },
-      cmd: {
-        27: 'game',
-        13: 'enter',
-        38: 'up',
-        40: 'down'
+      keys: [
+        87,  // forward (w)
+        83,  // back (s)
+        65,  // left (a)
+        68,  // right (d)
+        72,  // gLeft (h)
+        74,  // gRight (j)
+        85,  // gCenter (u)
+        75   // fire (k)
+      ],
+      cmds: {
+        67: 'cmd',  // переключает в cmd режим (c)
+        27: 'game', // переключает в game режим (esc)
+        13: 'enter' // отправка сообщения на сервер (enter)
       }
     }
   },

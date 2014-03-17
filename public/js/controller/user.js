@@ -12,6 +12,8 @@ define([], function () {
     this._model = model;
     this._view = view;
 
+    this._cmds = {};
+
     this._vPublic = view.publisher;
 
     this._vPublic.on('keyDown', 'add', this);
@@ -34,36 +36,29 @@ define([], function () {
   // добавляет команду
   UserCtrl.prototype.add = function (data) {
     var event = data.event
-      , cmd = data.cmd
+      , input = data.cmd
       , mode = this._model.getMode()
-      , key = this.parseKeyCode(event.keyCode, mode);
+      , cmd = this.parseKeyCode(event.keyCode);
 
-    // если включен режим игры
+    // если режим game
     if (mode === 'game') {
-      if (key === 'cmd') {
+      if (cmd === 'cmd') {
         event.preventDefault();
-        this._model.switchMode(key);
-        this._model.clearGameKey();
-        return;
+        this._model.switchMode(cmd);
+        this._model.clearKeys();
+      } else {
+        this._model.updateKeysState(event.keyCode, true);
       }
 
-      this._model.addGameKey(key);
-    }
-
-    // если включен командный режим
-    if (mode === 'cmd') {
-      if (key === 'game') {
-        this._model.switchMode(key);
-        return;
-      }
-
-      if (key === 'enter') {
-        if (cmd.value) {
-          this._model.sendMessage(cmd.value);
+    // иначе, если режим cmd
+    } else if (mode === 'cmd') {
+      if (cmd === 'game') {
+        this._model.switchMode(cmd);
+      } else if (cmd === 'enter') {
+        if (input.value) {
+          this._model.sendMessage(input.value);
         }
-
         this._model.switchMode('game');
-        return;
       }
     }
   };
@@ -71,25 +66,22 @@ define([], function () {
   // удаляет команду
   UserCtrl.prototype.remove = function (event) {
     var keyCode = event.keyCode
-      , mode = this._model.getMode()
-      , key = this.parseKeyCode(keyCode, mode);
+      , mode = this._model.getMode();
 
     if (mode === 'game') {
-      this._model.removeGameKey(key);
+      this._model.updateKeysState(keyCode, false);
     }
   };
 
   // преобразует клавишу в команду
-  UserCtrl.prototype.parseKeyCode = function (keyCode, mode) {
-    var keys = this._keys[mode]
-        // преобразование в строку
-      , key = keyCode.toString()
+  UserCtrl.prototype.parseKeyCode = function (keyCode) {
+    var key = keyCode.toString()
       , p;
 
-    for (p in keys) {
-      if (keys.hasOwnProperty(p)) {
+    for (p in this._cmds) {
+      if (this._cmds.hasOwnProperty(p)) {
         if (p === key) {
-          return keys[p];
+          return this._cmds[p];
         }
       }
     }
@@ -114,17 +106,18 @@ define([], function () {
     this._model.removeFromList();
   };
 
+    // обновляет набор клавиш-команд
+  UserCtrl.prototype.updateKeys = function (data) {
+    if (typeof data === 'object') {
+      this._cmds = data.cmds;
+      this._model.updateKeys(data.keys);
+    }
+  };
+
   // обновляет пользовательскую панель
   UserCtrl.prototype.updatePanel = function (data) {
     if (typeof data === 'object') {
       this._model.updatePanel(data);
-    }
-  };
-
-  // обновляет набор клавиша-команда
-  UserCtrl.prototype.updateKeys = function (keyData) {
-    if (typeof keyData === 'object') {
-      this._keys = keyData;
     }
   };
 
