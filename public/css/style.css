@@ -160,7 +160,7 @@ body {
 
 #auth-form {
   background-color: #333;
-  width: 350px;
+  width: 256px;
   margin: 10px auto;
   border: 1px solid #eee;
   text-shadow: 1px 1px 1px #000;
@@ -188,7 +188,7 @@ body {
   color: #e00;
   font-size: 12px;
   line-height: 15px;
-  min-height: 30px;
+  min-height: 15px;
 }
 
 #auth-enter {

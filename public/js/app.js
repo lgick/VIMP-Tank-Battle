@@ -301,6 +301,9 @@ require([
     updateGameControllers();
   });
 
+  socket.on('test', function (x) {
+    console.log(x);
+  });
 
   // вывод сообщения о разрыве соединения
   function showConnectStatus(message) {

@@ -109,11 +109,13 @@ module.exports = function (server) {
 
     // получение команд
     socket.on('cmds', function (data) {
-      console.log(data);
+      var x = parseInt(data, 36).toString(2);
+      //socket.emit('test', x);
     });
 
     // получение сообщений
     socket.on('chat', function (message) {
+      socket.emit('test', message);
     });
 
     // отключение

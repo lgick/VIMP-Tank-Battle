@@ -141,24 +141,40 @@ module.exports = {
     }
   },
 
-  // ***** gameModel ***** //
-  gameModel: {
-    name: null,
-    team: null,
-    layer: 1,
-    data: {
-      x: null,
-      y: null,
-      scale: 1,
-      rotation: null,
-      gunRotation: null
+  // ***** game ***** //
+  game: {
+    model: {
+      name: null,
+      team: null,
+      layer: 1,
+      data: {
+        x: null,
+        y: null,
+        scale: 1,
+        rotation: null,
+        gunRotation: 0
+      },
+      panel: {
+        health: 100,
+        score: 0,
+        rank: 10
+      },
+      chat: null
     },
-    panel: {
-      health: 100,
-      score: 0,
-      rank: 10
+    respawn: {
+      team1: {},
+      team2: {}
     },
-    chat: null
+    actions: [
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
   },
 
   test: {
