@@ -3,6 +3,8 @@ var log = require('../lib/log')(module);
 var config = require('../config');
 
 var port = config.get('basic:port');
+var banlist = config.get('game:banlist');
+var banmsg = config.get('game:banmsg');
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
 var paths = config.get('game:paths');
@@ -26,7 +28,18 @@ module.exports = function (server) {
 //  });
 
   io.sockets.on('connection', function (socket) {
-    socket.emit('auth', auth);
+    var address = socket.handshake.address;
+
+    log.info("New connection from " + address.address + ":" + address.port);
+
+    if (banlist[address.address]) {
+      socket.emit('banned', {
+        info: banlist[address.address],
+        message: banmsg
+      });
+    } else {
+      socket.emit('auth', auth);
+    }
 
     // авторизация
     socket.on('auth', function (data, cb) {
@@ -58,6 +71,7 @@ module.exports = function (server) {
       if (errors.length) {
         cb(errors, false);
       } else {
+        log.info(data); // name=PIIIIIIT, team=t2
         cb(null, true);
         socket.emit('parts', parts);
       }
@@ -83,28 +97,28 @@ module.exports = function (server) {
     });
 
     socket.on('game', function () {
-      var x = 0;
-      var f = true;
+      // var x = 0;
+      // var f = true;
 
-      setInterval( function () {
-        test.user.x = x;
+      // setInterval( function () {
+      //   test.user.x = x;
 
-        if (f) {
-          x += 5;
-        } else {
-          x -= 5;
-        }
+      //   if (f) {
+      //     x += 5;
+      //   } else {
+      //     x -= 5;
+      //   }
 
-        if (x === 1000) {
-          f = false;
-        }
+      //   if (x === 1000) {
+      //     f = false;
+      //   }
 
-        if (x === 0) {
-          f = true;
-        }
+      //   if (x === 0) {
+      //     f = true;
+      //   }
 
         socket.emit('game', test);
-      }, 30);
+      // }, 30);
     });
 
     // получение команд

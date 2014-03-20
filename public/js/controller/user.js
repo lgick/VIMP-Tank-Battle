@@ -106,7 +106,7 @@ define([], function () {
     this._model.removeFromList();
   };
 
-    // обновляет набор клавиш-команд
+  // обновляет набор клавиш-команд
   UserCtrl.prototype.updateKeys = function (data) {
     if (typeof data === 'object') {
       this._cmds = data.cmds;

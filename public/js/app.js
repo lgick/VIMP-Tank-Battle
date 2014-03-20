@@ -17,6 +17,8 @@ require([
     , parseInt = window.parseInt
     , localStorage = window.localStorage
 
+    , errWS = document.getElementById('errWS')
+
     , socket = io.connect('', {
         reconnect: false
       })
@@ -26,7 +28,6 @@ require([
     , ticker = createjs.Ticker
 
     , userName
-    , errWS
     , loader
 
     , userController
@@ -142,7 +143,7 @@ require([
       regExp = params[i].options.regExp;
 
       if (storage) {
-        params[i].value = window.localStorage[storage] || '';
+        params[i].value = window.localStorage[storage] || params[i].value || '';
       }
 
       if (regExp) {
@@ -204,7 +205,6 @@ require([
       , canvasOptions = data.canvasOptions
       , s;
 
-    errWS = document.getElementById(data.errWS);
     userController = createUser(data);
 
     for (canvas in canvasOptions) {
@@ -305,16 +305,14 @@ require([
     console.log(x);
   });
 
-  // вывод сообщения о разрыве соединения
+  // вывод сообщения об ошибке соединения
   function showConnectStatus(message) {
-    if (errWS) {
-      if (message) {
-        errWS.innerHTML = message;
-        errWS.style.display = 'block';
-      } else {
-        errWS.innerHTML = '';
-        errWS.style.display = 'none';
-      }
+    if (message) {
+      errWS.innerHTML = message;
+      errWS.style.display = 'block';
+    } else {
+      errWS.innerHTML = '';
+      errWS.style.display = 'none';
     }
   }
 
@@ -342,5 +340,16 @@ require([
 
   socket.on('connect_failed', function () {
     showConnectStatus('Server connect failed :(');
+  });
+
+  socket.on('banned', function (data) {
+    var info = data.info
+      , message = data.message || ''
+      , s1 = 'Dear ' + info.name + ', You are banned! <br>'
+      , s2 = 'Reason: ' + info.reason + '<br>'
+      , s3 = 'Time: ' + info.time + '<br>'
+      , s4 = 'Type: ' + info.type + '<br><br>';
+
+    showConnectStatus(s1 + s2 + s3 + s4 + message);
   });
 });

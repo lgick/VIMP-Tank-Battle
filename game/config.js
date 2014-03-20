@@ -5,6 +5,8 @@ module.exports = {
   name: 'VIMP Tank Battle',
   version: '0.0.1',
   maxPlayer: 16,
+  banlist: require('./banlist'),
+  banmsg: 'Обжаловать бан можно на site.ru',
 
   // ***** authorization ***** //
   auth: {
@@ -27,7 +29,7 @@ module.exports = {
         name: 'team',
         value: 't1',
         options: {
-          regExp: null,
+          regExp: 't1|t2',
           storage: null
         }
       }
@@ -61,7 +63,6 @@ module.exports = {
         scale: '1:20'
       }
     },
-    errWS: 'errWS',
     // chat
     chat: {
       elems: {
