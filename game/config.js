@@ -39,6 +39,7 @@ module.exports = {
   // ***** parts ***** //
   parts: {
     Tank: 'tank',
+    Bullets: 'bullets',
     Radar: 'radar'
   },
 
@@ -46,6 +47,7 @@ module.exports = {
   paths: {
     Tank: 'vimp',
     Map: 'vimp',
+    Bullets: 'vimp',
     Radar: 'radar'
   },
 
@@ -205,6 +207,37 @@ module.exports = {
           }
         },
         cache: true
+      },
+      {
+        constructors: ['Bullets'],
+        instances: {
+          bob: [
+            [100, 320],
+            [120, 320],
+            [130, 320],
+            [140, 320],
+            [339, 44],
+            [300, 994],
+            [3, 34],
+            [339, 44],
+            [339, 44],
+            [332, 94],
+            [390, 72],
+            [159, 334]
+          ],
+          jek: [
+            [683, 34],
+            [230, 44],
+            [100, 134],
+            [8, 34],
+            [360, 74],
+            [50, 34],
+            [190, 72],
+            [10, 4],
+            [100, 24]
+          ]
+        },
+        cache: false
       }
     ]
   }

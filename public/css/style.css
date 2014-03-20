@@ -182,6 +182,7 @@ body {
 
 #auth-name-input {
   margin-left: 10px;
+  width: 120px;
 }
 
 #auth-error {
