@@ -1,9 +1,9 @@
 var cookie = require('cookie');
 var log = require('../lib/log')(module);
+var bantools = require('../lib/bantools');
 var config = require('../config');
 
 var port = config.get('basic:port');
-var banlist = config.get('game:banlist');
 var banmsg = config.get('game:banmsg');
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
@@ -29,12 +29,13 @@ module.exports = function (server) {
 
   io.sockets.on('connection', function (socket) {
     var address = socket.handshake.address;
-
     log.info("New connection from " + address.address + ":" + address.port);
 
-    if (banlist[address.address]) {
+    var banInfo = bantools.check(address.address);
+
+    if (banInfo) {
       socket.emit('banned', {
-        info: banlist[address.address],
+        info: banInfo,
         message: banmsg
       });
     } else {
