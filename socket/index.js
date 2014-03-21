@@ -1,6 +1,8 @@
 var cookie = require('cookie');
 var log = require('../lib/log')(module);
 var bantools = require('../lib/bantools');
+var usertools = require('../lib/usertools');
+
 var config = require('../config');
 
 var port = config.get('basic:port');
@@ -21,11 +23,6 @@ module.exports = function (server) {
 
   io.set('origins', 'localhost:' + port);
   io.set('logger', log);
-
-//  io.set('authorization', function (handshake, callback) {
-//    //var c = cookie.parse(handshake.headers.cookie);
-//    //console.log(c['connect.sid']);
-//  });
 
   io.sockets.on('connection', function (socket) {
     var address = socket.handshake.address;

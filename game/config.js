@@ -5,7 +5,10 @@ module.exports = {
   name: 'VIMP Tank Battle',
   version: '0.0.1',
   maxPlayer: 16,
-  banlist: require('./banlist'),
+
+  classUser: require('./deps/user'),
+  banlist: require('./deps/banlist'),
+
   banmsg: 'Обжаловать бан можно на site.ru',
 
   // ***** authorization ***** //
