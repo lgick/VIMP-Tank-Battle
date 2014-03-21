@@ -1,12 +1,10 @@
 var cookie = require('cookie');
 var log = require('../lib/log')(module);
-var bantools = require('../lib/bantools');
 var usertools = require('../lib/usertools');
 
 var config = require('../config');
 
 var port = config.get('basic:port');
-var banmsg = config.get('game:banmsg');
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
 var paths = config.get('game:paths');
@@ -28,16 +26,8 @@ module.exports = function (server) {
     var address = socket.handshake.address;
     log.info("New connection from " + address.address + ":" + address.port);
 
-    var banInfo = bantools.check(address.address);
-
-    if (banInfo) {
-      socket.emit('banned', {
-        info: banInfo,
-        message: banmsg
-      });
-    } else {
-      socket.emit('auth', auth);
-    }
+    // TODO: если авторизации не было
+    socket.emit('auth', auth);
 
     // авторизация
     socket.on('auth', function (data, cb) {

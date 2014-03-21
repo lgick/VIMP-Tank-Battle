@@ -342,14 +342,4 @@ require([
     showConnectStatus('Server connect failed :(');
   });
 
-  socket.on('banned', function (data) {
-    var info = data.info
-      , message = data.message || ''
-      , s1 = 'Dear ' + info.name + ', You are banned! <br>'
-      , s2 = 'Reason: ' + info.reason + '<br>'
-      , s3 = 'Time: ' + info.time + '<br>'
-      , s4 = 'Type: ' + info.type + '<br><br>';
-
-    showConnectStatus(s1 + s2 + s3 + s4 + message);
-  });
 });
