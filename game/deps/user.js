@@ -9,4 +9,8 @@ function User(data) {
   this.gunRotation = data.gunRotation;
 }
 
+User.prototype.update = function (data) {
+  var cmd = parseInt(data, 36).toString(2);
+}
+
 module.exports = User;
