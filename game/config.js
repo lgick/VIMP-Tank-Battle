@@ -64,7 +64,7 @@ module.exports = {
       },
       radar: {
         aspectRatio: '1:1',
-        screenRatio: 0.15,
+        screenRatio: 0.1,
         scale: '1:20'
       }
     },

@@ -14,6 +14,8 @@ var map = config.get('game:map');
 
 var test = config.get('game:test');
 
+var users = {};
+
 module.exports = function (server) {
   var io = require('socket.io').listen(server);
 
