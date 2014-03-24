@@ -1,3 +1,8 @@
+var classUser = require('./deps/user');
+var banlist = require('./deps/banlist');
+var menu = require('./deps/menu');
+var map = require('./maps/arena');
+
 // regExp строкой
 // dependencies пути
 module.exports = {
@@ -6,8 +11,9 @@ module.exports = {
   version: '0.0.1',
   maxPlayer: 16,
 
-  classUser: require('./deps/user'),
-  banlist: require('./deps/banlist'),
+  classUser: classUser,
+  banlist: banlist,
+  menu: menu,
 
   banmsg: 'Обжаловать бан можно на site.ru',
 
@@ -102,15 +108,21 @@ module.exports = {
         83,  // back (s)
         65,  // left (a)
         68,  // right (d)
-        72,  // gLeft (h)
-        74,  // gRight (j)
         85,  // gCenter (u)
-        75   // fire (k)
+        75,  // gLeft (k)
+        76,  // gRight (l)
+        74   // fire (j)
       ],
       cmds: {
-        67: 'cmd',  // переключает в cmd режим (c)
-        27: 'game', // переключает в game режим (esc)
-        13: 'enter' // отправка сообщения на сервер (enter)
+        67: 'cmd',   // включает командную строку (c)
+        77: 'menu',  // запрос меню (m)
+        9: 'tab',    // статистика (tab)
+
+        78: 'next',  // следующий (игрок, сообщение) (n)
+        80: 'prev',  // предыдущий (игрок, сообщение) (p)
+
+        27: 'esc',   // отмена действия (escape)
+        13: 'enter'  // ввод (enter)
       }
     }
   },
@@ -125,7 +137,7 @@ module.exports = {
   // ***** map ***** //
   map: {
     name: 'arena',
-    map: require('./maps/arena'),
+    map: map,
     step: 32,
     spriteSheet: {
       images: ['/img/tiles.png'],

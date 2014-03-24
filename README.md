@@ -1,5 +1,69 @@
 ![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
 
+# Статистика
+
+Обновляется из данных приходящих с сервера.
+
+## Объект статистики
+
+``` js
+{
+  groups: {
+    team1: {
+      score: 5,
+      players: 3
+    },
+    team2: {
+      score: 3,
+      players: 2
+    },
+    spectators: {
+      score: null,
+      players: 1
+    }
+  },
+  players: {
+    bot1: {
+      group: 'team1',
+      status: 1,
+      score: 3,
+      deaths:5
+    },
+    bot2: {
+      group: 'team2',
+      status: 0,
+      score: 1,
+      deaths:2
+    },
+    bot3: {
+      group: 'team2',
+      status: 1,
+      score: 3,
+      deaths:0
+    },
+    bot4: {
+      group: 'team1',
+      status: 0,
+      score: 1,
+      deaths:3
+    },
+    bot5: {
+      group: 'spectators',
+      status: 0,
+      score: 3,
+      deaths:7
+    },
+    bot6: {
+      group: 'team1',
+      status: 1,
+      score: 3,
+      deaths:5
+    }
+  }
+}
+```
+
+
 # GAME CONFIG
 
 ## user

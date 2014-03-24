@@ -19,6 +19,7 @@ define(['Publisher'], function (Publisher) {
     this.publisher = new Publisher();
   }
 
+  // добавляет данные
   AuthModel.prototype.add = function (data) {
     this._data[data.name] = data.value;
     this._options[data.name] = data.options;
