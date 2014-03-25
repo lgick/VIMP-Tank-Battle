@@ -53,6 +53,8 @@ require([
       , userCtrl
       , chat = data.chat
       , panel = data.panel
+      , stat = data.stat
+      , menu = data.menu
       , canvasOptions = data.canvasOptions
       , modules = data.modules
       , keys = data.keys
@@ -74,7 +76,9 @@ require([
       modules: modules,
       panel: panel.elems,
       cmd: document.getElementById(chat.elems.cmd),
-      chatBox: document.getElementById(chat.elems.box)
+      chatBox: document.getElementById(chat.elems.box),
+      stat: document.getElementById(stat),
+      menu: document.getElementById(menu)
     });
 
     userView.publisher.on('redraw', updateGameControllers);
@@ -302,6 +306,10 @@ require([
   });
 
   socket.on('test', function (x) {
+    userController.updateChat({
+      name: 'System',
+      text: x
+    });
     console.log(x);
   });
 

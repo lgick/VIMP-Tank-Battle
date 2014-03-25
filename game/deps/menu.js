@@ -1,4 +1,3 @@
-// this mongo data
 module.exports = [
   {
     title: 'Сменить команду, статус',

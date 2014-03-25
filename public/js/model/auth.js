@@ -80,9 +80,7 @@ define(['Publisher'], function (Publisher) {
         return;
       }
 
-      this._socket.emit(
-        'auth', this._data, this.parseRes.bind(this)
-      );
+      this._socket.emit('auth', this._data, this.parseRes.bind(this));
 
       this._sendStatus = true;
     }

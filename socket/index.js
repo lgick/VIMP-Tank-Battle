@@ -69,11 +69,19 @@ module.exports = function (server) {
     // получение: cmds
     socket.on('cmds', function (data) {
       session.update(data);
+      socket.emit('test', data);
     });
 
     // получение: chat
     socket.on('chat', function (message) {
       session.update(message);
+      socket.emit('test', message);
+    });
+
+    // получение: menu
+    socket.on('menu', function (number, cb) {
+      cb(null);
+      socket.emit('test', number);
     });
 
     // отключение

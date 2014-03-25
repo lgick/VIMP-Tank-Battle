@@ -14,6 +14,8 @@ define(['Publisher'], function (Publisher) {
     this._panel = data.panel;
     this._cmd = data.cmd;
     this._chatBox = data.chatBox;
+    this._stat = data.stat;
+    this._menu = data.menu;
 
     this.publisher = new Publisher();
 
@@ -59,17 +61,21 @@ define(['Publisher'], function (Publisher) {
     }
   };
 
-  // переключает режим игры
+  // переключает режим
   UserView.prototype.switchMode = function (mode) {
-    if (mode === 'game') {
-      this._cmd.style.display = 'none';
-      this._cmd.value = '';
-    }
-
     if (mode === 'cmd') {
       this._cmd.value = '';
       this._cmd.style.display = 'block';
       this._cmd.focus();
+    } else if (mode === 'stat') {
+      this._stat.style.display = 'block';
+    } else if (mode === 'menu') {
+      this._menu.style.display = 'block';
+    } else {
+      this._cmd.style.display = 'none';
+      this._cmd.value = '';
+      this._stat.style.display = 'none';
+      this._menu.style.display = 'none';
     }
   };
 

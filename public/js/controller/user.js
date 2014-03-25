@@ -36,29 +36,48 @@ define([], function () {
   // добавляет команду
   UserCtrl.prototype.add = function (data) {
     var event = data.event
+      , keyCode = event.keyCode
       , input = data.cmd
-      , mode = this._model.getMode()
-      , cmd = this.parseKeyCode(event.keyCode);
+      , cmd = this.parseKeyCode(keyCode)
+      , mode = this._model.getMode();
 
-    // если режим game
-    if (mode === 'game') {
-      if (cmd === 'cmd') {
+    // если режим не задан
+    if (!mode) {
+      // если не команда
+      if (!cmd) {
+        this._model.updateKeysState(keyCode, true);
+      // иначе, если команда включения режима - включить
+      } else if (cmd === 'stat' || cmd === 'cmd' || cmd === 'menu') {
         event.preventDefault();
-        this._model.switchMode(cmd);
+        this._model.setMode(cmd);
         this._model.clearKeys();
-      } else {
-        this._model.updateKeysState(event.keyCode, true);
       }
 
-    // иначе, если режим cmd
-    } else if (mode === 'cmd') {
-      if (cmd === 'game') {
-        this._model.switchMode(cmd);
-      } else if (cmd === 'enter') {
-        if (input.value) {
-          this._model.sendMessage(input.value);
+    // иначе, если команда esc - сбросить режим
+    } else if (cmd === 'esc') {
+      this._model.setMode(null);
+
+    // иначе...
+    } else {
+
+      // если клавиша tab - отмена действия по умолчанию
+      if (cmd === 'stat') {
+        event.preventDefault();
+      }
+
+      // если текущий режим cmd
+      if (mode === 'cmd') {
+        if (cmd === 'enter') {
+          if (input.value) {
+            this._model.sendMessage(input.value);
+          }
+          this._model.setMode(null);
         }
-        this._model.switchMode('game');
+      }
+
+      // если текущий режим menu
+      if (mode === 'menu') {
+        this._model.sendMenuData(keyCode);
       }
     }
   };
@@ -66,10 +85,17 @@ define([], function () {
   // удаляет команду
   UserCtrl.prototype.remove = function (event) {
     var keyCode = event.keyCode
+      , cmd = this.parseKeyCode(keyCode)
       , mode = this._model.getMode();
 
-    if (mode === 'game') {
+    if (!mode) {
       this._model.updateKeysState(keyCode, false);
+    } else {
+      if (mode === 'stat') {
+        if (cmd === 'stat') {
+          this._model.setMode(null);
+        }
+      }
     }
   };
 

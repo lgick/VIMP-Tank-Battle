@@ -100,6 +100,10 @@ module.exports = {
         rank: ''
       }
     },
+    // stat
+    stat: 'stat',
+    // menu
+    menu: 'menu',
     modules: ['vimp', 'radar', 'panel', 'chat'],
     // ***** keys ***** //
     keys: {
@@ -111,15 +115,14 @@ module.exports = {
         85,  // gCenter (u)
         75,  // gLeft (k)
         76,  // gRight (l)
-        74   // fire (j)
+        74,  // fire (j)
+        78,  // next player (n)
+        80   // prev player (p)
       ],
       cmds: {
         67: 'cmd',   // включает командную строку (c)
         77: 'menu',  // запрос меню (m)
-        9: 'tab',    // статистика (tab)
-
-        78: 'next',  // следующий (игрок, сообщение) (n)
-        80: 'prev',  // предыдущий (игрок, сообщение) (p)
+        9: 'stat',   // статистика (tab)
 
         27: 'esc',   // отмена действия (escape)
         13: 'enter'  // ввод (enter)

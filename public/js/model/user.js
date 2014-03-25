@@ -10,6 +10,11 @@ define(['Publisher'], function (Publisher) {
     userModel = this;
 
     this._window = data.window;
+
+    this._parseInt = this._window.parseInt;
+    this._String = this._window.String;
+    this._Math = this._window.Math;
+
     this._chatCacheMin = data.chatCacheMin;
     this._chatCacheMax = data.chatCacheMax;
     this._chatListLimit = data.chatListLimit;
@@ -20,7 +25,7 @@ define(['Publisher'], function (Publisher) {
 
     this._chatCache = []; // хранилище сообщений
     this._chatList = [];  // активный чат-лист
-    this._mode = 'game';  // активный режим
+    this._mode = null;    // режим (cmd: командный, menu: меню, stat: статистика)
     this._count = 0;      // id для сообщения чат-листа
     this._keySet = [];    // набор keyCode
     this._keys = [];      // массив состояния клавиш
@@ -40,7 +45,7 @@ define(['Publisher'], function (Publisher) {
   };
 
   // обновляет режим
-  UserModel.prototype.switchMode = function (mode) {
+  UserModel.prototype.setMode = function (mode) {
     this._mode = mode;
     this.publisher.emit('mode', mode);
   };
@@ -73,30 +78,29 @@ define(['Publisher'], function (Publisher) {
 
   // отправляет информацию о клавишах на сервер
   UserModel.prototype.sendKeys = function () {
-    var parseInt = this._window.parseInt
-      , str = this._keys.join('');
+    var str = this._keys.join('');
 
-    // первое число не должно быть 0
-    str = '1' + str;
+    // если в строке НЕ все нули
+    if (~~str) {
+      // первое число не должно быть 0
+      str = '1' + str;
 
-    this._socket.emit('cmds', parseInt(str, 2).toString(36));
+      // отправка данных в системе счисления base36
+      this._socket.emit('cmds', this._parseInt(str, 2).toString(36));
+    }
   };
 
   // добавляет сообщение
   UserModel.prototype.addMessage = function (message) {
-    // если количество сообщений в хранилище
-    // достигло предела - удалить лишние
+    // если количество сообщений в хранилище достигло предела - удалить лишние
     if (this._chatCache.length === this._chatCacheMax) {
-      this._chatCache.splice(
-        0, this._chatCache.length - this._chatCacheMin
-      );
+      this._chatCache.splice(0, this._chatCache.length - this._chatCacheMin);
     }
 
     // добавить объект сообщения в хранилище
     this._chatCache.push(message);
 
-    // если количество выделенных линий исчерпано -
-    // удалить линию принудительно
+    // если количество выделенных линий исчерпано - удалить линию принудительно
     if (this._chatList.length === this._chatListLimit) {
       this.removeFromList(true);
     }
@@ -135,6 +139,27 @@ define(['Publisher'], function (Publisher) {
     this._socket.emit('chat', message);
   };
 
+  // отправляет данные меню
+  UserModel.prototype.sendMenuData = function (keyCode) {
+    if (48 <= keyCode && keyCode <= 57) {
+      var symbol = this._String.fromCharCode(keyCode);
+      symbol = this._parseInt(symbol, 10);
+
+      this._socket.emit('menu', symbol, this.menuResponse.bind(this));
+    }
+  };
+
+  // получает данные меню с сервера
+  UserModel.prototype.menuResponse = function (data) {
+    // если ответ пустой, закрыть меню
+    if (!data) {
+      this.setMode(null);
+    // иначе, отобразить результаты меню пользователю
+    } else {
+      // TODO: преобразовать и передать на view
+    }
+  };
+
   // обновляет данные клавиш
   UserModel.prototype.updateKeys = function (data) {
     var i = 0
@@ -163,8 +188,6 @@ define(['Publisher'], function (Publisher) {
   UserModel.prototype.resize = function (data) {
     var screenWidth = data.width
       , screenHeight = data.height
-      , Math = this._window.Math
-      , parseInt = this._window.parseInt
       , sizes = {}
       , screenRatio
       , aspectRatio
@@ -184,21 +207,21 @@ define(['Publisher'], function (Publisher) {
           aspectRatio = aspectRatio.split(':');
 
           // строку в число
-          widthRatio = parseInt(aspectRatio[0], 10);
-          heightRatio = parseInt(aspectRatio[1], 10);
+          widthRatio = this._parseInt(aspectRatio[0], 10);
+          heightRatio = this._parseInt(aspectRatio[1], 10);
 
-          width = Math.round(screenWidth * screenRatio);
+          width = this._Math.round(screenWidth * screenRatio);
           height = width / widthRatio * heightRatio;
 
           // если фактическая высота больше полученной,
           // то вычисления производятся относительно высоты
           if (height > screenHeight) {
-            height = Math.round(screenHeight * screenRatio);
+            height = this._Math.round(screenHeight * screenRatio);
             width = height / heightRatio * widthRatio;
           }
         } else {
-          width = Math.round(screenWidth * screenRatio);
-          height = Math.round(screenHeight * screenRatio);
+          width = this._Math.round(screenWidth * screenRatio);
+          height = this._Math.round(screenHeight * screenRatio);
         }
 
         width = +(width).toFixed();
