@@ -3,12 +3,16 @@ require([
   'AuthModel', 'AuthView', 'AuthCtrl',
   'UserModel', 'UserView', 'UserCtrl',
   'GameModel', 'GameView', 'GameCtrl',
+  'ChatModel', 'ChatView', 'ChatCtrl',
+  'PanelModel', 'PanelView', 'PanelCtrl',
   'Factory'
 ], function (
   require, io, createjs,
   AuthModel, AuthView, AuthCtrl,
   UserModel, UserView, UserCtrl,
   GameModel, GameView, GameCtrl,
+  ChatModel, ChatView, ChatCtrl,
+  PanelModel, PanelView, PanelCtrl,
   Factory
 ) {
 
@@ -30,7 +34,11 @@ require([
     , userName
     , loader
 
-    , userController
+    , user
+    , chat
+    , panel
+    , stat
+    , menu
 
       // контроллеры
     , CTRL = {}
@@ -41,31 +49,44 @@ require([
       // пути: полотно -> конструктор
     , paths
 
-      // координаты игрока
-    , user
+      // координаты
+    , coords
   ;
 
 
   // создает пользователя
-  function createUser(data) {
+  function runModules(data) {
     var userModel
       , userView
-      , userCtrl
-      , chat = data.chat
-      , panel = data.panel
-      , stat = data.stat
-      , menu = data.menu
       , canvasOptions = data.canvasOptions
-      , modules = data.modules
+      , displayID = data.displayID
+      , cmd = data.cmd
+      , menu = data.menu
+      , stat = data.stat
       , keys = data.keys
+
+      , chatModel
+      , chatView
+      , chatData = data.chat
+
+      , panelModel
+      , panelView
+      , panelData = data.panel
+
+      , statModel
+      , statView
+
+      , menuModel
+      , menuView
     ;
+
+
+    //==========================================//
+    // User Module
+    //==========================================//
 
     userModel = new UserModel({
       window: window,
-      chatListLimit: chat.params.listLimit || 5,
-      chatLineTime: chat.params.lineTime || 15000,
-      chatCacheMin: chat.params.cacheMin || 200,
-      chatCacheMax: chat.params.cacheMax || 300,
       sizeOptions: canvasOptions,
       socket: socket,
       ticker: ticker
@@ -73,29 +94,76 @@ require([
 
     userView = new UserView(userModel, {
       window: window,
-      modules: modules,
-      panel: panel.elems,
-      cmd: document.getElementById(chat.elems.cmd),
-      chatBox: document.getElementById(chat.elems.box),
+      displayID: displayID,
+      cmd: document.getElementById(cmd),
       stat: document.getElementById(stat),
       menu: document.getElementById(menu)
     });
 
     userView.publisher.on('redraw', updateGameControllers);
 
-    userCtrl = new UserCtrl(userModel, userView);
+    user = new UserCtrl(userModel, userView);
 
     // инициализация
-    userCtrl.init({
+    user.init({
       keys: keys,
-      panel: panel.params,
       size: {
         width: window.innerWidth,
         height: window.innerHeight
       }
     });
 
-    return userCtrl;
+
+    //==========================================//
+    // Chat Module
+    //==========================================//
+
+    chatModel = new ChatModel(chatData.params);
+
+    chatView = new ChatView(chatModel, {
+      window: window,
+      chat: document.getElementById(chatData.elem)
+    });
+
+    chat = new ChatCtrl(chatModel, chatView);
+
+
+    //==========================================//
+    // Panel Module
+    //==========================================//
+
+    panelModel = new PanelModel();
+
+    panelView = new PanelView(panelModel, {
+      window: window,
+      panel: panelData.elems
+    });
+
+    panel = new PanelCtrl(panelModel, panelView);
+
+    panel.update(panelData.params);
+
+
+    //==========================================//
+    // Stat Module
+    //==========================================//
+
+    //statModel = new StatModel();
+
+    //statView = new StatView();
+
+    //stat = new StatCtrl();
+
+
+    //==========================================//
+    // Menu Module
+    //==========================================//
+
+    //menuModel = new MenuModel();
+
+    //menuView = new MenuView();
+
+    //menu = new MenuCtrl();
   }
 
   // создает экземпляр игры
@@ -111,13 +179,13 @@ require([
   function updateGameControllers() {
     var name;
 
-    if (!user) {
+    if (!coords) {
       return;
     }
 
     for (name in CTRL) {
       if (CTRL.hasOwnProperty(name)) {
-        CTRL[name].update(user, scale[name]);
+        CTRL[name].update(coords, scale[name]);
       }
     }
   }
@@ -209,7 +277,7 @@ require([
       , canvasOptions = data.canvasOptions
       , s;
 
-    userController = createUser(data);
+    runModules(data);
 
     for (canvas in canvasOptions) {
       if (canvasOptions.hasOwnProperty(canvas)) {
@@ -284,7 +352,7 @@ require([
       , len2;
 
     // объект персональных данных (координаты, панель, чат)
-    user = serverData.user;
+    coords = serverData.user;
 
     for (; i < len; i += 1) {
       constructors = data[i].constructors;
@@ -306,7 +374,7 @@ require([
   });
 
   socket.on('test', function (x) {
-    userController.updateChat({
+    chat.add({
       name: 'System',
       text: x
     });

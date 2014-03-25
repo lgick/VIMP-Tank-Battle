@@ -76,10 +76,7 @@ module.exports = {
     },
     // chat
     chat: {
-      elems: {
-        box: 'chat-box',
-        cmd: 'cmd'
-      },
+      elem: 'chat-box',
       params: {
         listLimit: 5,
         lineTime: 15000,
@@ -100,11 +97,16 @@ module.exports = {
         rank: ''
       }
     },
-    // stat
-    stat: 'stat',
+
+    // cmd
+    cmd: 'cmd',
     // menu
     menu: 'menu',
-    modules: ['vimp', 'radar', 'panel', 'chat'],
+    // stat
+    stat: 'stat',
+
+    displayID: ['vimp', 'radar', 'panel', 'chat'],
+
     // ***** keys ***** //
     keys: {
       keys: [
@@ -120,8 +122,8 @@ module.exports = {
         80   // prev player (p)
       ],
       cmds: {
-        67: 'cmd',   // включает командную строку (c)
-        77: 'menu',  // запрос меню (m)
+        67: 'cmd',   // командная строка (c)
+        77: 'menu',  // меню (m)
         9: 'stat',   // статистика (tab)
 
         27: 'esc',   // отмена действия (escape)

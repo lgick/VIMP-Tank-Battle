@@ -15,18 +15,11 @@ define(['Publisher'], function (Publisher) {
     this._String = this._window.String;
     this._Math = this._window.Math;
 
-    this._chatCacheMin = data.chatCacheMin;
-    this._chatCacheMax = data.chatCacheMax;
-    this._chatListLimit = data.chatListLimit;
-    this._chatLineTime = data.chatLineTime;
     this._sizeOptions = data.sizeOptions;
     this._socket = data.socket;
     this._ticker = data.ticker;
 
-    this._chatCache = []; // хранилище сообщений
-    this._chatList = [];  // активный чат-лист
     this._mode = null;    // режим (cmd: командный, menu: меню, stat: статистика)
-    this._count = 0;      // id для сообщения чат-листа
     this._keySet = [];    // набор keyCode
     this._keys = [];      // массив состояния клавиш
 
@@ -90,50 +83,6 @@ define(['Publisher'], function (Publisher) {
     }
   };
 
-  // добавляет сообщение
-  UserModel.prototype.addMessage = function (message) {
-    // если количество сообщений в хранилище достигло предела - удалить лишние
-    if (this._chatCache.length === this._chatCacheMax) {
-      this._chatCache.splice(0, this._chatCache.length - this._chatCacheMin);
-    }
-
-    // добавить объект сообщения в хранилище
-    this._chatCache.push(message);
-
-    // если количество выделенных линий исчерпано - удалить линию принудительно
-    if (this._chatList.length === this._chatListLimit) {
-      this.removeFromList(true);
-    }
-
-    this.publisher.emit('newLine', {
-      id: this._count,
-      message: message
-    });
-
-    this.publisher.emit('newTimer', {
-      id: this._count,
-      time: this._chatLineTime
-    });
-
-    this._count += 1;
-  };
-
-  // добавляет объект в чат-лист
-  UserModel.prototype.addToList = function (data) {
-    this._chatList.push(data);
-  };
-
-  // удаляет объект из чат-листа
-  UserModel.prototype.removeFromList = function (sync) {
-    var data = this._chatList.shift();
-
-    this.publisher.emit('oldLine', data.messageId);
-
-    if (sync) {
-      this.publisher.emit('oldTimer', data.timerId);
-    }
-  };
-
   // отправляет сообщение
   UserModel.prototype.sendMessage = function (message) {
     this._socket.emit('chat', message);
@@ -170,17 +119,6 @@ define(['Publisher'], function (Publisher) {
 
     for (; i < len; i += 1) {
       this._keys[i] = 0;
-    }
-  };
-
-  // обновляет данные панели пользователя
-  UserModel.prototype.updatePanel = function (data) {
-    var name;
-
-    for (name in data) {
-      if (data.hasOwnProperty(name)) {
-        this.publisher.emit('panel', {name: name, value: data[name]});
-      }
     }
   };
 

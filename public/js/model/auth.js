@@ -28,7 +28,7 @@ define(['Publisher'], function (Publisher) {
       name: data.name,
       value: data.value
     });
-  }
+  };
 
   // обновление данных
   // если value невалиден, возвращается текущий value

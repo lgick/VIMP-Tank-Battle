@@ -28,7 +28,7 @@ define(['createjs'], function (createjs) {
       , x
       , y;
 
-    x = +(width / 2 - coords.x * scale).toFixed()
+    x = +(width / 2 - coords.x * scale).toFixed();
     y = +(height / 2 - coords.y * scale).toFixed();
 
     this._stage.setTransform(x, y, scale, scale);

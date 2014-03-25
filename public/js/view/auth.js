@@ -74,7 +74,7 @@ define(['Publisher'], function (Publisher) {
 
     // делает активным нужный инпут
     for (; i < len; i += 1) {
-      var input = list[i];
+      input = list[i];
 
       if (input.type === 'text') {
         if (input.name === name) {

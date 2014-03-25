@@ -18,15 +18,12 @@ define([], function () {
 
     this._vPublic.on('keyDown', 'add', this);
     this._vPublic.on('keyUp', 'remove', this);
-    this._vPublic.on('newTimer', 'createTimer', this);
-    this._vPublic.on('oldTimer', 'removeTimer', this);
     this._vPublic.on('resize', 'resize', this);
   }
 
   // инициализация
   UserCtrl.prototype.init = function (data) {
     this.updateKeys(data.keys);
-    this.updatePanel(data.panel);
     this.resize(data.size);
 
     this._model.init();
@@ -113,37 +110,11 @@ define([], function () {
     }
   };
 
-  // обновляет чат-лист
-  UserCtrl.prototype.updateChat = function (message) {
-    if (typeof message === 'object') {
-      this._model.addMessage(message);
-    }
-  };
-
-  // добавляет таймер
-  UserCtrl.prototype.createTimer = function (data) {
-    if (typeof data === 'object') {
-      this._model.addToList(data);
-    }
-  };
-
-  // удаляет таймер
-  UserCtrl.prototype.removeTimer = function () {
-    this._model.removeFromList();
-  };
-
   // обновляет набор клавиш-команд
   UserCtrl.prototype.updateKeys = function (data) {
     if (typeof data === 'object') {
       this._cmds = data.cmds;
       this._model.updateKeys(data.keys);
-    }
-  };
-
-  // обновляет пользовательскую панель
-  UserCtrl.prototype.updatePanel = function (data) {
-    if (typeof data === 'object') {
-      this._model.updatePanel(data);
     }
   };
 
