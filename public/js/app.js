@@ -5,6 +5,8 @@ require([
   'GameModel', 'GameView', 'GameCtrl',
   'ChatModel', 'ChatView', 'ChatCtrl',
   'PanelModel', 'PanelView', 'PanelCtrl',
+  'StatModel', 'StatView', 'StatCtrl',
+  'MenuModel', 'MenuView', 'MenuCtrl',
   'Factory'
 ], function (
   require, io, createjs,
@@ -13,6 +15,8 @@ require([
   GameModel, GameView, GameCtrl,
   ChatModel, ChatView, ChatCtrl,
   PanelModel, PanelView, PanelCtrl,
+  StatModel, StatView, StatCtrl,
+  MenuModel, MenuView, MenuCtrl,
   Factory
 ) {
 
