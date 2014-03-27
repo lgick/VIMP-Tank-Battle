@@ -62,8 +62,8 @@ module.exports = function (server) {
     });
 
     // запрос данных: game
-    socket.on('game', function () {
-      socket.emit('game', test);
+    socket.on('start', function () {
+      socket.emit('shot', test);
     });
 
     // получение: cmds

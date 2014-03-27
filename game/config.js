@@ -13,7 +13,6 @@ module.exports = {
 
   classUser: classUser,
   banlist: banlist,
-  menu: menu,
 
   banmsg: 'Обжаловать бан можно на site.ru',
 
@@ -74,6 +73,15 @@ module.exports = {
         scale: '1:20'
       }
     },
+
+    // user
+    user: {
+      displayID: ['vimp', 'radar', 'panel', 'chat'],
+      cmd: 'cmd',
+      menu: 'menu',
+      stat: 'stat',
+    },
+
     // chat
     chat: {
       elem: 'chat-box',
@@ -84,6 +92,7 @@ module.exports = {
         cacheMax: 300
       }
     },
+
     // panel
     panel: {
       elems: {
@@ -98,16 +107,17 @@ module.exports = {
       }
     },
 
-    // cmd
-    cmd: 'cmd',
-    // menu
-    menu: 'menu',
     // stat
-    stat: 'stat',
+    stat: {
+    },
 
-    displayID: ['vimp', 'radar', 'panel', 'chat'],
+    // menu
+    menu: {
+      elem: 'menu',
+      params: menu
+    },
 
-    // ***** keys ***** //
+    // keys
     keys: {
       keys: [
         87,  // forward (w)
@@ -201,11 +211,15 @@ module.exports = {
   },
 
   test: {
-    user: {
-      x: 400,
+    coords: {
+      x: 64,
       y: 320
     },
-    data: [
+    chat: null,
+    panel: null,
+    stat: null,
+    menu: null,
+    game: [
       {
         constructors: ['Tank', 'Radar'],
         instances: {

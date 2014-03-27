@@ -60,14 +60,12 @@ require([
 
   // создает пользователя
   function runModules(data) {
-    var userModel
-      , userView
-      , canvasOptions = data.canvasOptions
-      , displayID = data.displayID
-      , cmd = data.cmd
-      , menu = data.menu
-      , stat = data.stat
+    var canvasOptions = data.canvasOptions
       , keys = data.keys
+
+      , userModel
+      , userView
+      , userData = data.user
 
       , chatModel
       , chatView
@@ -79,9 +77,11 @@ require([
 
       , statModel
       , statView
+      , statData = data.stat
 
       , menuModel
       , menuView
+      , menuData = data.menu
     ;
 
 
@@ -98,10 +98,10 @@ require([
 
     userView = new UserView(userModel, {
       window: window,
-      displayID: displayID,
-      cmd: document.getElementById(cmd),
-      stat: document.getElementById(stat),
-      menu: document.getElementById(menu)
+      displayID: userData.displayID,
+      cmd: document.getElementById(userData.cmd),
+      stat: document.getElementById(userData.stat),
+      menu: document.getElementById(userData.menu)
     });
 
     userView.publisher.on('redraw', updateGameControllers);
@@ -163,11 +163,14 @@ require([
     // Menu Module
     //==========================================//
 
-    //menuModel = new MenuModel();
+    menuModel = new MenuModel(menuData.params);
 
-    //menuView = new MenuView();
+    menuView = new MenuView( menuModel, {
+      window: window,
+      menu: menuData.elem
+    });
 
-    //menu = new MenuCtrl();
+    menu = new MenuCtrl(menuModel, menuView);
   }
 
   // создает экземпляр игры
@@ -336,13 +339,13 @@ require([
       spriteSheet.removeAllEventListeners();
 
       // запуск игры
-      socket.emit('game');
+      socket.emit('start');
     }
   });
 
   // обновление данных
-  socket.on('game', function (serverData) {
-    var data = serverData.data  // массив данных для отрисовки кадра игры
+  socket.on('shot', function (serverData) {
+    var data = serverData.game  // массив данных для отрисовки кадра игры
       , i = 0
       , len = data.length
 
@@ -356,7 +359,7 @@ require([
       , len2;
 
     // объект персональных данных (координаты, панель, чат)
-    coords = serverData.user;
+    coords = serverData.coords;
 
     for (; i < len; i += 1) {
       constructors = data[i].constructors;
@@ -377,6 +380,7 @@ require([
     updateGameControllers();
   });
 
+  // для теста
   socket.on('test', function (x) {
     chat.add({
       name: 'System',
