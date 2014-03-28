@@ -119,15 +119,56 @@ body {
 #menu {
   display: none;
   position: absolute;
-  top: 30px;
-  left: 1%;
+  top: 0;
+  bottom: 0;
+  left: 0;
   margin: auto;
   z-index: 3;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 5px;
-  border: 3px solid #777;
   width: 200px;
-  height: 250px;
+  height: 225px;
+  color: #fff;
+  background: rgba(144, 0, 0, 0.5);
+  padding: 5px;
+  box-shadow: 0 0 3px 1px #fff;
+  text-shadow: 0 0 1px #000;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#menu-title {
+  font-size: 15px;
+  line-height: 17px;
+  font-weight: bold;
+  margin: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#menu-list {
+  margin: 0;
+  padding: 5px 0 0 5px;
+  list-style-position: inside;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+#menu-list li {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+#menu-nav {
+  position: absolute;
+  bottom: 5px;
+  padding: 0 0 0 5px;
+}
+
+#menu-nav p {
+  margin: 0;
+}
+
+#menu-next, #menu-back {
+  display: none;
 }
 
 /*chat*/
