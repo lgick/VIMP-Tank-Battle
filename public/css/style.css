@@ -252,12 +252,14 @@ body {
 }
 
 #auth-form > div {
-  padding: 10px;
+  padding: 5px;
 }
 
 #auth-name-input {
   margin-left: 10px;
-  width: 120px;
+  width: 140px;
+  font-size: 10px;
+  line-height: 12px;
 }
 
 #auth-error {

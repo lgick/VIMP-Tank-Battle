@@ -79,9 +79,15 @@ module.exports = function (server) {
     });
 
     // получение: menu
-    socket.on('menu', function (number, cb) {
-      cb(null);
-      socket.emit('test', number);
+    socket.on('menu', function (data) {
+      if (typeof data === 'string') {
+        if (data === 'users') {
+          socket.emit('menu', ['bob', 'msa', 'WWWWWWWWWWWWWWW']);
+        }
+      } else if (typeof data === 'object') {
+      }
+
+      socket.emit('test', data);
     });
 
     // отключение

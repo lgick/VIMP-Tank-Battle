@@ -90,22 +90,18 @@ define(['Publisher'], function (Publisher) {
 
   // отправляет данные меню
   UserModel.prototype.sendMenuData = function (keyCode) {
-    if (48 <= keyCode && keyCode <= 57) {
-      var symbol = this._String.fromCharCode(keyCode);
+    var symbol;
+
+    // если keyCode это 0, тогда выйти из меню
+    if (keyCode === 48) {
+      this.setMode(null);
+
+    // иначе, если keyCode это число от 1 до 9
+    } else if (49 <= keyCode && keyCode <= 57) {
+      symbol = this._String.fromCharCode(keyCode);
       symbol = this._parseInt(symbol, 10);
 
-      this._socket.emit('menu', symbol, this.menuResponse.bind(this));
-    }
-  };
-
-  // получает данные меню с сервера
-  UserModel.prototype.menuResponse = function (data) {
-    // если ответ пустой, закрыть меню
-    if (!data) {
-      this.setMode(null);
-    // иначе, отобразить результаты меню пользователю
-    } else {
-      // TODO: преобразовать и передать на view
+      this.publisher.emit('menu', symbol);
     }
   };
 

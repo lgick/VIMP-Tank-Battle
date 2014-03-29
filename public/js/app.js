@@ -96,6 +96,9 @@ require([
       ticker: ticker
     });
 
+    // запрос подменю
+    userModel.publisher.on('menu', getSubMenu);
+
     userView = new UserView(userModel, {
       window: window,
       displayID: userData.displayID,
@@ -104,6 +107,7 @@ require([
       menu: document.getElementById(userData.menu)
     });
 
+    // после ресайза элементов происходит перерисовка кадра
     userView.publisher.on('redraw', updateGameControllers);
 
     user = new UserCtrl(userModel, userView);
@@ -163,14 +167,17 @@ require([
     // Menu Module
     //==========================================//
 
-    menuModel = new MenuModel(menuData.params);
+    menuModel = new MenuModel(socket);
 
     menuView = new MenuView( menuModel, {
       window: window,
-      menu: menuData.elem
+      title: document.getElementById(menuData.elems.title),
+      list: document.getElementById(menuData.elems.list)
     });
 
     menu = new MenuCtrl(menuModel, menuView);
+
+    menu.init(menuData.menu);
   }
 
   // создает экземпляр игры
@@ -194,6 +201,13 @@ require([
       if (CTRL.hasOwnProperty(name)) {
         CTRL[name].update(coords, scale[name]);
       }
+    }
+  }
+
+  // посылает запрос на отображение подменю
+  function getSubMenu(number) {
+    if (menu) {
+      menu.update(number);
     }
   }
 

@@ -113,8 +113,11 @@ module.exports = {
 
     // menu
     menu: {
-      elem: 'menu',
-      params: menu
+      elems: {
+        title: 'menu-title',
+        list: 'menu-list'
+      },
+      menu: menu
     },
 
     // keys
