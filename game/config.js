@@ -1,6 +1,6 @@
 var classUser = require('./deps/user');
 var banlist = require('./deps/banlist');
-var menu = require('./deps/menu');
+var vote = require('./deps/vote');
 var map = require('./maps/arena');
 
 // regExp строкой
@@ -74,13 +74,7 @@ module.exports = {
       }
     },
 
-    // user
-    user: {
-      displayID: ['vimp', 'radar', 'panel', 'chat'],
-      cmd: 'cmd',
-      menu: 'menu',
-      stat: 'stat',
-    },
+    displayID: ['vimp', 'radar', 'panel', 'chat'],
 
     // chat
     chat: {
@@ -111,13 +105,15 @@ module.exports = {
     stat: {
     },
 
-    // menu
-    menu: {
+    // vote
+    vote: {
       elems: {
-        title: 'menu-title',
-        list: 'menu-list'
+        voteID: 'vote',
+        titleClass: 'vote-title',
+        listClass: 'vote-list',
+        navClass: 'vote-nav'
       },
-      menu: menu
+      vote: vote
     },
 
     // keys
@@ -135,10 +131,9 @@ module.exports = {
         80   // prev player (p)
       ],
       cmds: {
-        67: 'cmd',   // командная строка (c)
-        77: 'menu',  // меню (m)
+        67: 'chat',  // чат (c)
+        77: 'vote',  // опрос (m)
         9: 'stat',   // статистика (tab)
-
         27: 'esc',   // отмена действия (escape)
         13: 'enter'  // ввод (enter)
       }
@@ -221,7 +216,7 @@ module.exports = {
     chat: null,
     panel: null,
     stat: null,
-    menu: null,
+    vote: null,
     game: [
       {
         constructors: ['Tank', 'Radar'],
