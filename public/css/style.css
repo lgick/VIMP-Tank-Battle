@@ -114,28 +114,25 @@ body {
   border: 3px solid #f77;
 }
 
-/*menu*/
+/*vote*/
 
-#menu {
-  display: none;
+#vote {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
+  top: 30px;
+  left: 5px;
   margin: auto;
-  z-index: 3;
-  width: 200px;
-  height: 225px;
-  color: #fff;
-  background: rgba(144, 0, 0, 0.5);
   padding: 5px;
-  box-shadow: 0 0 3px 1px #fff;
+  z-index: 3;
+  width: 250px;
+  color: #fff;
+  background: rgba(3, 100, 155, 0.9);
   text-shadow: 0 0 1px #000;
   white-space: nowrap;
-  overflow: hidden;
+  border: 2px solid #FFF;
+  border-radius: 5px;
 }
 
-#menu-title {
+#vote .vote-title {
   font-size: 15px;
   line-height: 17px;
   font-weight: bold;
@@ -144,7 +141,7 @@ body {
   text-overflow: ellipsis;
 }
 
-#menu-list {
+#vote .vote-list {
   margin: 0;
   padding: 5px 0 0 5px;
   list-style-position: inside;
@@ -152,23 +149,18 @@ body {
   line-height: 17px;
 }
 
-#menu-list li {
+#vote .vote-list li {
   text-overflow: ellipsis;
   overflow: hidden;
 }
 
-#menu-nav {
-  position: absolute;
-  bottom: 5px;
+#vote .vote-nav {
   padding: 0 0 0 5px;
+  margin-top: 5px;
 }
 
-#menu-nav p {
+#vote .vote-nav p {
   margin: 0;
-}
-
-#menu-next, #menu-back {
-  display: none;
 }
 
 /*chat*/

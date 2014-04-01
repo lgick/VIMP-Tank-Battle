@@ -78,11 +78,11 @@ module.exports = function (server) {
       socket.emit('test', message);
     });
 
-    // получение: menu
-    socket.on('menu', function (data) {
+    // получение: vote
+    socket.on('vote', function (data) {
       if (typeof data === 'string') {
         if (data === 'users') {
-          socket.emit('menu', ['bob', 'msa', 'WWWWWWWWWWWWWWW']);
+          socket.emit('vote', ['bob', 'msa', 'WWWWWWWWWWWWWWW']);
         }
       } else if (typeof data === 'object') {
       }

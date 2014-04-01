@@ -6,7 +6,7 @@ require([
   'ChatModel', 'ChatView', 'ChatCtrl',
   'PanelModel', 'PanelView', 'PanelCtrl',
   'StatModel', 'StatView', 'StatCtrl',
-  'MenuModel', 'MenuView', 'MenuCtrl',
+  'VoteModel', 'VoteView', 'VoteCtrl',
   'Factory'
 ], function (
   require, io, createjs,
@@ -16,7 +16,7 @@ require([
   ChatModel, ChatView, ChatCtrl,
   PanelModel, PanelView, PanelCtrl,
   StatModel, StatView, StatCtrl,
-  MenuModel, MenuView, MenuCtrl,
+  VoteModel, VoteView, VoteCtrl,
   Factory
 ) {
 
@@ -38,11 +38,7 @@ require([
     , userName
     , loader
 
-    , user
-    , chat
-    , panel
-    , stat
-    , menu
+    , modules = {}
 
       // контроллеры
     , CTRL = {}
@@ -62,10 +58,10 @@ require([
   function runModules(data) {
     var canvasOptions = data.canvasOptions
       , keys = data.keys
+      , displayID = data.displayID
 
       , userModel
       , userView
-      , userData = data.user
 
       , chatModel
       , chatView
@@ -79,9 +75,9 @@ require([
       , statView
       , statData = data.stat
 
-      , menuModel
-      , menuView
-      , menuData = data.menu
+      , voteModel
+      , voteView
+      , voteData = data.vote
     ;
 
 
@@ -96,24 +92,15 @@ require([
       ticker: ticker
     });
 
-    // запрос подменю
-    userModel.publisher.on('menu', getSubMenu);
-
     userView = new UserView(userModel, {
       window: window,
-      displayID: userData.displayID,
-      cmd: document.getElementById(userData.cmd),
-      stat: document.getElementById(userData.stat),
-      menu: document.getElementById(userData.menu)
+      displayID: displayID
     });
 
-    // после ресайза элементов происходит перерисовка кадра
-    userView.publisher.on('redraw', updateGameControllers);
-
-    user = new UserCtrl(userModel, userView);
+    modules.user = new UserCtrl(userModel, userView);
 
     // инициализация
-    user.init({
+    modules.user.init({
       keys: keys,
       size: {
         width: window.innerWidth,
@@ -133,7 +120,7 @@ require([
       chat: document.getElementById(chatData.elem)
     });
 
-    chat = new ChatCtrl(chatModel, chatView);
+    modules.chat = new ChatCtrl(chatModel, chatView);
 
 
     //==========================================//
@@ -147,9 +134,9 @@ require([
       panel: panelData.elems
     });
 
-    panel = new PanelCtrl(panelModel, panelView);
+    modules.panel = new PanelCtrl(panelModel, panelView);
 
-    panel.update(panelData.params);
+    modules.panel.update(panelData.params);
 
 
     //==========================================//
@@ -160,24 +147,44 @@ require([
 
     //statView = new StatView();
 
-    //stat = new StatCtrl();
+    //modules.stat = new StatCtrl();
 
 
     //==========================================//
-    // Menu Module
+    // Vote Module
     //==========================================//
 
-    menuModel = new MenuModel(socket);
-
-    menuView = new MenuView( menuModel, {
+    voteModel = new VoteModel({
       window: window,
-      title: document.getElementById(menuData.elems.title),
-      list: document.getElementById(menuData.elems.list)
+      socket: socket,
+      vote: voteData.vote
     });
 
-    menu = new MenuCtrl(menuModel, menuView);
+    voteView = new VoteView(voteModel, {
+      window: window,
+      elems: voteData.elems
+    });
 
-    menu.init(menuData.menu);
+    modules.vote = new VoteCtrl(voteModel, voteView);
+
+
+    //==========================================//
+    // Подписка на события
+    //==========================================//
+
+    // событие смены режима (возвращает объект со свойствами: oldMode, newMode)
+    userModel.publisher.on('mode', switchMode);
+
+    // подписка на данные от пользователя для режимов
+//    userModel.publisher.on('chat', modules.chat.update.bind(modules.chat));
+//    userModel.publisher.on('stat', modules.stat.update.bind(modules.stat));
+    userModel.publisher.on('vote', modules.vote.update.bind(modules.vote));
+
+    // после ресайза элементов происходит перерисовка кадра
+    userView.publisher.on('redraw', updateGameControllers);
+
+    // при завершении опроса
+    voteModel.publisher.on('complete', modules.user.setMode.bind(modules.user));
   }
 
   // создает экземпляр игры
@@ -204,10 +211,17 @@ require([
     }
   }
 
-  // посылает запрос на отображение подменю
-  function getSubMenu(number) {
-    if (menu) {
-      menu.update(number);
+  // переключает режим
+  function switchMode(data) {
+    var oldMode = modules[data.oldMode]
+      , newMode = modules[data.newMode];
+
+    if (oldMode) {
+      oldMode.off();
+    }
+
+    if (newMode) {
+      newMode.on();
     }
   }
 
@@ -396,7 +410,7 @@ require([
 
   // для теста
   socket.on('test', function (x) {
-    chat.add({
+    modules.chat.add({
       name: 'System',
       text: x
     });
