@@ -76,9 +76,37 @@ module.exports = {
 
     displayID: ['vimp', 'radar', 'panel', 'chat'],
 
+    // keys
+    keys: {
+      keys: [
+        87,  // forward (w)
+        83,  // back (s)
+        65,  // left (a)
+        68,  // right (d)
+        85,  // gCenter (u)
+        75,  // gLeft (k)
+        76,  // gRight (l)
+        74,  // fire (j)
+        78,  // next player (n)
+        80   // prev player (p)
+      ],
+      modes: {
+        67: 'chat',    // чат (c)
+        77: 'vote',    // опрос (m)
+        9: 'stat'      // статистика (tab)
+      },
+      cmds: {
+        27: 'escape',  // отмена (escape)
+        13: 'enter'    // ввод (enter)
+      }
+    },
+
     // chat
     chat: {
-      elem: 'chat-box',
+      elems: {
+        chatBox: 'chat-box',
+        cmd: 'cmd'
+      },
       params: {
         listLimit: 5,
         lineTime: 15000,
@@ -103,6 +131,9 @@ module.exports = {
 
     // stat
     stat: {
+      elems: {
+        stat: 'stat'
+      }
     },
 
     // vote
@@ -114,29 +145,6 @@ module.exports = {
         navClass: 'vote-nav'
       },
       vote: vote
-    },
-
-    // keys
-    keys: {
-      keys: [
-        87,  // forward (w)
-        83,  // back (s)
-        65,  // left (a)
-        68,  // right (d)
-        85,  // gCenter (u)
-        75,  // gLeft (k)
-        76,  // gRight (l)
-        74,  // fire (j)
-        78,  // next player (n)
-        80   // prev player (p)
-      ],
-      cmds: {
-        67: 'chat',  // чат (c)
-        77: 'vote',  // опрос (m)
-        9: 'stat',   // статистика (tab)
-        27: 'esc',   // отмена действия (escape)
-        13: 'enter'  // ввод (enter)
-      }
     }
   },
 

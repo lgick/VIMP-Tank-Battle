@@ -88,6 +88,7 @@ require([
     userModel = new UserModel({
       window: window,
       sizeOptions: canvasOptions,
+      keys: keys,
       socket: socket,
       ticker: ticker
     });
@@ -101,11 +102,8 @@ require([
 
     // инициализация
     modules.user.init({
-      keys: keys,
-      size: {
-        width: window.innerWidth,
-        height: window.innerHeight
-      }
+      width: window.innerWidth,
+      height: window.innerHeight
     });
 
 
@@ -113,11 +111,15 @@ require([
     // Chat Module
     //==========================================//
 
-    chatModel = new ChatModel(chatData.params);
+    chatModel = new ChatModel({
+      socket: socket,
+      params: chatData.params
+    });
 
     chatView = new ChatView(chatModel, {
       window: window,
-      chat: document.getElementById(chatData.elem)
+      chat: document.getElementById(chatData.elems.chatBox),
+      cmd: document.getElementById(chatData.elems.cmd)
     });
 
     modules.chat = new ChatCtrl(chatModel, chatView);
@@ -143,11 +145,13 @@ require([
     // Stat Module
     //==========================================//
 
-    //statModel = new StatModel();
+    statModel = new StatModel();
 
-    //statView = new StatView();
+    statView = new StatView(statModel, {
+      stat: document.getElementById(statData.elems.stat)
+    });
 
-    //modules.stat = new StatCtrl();
+    modules.stat = new StatCtrl(statModel, statView);
 
 
     //==========================================//
@@ -172,19 +176,20 @@ require([
     // Подписка на события
     //==========================================//
 
-    // событие смены режима (возвращает объект со свойствами: oldMode, newMode)
-    userModel.publisher.on('mode', switchMode);
+    // событие активации режима
+    userModel.publisher.on('mode', openMode);
 
     // подписка на данные от пользователя для режимов
-//    userModel.publisher.on('chat', modules.chat.update.bind(modules.chat));
-//    userModel.publisher.on('stat', modules.stat.update.bind(modules.stat));
+    userModel.publisher.on('chat', modules.chat.update.bind(modules.chat));
+    userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
     userModel.publisher.on('vote', modules.vote.update.bind(modules.vote));
 
     // после ресайза элементов происходит перерисовка кадра
     userView.publisher.on('redraw', updateGameControllers);
 
-    // при завершении опроса
-    voteModel.publisher.on('complete', modules.user.setMode.bind(modules.user));
+    chatModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+    statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+    voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
   }
 
   // создает экземпляр игры
@@ -211,17 +216,10 @@ require([
     }
   }
 
-  // переключает режим
-  function switchMode(data) {
-    var oldMode = modules[data.oldMode]
-      , newMode = modules[data.newMode];
-
-    if (oldMode) {
-      oldMode.off();
-    }
-
-    if (newMode) {
-      newMode.on();
+  // открывает режим
+  function openMode(mode) {
+    if (modules[mode]) {
+      modules[mode].open();
     }
   }
 

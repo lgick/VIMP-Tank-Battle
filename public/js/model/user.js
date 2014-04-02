@@ -12,35 +12,95 @@ define(['Publisher'], function (Publisher) {
     this._window = data.window;
 
     this._parseInt = this._window.parseInt;
-    this._String = this._window.String;
     this._Math = this._window.Math;
 
     this._sizeOptions = data.sizeOptions;
+
+    this._keySet = data.keys.keys;
+    this._modes = data.keys.modes;
+    this._cmds = data.keys.cmds;
+
     this._socket = data.socket;
     this._ticker = data.ticker;
 
-    this._mode = null;    // режим (cmd: командный, menu: меню, stat: статистика)
-    this._keySet = [];    // набор keyCode
-    this._keys = [];      // массив состояния клавиш
+    this._currentModes = {};  // статусы режимов
+    this._keys = [];          // массив состояния клавиш
 
     this.publisher = new Publisher();
   }
 
   // инициализация
   UserModel.prototype.init = function () {
+    var i
+      , len;
+
+    this._keys.length = this._keySet.length;
+
+    for (i = 0, len = this._keys.length; i < len; i += 1) {
+      this._keys[i] = 0;
+    }
+
     // запуск счетчика игры
     this._ticker.addEventListener('tick', this.sendKeys.bind(this));
+
+    this.publisher.emit('init');
   };
 
-  // возвращает текущий режим
-  UserModel.prototype.getMode = function () {
-    return this._mode;
+  // добавляет команду
+  UserModel.prototype.addKey = function (event) {
+    var keyCode = event.keyCode
+      , mode = this._modes[keyCode]
+      , cmd = this._cmds[keyCode];
+
+    // если чат активен
+    if (this._currentModes.chat) {
+      if (cmd) {
+        this.publisher.emit('chat', cmd);
+      }
+
+      if (mode === 'stat') {
+        event.preventDefault();
+        this.publisher.emit('mode', mode);
+      }
+    } else {
+      this.updateKeysState(keyCode, true);
+
+      if (this._currentModes.vote) {
+        this.publisher.emit('vote', keyCode);
+      }
+
+      if (this._currentModes.stat) {
+        event.preventDefault();
+      }
+
+      if (mode) {
+        event.preventDefault();
+        this.publisher.emit('mode', mode);
+      }
+    }
   };
 
-  // обновляет режим
-  UserModel.prototype.setMode = function (mode) {
-    this._mode = mode;
-    this.publisher.emit('mode', mode);
+  // удаляет команду
+  UserModel.prototype.removeKey = function (event) {
+    var keyCode = event.keyCode
+      , mode = this._modes[keyCode];
+
+    this.updateKeysState(keyCode, false);
+
+    if (this._currentModes.stat) {
+      if (mode === 'stat') {
+        this.publisher.emit('stat');
+      }
+    }
+  };
+
+  // меняет состояние режима
+  UserModel.prototype.setMode = function (mode, status) {
+    if (status === 'opened') {
+      this._currentModes[mode] = true;
+    } else if (status === 'closed') {
+      this._currentModes[mode] = false;
+    }
   };
 
   // обновляет набор состояния клавиш
@@ -59,16 +119,6 @@ define(['Publisher'], function (Publisher) {
     }
   };
 
-  // очищает список команд
-  UserModel.prototype.clearKeys = function () {
-    var i = 0
-      , len = this._keys.length;
-
-    for (; i < len; i += 1) {
-      this._keys[i] = 0;
-    }
-  };
-
   // отправляет информацию о клавишах на сервер
   UserModel.prototype.sendKeys = function () {
     var str = this._keys.join('');
@@ -79,42 +129,7 @@ define(['Publisher'], function (Publisher) {
       str = '1' + str;
 
       // отправка данных в системе счисления base36
-      this._socket.emit('cmds', this._parseInt(str, 2).toString(36));
-    }
-  };
-
-  // отправляет сообщение
-  UserModel.prototype.sendMessage = function (message) {
-    this._socket.emit('chat', message);
-  };
-
-  // отправляет данные меню
-  UserModel.prototype.sendMenuData = function (keyCode) {
-    var symbol;
-
-    // если keyCode это 0, тогда выйти из меню
-    if (keyCode === 48) {
-      this.setMode(null);
-
-    // иначе, если keyCode это число от 1 до 9
-    } else if (49 <= keyCode && keyCode <= 57) {
-      symbol = this._String.fromCharCode(keyCode);
-      symbol = this._parseInt(symbol, 10);
-
-      this.publisher.emit('menu', symbol);
-    }
-  };
-
-  // обновляет данные клавиш
-  UserModel.prototype.updateKeys = function (data) {
-    var i = 0
-      , len = data.length;
-
-    this._keySet = data;
-    this._keys.length = data.length;
-
-    for (; i < len; i += 1) {
-      this._keys[i] = 0;
+      this._socket.emit('keys', this._parseInt(str, 2).toString(36));
     }
   };
 

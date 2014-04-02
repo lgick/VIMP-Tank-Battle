@@ -66,8 +66,8 @@ module.exports = function (server) {
       socket.emit('shot', test);
     });
 
-    // получение: cmds
-    socket.on('cmds', function (data) {
+    // получение: keys
+    socket.on('keys', function (data) {
       session.update(data);
       socket.emit('test', data);
     });
