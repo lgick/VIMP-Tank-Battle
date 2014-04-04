@@ -10,22 +10,43 @@ define(['Publisher'], function (Publisher) {
     chatView = this;
 
     this._window = data.window;
+    this._document = this._window.document;
+
     this._chat = data.chat;
+    this._cmd = data.cmd;
 
     this.publisher = new Publisher();
 
     this._mPublic = model.publisher;
 
+    this._mPublic.on('open', 'openCmd', this);
+    this._mPublic.on('close', 'closeCmd', this);
     this._mPublic.on('newLine', 'createLine', this);
     this._mPublic.on('oldLine', 'removeLine', this);
     this._mPublic.on('newTimer', 'createTimer', this);
     this._mPublic.on('oldTimer', 'removeTimer', this);
   }
 
+  // открывает командную строку
+  ChatView.prototype.openCmd = function () {
+    this._cmd.value = '';
+    this._cmd.style.display = 'block';
+    this._cmd.focus();
+  };
+
+  // закрывает командную строку
+  ChatView.prototype.closeCmd = function (success) {
+    if (success) {
+      this.publisher.emit('message', this._cmd.value);
+    }
+
+    this._cmd.style.display = 'none';
+    this._cmd.value = '';
+  };
+
   // добавляет сообщение в чат-лист
   ChatView.prototype.createLine = function (data) {
-    var document = this._window.document
-      , line = document.createElement('div')
+    var line = this._document.createElement('div')
       , id = data.id
       , message = data.message;
 
@@ -39,12 +60,11 @@ define(['Publisher'], function (Publisher) {
 
   // удаляет сообщение в чат-листе
   ChatView.prototype.removeLine = function (id) {
-    var w = this._window
-      , line = w.document.getElementById('line_' + id);
+    var line = this._document.getElementById('line_' + id);
 
     line.style.opacity = 0;
 
-    w.setTimeout(function () {
+    this._window.setTimeout(function () {
       chatView._chat.removeChild(line);
     }, 2000);
   };

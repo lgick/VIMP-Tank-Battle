@@ -9,10 +9,12 @@ define(['Publisher'], function (Publisher) {
 
     chatModel = this;
 
-    this._listLimit = data.listLimit || 5;
-    this._lineTime = data.lineTime || 15000;
-    this._cacheMin = data.cacheMin || 200;
-    this._cacheMax = data.cacheMax || 300;
+    this._socket = data.socket;
+
+    this._listLimit = data.params.listLimit || 5;
+    this._lineTime = data.params.lineTime || 15000;
+    this._cacheMin = data.params.cacheMin || 200;
+    this._cacheMax = data.params.cacheMax || 300;
 
     this._cache = []; // хранилище сообщений
     this._list = [];  // активный чат-лист
@@ -21,8 +23,38 @@ define(['Publisher'], function (Publisher) {
     this.publisher = new Publisher();
   }
 
+  // открывает cmd
+  ChatModel.prototype.open = function () {
+    this.publisher.emit('open');
+
+    this.publisher.emit('mode', {
+      name: 'chat',
+      status: 'opened'
+    });
+  };
+
+  // закрывает cmd
+  ChatModel.prototype.close = function (success) {
+    if (success) {
+      this.publisher.emit('close', true);
+    } else {
+      this.publisher.emit('close', false);
+    }
+
+    this.publisher.emit('mode', {
+      name: 'chat',
+      status: 'closed'
+    });
+  };
+
+  // отправляет сообщение на сервер
+  ChatModel.prototype.sendMessage = function (message) {
+    // TODO: тут валидация на клиенте
+    this._socket.emit('chat', message);
+  };
+
   // обновляет чат-лист
-  ChatModel.prototype.update = function (message) {
+  ChatModel.prototype.updateChat = function (message) {
     // если количество сообщений в хранилище достигло предела - удалить лишние
     if (this._cache.length === this._cacheMax) {
       this._cache.splice(0, this._cache.length - this._cacheMin);

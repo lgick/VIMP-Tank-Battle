@@ -180,7 +180,7 @@ require([
     userModel.publisher.on('mode', openMode);
 
     // подписка на данные от пользователя для режимов
-    userModel.publisher.on('chat', modules.chat.update.bind(modules.chat));
+    userModel.publisher.on('chat', modules.chat.updateCmd.bind(modules.chat));
     userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
     userModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
 

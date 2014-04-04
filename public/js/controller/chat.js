@@ -16,12 +16,34 @@ define([], function () {
 
     this._vPublic.on('newTimer', 'createTimer', this);
     this._vPublic.on('oldTimer', 'removeTimer', this);
+    this._vPublic.on('message', 'sendMessage', this);
   }
+
+  // открывает cmd
+  ChatCtrl.prototype.open = function () {
+    this._model.open();
+  };
+
+  // обновление состояния cmd по команде
+  ChatCtrl.prototype.updateCmd = function (cmd) {
+    if (cmd === 'enter') {
+      this._model.close(true);
+    } else if (cmd === 'escape') {
+      this._model.close(false);
+    }
+  };
+
+  // отправляет сообщение
+  ChatCtrl.prototype.sendMessage = function (message) {
+    if (typeof message === 'string') {
+      this._model.sendMessage(message);
+    }
+  };
 
   // добавляет сообщение
   ChatCtrl.prototype.add = function (message) {
     if (typeof message === 'object') {
-      this._model.update(message);
+      this._model.updateChat(message);
     }
   };
 
