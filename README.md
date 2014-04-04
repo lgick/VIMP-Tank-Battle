@@ -1,5 +1,19 @@
 ![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
 
+# Иерархия модулей
+
+Нужно для корректного отображения модулей.
+
+1. errWS
+2. auth
+3. stat
+4. vote
+5. panel
+6. chat
+7. radar
+8. vimp
+
+
 # Статистика
 
 Обновляется из данных приходящих с сервера.
