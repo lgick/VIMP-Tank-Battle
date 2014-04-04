@@ -15,5 +15,15 @@ define([], function () {
     this._vPublic = view.publisher;
   }
 
+  // открывает статистику
+  StatCtrl.prototype.open = function () {
+    this._model.open();
+  };
+
+  // обновляет статистику
+  StatCtrl.prototype.close = function () {
+    this._model.close();
+  };
+
   return StatCtrl;
 });
