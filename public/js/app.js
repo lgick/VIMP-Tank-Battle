@@ -182,7 +182,7 @@ require([
     // подписка на данные от пользователя для режимов
     userModel.publisher.on('chat', modules.chat.update.bind(modules.chat));
     userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
-    userModel.publisher.on('vote', modules.vote.update.bind(modules.vote));
+    userModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
 
     // после ресайза элементов происходит перерисовка кадра
     userView.publisher.on('redraw', updateGameControllers);

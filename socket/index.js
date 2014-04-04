@@ -79,15 +79,14 @@ module.exports = function (server) {
     });
 
     // получение: vote
-    socket.on('vote', function (data) {
+    socket.on('vote', function (data, cb) {
       if (typeof data === 'string') {
         if (data === 'users') {
-          socket.emit('vote', ['bob', 'msa', 'WWWWWWWWWWWWWWW']);
+          cb(['bob', 'msa', 'WWWWWWWWWWWWWWW']);
         }
       } else if (typeof data === 'object') {
+        socket.emit('test', data);
       }
-
-      socket.emit('test', data);
     });
 
     // отключение
