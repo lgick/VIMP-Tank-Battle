@@ -49,8 +49,11 @@ define(['Publisher'], function (Publisher) {
 
   // отправляет сообщение на сервер
   ChatModel.prototype.sendMessage = function (message) {
-    // TODO: тут валидация на клиенте
-    this._socket.emit('chat', message);
+    message = message.replace(/\<|\>|\"|\'|\%|\;|\(|\)|\&|\+|\-/g,"");
+
+    if (message) {
+      this._socket.emit('chat', message);
+    }
   };
 
   // обновляет чат-лист
