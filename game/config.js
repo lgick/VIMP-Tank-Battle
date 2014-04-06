@@ -145,7 +145,10 @@ module.exports = {
         navClass: 'vote-nav',
         navActiveClass: 'active'
       },
-      vote: vote
+      params: {
+        vote: vote,
+        time: 10000
+      }
     }
   },
 

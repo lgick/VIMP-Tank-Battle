@@ -16,18 +16,21 @@ define(['Publisher'], function (Publisher) {
 
     this._socket = data.socket;
 
-    this._defaultVote = data.vote;  // голосование по умолчанию
-    this._currentVote = null;       // текущее голосование
-    this._typeVote = null;          // тип объекта голосования (объект или массив)
+    this._defaultVote = data.vote;   // голосование по умолчанию
+    this._currentVote = null;        // текущее голосование
+    this._typeVote = null;           // тип объекта голосования (объект или массив)
 
-    this._voteName = null;          // название голосования
-    this._data = {};                // данные голосования
+    this._time = data.time || 20000; // время жизни голосования
+    this._timerID = null;            // id таймера
 
-    this._title = null;             // заголовок голосования
-    this._back = false;             // флаг back
-    this._more = false;             // флаг more
-    this._values = [];              // значения голосованиях
-    this._currentPage = 0;          // текущая страница вывода значений
+    this._voteName = null;           // название голосования
+    this._data = {};                 // данные голосования
+
+    this._title = null;              // заголовок голосования
+    this._back = false;              // флаг back
+    this._more = false;              // флаг more
+    this._values = [];               // значения голосованиях
+    this._currentPage = 0;           // текущая страница вывода значений
 
     this.publisher = new Publisher();
   }
@@ -174,24 +177,30 @@ define(['Publisher'], function (Publisher) {
       this._more = false;
     }
 
-    this.publisher.emit('clear');
+    this.publisher.emit('clear', this._timerID);
 
     this.publisher.emit('vote', {
       title: this._title,
       list: values,
       back: this._back,
-      more: this._more
+      more: this._more,
+      time: this._time
     });
   };
 
   // завершает голосование
   VoteModel.prototype.complete = function () {
     this._data = {};
-    this.publisher.emit('clear');
+    this.publisher.emit('clear', this._timerID);
     this.publisher.emit('mode', {
       name: 'vote',
       status: 'closed'
     });
+  };
+
+  // добавляет id таймера голосования
+  VoteModel.prototype.assignTimer = function (timerID) {
+    this._timerID = timerID || null;
   };
 
   return VoteModel;

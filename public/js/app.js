@@ -161,7 +161,8 @@ require([
     voteModel = new VoteModel({
       window: window,
       socket: socket,
-      vote: voteData.vote
+      vote: voteData.params.vote,
+      time: voteData.params.time
     });
 
     voteView = new VoteView(voteModel, {

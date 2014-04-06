@@ -32,6 +32,7 @@ define(['Publisher'], function (Publisher) {
       , list = data.list
       , back = data.back
       , more = data.more
+      , time = data.time
       , vote = this._document.createElement('div')
       , p = this._document.createElement('p')
       , ol = this._document.createElement('ol')
@@ -41,7 +42,8 @@ define(['Publisher'], function (Publisher) {
       , moreElem = this._document.createElement('p')
       , exitElem = this._document.createElement('p')
       , i = 0
-      , len = list.length;
+      , len = list.length
+      , timerID;
 
     vote.setAttribute('id', this._voteID);
 
@@ -82,11 +84,23 @@ define(['Publisher'], function (Publisher) {
     vote.appendChild(navContainer);
 
     this._document.body.appendChild(vote);
+
+    timerID = this._window.setTimeout((function () {
+      vote.parentElement.removeChild(vote);
+      this.publisher.emit('timer', null);
+      this.publisher.emit('clear');
+    }).bind(this), time);
+
+    this.publisher.emit('timer', timerID);
   };
 
   // удаляет окно голосования
-  VoteView.prototype.removeVote = function () {
+  VoteView.prototype.removeVote = function (timerID) {
     var vote = this._document.getElementById(this._voteID);
+
+    if (timerID) {
+      this._window.clearTimeout(timerID);
+    }
 
     if (vote) {
       vote.parentElement.removeChild(vote);
