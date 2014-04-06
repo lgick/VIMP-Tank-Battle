@@ -142,7 +142,8 @@ module.exports = {
         voteID: 'vote',
         titleClass: 'vote-title',
         listClass: 'vote-list',
-        navClass: 'vote-nav'
+        navClass: 'vote-nav',
+        navActiveClass: 'active'
       },
       vote: vote
     }

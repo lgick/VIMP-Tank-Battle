@@ -119,7 +119,7 @@ body {
   z-index: 5;
   width: 250px;
   color: #fff;
-  background: rgba(3, 100, 155, 0.9);
+  background: rgba(3, 100, 155, 0.5);
   text-shadow: 0 0 1px #000;
   white-space: nowrap;
   border: 2px solid #FFF;
@@ -150,11 +150,16 @@ body {
 
 #vote .vote-nav {
   padding: 0 0 0 5px;
-  margin-top: 5px;
+  margin-top: 15px;
 }
 
 #vote .vote-nav p {
+  display: none;
   margin: 0;
+}
+
+#vote .vote-nav p.active {
+  display: block;
 }
 
 /*chat*/

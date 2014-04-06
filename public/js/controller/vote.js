@@ -16,22 +16,19 @@ define([], function () {
   }
 
   // включить
-  VoteCtrl.prototype.on = function (vote) {
+  VoteCtrl.prototype.open = function (vote) {
     if (vote) {
       this._model.createVote(vote);
     } else {
       this._model.createVote();
     }
+
+    this._model.open();
   };
 
-  // выключить
-  VoteCtrl.prototype.off = function () {
-    this._model.remove();
-  };
-
-  // обновление данных
-  VoteCtrl.prototype.update = function (keyCode) {
-    this._model.parseKey(keyCode);
+  // назначает ключ
+  VoteCtrl.prototype.assignKey = function (keyCode) {
+    this._model.update(keyCode);
   };
 
   return VoteCtrl;

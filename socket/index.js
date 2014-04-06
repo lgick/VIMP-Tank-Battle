@@ -85,7 +85,7 @@ module.exports = function (server) {
           cb(['bob', 'msa', 'WWWWWWWWWWWWWWW']);
         }
       } else if (typeof data === 'object') {
-        socket.emit('test', data);
+        socket.emit('test', JSON.stringify(data));
       }
     });
 
