@@ -29,8 +29,9 @@ define(['Publisher'], function (Publisher) {
     this._title = null;              // заголовок голосования
     this._back = false;              // флаг back
     this._more = false;              // флаг more
-    this._values = [];               // значения голосованиях
+    this._values = [];               // все значения голосования
     this._currentPage = 0;           // текущая страница вывода значений
+    this._currentValues = [];        // значения текущей страницы
 
     this.publisher = new Publisher();
   }
@@ -136,14 +137,14 @@ define(['Publisher'], function (Publisher) {
         // иначе, если тип данных для голосования это объект
         } else if (this._typeVote === 'object') {
           // если число есть в массиве значений
-          if (this._currentVote.value[number]) {
+          if (this._currentValues[number]) {
 
             // если у голосования есть название
             if (this._currentVote.vote) {
               this._voteName = this._currentVote.vote;
             }
 
-            this._data[this._currentVote.key] = this._values[number];
+            this._data[this._currentVote.key] = this._currentValues[number];
 
             // если есть вложенный опрос, то создаем новое голосование
             if (this._currentVote.next) {
@@ -167,8 +168,9 @@ define(['Publisher'], function (Publisher) {
   // отображает голосование
   VoteModel.prototype.show = function () {
     var begin = this._currentPage * 7
-      , max = begin + 7
-      , values = this._values.slice(begin, max);
+      , max = begin + 7;
+
+    this._currentValues = this._values.slice(begin, max);
 
     if (this._currentPage > 0) {
       this._back = true;
@@ -186,7 +188,7 @@ define(['Publisher'], function (Publisher) {
 
     this.publisher.emit('vote', {
       title: this._title,
-      list: values,
+      list: this._currentValues,
       back: this._back,
       more: this._more,
       time: this._time
