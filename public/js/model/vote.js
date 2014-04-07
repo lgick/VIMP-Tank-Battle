@@ -69,7 +69,12 @@ define(['Publisher'], function (Publisher) {
       this._title = 'Menu';
 
       for (i = 0, len = vote.length; i < len; i += 1) {
-        this._values.push(vote[i].title);
+        // если значение содержит св-во title
+        if (vote[i].title) {
+          this._values.push(vote[i].title);
+        } else {
+          this._values.push('Menu');
+        }
       }
 
       this.show();

@@ -82,7 +82,7 @@ module.exports = function (server) {
     socket.on('vote', function (data, cb) {
       if (typeof data === 'string') {
         if (data === 'users') {
-          cb(['bob', 'msa', 'WWWWWWWWWWWWWWW']);
+          cb(['bob', 'jek', 'vasya', 'petya', 'vovka']);
         }
       } else if (typeof data === 'object') {
         socket.emit('test', JSON.stringify(data));
