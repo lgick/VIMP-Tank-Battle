@@ -122,11 +122,7 @@ module.exports = {
         score: 'panel-score',
         rank: 'panel-rank'
       },
-      params: {
-        health: 100,
-        score: 0,
-        rank: ''
-      }
+      routes: ['health', 'score', 'rank']
     },
 
     // stat
@@ -220,16 +216,9 @@ module.exports = {
     ]
   },
 
-  test: {
-    coords: {
-      x: 64,
-      y: 320
-    },
-    chat: null,
-    panel: null,
-    stat: null,
-    vote: null,
-    game: [
+  test: [
+    // game
+    [
       {
         constructors: ['Tank', 'Radar'],
         instances: {
@@ -283,7 +272,28 @@ module.exports = {
         },
         cache: false
       }
-    ]
-  }
+    ],
+    // coords (x, y)
+    [64, 320],
+    // panel
+    ['97%', 777, 3],
+    // stat
+    {
+      'bot 1': [1, 0, 5, 1],
+      'bob 2': [1, 1, 2, 3],
+      'lol32': [1, 0, 0, 4],
+      'apa': [2, 0, 10, 3],
+      'coco': [2, 1, 2, 0],
+      'george': [2, 0, 1, 10],
+      'pit': [2, 0, 1, 8],
+      'x-man': [0],
+      'kaka': [0],
+      'escho': null
+    },
+    // chat (name, text)
+    ['User', 'Hello World!'],
+    // vote
+    vote
+  ]
 
 };

@@ -129,7 +129,7 @@ require([
     // Panel Module
     //==========================================//
 
-    panelModel = new PanelModel();
+    panelModel = new PanelModel(panelData.routes);
 
     panelView = new PanelView(panelModel, {
       window: window,
@@ -137,8 +137,6 @@ require([
     });
 
     modules.panel = new PanelCtrl(panelModel, panelView);
-
-    modules.panel.update(panelData.params);
 
 
     //==========================================//
@@ -372,9 +370,15 @@ require([
 
   // обновление данных
   socket.on('shot', function (serverData) {
-    var data = serverData.game  // массив данных для отрисовки кадра игры
+    var game = serverData[0]  // массив данных для отрисовки кадра игры
+      , crds = serverData[1]
+      , panel = serverData[2]
+      , stat = serverData[3]
+      , chat = serverData[4]
+      , vote = serverData[5]
+
       , i = 0
-      , len = data.length
+      , len = game.length
 
       , constructors
       , instances
@@ -386,12 +390,12 @@ require([
       , len2;
 
     // объект персональных данных (координаты, панель, чат)
-    coords = serverData.coords;
+    coords = {x: crds[0], y: crds[1]};
 
     for (; i < len; i += 1) {
-      constructors = data[i].constructors;
-      instances = data[i].instances;
-      cache = data[i].cache;
+      constructors = game[i].constructors;
+      instances = game[i].instances;
+      cache = game[i].cache;
 
       i2 = 0;
       len2 = constructors.length;
@@ -405,6 +409,24 @@ require([
     }
 
     updateGameControllers();
+
+
+    // обновление модулей
+    if (chat) {
+      modules.chat.add({name: chat[0], text: chat[1]});
+    }
+
+    if (panel) {
+      modules.panel.update(panel);
+    }
+
+    if (stat) {
+      modules.stat.update(stat);
+    }
+
+    if (vote) {
+      modules.vote.open(vote);
+    }
   });
 
   // для теста

@@ -20,9 +20,13 @@ define([], function () {
     this._model.open();
   };
 
-  // обновляет статистику
+  // закрывает статистику
   StatCtrl.prototype.close = function () {
     this._model.close();
+  };
+
+  // обновляет
+  StatCtrl.prototype.update = function (data) {
   };
 
   return StatCtrl;

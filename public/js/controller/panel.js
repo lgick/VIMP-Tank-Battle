@@ -16,10 +16,8 @@ define([], function () {
   }
 
   // обновляет пользовательскую панель
-  PanelCtrl.prototype.update = function (data) {
-    if (typeof data === 'object') {
-      this._model.update(data);
-    }
+  PanelCtrl.prototype.update = function (dataArr) {
+    this._model.update(dataArr);
   };
 
   return PanelCtrl;
