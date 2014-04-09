@@ -97,15 +97,105 @@ body {
 #stat {
   display: none;
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 30px;
+  bottom: 40px;
   left: 0;
   right: 0;
   z-index: 6;
-  margin: 5%;
-  background: rgba(0, 0, 0, 0.7);
+  margin: auto;
+  background: rgba(25, 25, 25, 0.9);
   border-radius: 5px;
-  border: 3px solid #f77;
+  border: 3px solid #fff;
+  overflow: hidden;
+  width: 90%;
+  max-width: 600px;
+  font-size: 10px;
+  line-height: 12px;
+  color: #fff;
+}
+
+#stat .stat-head {
+  display: table;
+  width: 92%;
+  margin: 3% auto 1%;
+  color: #fff;
+  text-transform: capitalize;
+  border-bottom: 1px solid;
+  font-size: 1.2em;
+  line-height: 1.2em;
+}
+
+#stat .stat-head span {
+  display: table-cell;
+}
+
+#stat .stat-tables {
+  font-size: 1em;
+  line-height: 1.2em;
+}
+
+#stat table {
+  width: 100%;
+  padding: 1% 4%;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+#stat table th,
+#stat table td {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 1%;
+}
+
+#stat table th {
+  text-align: left;
+  border-bottom: 1px solid #999;
+  text-transform: capitalize;
+}
+
+#stat table td {
+  border-bottom: 1px dotted #777;
+}
+
+#stat .stat-head span:nth-child(1),
+#stat table th:nth-child(1),
+#stat table td:nth-child(1) {
+  width: 40%;
+}
+
+#stat .stat-head span:nth-child(2),
+#stat table th:nth-child(2),
+#stat table td:nth-child(2) {
+  text-align: center;
+  width: 20%;
+}
+
+#stat .stat-head span:nth-child(3),
+#stat table th:nth-child(3),
+#stat table td:nth-child(3) {
+  width: 20%;
+  text-align: right;
+}
+
+#stat .stat-head span:nth-child(4),
+#stat table th:nth-child(4),
+#stat table td:nth-child(4) {
+  width: 20%;
+  text-align: right;
+}
+
+#team1 {
+  color: #f56;
+}
+
+#team2 {
+  color: #7ed;
+}
+
+#spect {
+  color: #fe5;
 }
 
 /*vote*/

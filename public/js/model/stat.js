@@ -9,6 +9,8 @@ define(['Publisher'], function (Publisher) {
 
     statModel = this;
 
+    this._data = {};
+
     this.publisher = new Publisher();
   }
 
@@ -30,6 +32,17 @@ define(['Publisher'], function (Publisher) {
       name: 'stat',
       status: 'closed'
     });
+  };
+
+  // обновляет данные
+  StatModel.prototype.update = function (data) {
+    var name;
+
+    for (name in data) {
+      if (data.hasOwnProperty(name)) {
+        
+      }
+    }
   };
 
   return StatModel;

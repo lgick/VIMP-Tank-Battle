@@ -274,7 +274,7 @@ module.exports = {
       }
     ],
     // coords (x, y)
-    [64, 320],
+    [400, 320],
     // panel
     ['97%', 777, 3],
     // stat
@@ -293,7 +293,13 @@ module.exports = {
     // chat (name, text)
     ['User', 'Hello World!'],
     // vote
-    vote
+    {
+      vote: 'ban',
+      title: 'Забанить пользователя User?',
+      key: 'ban',
+      value: ['Да', 'Нет'],
+      next: null
+    }
   ]
 
 };
