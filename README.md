@@ -1,6 +1,6 @@
 ![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
 
-# Модуль Stat
+# Модуль STAT
 
 Статистика игры.
 

@@ -35,23 +35,17 @@ define([], function () {
 
   // отправляет сообщение
   ChatCtrl.prototype.sendMessage = function (message) {
-    if (typeof message === 'string') {
-      this._model.sendMessage(message);
-    }
+    this._model.sendMessage(message);
   };
 
   // добавляет сообщение
   ChatCtrl.prototype.add = function (message) {
-    if (typeof message === 'object') {
-      this._model.updateChat(message);
-    }
+    this._model.updateChat(message);
   };
 
   // добавляет таймер
   ChatCtrl.prototype.createTimer = function (data) {
-    if (typeof data === 'object') {
-      this._model.addToList(data);
-    }
+    this._model.addToList(data);
   };
 
   // удаляет таймер

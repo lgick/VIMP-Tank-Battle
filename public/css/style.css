@@ -61,6 +61,10 @@ body {
   content: 'health: ';
 }
 
+#panel table td#panel-health:after {
+  content: '%';
+}
+
 #panel table td#panel-score:before {
   content: 'score: ';
 }
@@ -118,9 +122,8 @@ body {
   display: table;
   width: 92%;
   margin: 3% auto 1%;
-  color: #fff;
   text-transform: capitalize;
-  border-bottom: 1px solid;
+  border-bottom: 1px solid #fff;
   font-size: 1.2em;
   line-height: 1.2em;
 }
@@ -130,18 +133,19 @@ body {
 }
 
 #stat .stat-tables {
-  font-size: 1em;
-  line-height: 1.2em;
+  width: 92%;
+  margin: 3% auto 1%;
 }
 
 #stat table {
   width: 100%;
-  padding: 1% 4%;
+  margin: 0 auto 3%;
   border-spacing: 0;
   table-layout: fixed;
+  font-size: 1em;
+  line-height: 1.2em;
 }
 
-#stat table th,
 #stat table td {
   overflow: hidden;
   white-space: nowrap;
@@ -149,38 +153,24 @@ body {
   padding: 1%;
 }
 
-#stat table th {
-  text-align: left;
-  border-bottom: 1px solid #999;
-  text-transform: capitalize;
-}
-
-#stat table td {
-  border-bottom: 1px dotted #777;
-}
-
 #stat .stat-head span:nth-child(1),
-#stat table th:nth-child(1),
 #stat table td:nth-child(1) {
   width: 40%;
 }
 
 #stat .stat-head span:nth-child(2),
-#stat table th:nth-child(2),
 #stat table td:nth-child(2) {
   text-align: center;
   width: 20%;
 }
 
 #stat .stat-head span:nth-child(3),
-#stat table th:nth-child(3),
 #stat table td:nth-child(3) {
   width: 20%;
   text-align: right;
 }
 
 #stat .stat-head span:nth-child(4),
-#stat table th:nth-child(4),
 #stat table td:nth-child(4) {
   width: 20%;
   text-align: right;
@@ -194,8 +184,42 @@ body {
   color: #7ed;
 }
 
-#spect {
+#spectators {
   color: #fe5;
+}
+
+#team1 tHead td,
+#team2 tHead td,
+#spectators tHead td {
+  border-bottom: 1px solid #888;
+  text-transform: capitalize;
+  font-weight: bold;
+}
+
+#team1 tBody td,
+#team2 tBody td,
+#spectators tBody td {
+  border-bottom: 1px solid #444;
+}
+
+#team1 tHead td:first-child:before {
+  content: 'team1 (';
+}
+
+#team1 tHead td:first-child:after {
+  content: ')';
+}
+
+#team2 tHead td:first-child:before {
+  content: 'team2 (';
+}
+
+#team2 tHead td:first-child:after {
+  content: ')';
+}
+
+#spectators tHead td:first-child:before {
+  content: 'spectators';
 }
 
 /*vote*/
