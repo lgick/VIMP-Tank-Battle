@@ -4,51 +4,43 @@
 
 Статистика игры.
 
-## Объект статистики в моделе
-
-``` js
-// если score одинаковый, проверяется deaths
-// если deaths одинаковый, последовательность не меняется
-_data.team1 = [
-  {name: 'bot 1', status: '', score: 5, deaths: 1},
-  {name: 'bob 2', status: 'dead', score: 2, deaths: 3},
-  {name: 'lol32', status: '', score: 0, deaths: 4}
-];
-
-_data.team2 = [
-  {name: 'coco', status: 'dead', score: 2, deaths: 0},
-  {name: 'geogre', status: '', score: 1, deaths: 10},
-  {name: 'don', status: '', score: 1, deaths: 8},
-  {name: 'din', status: 'dead', score: 1, deaths: 7}
-];
-
-_data.spectators = [
-  {name: 'kaka', status: '', score: 18, deaths: 33},
-  {name: 'x-man', status: '', score: 13, deaths: 7}
-];
-```
+![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/stat/stat.png)
 
 ## Объект данных с сервера для обновления статистики
 
 ``` js
 [
-  {
-    'bot 1': ['', 5, 1],
-    'bob 2': ['dead', 2, 3],
-    'lol32': ['', 0, 4]
-  },
-  {
-    'coco': ['dead', 2, 0],
-    'george': ['', 1, 10],
-    'don': ['', 1, 8],
-    'din': ['dead', 1, 7],
-    'superman': null        // удаляет
-  },
-  {
-    'kaka': ['', 18, 33],
-    'x-man': ['', 13, 7],
-    'escho': null           // удаляет
-  }
+
+  // первая таблица (team1)
+  [
+    {
+      'bot 1': ['bot 1', '', 5, 1],        // данные для tBodies
+      'bob 2': ['bob 2', 'dead', 2, 3],    // данные для tBodies
+      'lol32': ['lol32', '', 0, 4]         // данные для tBodies
+    },
+    [3, '', 20, '']                        // данные для tHead
+  ],
+
+  // вторая таблица (team2)
+  [
+    {
+      'coco': ['coco', 'dead', 2, 0],
+      'george': ['george', '', 1, 10],
+      'don': ['don', '', 1, 8],
+      'din': ['din', 'dead', 1, 7],
+      'superman': null                     // удаляет
+    },
+    [4, '', 30, '']
+  ],
+
+  // третья таблица (spectators)
+  [
+    {
+      'kaka': ['kaka'],
+      'x-man': ['x-man'],
+      'escho': null                        // удаляет
+    }
+  ]
 ]
 ```
 
