@@ -233,31 +233,27 @@ canvasOptions: {
 ## Данные с сервера полностью (пример):
 
 ``` js
-{
-  user: {
-    scale: 1,
-    x: 399,
-    y: 34
-  },
-  data: [
+[
+  // game
+  [
     {
       constructors: ['Tank', 'Radar'],
       instances: {
         bob: {
           layer: 1,
           team: 'team1',
-          x: 200,
-          y: 499,
-          rotation: 180,
-          gunRotation: 40
+          x: 64,
+          y: 320,
+          rotation: 0,
+          gunRotation: 0
         },
         jek: {
           layer: 1,
-          team: 'team1',
-          x: 200,
-          y: 499,
+          team: 'team2',
+          x: 736,
+          y: 320,
           rotation: 180,
-          gunRotation: 40
+          gunRotation: 0
         }
       },
       cache: true
@@ -293,6 +289,53 @@ canvasOptions: {
       },
       cache: false
     }
-  ]
-};
+  ],
+
+  // coords (x, y)
+  [400, 320],
+
+  // panel
+  [97, 777, 3],
+
+  // stat
+  [
+    [
+      {
+        'bot 1': ['bot 1', '', 5, 1],
+        'bob 2': ['bob 2', 'dead', 2, 3],
+        'lol32': ['lol32', '', 0, 4]
+      },
+      [3, '', 20, '']
+    ],
+    [
+      {
+        'coco': ['coco', 'dead', 2, 0],
+        'george': ['george', '', 1, 10],
+        'don': ['don', '', 1, 8],
+        'din': ['din', 'dead', 1, 7],
+        'superman': null
+      },
+      [4, '', 30, '']
+    ],
+    [
+      {
+        'kaka': ['kaka'],
+        'x-man': ['x-man'],
+        'escho': null
+      }
+    ]
+  ],
+
+  // chat (name, text)
+  ['User', 'Hello World!'],
+
+  // vote
+  {
+    vote: 'ban',
+    title: 'Забанить пользователя User?',
+    key: 'ban',
+    value: ['Да', 'Нет'],
+    next: null
+  }
+]
 ```

@@ -307,7 +307,7 @@ module.exports = {
           'george': ['george', '', 1, 10],
           'don': ['don', '', 1, 8],
           'din': ['din', 'dead', 1, 7],
-          'superman': null        // удаляет
+          'superman': null
         },
         [4, '', 30, '']
       ],
@@ -315,7 +315,7 @@ module.exports = {
         {
           'kaka': ['kaka'],
           'x-man': ['x-man'],
-          'escho': null           // удаляет
+          'escho': null
         }
       ]
     ],
