@@ -143,9 +143,10 @@ require([
     // Stat Module
     //==========================================//
 
-    statModel = new StatModel();
+    statModel = new StatModel(statData.params);
 
     statView = new StatView(statModel, {
+      window: window,
       stat: document.getElementById(statData.elems.stat)
     });
 

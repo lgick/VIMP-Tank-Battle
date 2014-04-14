@@ -129,6 +129,17 @@ module.exports = {
     stat: {
       elems: {
         stat: 'stat'
+      },
+      params: {
+        tables: [
+          'team1',
+          'team2',
+          'spectators'
+        ],
+        sorting: [
+          [3, 4],
+          [3, 4]
+        ]
       }
     },
 
@@ -273,25 +284,45 @@ module.exports = {
         cache: false
       }
     ],
+
     // coords (x, y)
     [400, 320],
+
     // panel
-    ['97%', 777, 3],
+    [97, 777, 3],
+
     // stat
-    {
-      'bot 1': [1, 0, 5, 1],
-      'bob 2': [1, 1, 2, 3],
-      'lol32': [1, 0, 0, 4],
-      'apa': [2, 0, 10, 3],
-      'coco': [2, 1, 2, 0],
-      'george': [2, 0, 1, 10],
-      'pit': [2, 0, 1, 8],
-      'x-man': [0],
-      'kaka': [0],
-      'escho': null
-    },
+    [
+      [
+        {
+          'bot 1': ['bot 1', '', 5, 1],
+          'bob 2': ['bob 2', 'dead', 2, 3],
+          'lol32': ['lol32', '', 0, 4]
+        },
+        [3, '', 20, '']
+      ],
+      [
+        {
+          'coco': ['coco', 'dead', 2, 0],
+          'george': ['george', '', 1, 10],
+          'don': ['don', '', 1, 8],
+          'din': ['din', 'dead', 1, 7],
+          'superman': null        // удаляет
+        },
+        [4, '', 30, '']
+      ],
+      [
+        {
+          'kaka': ['kaka'],
+          'x-man': ['x-man'],
+          'escho': null           // удаляет
+        }
+      ]
+    ],
+
     // chat (name, text)
     ['User', 'Hello World!'],
+
     // vote
     {
       vote: 'ban',
