@@ -294,29 +294,21 @@ module.exports = {
     // stat
     [
       [
-        {
-          'bot 1': ['bot 1', '', 5, 1],
-          'bob 2': ['bob 2', 'dead', 2, 3],
-          'lol32': ['lol32', '', 0, 4]
-        },
-        [3, '', 20, '']
+        ['bot 1', 0, ['bot 1', '', 5, 1]],
+        ['bob 2', 0, ['bob 2', 'dead', 2, 3]],
+        ['lol32', 0, ['lol32', '', 0, 4]],
+        ['coco', 1, ['coco', 'dead', 2, 0]],
+        ['george', 1, ['george', '', 1, 10]],
+        ['don', 1, ['don', '', 1, 8]],
+        ['din', 1, ['din', 'dead', 1, 7]],
+        ['superman', 1, null],
+        ['kaka', 2, ['kaka']],
+        ['x-man', 2, ['x-man']],
+        ['escho', 2, null]
       ],
       [
-        {
-          'coco': ['coco', 'dead', 2, 0],
-          'george': ['george', '', 1, 10],
-          'don': ['don', '', 1, 8],
-          'din': ['din', 'dead', 1, 7],
-          'superman': null
-        },
-        [4, '', 30, '']
-      ],
-      [
-        {
-          'kaka': ['kaka'],
-          'x-man': ['x-man'],
-          'escho': null
-        }
+        [0, [3, '', 20, '']],
+        [1, [4, '', 30, '']]
       ]
     ],
 
