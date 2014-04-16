@@ -12,7 +12,8 @@ var userConfig = config.get('game:user');
 var media = config.get('game:media');
 var map = config.get('game:map');
 
-var test = config.get('game:test');
+var test = require('../test/tests');
+var testData = require('../test/data');
 
 var users = {};
 
@@ -63,19 +64,25 @@ module.exports = function (server) {
 
     // запрос данных: game
     socket.on('start', function () {
-      socket.emit('shot', test);
+      socket.emit('shot', testData);
+
+      //test.vote(socket, 100);
+      //test.panel(socket, 10, 9999);
+      //test.stat(socket, 100);
+      //test.game(socket, 30);
+      //test.chat(socket, 10, 9999999999999);
     });
 
     // получение: keys
     socket.on('keys', function (data) {
       session.update(data);
-      socket.emit('test', data);
+      socket.emit('test', {module: 'chat', data: data});
     });
 
     // получение: chat
     socket.on('chat', function (message) {
       session.update(message);
-      socket.emit('test', message);
+      socket.emit('test', {module: 'chat', data: message});
     });
 
     // получение: vote
@@ -85,7 +92,7 @@ module.exports = function (server) {
           cb(['bob', 'jek', 'vasya', 'petya', 'vovka']);
         }
       } else if (typeof data === 'object') {
-        socket.emit('test', JSON.stringify(data));
+        socket.emit('test', {module: 'chat', data: JSON.stringify(data)});
       }
     });
 

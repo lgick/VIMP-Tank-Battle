@@ -432,11 +432,51 @@ require([
 
   // для теста
   socket.on('test', function (x) {
-    modules.chat.add({
-      name: 'System',
-      text: x
-    });
-    console.log(x);
+    if (x.module === 'game') {
+      var i
+        , len
+        , game = x.data[0]
+        , crds = x.data[1]
+
+        , constructors
+        , instances
+        , cache
+
+        , constructor
+        , controller
+        , i2
+        , len2;
+
+
+      coords = {x: crds[0], y: crds[1]};
+
+      for (i = 0, len = game.length; i < len; i += 1) {
+        constructors = game[i].constructors;
+        instances = game[i].instances;
+        cache = game[i].cache;
+
+        i2 = 0;
+        len2 = constructors.length;
+
+        for (; i2 < len2; i2 += 1) {
+          constructor = constructors[i2];
+          controller = CTRL[paths[constructor]];
+
+          controller.parse(constructor, instances, cache);
+        }
+      }
+
+      updateGameControllers();
+
+    } else if (x.module === 'chat') {
+      modules.chat.add({name: 'System', text: x.data});
+    } else if (x.module === 'stat') {
+      modules.stat.update(x.data);
+    } else if (x.module === 'panel') {
+      modules.panel.update(x.data);
+    } else if (x.module === 'vote') {
+      modules.vote.open(x.data);
+    }
   });
 
   // вывод сообщения об ошибке соединения
