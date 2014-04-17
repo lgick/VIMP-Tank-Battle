@@ -4,7 +4,7 @@
 
 Статистика игры.
 
-![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/stat/stat.png)
+![stat](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/stat/stat.png)
 
 ## Конфиг для модели
 
@@ -27,7 +27,7 @@ sortList: {
 
 Массив состоит из подмассивов (например ``[3, true]``). Каждый подмассив является параметром для сортировки. Если результат сравнения при сортировки с использованием первого подмассива не даст результата (значения будут эквивалентны), то сортировка будет производится по следующему подмассиву и т.д.
 
-Подмассив состоит из двух значений. Первое - это номер ячейки для сортировки (0 - первая ячейка, 1 - вторая и т.д.), второе значение (булево значение): если ``true`` - сортировка по возрастанию (чем выше по таблице, тем значение больше), если ``false`` - сортировка по убыванию (чем выше, тем значение меньше).
+Подмассив состоит из двух значений. Первое - это номер ячейки для сортировки (0 - первая ячейка, 1 - вторая и т.д.), второе значение (булево значение): если ``true`` - сортировка по убыванию (чем выше строка, тем значение больше), если ``false`` - сортировка по возрастанию (чем выше строка, тем значение меньше).
 
 ## Объект данных с сервера для обновления статистики
 
@@ -99,7 +99,7 @@ statArray = [
 
 Модуль может отображать как одно голосование, так и несколько, тем самым создавая своеобразное меню:
 
-![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-menu.png)
+![vote-menu](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-menu.png)
 
 Голосование может иметь:
 
@@ -107,11 +107,11 @@ statArray = [
 * неограниченное количество уровней опроса (кому бан, за что бан, на сколько бан и т.п.) 
 * неограниченное количество возможных значений (появляется навигация в виде ``more`` и ``back``)
 
-![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban1.png)
+![vote-ban1](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban1.png)
 
-![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban2.png)
+![vote-ban2](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban2.png)
 
-![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban3.png)
+![vote-ban3](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban3.png)
 
 Модуль имеет время жизни и через некоторое время бездействия пользователя удаляется.
 
