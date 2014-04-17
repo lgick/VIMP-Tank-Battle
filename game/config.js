@@ -131,15 +131,11 @@ module.exports = {
         stat: 'stat'
       },
       params: {
-        tables: [
-          'team1',
-          'team2',
-          'spectators'
-        ],
-        sortList: [
-          [3, 4],
-          [3, 4]
-        ]
+        tables: ['team1', 'team2', 'spectators'],
+        sortList: {
+          'team1': [[2, true], [3, false]],
+          'team2': [[2, true], [3, false]]
+        }
       }
     },
 
