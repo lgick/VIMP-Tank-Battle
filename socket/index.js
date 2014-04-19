@@ -66,9 +66,9 @@ module.exports = function (server) {
     socket.on('start', function () {
       socket.emit('shot', testData);
 
+      test.stat(socket, 3000);
       //test.vote(socket, 100);
       //test.panel(socket, 10, 9999);
-      //test.stat(socket, 100);
       //test.game(socket, 30);
       //test.chat(socket, 10, 9999999999999);
     });

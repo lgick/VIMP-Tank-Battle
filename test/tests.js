@@ -8,9 +8,9 @@ function getInt(min, max) {
 // maxValue - максимально допустимое значение
 exports.stat = function (socket, time, tables, users, maxValue) {
   time = time || 100;
-  tables = tables || 2
+  tables = tables || 2;
   users = users || 10;
-  maxValue = maxValue || 500;
+  maxValue = maxValue || 30;
 
   setInterval(function () {
     var data = []
@@ -29,8 +29,11 @@ exports.stat = function (socket, time, tables, users, maxValue) {
       for (i2 = 0; i2 < users; i2 += 1) {
         dead = getInt(0, 1) ? 'dead' : '';
 
-        cellsData = getInt(0, 1) ? ['bot_' + i2, dead, getInt(0, maxValue), getInt(0, maxValue)] : null;
-        //cellsData = ['bot_' + i2, dead, getInt(0, maxValue), getInt(0, maxValue)];
+        // отправляет данные или null
+        //cellsData = getInt(0, 1) ? ['bot_' + i2, dead, getInt(0, maxValue), getInt(0, maxValue)] : null;
+
+        // отправляет только данные
+        cellsData = ['bot_' + i2, dead, getInt(0, maxValue), getInt(0, maxValue)];
 
         data[0].push([i2, i, cellsData]);
       }
@@ -167,7 +170,7 @@ exports.vote = function (socket, time) {
       key: 'ban',
       value: ['Да', 'Нет'],
       next: null
-    }
+    };
 
     socket.emit('test', {
       module: 'vote',

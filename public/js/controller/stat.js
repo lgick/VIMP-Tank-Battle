@@ -27,6 +27,7 @@ define([], function () {
 
   // обновляет
   StatCtrl.prototype.update = function (data) {
+    this._model.update(data);
   };
 
   return StatCtrl;
