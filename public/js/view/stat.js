@@ -72,7 +72,7 @@ define(['Publisher'], function (Publisher) {
         , i
         , len
         , number
-        , type       // (true: 3, 2, 1, 0; false: 0, 1, 2, 3)
+        , type
       ;
 
       // если есть предыдущая строка
@@ -85,31 +85,25 @@ define(['Publisher'], function (Publisher) {
           prevValue = ~~(prevRow.cells[number].innerHTML);
 
           // если type == true, значит сортировка по убыванию
-          // (значение предыдущего больше последующего,
-          // значение следующего меньше предыдущего)
           if (type) {
-            // если предыдущее значение меньше текущего,
-            // двигаем текущую строку перед предыдущей
+            // если предыдущее значение меньше текущего
             if (prevValue < value) {
               tbody.insertBefore(row, prevRow);
               sorting(rowIndex - 1);
-              break;
+              return;
             }
 
             if (prevValue > value) {
               break;
             }
 
-          // иначе, сортировка по возростанию
-          // (значение предыдущего меньше последующего,
-          // значение следующего больше предыдущего)
+          // иначе, сортировка по возрастанию
           } else {
-            // если предыдущее значение больше текущего,
-            // двигаем текущую строку перед предыдущей
+            // если предыдущее значение больше текущего
             if (prevValue > value) {
               tbody.insertBefore(row, prevRow);
               sorting(rowIndex - 1);
-              break;
+              return;
             }
 
             if (prevValue < value) {
@@ -119,7 +113,7 @@ define(['Publisher'], function (Publisher) {
         }
       }
 
-      // если есть следующая строкв
+      // если есть следующая строка
       if (nextRow) {
         for (i = 0, len = sortData.length; i < len; i += 1) {
           number = sortData[i][0];
@@ -129,31 +123,25 @@ define(['Publisher'], function (Publisher) {
           nextValue = ~~(nextRow.cells[number].innerHTML);
 
           // если type == true, значит сортировка по убыванию
-          // (значение предыдущего больше последующего,
-          // значение следующего меньше предыдущего)
           if (type) {
-            // если предыдущее значение меньше текущего,
-            // двигаем текущую строку перед предыдущей
+            // если следующее значение больше текущего
             if (nextValue > value) {
               tbody.insertBefore(nextRow, row);
               sorting(rowIndex + 1);
-              break;
+              return;
             }
 
             if (nextValue < value) {
               break;
             }
 
-          // иначе, сортировка по возростанию
-          // (значение предыдущего меньше последующего,
-          // значение следующего больше предыдущего)
+          // иначе, сортировка по возрастанию
           } else {
-            // если предыдущее значение больше текущего,
-            // двигаем текущую строку перед предыдущей
+            // если следующее значение меньше текущего
             if (nextValue < value) {
               tbody.insertBefore(nextRow, row);
               sorting(rowIndex + 1);
-              break;
+              return;
             }
 
             if (nextValue > value) {

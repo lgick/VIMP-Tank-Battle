@@ -25,8 +25,8 @@ define(['createjs'], function (createjs) {
   };
 
   p.createMap = function (spriteSheet) {
-    var x = 0
-      , y = 0
+    var x
+      , y
       , sprite
       , lenY = this.map.length
       , lenX = this.map[0].length;
