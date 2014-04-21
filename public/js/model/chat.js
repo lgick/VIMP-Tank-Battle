@@ -49,7 +49,7 @@ define(['Publisher'], function (Publisher) {
 
   // отправляет сообщение на сервер
   ChatModel.prototype.sendMessage = function (message) {
-    message = message.replace(/\<|\>|\"|\'|\%|\;|\(|\)|\&|\+|\-/g,"");
+    message = message.replace(/\<|\>|\"|\'|\%|\;|\(|\)|\&|\+|\-/g, '');
 
     if (message) {
       this._socket.emit('chat', message);

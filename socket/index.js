@@ -81,8 +81,12 @@ module.exports = function (server) {
 
     // получение: chat
     socket.on('chat', function (message) {
-      session.update(message);
-      socket.emit('test', {module: 'chat', data: message});
+      message = validator.chat(message);
+
+      if (message) {
+        session.update(message);
+        socket.emit('test', {module: 'chat', data: message});
+      }
     });
 
     // получение: vote

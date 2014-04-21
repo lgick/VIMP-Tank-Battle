@@ -23,6 +23,7 @@ require([
   var window = this
     , document = window.document
     , parseInt = window.parseInt
+    , RegExp = window.RegExp
     , localStorage = window.localStorage
 
     , errWS = document.getElementById('errWS')
