@@ -218,22 +218,8 @@ canvasOptions: {
   {
     constructors: ['Tank', 'Radar'],
     instances: {
-      bob: {
-        layer: 1,
-        team: 'team1',
-        x: 200,
-        y: 499,
-        rotation: 180,
-        gunRotation: 40
-      },
-      jek: {
-        layer: 1,
-        team: 'team1',
-        x: 200,
-        y: 499,
-        rotation: 180,
-        gunRotation: 40
-      }
+      bob: [64, 320, 0, 0, 'team1'],
+      jek: [736, 320, 180, 0, 'team2']
     },
     cache: true
   },
@@ -283,22 +269,8 @@ canvasOptions: {
     {
       constructors: ['Tank', 'Radar'],
       instances: {
-        bob: {
-          layer: 1,
-          team: 'team1',
-          x: 64,
-          y: 320,
-          rotation: 0,
-          gunRotation: 0
-        },
-        jek: {
-          layer: 1,
-          team: 'team2',
-          x: 736,
-          y: 320,
-          rotation: 180,
-          gunRotation: 0
-        }
+        bob: [64, 320, 0, 0, 'team1'],
+        jek: [736, 320, 180, 0, 'team2']
       },
       cache: true
     },

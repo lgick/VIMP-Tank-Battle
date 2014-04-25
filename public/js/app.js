@@ -366,7 +366,7 @@ require([
       spriteSheet.removeAllEventListeners();
 
       // запуск игры
-      socket.emit('start');
+      socket.emit('ready');
     }
   });
 
@@ -448,7 +448,6 @@ require([
         , i2
         , len2;
 
-
       coords = {x: crds[0], y: crds[1]};
 
       for (i = 0, len = game.length; i < len; i += 1) {
@@ -477,6 +476,8 @@ require([
       modules.panel.update(x.data);
     } else if (x.module === 'vote') {
       modules.vote.open(x.data);
+    } else if (x.module === 'console') {
+      console.log(x.data);
     }
   });
 

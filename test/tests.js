@@ -84,22 +84,8 @@ exports.game = function (socket, time) {
         {
           constructors: ['Tank', 'Radar'],
           instances: {
-            bob: {
-              layer: 1,
-              team: 'team1',
-              x: 64,
-              y: 320,
-              rotation: 0,
-              gunRotation: 0
-            },
-            jek: {
-              layer: 1,
-              team: 'team2',
-              x: 736,
-              y: 320,
-              rotation: 180,
-              gunRotation: 0
-            }
+            bob: [64, 320, 0, 0, 'team1'],
+            jek: [736, 320, 180, 0, 'team2']
           },
           cache: true
         },
@@ -135,14 +121,124 @@ exports.game = function (socket, time) {
           cache: false
         }
       ],
-
       [x, x]
     ];
 
-    socket.emit('test', {
-      module: 'game',
-      data: data
-    });
+    socket.emit('test', {module: 'game', data: data});
+  }, time);
+};
+
+// number: количество ботов
+exports.gameMoveBots = function (socket, time, number, coords, type) {
+  time = time || 30;
+  number = number || 10;
+  coords = coords || [0, 800, 0, 600, 0, 360, -90, 90];
+  type = type || ['team1', 'team2', null];
+
+  var bots = {}
+    , xMin = coords[0]
+    , xMax = coords[1]
+    , yMin = coords[2]
+    , yMax = coords[3]
+    , rMin = coords[4]
+    , rMax = coords[5]
+    , gMin = coords[6]
+    , gMax = coords[7]
+    , count = 0
+    , crds = [xMax / 2, yMax / 2];
+
+  while (count < number) {
+    bots['bot#' + count] = [
+      getInt(xMin, xMax),
+      getInt(yMin, yMax),
+      getInt(rMin, rMax),
+      0,
+      type[getInt(0, type.length - 1)]
+    ];
+
+    count += 1;
+  }
+
+  setInterval(function () {
+    var rad, cX, cY, cR, vX, vY, nX, nY, p, rStatus, rValue;
+
+    // проверяет число в заданном диапазоне
+    // Если repeat === true, то диапазон зациклен
+    // Если repeat === false, то диапазон ограничен значениями
+    // Возвращает значение
+    function rangeNumber(value, repeat, max, min) {
+      repeat = repeat || false;
+      max = max || 360
+      min = min || 0;
+
+      // зациклить
+      if (repeat === true) {
+        if (value <= min) {
+          value = max + value;
+        }
+        if (value >= max) {
+          value = value - max;
+        }
+      // не зацикливать
+      } else {
+        if (value <= min) {
+          value = min;
+        }
+        if (value >= max) {
+          value = max;
+        }
+      }
+
+      return value;
+    }
+
+    for (p in bots) {
+      if (bots.hasOwnProperty(p)) {
+        // изменение поворота
+        rStatus = getInt(0, 2);
+
+        if (rStatus) {
+          // left
+          if (rStatus === 1) {
+            rValue = -5;
+          // right
+          } else if (rStatus === 2) {
+            rValue = 5;
+          }
+
+          bots[p][2] = rangeNumber(bots[p][2] + rValue, false, gMax, gMin);
+        }
+
+        cX = bots[p][0];
+        cY = bots[p][1];
+        cR = bots[p][2];
+
+        rad = +(cR * (Math.PI / 180)).toFixed(10);
+
+        vX = Math.cos(rad) * 4;
+        vY = Math.sin(rad) * 4;
+
+        nX = Math.round(vX) + cX;
+        nY = Math.round(vY) + cY;
+
+        bots[p][0] = rangeNumber(nX, true, xMax, 0);
+        bots[p][1] = rangeNumber(nY, true, yMax, 0);
+        bots[p][4] = type[getInt(0, type.length - 1)];
+      }
+    }
+
+    var data = [
+      [
+        {
+          constructors: ['Tank', 'Radar'],
+          instances: bots,
+          cache: true
+        }
+      ],
+      [bots['bot#1'][0], bots['bot#1'][1]]
+    ];
+
+    socket.emit('test', {module: 'game', data: data});
   }, time);
 };
 

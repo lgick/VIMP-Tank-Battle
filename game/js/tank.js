@@ -4,9 +4,7 @@ define(['createjs'], function (createjs) {
     , p;
 
   function Tank(params) {
-    if (typeof params === 'object') {
-      this.initialize(params);
-    }
+    this.initialize(params);
   }
 
   p = Tank.prototype = new Container();
@@ -22,26 +20,33 @@ define(['createjs'], function (createjs) {
     this.addChild(this.body);
     this.addChild(this.gun);
 
-    this.colorA = params.colorA || '#ffffff';
-    this.colorB = params.colorB || '#333333';
-    this.scale = params.scale || 1;
-    this.scaleX = params.scaleX || 1;
-    this.scaleY = params.scaleY || 1;
-    this.x = params.x || 0;
-    this.y = params.y || 0;
-    this.rotation = params.rotation || 0;
+    // params с сервера имеют вид:
+    // [x, y, rotation, gunRotation, type]
+    this.x = params[0] || 0;
+    this.y = params[1] || 0;
+    this.rotation = params[2] || 0;
+    this.gun.rotation = params[3] || 0;
 
-    this.gun.rotation = params.gunRotation || 0;
-
-    this.create();
+    this.create(params[4]);
   };
 
-  // создание тела
-  p.create = function (colorA, colorB) {
-    var g = this.body.graphics;
+   // создать экземпляр
+  p.create = function (type) {
+    var g;
 
-    this.colorA = colorA ? colorA : this.colorA;
-    this.colorB = colorB ? colorB : this.colorB;
+    if (type === 'team1') {
+      this.colorA = '#eee';
+      this.colorB = '#252';
+    } else if (type === 'team2') {
+      this.colorA = '#eee';
+      this.colorB = '#522';
+    } else {
+      this.colorA = '#000';
+      this.colorB = '#333';
+    }
+
+    // создание body
+    g = this.body.graphics;
 
     g.clear();
 
@@ -54,26 +59,14 @@ define(['createjs'], function (createjs) {
     g.lineTo(22, 18);
     g.closePath();
 
-    this._createGun(this.colorB);
-  };
-
-  // обновляет функционал экземпляра
-  p.update = function (data) {
-    this.x = data.x;
-    this.y = data.y;
-    this.rotation = data.rotation;
-    this.scale = data.scale;
-    this.gun.rotation = data.gunRotation;
-  };
-
-  p._createGun = function (colorB) {
-    var g = this.gun.graphics;
+    // создание gun
+    g = this.gun.graphics;
 
     g.clear();
 
     g.setStrokeStyle(1);
     g.beginStroke('#cccccc');
-    g.beginFill(colorB);
+    g.beginFill(this.colorB);
     g.moveTo(16, -5);
     g.lineTo(5, -12);
     g.lineTo(-5, -12);
@@ -92,6 +85,18 @@ define(['createjs'], function (createjs) {
     g.lineTo(3, 3);
     g.lineTo(28, 3);
     g.closePath();
+  };
+
+ // обновляет экземпляр
+  p.update = function (params) {
+    this.x = params[0];
+    this.y = params[1];
+    this.rotation = params[2];
+    this.gun.rotation = params[3];
+
+    if (params[4]) {
+      this.create(params[4]);
+    }
   };
 
   return Tank;

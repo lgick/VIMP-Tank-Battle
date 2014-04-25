@@ -4,9 +4,7 @@ define(['createjs'], function (createjs) {
     , p;
 
   function Radar(params) {
-    if (typeof params === 'object') {
-      this.initialize(params);
-    }
+    this.initialize(params);
   }
 
   p = Radar.prototype = new Shape();
@@ -16,29 +14,37 @@ define(['createjs'], function (createjs) {
   p.initialize = function (params) {
     this.Shape_initialize();
 
-    this.x = params.x || 0;
-    this.y = params.y || 0;
-    this.rotation = params.rotation || 0;
-    this.colorA = params.colorA || '#ffffff';
-    this.colorB = params.colorB || '#333333';
+    // params с сервера имеют вид:
+    // [x, y, rotation, gunRotation, type]
+    this.x = params[0] || 0;
+    this.y = params[1] || 0;
+    this.rotation = params[2] || 0;
 
     // все модели на радаре увеличены в 20 раз
-    this.scaleX = params.scaleX || 20;
-    this.scaleY = params.scaleY || 20;
-
-    this.scale = params.scale || 1;
+    this.scaleX = 20;
+    this.scaleY = 20;
 
     this.shadow = new Shadow('#333', 2, 2, 3);
 
-    this.create();
+    this.create(params[4]);
   };
 
   // создание игрока
-  p.create = function (colorA, colorB) {
-    var g = this.graphics;
+  p.create = function (type) {
+    var g;
 
-    this.colorA = colorA ? colorA : this.colorA;
-    this.colorB = colorB ? colorB : this.colorB;
+    if (type === 'team1') {
+      this.colorA = '#fff';
+      this.colorB = '#333';
+    } else if (type === 'team2') {
+      this.colorA = '#eee';
+      this.colorB = '#333';
+    } else {
+      this.colorA = '#000';
+      this.colorB = '#333';
+    }
+
+    g = this.graphics;
 
     g.clear();
 
@@ -51,12 +57,15 @@ define(['createjs'], function (createjs) {
     g.closePath();
   };
 
-  // обновляет функционал экземпляра
-  p.update = function (data) {
-    this.x = data.x;
-    this.y = data.y;
-    this.rotation = data.rotation;
-    this.scale = data.scale;
+  // обновляет экземпляр
+  p.update = function (params) {
+    this.x = params[0];
+    this.y = params[1];
+    this.rotation = params[2];
+
+    if (params[4]) {
+      this.create(params[4]);
+    }
   };
 
   return Radar;

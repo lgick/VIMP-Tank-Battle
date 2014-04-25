@@ -4,9 +4,7 @@ define(['createjs'], function (createjs) {
     , p;
 
   function Bullets(params) {
-    if (typeof params === 'object') {
-      this.initialize(params);
-    }
+    this.initialize(params);
   }
 
   p = Bullets.prototype = new Container();
@@ -30,7 +28,7 @@ define(['createjs'], function (createjs) {
       g.setStrokeStyle(1);
       g.beginStroke('#333');
       g.beginFill('#fff');
-      g.drawCircle(0,0,2);
+      g.drawCircle(0, 0, 2);
 
       this.addChild(shape);
     }
