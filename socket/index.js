@@ -5,6 +5,8 @@ var session = require('../lib/session');
 var config = require('../config');
 
 var port = config.get('basic:port');
+var multipleConnections = config.get('basic:multipleConnections');
+
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
 var paths = config.get('game:paths');
@@ -28,7 +30,7 @@ module.exports = function (server) {
   io.set('authorization', function (handshakeData, callback) {
     var address = handshakeData.address.address;
 
-    if (sessions[address]) {
+    if (sessions[address] && !multipleConnections) {
       io.sockets.sockets[sessions[address]].disconnect();
       callback(null, true);
     } else {
