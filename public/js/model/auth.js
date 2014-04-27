@@ -109,8 +109,9 @@ define(['Publisher'], function (Publisher) {
     // иначе
     } else {
       this.publisher.emit('error', err);
-      this._sendStatus = false;
     }
+
+    this._sendStatus = false;
   };
 
   return AuthModel;

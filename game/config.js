@@ -46,6 +46,7 @@ module.exports = {
 
   // ***** parts ***** //
   parts: {
+    Map: 'map',
     Tank: 'tank',
     Bullets: 'bullets',
     Radar: 'radar'
@@ -53,8 +54,8 @@ module.exports = {
 
   // ***** paths ***** //
   paths: {
-    Tank: 'vimp',
     Map: 'vimp',
+    Tank: 'vimp',
     Bullets: 'vimp',
     Radar: 'radar'
   },

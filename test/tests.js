@@ -153,7 +153,7 @@ exports.gameMoveBots = function (socket, time, number, coords, type) {
       getInt(yMin, yMax),
       getInt(rMin, rMax),
       0,
-      type[getInt(0, type.length - 1)]
+      type[getInt(0, type.length - 2)]
     ];
 
     count += 1;
@@ -223,7 +223,7 @@ exports.gameMoveBots = function (socket, time, number, coords, type) {
 
         bots[p][0] = rangeNumber(nX, true, xMax, 0);
         bots[p][1] = rangeNumber(nY, true, yMax, 0);
-        bots[p][4] = type[getInt(0, type.length - 1)];
+        //bots[p][4] = type[getInt(0, type.length - 1)];
       }
     }
 

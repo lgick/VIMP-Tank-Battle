@@ -29,8 +29,10 @@ require([
     , errWS = document.getElementById('errWS')
 
     , socket = io.connect('', {
-        reconnect: false
-      })
+        'reconnection delay': 500,
+        'reconnection limit': 500,
+        'max reconnection attempts': 1000
+    })
 
     , LoadQueue = createjs.LoadQueue
     , SpriteSheet = createjs.SpriteSheet
@@ -222,6 +224,27 @@ require([
     if (modules[mode]) {
       modules[mode].open();
     }
+  }
+
+  // удаление всех данных игры
+  function clear() {
+    var prop;
+
+    for (prop in CTRL) {
+      if (CTRL.hasOwnProperty(prop)) {
+        CTRL[prop].remove();
+      }
+    }
+
+    updateGameControllers();
+
+    userName = undefined;
+    loader = undefined;
+    modules = {};
+    CTRL = {};
+    scale = {};
+    paths = null;
+    coords = null;
   }
 
 // ДАННЫЕ С СЕРВЕРА
@@ -492,30 +515,20 @@ require([
     }
   }
 
-  // переподключение к серверу
-  function reconnect() {
-    socket.once('error', function () {
-      window.setTimeout(reconnect, 500);
-    });
-
-    socket.socket.connect();
-  }
-
   socket.on('connect', function () {
     showConnectStatus();
   });
 
   socket.on('disconnect', function () {
     showConnectStatus('Server disconnect :(');
-    window.setTimeout(reconnect, 500);
   });
 
   socket.on('reconnect_failed', function () {
-    showConnectStatus('Server reconnect failed :(');
+    showConnectStatus('Server reconnect failed :/');
   });
 
   socket.on('connect_failed', function () {
-    showConnectStatus('Server connect failed :(');
+    showConnectStatus('Server connect failed :o');
   });
 
 });
