@@ -51,8 +51,13 @@ module.exports = function (server) {
         cb(err, false);
       } else {
         cb(null, true);
-        socket.emit('parts', parts);
+        socket.emit('deps');
       }
+    });
+
+    // запрос данных: parts
+    socket.on('parts', function () {
+      socket.emit('parts', parts);
     });
 
     // запрос данных: paths

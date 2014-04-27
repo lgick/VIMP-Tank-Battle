@@ -54,6 +54,8 @@ require([
 
       // координаты
     , coords
+
+    , depsStatus = {}
   ;
 
 
@@ -226,25 +228,21 @@ require([
     }
   }
 
-  // удаление всех данных игры
-  function clear() {
-    var prop;
-
-    for (prop in CTRL) {
-      if (CTRL.hasOwnProperty(prop)) {
-        CTRL[prop].remove();
-      }
+  // дозагрузка данных
+  function requestDependences() {
+    if (!depsStatus.parts) {
+      socket.emit('parts');
+    } else if (!depsStatus.paths) {
+      socket.emit('paths');
+    } else if (!depsStatus.user) {
+      socket.emit('user');
+    } else if (!depsStatus.media) {
+      socket.emit('media');
+    } else if (!depsStatus.map) {
+      socket.emit('map');
+    } else {
+      socket.emit('ready');
     }
-
-    updateGameControllers();
-
-    userName = undefined;
-    loader = undefined;
-    modules = {};
-    CTRL = {};
-    scale = {};
-    paths = null;
-    coords = null;
   }
 
 // ДАННЫЕ С СЕРВЕРА
@@ -295,6 +293,9 @@ require([
     authCtrl.init(params);
   });
 
+  // разрешение на дозагрузку зависимостей
+  socket.on('deps', requestDependences);
+
   // дозагрузка зависимостей
   socket.on('parts', function (data) {
     var arr = []
@@ -316,16 +317,17 @@ require([
         Factory.add(names[i], arguments[i]);
       }
 
-      // запрос маршрутизации
-      socket.emit('paths');
+      depsStatus.parts = true;
+      requestDependences();
     });
   });
 
   // пути
   socket.on('paths', function (data) {
     paths = data;
-    // запрос пользовательских данных
-    socket.emit('user');
+
+    depsStatus.paths = true;
+    requestDependences();
   });
 
   // получение пользовательских данных
@@ -348,8 +350,8 @@ require([
       }
     }
 
-    // запрос media
-    socket.emit('media');
+    depsStatus.user = true;
+    requestDependences();
   });
 
   // загрузка media
@@ -360,8 +362,8 @@ require([
 
     // событие при завершении загрузки
     loader.on("complete", function () {
-      // запуск map
-      socket.emit('map');
+      depsStatus.media = true;
+      requestDependences();
     });
   });
 
@@ -388,8 +390,8 @@ require([
 
       spriteSheet.removeAllEventListeners();
 
-      // запуск игры
-      socket.emit('ready');
+      depsStatus.map = true;
+      requestDependences();
     }
   });
 
