@@ -9,7 +9,7 @@ module.exports = {
 
   name: 'VIMP Tank Battle',
   version: '0.0.1',
-  maxPlayer: 16,
+  maxPlayers: 16,
 
   classUser: classUser,
   banlist: banlist,
@@ -46,10 +46,10 @@ module.exports = {
 
   // ***** parts ***** //
   parts: {
-    Map: 'map',
-    Tank: 'tank',
-    Bullets: 'bullets',
-    Radar: 'radar'
+    Map: '/parts/map.js',
+    Tank: '/parts/tank.js',
+    Bullets: '/parts/bullets.js',
+    Radar: '/parts/radar.js'
   },
 
   // ***** paths ***** //
