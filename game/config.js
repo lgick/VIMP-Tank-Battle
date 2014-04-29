@@ -1,4 +1,5 @@
-var classUser = require('./deps/user');
+// var game = require('./game');
+var game = require('../test/game');
 var banlist = require('./deps/banlist');
 var vote = require('./deps/vote');
 var map = require('./maps/arena');
@@ -11,7 +12,7 @@ module.exports = {
   version: '0.0.1',
   maxPlayers: 16,
 
-  classUser: classUser,
+  game: game,
   banlist: banlist,
 
   banmsg: 'Обжаловать бан можно на site.ru',
@@ -189,7 +190,7 @@ module.exports = {
   },
 
   // ***** game ***** //
-  game: {
+  gameModel: {
     model: {
       name: null,
       team: null,

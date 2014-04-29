@@ -1,11 +1,12 @@
 var log = require('../lib/log')(module);
 var validator = require('../lib/validator');
-var session = require('../lib/session');
 
 var config = require('../config');
 
 var port = config.get('basic:port');
 var multipleConnections = config.get('basic:multipleConnections');
+
+var game = config.get('game:game');
 
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
@@ -14,11 +15,11 @@ var userConfig = config.get('game:user');
 var media = config.get('game:media');
 var map = config.get('game:map');
 
-var test = require('../test/tests');
-var testData = require('../test/data');
-
-var users = [];
 var sessions = {};
+
+// tests
+var testA = require('../test/testA');
+var testData = require('../test/data');
 
 module.exports = function (server) {
   var io = require('socket.io').listen(server);
@@ -86,7 +87,7 @@ module.exports = function (server) {
     socket.on('ready', function () {
       // TODO: создать сессию для игрока и включить его в игровой процесс
 
-      socket.emit('shot', testData);
+      //socket.emit('shot', testData);
 
       //test.stat(socket, 3000);
       //test.vote(socket, 100);
@@ -94,6 +95,8 @@ module.exports = function (server) {
       //test.game(socket, 30);
       //test.gameMoveBots(socket, 30, 10);
       //test.chat(socket, 10, 9999999999999);
+
+      game.add(socket.id, socket);
     });
 
     // получение: keys
@@ -110,7 +113,7 @@ module.exports = function (server) {
 
       if (message) {
         // TODO: добавить в чат-лист имя игрока и сообщение
-        socket.emit('test', {module: 'chat', data: message});
+        io.sockets.emit('test', {module: 'chat', data: message});
       }
     });
 
