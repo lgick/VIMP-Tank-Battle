@@ -1,5 +1,10 @@
 ![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
 
+# Установка
+```
+git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && bower i && npm start
+```
+
 # Модуль STAT
 
 Статистика игры.

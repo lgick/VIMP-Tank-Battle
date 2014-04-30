@@ -36,9 +36,9 @@ module.exports = {
       },
       {
         name: 'team',
-        value: 't1',
+        value: 'team1',
         options: {
-          regExp: 't1|t2',
+          regExp: 'team1|team2|spectators',
           storage: null
         }
       }
