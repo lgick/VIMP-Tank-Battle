@@ -44,7 +44,7 @@ server.listen(config.get('basic:port'));
 
 // GAME
 var game = config.get('game:game');
-game.start();
+game.init();
 
 
 // SOCKET.IO

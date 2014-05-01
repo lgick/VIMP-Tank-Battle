@@ -1,7 +1,8 @@
-var config = require('../config');
+//var config = require('../config');
 
-var timeUpdate = config.get('basic:timeUpdate');
-var maxPlayers = config.get('game:maxPlayers');
+var timeUpdate = 1000 / 30;
+var maxPlayers = 16;
+var team = ['team1', 'team2', 'spectators'];
 
 var users = {};
 
@@ -13,7 +14,7 @@ var stat = testB.stat();
 var chat = testB.chat();
 var vote = testB.vote();
 
-exports.start = function () {
+exports.init = function () {
   var g = null;
   var p = null;
   var s = null;
@@ -25,7 +26,7 @@ exports.start = function () {
     s = stat();
     c = chat();
     v = vote();
-  }, 3000);
+  }, 10000);
 
   setInterval(function () {
     var id;
@@ -42,6 +43,6 @@ exports.start = function () {
   }, timeUpdate);
 };
 
-exports.add = function (id, socket) {
+exports.add = function (data, id, socket) {
   users[id] = socket;
 };

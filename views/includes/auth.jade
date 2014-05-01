@@ -8,15 +8,15 @@ div#auth
       span= 'Please your team:'
       br
       label
-        input(type='radio', name='team', value='team1')
+        input(type='radio', name='team', value='0')
         = 'team1'
       br
       label
-        input(type='radio', name='team', value='team2')
+        input(type='radio', name='team', value='1')
         = 'team2'
       br
       label
-        input(type='radio', name='team', value='spectators')
+        input(type='radio', name='team', value='2')
         = 'spectators'
     div#auth-error
     input#auth-enter(type='button', autofocus, value='Enter')
@@ -24,5 +24,4 @@ div#auth
     div#auth-link
       p
         a(href='https://github.com/lgick/VIMP-Tank-Battle') GitHub
-      p
-        &copy; VIMP
+      p &copy; VIMP

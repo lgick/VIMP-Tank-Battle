@@ -10,7 +10,6 @@ module.exports = {
 
   name: 'VIMP Tank Battle',
   version: '0.0.1',
-  maxPlayers: 16,
 
   game: game,
   banlist: banlist,
@@ -36,9 +35,9 @@ module.exports = {
       },
       {
         name: 'team',
-        value: 'team1',
+        value: '0',
         options: {
-          regExp: 'team1|team2|spectators',
+          regExp: '0|1|2',
           storage: null
         }
       }

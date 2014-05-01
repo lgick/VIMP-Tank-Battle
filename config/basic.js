@@ -2,7 +2,6 @@ module.exports = {
   name: 'VIMP game framework config',
   port: 3000,
   multipleConnections: true,
-  timeUpdate: 1000 / 30,
 
   mongoose: {
     uri: 'mongodb://localhost/stat',
