@@ -350,13 +350,13 @@ body {
 }
 
 #auth-form h2 {
-  font-size: 24px;
+  font-size: 21px;
   line-height: 30px;
   margin: 0 0 10px 0;
   text-align: center;
 }
 
-#auth-form > div {
+#auth-name {
   padding: 5px;
 }
 
@@ -365,6 +365,10 @@ body {
   width: 140px;
   font-size: 10px;
   line-height: 12px;
+}
+
+#auth-team {
+  padding: 5px;
 }
 
 #auth-error {
@@ -381,17 +385,27 @@ body {
 
 #auth-link {
   font-size: 9px;
+  height: 15px;
   margin: 0;
-  text-align: right;
   text-shadow: none;
 }
 
-#auth-link span {
-  padding-right: 5px;
+#auth-link p {
+  margin: 0;
+  width: 50%;
+  float: left;
 }
 
-#auth-link span a {
+#auth-link p a {
   color: #ff0;
+}
+
+#auth-link p:nth-child(1) {
+  text-align: left;
+}
+
+#auth-link p:nth-child(2) {
+  text-align: right;
 }
 
 /*error*/

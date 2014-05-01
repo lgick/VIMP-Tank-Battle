@@ -1,7 +1,7 @@
 div#auth
   div#auth-form
     h2= 'VIMP Tank Battle'
-    div
+    div#auth-name
       span= 'Please name:'
       input#auth-name-input(type='text', name='name' maxlength='15', placeholder='Vanya')
     div#auth-team
@@ -21,8 +21,8 @@ div#auth
     div#auth-error
     input#auth-enter(type='button', autofocus, value='Enter')
 
-    p#auth-link
-      span
+    div#auth-link
+      p
         a(href='https://github.com/lgick/VIMP-Tank-Battle') GitHub
-      span
+      p
         &copy; VIMP
