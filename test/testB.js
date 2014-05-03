@@ -179,7 +179,106 @@ exports.gameB = function (number, coords, type) {
           cache: true
         }
       ],
-      [bots['bot#1'][0], bots['bot#1'][1]]
+      [bots['bot#0'][0], bots['bot#0'][1]]
+    ];
+
+    return data;
+  };
+};
+
+// coords: массив коорданат [xMin, xMax, yMin, yMax, rMin, rMax, gMin, gMax]
+// type: массив типов
+// gameC - возвращает только координаты одного юзера, а не готовый массив
+exports.gameC = function (coords, type) {
+  coords = coords || [0, 800, 0, 600, 0, 360, -90, 90];
+  type = type || ['team1', 'team2', null];
+
+  var bot
+    , xMin = coords[0]
+    , xMax = coords[1]
+    , yMin = coords[2]
+    , yMax = coords[3]
+    , rMin = coords[4]
+    , rMax = coords[5]
+    , gMin = coords[6]
+    , gMax = coords[7]
+    , crds = [xMax / 2, yMax / 2];
+
+  bot = [
+    getInt(xMin, xMax),
+    getInt(yMin, yMax),
+    getInt(rMin, rMax),
+    0,
+    type[getInt(0, type.length - 2)]
+  ];
+
+  return function () {
+    var rad, cX, cY, cR, vX, vY, nX, nY, p, rStatus, rValue;
+
+    // проверяет число в заданном диапазоне
+    // Если repeat === true, то диапазон зациклен
+    // Если repeat === false, то диапазон ограничен значениями
+    // Возвращает значение
+    function rangeNumber(value, repeat, max, min) {
+      repeat = repeat || false;
+      max = max || 360;
+      min = min || 0;
+
+      // зациклить
+      if (repeat === true) {
+        if (value <= min) {
+          value = max + value;
+        }
+        if (value >= max) {
+          value = value - max;
+        }
+      // не зацикливать
+      } else {
+        if (value <= min) {
+          value = min;
+        }
+        if (value >= max) {
+          value = max;
+        }
+      }
+
+      return value;
+    }
+
+    // изменение поворота
+    rStatus = getInt(0, 2);
+
+    if (rStatus) {
+      // left
+      if (rStatus === 1) {
+        rValue = -5;
+      // right
+      } else if (rStatus === 2) {
+        rValue = 5;
+      }
+
+      bot[2] = rangeNumber(bot[2] + rValue, false, gMax, gMin);
+    }
+
+    cX = bot[0];
+    cY = bot[1];
+    cR = bot[2];
+
+    rad = +(cR * (Math.PI / 180)).toFixed(10);
+
+    vX = Math.cos(rad) * 4;
+    vY = Math.sin(rad) * 4;
+
+    nX = Math.round(vX) + cX;
+    nY = Math.round(vY) + cY;
+
+    bot[0] = rangeNumber(nX, true, xMax, 0);
+    bot[1] = rangeNumber(nY, true, yMax, 0);
+    //bot[4] = type[getInt(0, type.length - 1)];
+
+    var data = [
+      bot,
+      [bot[0], bot[1]]
     ];
 
     return data;

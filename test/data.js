@@ -1,17 +1,17 @@
 module.exports = [
   // game
   [
-    {
-      constructors: ['Tank', 'Radar'],
-      instances: {
+    [
+      ['Tank', 'Radar'],
+      {
         bob: [64, 320, 0, 0, 'team1'],
         jek: [736, 320, 180, 0, 'team2']
       },
-      cache: true
-    },
-    {
-      constructors: ['Bullets'],
-      instances: {
+      true
+    ],
+    [
+      ['Bullets'],
+      {
         bob: [
           [100, 320],
           [120, 320],
@@ -38,8 +38,8 @@ module.exports = [
           [100, 24]
         ]
       },
-      cache: false
-    }
+      false
+    ]
   ],
 
   // coords (x, y)

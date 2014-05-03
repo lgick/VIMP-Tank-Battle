@@ -1,8 +1,7 @@
-// var game = require('./game');
-var game = require('../test/game');
+var game = require('./model/game');
 var banlist = require('./deps/banlist');
 var vote = require('./deps/vote');
-var map = require('./maps/arena');
+var map = require('./maps/mini');
 
 // regExp строкой
 // dependencies пути
@@ -13,6 +12,7 @@ module.exports = {
 
   game: game,
   banlist: banlist,
+  maxPlayers: 8,
 
   banmsg: 'Обжаловать бан можно на site.ru',
 
@@ -164,29 +164,7 @@ module.exports = {
   },
 
   // ***** map ***** //
-  map: {
-    name: 'arena',
-    map: map,
-    step: 32,
-    spriteSheet: {
-      images: ['/img/tiles.png'],
-      frames: [
-        [480, 64, 32, 32, 0],
-        [0, 256, 32, 32, 0],
-        [160, 0, 32, 32, 0],
-        [288, 0, 32, 32, 0],
-        [128, 224, 32, 32, 0],
-        [0, 64, 32, 32, 0]
-      ]
-    },
-    options: {
-      width: 800,
-      height: 640,
-      borderColor: '#fff',
-      borderThickness: 3,
-      backgroundColor: '#f00'
-    }
-  },
+  map: map,
 
   // ***** game ***** //
   gameModel: {

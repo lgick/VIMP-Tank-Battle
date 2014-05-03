@@ -6,8 +6,10 @@ var config = require('../config');
 var port = config.get('basic:port');
 var multipleConnections = config.get('basic:multipleConnections');
 
-var game = config.get('game:game');
+var Game = config.get('game:game');
+var game = new Game();
 
+var maxPlayers = config.get('game:maxPlayers');
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
 var paths = config.get('game:paths');
@@ -16,6 +18,7 @@ var media = config.get('game:media');
 var map = config.get('game:map');
 
 var sessions = {};
+var users = {};
 
 // tests
 var testA = require('../test/testA');
@@ -54,6 +57,7 @@ module.exports = function (server) {
         cb(err, false);
       } else {
         cb(null, true);
+        users[socket.id] = game.createUser(data, socket.id, socket);
         socket.emit('deps');
       }
     });
@@ -85,18 +89,7 @@ module.exports = function (server) {
 
     // запрос данных: game
     socket.on('ready', function () {
-      // TODO: создать сессию для игрока и включить его в игровой процесс
-
-      //socket.emit('shot', testData);
-
-      //test.stat(socket, 3000);
-      //test.vote(socket, 100);
-      //test.panel(socket, 10, 9999);
-      //test.game(socket, 30);
-      //test.gameMoveBots(socket, 30, 10);
-      //test.chat(socket, 10, 9999999999999);
-
-      game.add(socket.id, socket);
+      game.ready(users[socket.id], true);
     });
 
     // получение: keys
@@ -135,10 +128,14 @@ module.exports = function (server) {
 
     // отключение
     socket.on('disconnect', function () {
-      var address = socket.handshake.address.address;
+      var address = socket.handshake.address.address
+        , socketID = socket.id;
 
-      delete sessions[address];
-      // TODO: удалить сессию сохранить данные
+      game.removeUser(users[socketID]);
+      delete users[socketID];
+      if (!multipleConnections) {
+        delete sessions[address];
+      }
     });
   });
 };

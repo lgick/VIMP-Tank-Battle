@@ -42,10 +42,5 @@ var server = require('http').createServer(app);
 server.listen(config.get('basic:port'));
 
 
-// GAME
-var game = config.get('game:game');
-game.init();
-
-
 // SOCKET.IO
 var io = require('./socket')(server);

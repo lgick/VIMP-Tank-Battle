@@ -53,7 +53,7 @@ require([
     , paths
 
       // координаты
-    , coords
+    , coords = {}
 
     , depsStatus = {}
   ;
@@ -403,6 +403,7 @@ require([
       , stat = serverData[3]
       , chat = serverData[4]
       , vote = serverData[5]
+      , log = serverData[6]
 
       , i = 0
       , len = game.length
@@ -417,12 +418,13 @@ require([
       , len2;
 
     // объект персональных данных (координаты, панель, чат)
-    coords = {x: crds[0], y: crds[1]};
+    coords.x = crds[0];
+    coords.y = crds[1];
 
     for (; i < len; i += 1) {
-      constructors = game[i].constructors;
-      instances = game[i].instances;
-      cache = game[i].cache;
+      constructors = game[i][0];
+      instances = game[i][1];
+      cache = game[i][2];
 
       i2 = 0;
       len2 = constructors.length;
@@ -454,55 +456,9 @@ require([
     if (vote) {
       modules.vote.open(vote);
     }
-  });
 
-  // для теста
-  socket.on('test', function (x) {
-    if (x.module === 'game') {
-      var i
-        , len
-        , game = x.data[0]
-        , crds = x.data[1]
-
-        , constructors
-        , instances
-        , cache
-
-        , constructor
-        , controller
-        , i2
-        , len2;
-
-      coords = {x: crds[0], y: crds[1]};
-
-      for (i = 0, len = game.length; i < len; i += 1) {
-        constructors = game[i].constructors;
-        instances = game[i].instances;
-        cache = game[i].cache;
-
-        i2 = 0;
-        len2 = constructors.length;
-
-        for (; i2 < len2; i2 += 1) {
-          constructor = constructors[i2];
-          controller = CTRL[paths[constructor]];
-
-          controller.parse(constructor, instances, cache);
-        }
-      }
-
-      updateGameControllers();
-
-    } else if (x.module === 'chat') {
-      modules.chat.add({name: 'System', text: x.data});
-    } else if (x.module === 'stat') {
-      modules.stat.update(x.data);
-    } else if (x.module === 'panel') {
-      modules.panel.update(x.data);
-    } else if (x.module === 'vote') {
-      modules.vote.open(x.data);
-    } else if (x.module === 'console') {
-      console.log(x.data);
+    if (log) {
+      console.log(log);
     }
   });
 
