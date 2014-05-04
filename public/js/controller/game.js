@@ -5,26 +5,24 @@ define([], function () {
     this._view = view;
   }
 
-  // парсит данные
+  // разбирает данные
   GameCtrl.prototype.parse = function (constructor, instances, cache) {
-    var name;
+    var i = 0
+      , len = instances.length;
 
     if (cache) {
-      for (name in instances) {
-        if (instances.hasOwnProperty(name)) {
-          if (this._model.read(constructor, name)) {
-            this._model.update(constructor, name, instances[name]);
-          } else {
-            this._model.create(constructor, name, instances[name]);
-          }
+      for (; i < len; i += 1) {
+        if (this._model.read(constructor, i)) {
+          this._model.update(constructor, i, instances[i]);
+        } else {
+          this._model.create(constructor, i, instances[i]);
         }
       }
     } else {
-      for (name in instances) {
-        if (instances.hasOwnProperty(name)) {
-          this._model.remove(name, constructor);
-          this._model.create(constructor, name, instances[name]);
-        }
+      this._model.remove(constructor);
+
+      for (; i < len; i += 1) {
+        this._model.create(constructor, i, instances[i]);
       }
     }
   };
@@ -34,15 +32,9 @@ define([], function () {
     this._view.update(coords, scale);
   };
 
-  // удаляет экземпляр из модели
-  // или
-  // полностью очищает модель
-  GameCtrl.prototype.remove = function (name) {
-    if (name) {
-      this._model.remove(name);
-    } else {
-      this._model.remove();
-    }
+  // удаляет данные игры
+  GameCtrl.prototype.remove = function (constructor, i) {
+    this._model.remove(constructor, i);
   };
 
   return GameCtrl;

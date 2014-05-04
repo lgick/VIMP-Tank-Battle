@@ -49,8 +49,8 @@ require([
       // масштабы
     , scale = {}
 
-      // пути: полотно -> конструктор
-    , paths
+      // данные конструкторов
+    , parts
 
       // координаты
     , coords = {}
@@ -232,8 +232,6 @@ require([
   function requestDependences() {
     if (!depsStatus.parts) {
       socket.emit('parts');
-    } else if (!depsStatus.paths) {
-      socket.emit('paths');
     } else if (!depsStatus.user) {
       socket.emit('user');
     } else if (!depsStatus.media) {
@@ -298,15 +296,14 @@ require([
 
   // дозагрузка зависимостей
   socket.on('parts', function (data) {
-    var arr = []
-      , names = []
-      , p;
+    parts = data;
 
-    for (p in data) {
-      if (data.hasOwnProperty(p)) {
-        names.push(p);
-        arr.push(data[p]);
-      }
+    var i = 0
+      , len = data.length
+      , arr = [];
+
+    for (; i < len; i += 1) {
+      arr.push(data[i].path);
     }
 
     require(arr, function () {
@@ -314,20 +311,12 @@ require([
         , len = arguments.length;
 
       for (; i < len; i += 1) {
-        Factory.add(names[i], arguments[i]);
+        Factory.add(data[i].name, arguments[i]);
       }
 
       depsStatus.parts = true;
       requestDependences();
     });
-  });
-
-  // пути
-  socket.on('paths', function (data) {
-    paths = data;
-
-    depsStatus.paths = true;
-    requestDependences();
   });
 
   // получение пользовательских данных
@@ -378,15 +367,19 @@ require([
     }
 
     function create() {
-      CTRL[paths.Map].parse(['Map'], {
-        map: {
-          name: data.name,
-          spriteSheet: spriteSheet,
-          step: data.step,
-          map: data.map,
-          options: data.options
-        }
-      }, true);
+      CTRL[parts[0].canvas].parse(
+        ['Map'],
+        [
+          {
+            name: data.name,
+            spriteSheet: spriteSheet,
+            step: data.step,
+            map: data.map,
+            options: data.options
+          }
+        ],
+        false
+      );
 
       spriteSheet.removeAllEventListeners();
 
@@ -408,32 +401,29 @@ require([
       , i = 0
       , len = game.length
 
-      , constructors
+      , idArr
       , instances
       , cache
 
-      , constructor
-      , controller
       , i2
-      , len2;
+      , len2
+      , part;
 
     // объект персональных данных (координаты, панель, чат)
     coords.x = crds[0];
     coords.y = crds[1];
 
     for (; i < len; i += 1) {
-      constructors = game[i][0];
+      idArr = game[i][0];
       instances = game[i][1];
       cache = game[i][2];
 
       i2 = 0;
-      len2 = constructors.length;
+      len2 = idArr.length;
 
       for (; i2 < len2; i2 += 1) {
-        constructor = constructors[i2];
-        controller = CTRL[paths[constructor]];
-
-        controller.parse(constructor, instances, cache);
+        part = parts[idArr[i2]];
+        CTRL[part.canvas].parse(part.name, instances, cache);
       }
     }
 

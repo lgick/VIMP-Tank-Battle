@@ -12,7 +12,6 @@ var game = new Game();
 var maxPlayers = config.get('game:maxPlayers');
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
-var paths = config.get('game:paths');
 var userConfig = config.get('game:user');
 var media = config.get('game:media');
 var map = config.get('game:map');
@@ -65,11 +64,6 @@ module.exports = function (server) {
     // запрос данных: parts
     socket.on('parts', function () {
       socket.emit('parts', parts);
-    });
-
-    // запрос данных: paths
-    socket.on('paths', function () {
-      socket.emit('paths', paths);
     });
 
     // запрос данных: user

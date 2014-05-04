@@ -187,11 +187,11 @@ exports.gameB = function (number, coords, type) {
 };
 
 // coords: массив коорданат [xMin, xMax, yMin, yMax, rMin, rMax, gMin, gMax]
-// type: массив типов
+// type: массив с номером типа модели (от и до)
 // gameC - возвращает только координаты одного юзера, а не готовый массив
 exports.gameC = function (coords, type) {
   coords = coords || [0, 800, 0, 600, 0, 360, -90, 90];
-  type = type || ['team1', 'team2', null];
+  type = type || [1, 3];
 
   var bot
     , xMin = coords[0]
@@ -209,7 +209,7 @@ exports.gameC = function (coords, type) {
     getInt(yMin, yMax),
     getInt(rMin, rMax),
     0,
-    type[getInt(0, type.length - 2)]
+    getInt(type[0], type[1])
   ];
 
   return function () {
@@ -274,7 +274,6 @@ exports.gameC = function (coords, type) {
 
     bot[0] = rangeNumber(nX, true, xMax, 0);
     bot[1] = rangeNumber(nY, true, yMax, 0);
-    //bot[4] = type[getInt(0, type.length - 1)];
 
     var data = [
       bot,

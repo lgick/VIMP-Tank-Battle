@@ -45,20 +45,28 @@ module.exports = {
   },
 
   // ***** parts ***** //
-  parts: {
-    Map: '/parts/map.js',
-    Tank: '/parts/tank.js',
-    Bullets: '/parts/bullets.js',
-    Radar: '/parts/radar.js'
-  },
-
-  // ***** paths ***** //
-  paths: {
-    Map: 'vimp',
-    Tank: 'vimp',
-    Bullets: 'vimp',
-    Radar: 'radar'
-  },
+  parts: [
+    {
+      name: 'Map',
+      path: '/parts/map.js',
+      canvas: 'vimp'
+    },
+    {
+      name: 'Tank',
+      path: '/parts/tank.js',
+      canvas: 'vimp'
+    },
+    {
+      name: 'Radar',
+      path: '/parts/radar.js',
+      canvas: 'radar'
+    },
+    {
+      name: 'Bullets',
+      path: '/parts/bullets.js',
+      canvas: 'vimp'
+    }
+  ],
 
   // ***** user ***** //
   user: {
