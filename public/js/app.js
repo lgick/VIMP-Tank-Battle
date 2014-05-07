@@ -388,6 +388,21 @@ require([
     }
   });
 
+  // для теста
+  socket.on('test', function (x) {
+    if (x.module === 'chat') {
+      modules.chat.add({name: 'System', text: x.data});
+    } else if (x.module === 'stat') {
+      modules.stat.update(x.data);
+    } else if (x.module === 'panel') {
+      modules.panel.update(x.data);
+    } else if (x.module === 'vote') {
+      modules.vote.open(x.data);
+    } else if (x.module === 'console') {
+      console.log(x.data);
+    }
+  });
+
   // обновление данных
   socket.on('shot', function (serverData) {
     var game = serverData[0]  // массив данных для отрисовки кадра игры
@@ -396,7 +411,6 @@ require([
       , stat = serverData[3]
       , chat = serverData[4]
       , vote = serverData[5]
-      , log = serverData[6]
 
       , i = 0
       , len = game.length
@@ -445,10 +459,6 @@ require([
 
     if (vote) {
       modules.vote.open(vote);
-    }
-
-    if (log) {
-      console.log(log);
     }
   });
 

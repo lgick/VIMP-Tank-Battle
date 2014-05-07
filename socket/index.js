@@ -56,7 +56,9 @@ module.exports = function (server) {
         cb(err, false);
       } else {
         cb(null, true);
-        users[socket.id] = game.createUser(data, socket.id, socket);
+        game.createUser(data, socket, function (id) {
+          users[socket.id] = id;
+        });
         socket.emit('deps');
       }
     });

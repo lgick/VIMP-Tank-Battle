@@ -38,46 +38,44 @@ function Game(data) {
 
   game = this;
   this._users = [];
-  this._data = {};
   this.init();
 }
 
 // инициализация игры
 Game.prototype.init = function () {
   setInterval((function () {
-    var i = 0
-      , len = this._users.length
+    var i
+      , len
       , g;
 
-    for (; i < len; i += 1) {
-      if (this._users[i] !== null && this._users[i].ready === true) {
+    var data = [];
 
-        g = this._users[i].data();
+    for (i = 0, len = this._users.length; i < len; i += 1) {
+      if (this._users[i]) {
+        if (this._users[i].ready === true) {
+          g = this._users[i].data();
 
-        this._data['bot#' + i] = g[0];
-        this._users[i].crds = g[1];
-
-        //this._users[i].socket.emit('shot', getShot(this._users[i].data));
+          data[i] = g[0];
+          this._users[i].crds = g[1];
+        }
+      } else {
+        if (this._users[i] === null) {
+          this._users[i] = 'clear';
+          data[i] = null;
+        }
       }
     }
 
     for (i = 0, len = this._users.length; i < len; i += 1) {
-      if (this._users[i] !== null && this._users[i].ready === true) {
-        //this._users[i].socket.emit('shot', [this._data, this._users[i].crds]);
+      if (this._users[i] && this._users[i].ready === true) {
         this._users[i].socket.emit('shot', [
         [
-          [
-            ['Tank', 'Radar'],
-            this._data,
-            true
-          ]
+          [[1, 2], data, 1]
         ],
         this._users[i].crds
         ]);
       }
     }
-
-    this._data = {};
 
   }).bind(this), timeUpdate);
 };
@@ -91,7 +89,7 @@ Game.prototype.stopRound = function () {
 };
 
 // создает нового игрока
-Game.prototype.createUser = function (data, socketID, socket) {
+Game.prototype.createUser = function (data, socket, cb) {
   var i = 0
     , len = this._users.length
     , userID;
@@ -113,34 +111,31 @@ Game.prototype.createUser = function (data, socketID, socket) {
   this._users[userID] = {
     ready: false,
     data: user,
-    socketID: socketID,
     socket: socket
   };
 
-  return userID;
+  process.nextTick(function () {
+    cb(userID);
+  });
 };
 
 // активизирует игрока
 Game.prototype.ready = function (userID, bool) {
-  console.log(this._users);
   this._users[userID].ready = bool;
 };
 
 // удаляет игрока
 Game.prototype.removeUser = function (userID) {
-  console.log('remove +++++++++++++++++++++');
-  console.log(this._users);
   this._users[userID] = null;
-  console.log(this._users);
-  console.log('remove +++++++++++++++++++++');
 };
 
 // обновляет игроков
 Game.prototype.updateUsers = function () {
 };
 
-// создает пулю
-Game.prototype.createBullet = function (socketID) {
+// обновляет команды
+Game.prototype.updateKeys = function (userID, keys) {
+  this._users[userID].keys = keys;
 };
 
 module.exports = Game;

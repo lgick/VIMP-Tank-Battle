@@ -40,8 +40,13 @@ function User(data) {
   this.keys = null;
 }
 
+// преобразует данные из base36
 User.prototype.parseKeys = function () {
   var cmd = parseInt(data, 36).toString(2);
+};
+
+// создает пулю
+User.prototype.createBullet = function () {
 };
 
 module.exports = User;
