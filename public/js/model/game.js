@@ -6,33 +6,32 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
   }
 
   // Создает экземпляры вида:
-  // this._data['Tank']['Bob'] - игрок Bob
-  // this._data['Bullets']['Bob'] - пули игрока Bob
-  // this._data['Radar']['Bob'] - игрок Bob на радаре
+  // this._data['Tank']['01'] - игрок c id '01'
+  // this._data['Bullets']['01'] - пули игрока
   //
   // constructor - имя конструктора для экземпляра
-  // i           - порядковый номер экземпляра
+  // id          - id экземпляра
   // data        - данные для создания экземпляра
-  GameModel.prototype.create = function (constructor, i, data) {
-    this._data[constructor] = this._data[constructor] || [];
-    this._data[constructor][i] = Factory(constructor, data);
-    this.publisher.emit('create', this._data[constructor][i]);
+  GameModel.prototype.create = function (constructor, id, data) {
+    this._data[constructor] = this._data[constructor] || {};
+    this._data[constructor][id] = Factory(constructor, data);
+    this.publisher.emit('create', this._data[constructor][id]);
   };
 
   // Возвращает данные:
-  // - одного экземпляра конструктора
+  // - экземпляра конструктора
   // - всех экземляров конструктора
   // - все данные
-  GameModel.prototype.read = function (constructor, i) {
-    // если нужны данные по конструктору
+  GameModel.prototype.read = function (constructor, id) {
+   // если нужны данные по конструктору
     if (constructor) {
       // .. и они существуют
       if (this._data[constructor]) {
-        // .. и также нужны данные конкретного экземпляра
-        if (typeof i === 'number') {
+        // .. и также нужны данные конкретного id
+        if (id) {
           // .. и они существуют
-          if (this._data[constructor][i]) {
-            return this._data[constructor][i];
+          if (this._data[constructor][id]) {
+            return this._data[constructor][id];
           }
         } else {
           return this._data[constructor];
@@ -43,74 +42,47 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
     }
   };
 
-  // Обновляет данные экземпляра или удаляет экземпляр
-  GameModel.prototype.update = function (constructor, i, data) {
+  // Обновляет данные экземпляра
+  GameModel.prototype.update = function (constructor, id, data) {
     if (data === null) {
-      this.publisher.emit('remove', this._data[constructor][i]);
-      delete this._data[constructor][i];
+      this.remove(constructor, id);
     } else {
-      this._data[constructor][i].update(data);
+      this._data[constructor][id].update(data);
     }
   };
 
   // Удаляет данные:
-  // - конкретного экземпляра в конструкторе (по порядковому номеру)
-  // - всех экземпляров в конструкторе
-  // - всех экземпляров во всех конструкторах (чистое полотно)
+  // - экземпляра конструктора
+  // - всех экземляров конструктора (пустой конструктор)
+  // - все данные (чистое полотно)
   //
   // constructor - имя конструктора для экземпляра (необязательно)
-  // i           - порядковый номер экземпляра (необязательно)
-  GameModel.prototype.remove = function (constructor, i) {
-    var len;
+  // id          - id экземпляра (необязательно)
+  GameModel.prototype.remove = function (constructor, id) {
+    var p
+      , data;
 
     // если данные по конструктору
     if (constructor) {
       // .. и они существуют
       if (this._data[constructor]) {
-        // если данные по конкретному экземпляру
-        if (typeof i === 'number') {
+        // если данные по конкретному id
+        if (id) {
           // .. и они существуют
-          if (this._data[constructor][i]) {
-            this.publisher.emit('remove', this._data[constructor][i]);
-            delete this._data[constructor][i];
+          if (this._data[constructor][id]) {
+            this.publisher.emit('remove', this._data[constructor][id]);
+            delete this._data[constructor][id];
           }
         } else {
-          for (i = 0, len = this._data[constructor].length; i < len; i += 1) {
-            this.publisher.emit('remove', this._data[constructor][i]);
-          }
-          delete this._data[constructor];
-        }
-      }
-    } else {
-      this._data = [];
-      this.publisher.emit('clear');
-    }
-  };
+          data = this._data[constructor];
 
-  // Удаляет данные:
-  // - по порядковому номеру экземпляра в каждом конструкторе
-  // - по порядковому номеру экземпляра во всех конструкторах
-  // - полностью
-  //
-  // i           - порядковый номер экземпляра (необязательно)
-  // constructor - имя конструктора для экземпляра (необязательно)
-  GameModel.prototype.removeInstance = function (i, constructor) {
-    var p;
-
-    if (typeof i === 'number') {
-      if (constructor) {
-        if (this._data[constructor] && this._data[constructor][i]) {
-          this.publisher.emit('remove', this._data[constructor][i]);
-          delete this._data[constructor][i];
-        }
-      } else {
-        for (p in this._data) {
-          if (this._data.hasOwnProperty(p)) {
-            if (this._data[p][i]) {
-              this.publisher.emit('remove', this._data[p][i]);
-              delete this._data[p][i];
+          for (p in data) {
+            if (data.hasOwnProperty(p)) {
+              this.publisher.emit('remove', data[p]);
             }
           }
+
+          this._data[constructor] = {};
         }
       }
     } else {

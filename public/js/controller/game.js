@@ -7,22 +7,24 @@ define([], function () {
 
   // разбирает данные
   GameCtrl.prototype.parse = function (constructor, instances, cache) {
-    var i = 0
-      , len = instances.length;
+    var id;
 
     if (cache) {
-      for (; i < len; i += 1) {
-        if (this._model.read(constructor, i)) {
-          this._model.update(constructor, i, instances[i]);
-        } else {
-          this._model.create(constructor, i, instances[i]);
+      for (id in instances) {
+        if (instances.hasOwnProperty(id)) {
+          if (this._model.read(constructor, id)) {
+            this._model.update(constructor, id, instances[id]);
+          } else {
+            this._model.create(constructor, id, instances[id]);
+          }
         }
       }
     } else {
-      this._model.remove(constructor);
-
-      for (; i < len; i += 1) {
-        this._model.create(constructor, i, instances[i]);
+      for (id in instances) {
+        if (instances.hasOwnProperty(id)) {
+          this._model.remove(constructor, id);
+          this._model.create(constructor, id, instances[id]);
+        }
       }
     }
   };
@@ -33,8 +35,8 @@ define([], function () {
   };
 
   // удаляет данные игры
-  GameCtrl.prototype.remove = function (constructor, i) {
-    this._model.remove(constructor, i);
+  GameCtrl.prototype.remove = function (constructor, id) {
+    this._model.remove(constructor, id);
   };
 
   return GameCtrl;
