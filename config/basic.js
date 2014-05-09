@@ -1,31 +1,10 @@
 module.exports = {
   name: 'VIMP game framework config',
   port: 3000,
-  multipleConnections: true,
+  oneConnection: false,
+  message: {
+    ban: 'Обжаловать бан можно на site.ru',
+    fullServer: 'В настоящее время сервер полный. Подождите своей очереди или зайдите позже!'
 
-  mongoose: {
-    uri: 'mongodb://localhost/stat',
-    options: {
-      server: {
-        socketOptions: {
-          keepAlive: 1
-        }
-      }
-    }
-  },
-
-  session: {
-    secret: 'KillerIsJim',
-    key: 'sid',
-    cookie: {
-      path: '/',
-      httpOnly: true,
-      maxAge: null
-    }
-  },
-
-  map: {
-    width: 2000,
-    height: 2000
   }
 };

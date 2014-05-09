@@ -4,12 +4,11 @@ var validator = require('../lib/validator');
 var config = require('../config');
 
 var port = config.get('basic:port');
-var multipleConnections = config.get('basic:multipleConnections');
+var oneConnection = config.get('basic:oneConnection');
 
 var Game = config.get('game:game');
 var game = new Game();
 
-var maxPlayers = config.get('game:maxPlayers');
 var auth = config.get('game:auth');
 var parts = config.get('game:parts');
 var userConfig = config.get('game:user');
@@ -18,10 +17,6 @@ var map = config.get('game:map');
 
 var sessions = {};
 var users = {};
-
-// tests
-var testA = require('../test/testA');
-var testData = require('../test/data');
 
 module.exports = function (server) {
   var io = require('socket.io').listen(server);
@@ -33,7 +28,7 @@ module.exports = function (server) {
   io.set('authorization', function (handshakeData, callback) {
     var address = handshakeData.address.address;
 
-    if (sessions[address] && !multipleConnections) {
+    if (sessions[address] && oneConnection) {
       io.sockets.sockets[sessions[address]].disconnect();
       callback(null, true);
     } else {
@@ -56,10 +51,10 @@ module.exports = function (server) {
         cb(err, false);
       } else {
         cb(null, true);
-        game.createUser(data, socket, function (id) {
-          users[socket.id] = id;
+        game.createUser(data, socket, function (userID) {
+          users[socket.id] = userID;
+          socket.emit('deps');
         });
-        socket.emit('deps');
       }
     });
 
@@ -124,12 +119,15 @@ module.exports = function (server) {
 
     // отключение
     socket.on('disconnect', function () {
+      // удаляет пользователя, проверяет лист ожидающих, подключает их
       var address = socket.handshake.address.address
         , socketID = socket.id;
 
       game.removeUser(users[socketID]);
+
       delete users[socketID];
-      if (!multipleConnections) {
+
+      if (oneConnection) {
         delete sessions[address];
       }
     });

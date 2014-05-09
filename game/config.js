@@ -14,8 +14,6 @@ module.exports = {
   banlist: banlist,
   maxPlayers: 8,
 
-  banmsg: 'Обжаловать бан можно на site.ru',
-
   // ***** authorization ***** //
   auth: {
     elems: {

@@ -1,7 +1,7 @@
 var config = require('../config');
 var bantools = require('../lib/bantools');
 
-var banmsg = config.get('game:banmsg');
+var banmsg = config.get('basic:message:ban');
 var title = config.get('game:name');
 
 module.exports = function (app) {
