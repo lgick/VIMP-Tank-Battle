@@ -12,7 +12,7 @@ module.exports = {
 
   game: game,
   banlist: banlist,
-  maxPlayers: 8,
+  maxPlayers: 2,
 
   // ***** authorization ***** //
   auth: {

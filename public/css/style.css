@@ -408,9 +408,9 @@ body {
   text-align: right;
 }
 
-/*error*/
+/*informer*/
 
-#errWS {
+#informer {
   display: none;
   position: absolute;
   top: 0;

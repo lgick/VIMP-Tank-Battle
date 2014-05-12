@@ -129,7 +129,7 @@ statArray = [
 
 Нужно для корректного отображения модулей.
 
-1. errWS
+1. informer
 2. auth
 3. stat
 4. vote

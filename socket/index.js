@@ -1,5 +1,6 @@
 var log = require('../lib/log')(module);
 var validator = require('../lib/validator');
+var waiting = require('../lib/waiting');
 
 var config = require('../config');
 
@@ -17,6 +18,8 @@ var map = config.get('game:map');
 
 var sessions = {};
 var users = {};
+var allUsers = 0;
+var allPlayers = 0;
 
 module.exports = function (server) {
   var io = require('socket.io').listen(server);
@@ -28,20 +31,31 @@ module.exports = function (server) {
   io.set('authorization', function (handshakeData, callback) {
     var address = handshakeData.address.address;
 
-    if (sessions[address] && oneConnection) {
-      io.sockets.sockets[sessions[address]].disconnect();
-      callback(null, true);
-    } else {
-      callback(null, true);
+    if (oneConnection) {
+      if (sessions[address]) {
+        io.sockets.sockets[sessions[address]].disconnect();
+      }
     }
+
+    callback(null, true);
+    allUsers += 1;
   });
 
   io.sockets.on('connection', function (socket) {
     var address = socket.handshake.address.address;
 
-    sessions[address] = socket.id;
-
-    socket.emit('auth', auth);
+    waiting.check(allUsers, function (waiting) {
+      if (waiting) {
+        log.warn('waiting.check: wait === true');
+        waiting.add(socket.id, function (data) {
+          socket.emit('full_server', data);
+        });
+      } else {
+        log.warn('waiting.check: wait === false');
+        sessions[address] = socket.id;
+        socket.emit('auth', auth);
+      }
+    });
 
     // авторизация
     socket.on('auth', function (data, cb) {
@@ -51,7 +65,9 @@ module.exports = function (server) {
         cb(err, false);
       } else {
         cb(null, true);
+
         game.createUser(data, socket, function (userID) {
+          allPlayers += 1;
           users[socket.id] = userID;
           socket.emit('deps');
         });
@@ -123,13 +139,44 @@ module.exports = function (server) {
       var address = socket.handshake.address.address
         , socketID = socket.id;
 
-      game.removeUser(users[socketID]);
+      allUsers -= 1;
 
-      delete users[socketID];
+      game.removeUser(users[socketID], function (bool) {
+        if (bool) {
+          allPlayers -= 1;
+          delete users[socketID];
+        }
+      });
 
       if (oneConnection) {
-        delete sessions[address];
+        if (sessions[address]) {
+          delete sessions[address];
+        }
       }
+
+      waiting.remove(socketID);
+
+      // если кто-то есть в очереди, впустить его в игру
+      waiting.getNext(allPlayers, function (socketID) {
+        var socket;
+
+        if (socketID) {
+          io.sockets.socket(socketID).emit('auth', auth);
+          //socket = io.sockets.socket(socketID);
+          //sockets.emit('auth', auth);
+          //sessions[socket.handshake.address.address] = socketID;
+        }
+      });
+
+      waiting.createNotifyObject(function (notifyObject) {
+        var p;
+
+        for (p in notifyObject) {
+          if (notifyObject.hasOwnProperty(p)) {
+            io.sockets.socket(p).emit('full_server', notifyObject[p]);
+          }
+        }
+      });
     });
   });
 };

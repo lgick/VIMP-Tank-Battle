@@ -26,7 +26,7 @@ require([
     , RegExp = window.RegExp
     , localStorage = window.localStorage
 
-    , errWS = document.getElementById('errWS')
+    , informer = document.getElementById('informer')
 
     , socket = io.connect('', {
         'reconnection delay': 500,
@@ -252,6 +252,8 @@ require([
       return;
     }
 
+    updateGameInformer();
+
     var viewData
       , elems = data.elems
       , params = data.params
@@ -436,7 +438,9 @@ require([
       len2 = idArr.length;
 
       for (; i2 < len2; i2 += 1) {
+        // получение данных о конструкторе по его id
         part = parts[idArr[i2]];
+
         CTRL[part.canvas].parse(part.name, instances, cache);
       }
     }
@@ -463,30 +467,40 @@ require([
   });
 
   // вывод сообщения об ошибке соединения
-  function showConnectStatus(message) {
+  function updateGameInformer(message) {
     if (message) {
-      errWS.innerHTML = message;
-      errWS.style.display = 'block';
+      informer.innerHTML = message;
+      informer.style.display = 'block';
     } else {
-      errWS.innerHTML = '';
-      errWS.style.display = 'none';
+      informer.innerHTML = '';
+      informer.style.display = 'none';
     }
   }
 
+  socket.on('full_server', function (data) {
+    var message;
+
+    message = 'Server is full! Please wait or come back later!<br>' +
+      'Max players: ' + data[0] + '<br>' +
+      'Your waiting number: ' + data[1] + '<br>';
+
+    updateGameInformer(message);
+  });
+
   socket.on('connect', function () {
-    showConnectStatus();
+    updateGameInformer();
   });
 
   socket.on('disconnect', function () {
-    showConnectStatus('Server disconnect :(');
+    updateGameInformer('Server disconnect :(');
   });
 
   socket.on('reconnect_failed', function () {
-    showConnectStatus('Server reconnect failed :/');
+    updateGameInformer('Server reconnect failed :/');
   });
 
   socket.on('connect_failed', function () {
-    showConnectStatus('Server connect failed :o');
+    updateGameInformer('Server connect failed :o');
   });
 
 });

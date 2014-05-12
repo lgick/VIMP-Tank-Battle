@@ -187,8 +187,17 @@ Game.prototype.ready = function (userID, bool) {
 };
 
 // удаляет игрока
-Game.prototype.removeUser = function (userID) {
-  this._users[userID] = null;
+Game.prototype.removeUser = function (userID, cb) {
+  var bool = false;
+
+  if (this._users[userID]) {
+    this._users[userID] = null;
+    bool = true;
+  }
+
+  process.nextTick(function () {
+    cb(bool);
+  });
 };
 
 // обновляет игроков
