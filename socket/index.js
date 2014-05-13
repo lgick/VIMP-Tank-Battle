@@ -1,6 +1,8 @@
 var log = require('../lib/log')(module);
-var validator = require('../lib/validator');
+
+var bantools = require('../lib/bantools');
 var waiting = require('../lib/waiting');
+var validator = require('../lib/validator');
 
 var config = require('../config');
 
@@ -19,7 +21,6 @@ var map = config.get('game:map');
 var sessions = {};
 var users = {};
 var allUsers = 0;
-var allPlayers = 0;
 
 module.exports = function (server) {
   var io = require('socket.io').listen(server);
@@ -44,33 +45,15 @@ module.exports = function (server) {
   io.sockets.on('connection', function (socket) {
     var address = socket.handshake.address.address;
 
-    waiting.check(allUsers, function (waiting) {
-      if (waiting) {
-        log.warn('waiting.check: wait === true');
-        waiting.add(socket.id, function (data) {
-          socket.emit('full_server', data);
-        });
+    bantools.check(address, function (ban) {
+      if (ban) {
+        socket.emit('ban', ban);
+
+        //setTimeout( function () {
+        //  socket.disconnect();
+        //}, 10000);
       } else {
-        log.warn('waiting.check: wait === false');
-        sessions[address] = socket.id;
-        socket.emit('auth', auth);
-      }
-    });
-
-    // авторизация
-    socket.on('auth', function (data, cb) {
-      var err = validator.auth(data);
-
-      if (err) {
-        cb(err, false);
-      } else {
-        cb(null, true);
-
-        game.createUser(data, socket, function (userID) {
-          allPlayers += 1;
-          users[socket.id] = userID;
-          socket.emit('deps');
-        });
+        socket.emit('deps');
       }
     });
 
@@ -96,7 +79,34 @@ module.exports = function (server) {
 
     // запрос данных: game
     socket.on('ready', function () {
-      game.ready(users[socket.id], true);
+      waiting.check(allUsers, function (bool) {
+        if (bool) {
+          log.warn('waiting.check: wait === true');
+          waiting.add(socket.id, function (data) {
+            socket.emit('full_server', data);
+          });
+        } else {
+          log.warn('waiting.check: wait === false');
+          sessions[address] = socket.id;
+          socket.emit('auth', auth);
+        }
+      });
+
+    });
+
+    // авторизация
+    socket.on('auth', function (data, cb) {
+      var err = validator.auth(data);
+
+      if (err) {
+        cb(err, false);
+      } else {
+        cb(null, true);
+
+        game.createUser(data, socket, function (userID) {
+          users[socket.id] = userID;
+        });
+      }
     });
 
     // получение: keys
@@ -143,7 +153,6 @@ module.exports = function (server) {
 
       game.removeUser(users[socketID], function (bool) {
         if (bool) {
-          allPlayers -= 1;
           delete users[socketID];
         }
       });
@@ -157,7 +166,7 @@ module.exports = function (server) {
       waiting.remove(socketID);
 
       // если кто-то есть в очереди, впустить его в игру
-      waiting.getNext(allPlayers, function (socketID) {
+      waiting.getNext(allUsers, function (socketID) {
         var socket;
 
         if (socketID) {

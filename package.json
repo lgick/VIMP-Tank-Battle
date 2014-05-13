@@ -18,6 +18,7 @@
     "connect-mongo": "~0.4.0",
     "validator": "*",
     "string": "*",
-    "cookie": "~0.1.0"
+    "cookie": "~0.1.0",
+    "ws": "*"
   }
 }

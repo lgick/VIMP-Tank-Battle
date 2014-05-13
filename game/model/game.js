@@ -172,7 +172,7 @@ Game.prototype.createUser = function (data, socket, cb) {
   this._users[userID] = new User({team: team, name: name});
   this._users[userID].socket = socket;
   this._users[userID].team = this._teams[team];
-  this._users[userID].ready = false;
+  this._users[userID].ready = true;
 
   this.startRound();
 

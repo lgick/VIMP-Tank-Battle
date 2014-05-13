@@ -245,54 +245,6 @@ require([
 
 // ДАННЫЕ С СЕРВЕРА
 
-  // авторизация пользователя
-  socket.on('auth', function (data) {
-    if (typeof data !== 'object') {
-      console.log('authorization error');
-      return;
-    }
-
-    updateGameInformer();
-
-    var viewData
-      , elems = data.elems
-      , params = data.params
-      , authModel
-      , authView
-      , authCtrl
-      , i = 0
-      , len = params.length
-      , storage
-      , regExp;
-
-    for (; i < len; i += 1) {
-      storage = params[i].options.storage;
-      regExp = params[i].options.regExp;
-
-      if (storage) {
-        params[i].value = window.localStorage[storage] || params[i].value || '';
-      }
-
-      if (regExp) {
-        params[i].options.regExp = new RegExp(regExp);
-      }
-    }
-
-    viewData = {
-      window: window,
-      auth: document.getElementById(elems.authId),
-      form: document.getElementById(elems.formId),
-      error: document.getElementById(elems.errorId),
-      enter: document.getElementById(elems.enterId)
-    };
-
-    authModel = new AuthModel(socket);
-    authView = new AuthView(authModel, viewData);
-    authCtrl = new AuthCtrl(authModel, authView);
-
-    authCtrl.init(params);
-  });
-
   // разрешение на дозагрузку зависимостей
   socket.on('deps', requestDependences);
 
@@ -390,6 +342,54 @@ require([
     }
   });
 
+  // авторизация пользователя
+  socket.on('auth', function (data) {
+    if (typeof data !== 'object') {
+      console.log('authorization error');
+      return;
+    }
+
+    updateGameInformer();
+
+    var viewData
+      , elems = data.elems
+      , params = data.params
+      , authModel
+      , authView
+      , authCtrl
+      , i = 0
+      , len = params.length
+      , storage
+      , regExp;
+
+    for (; i < len; i += 1) {
+      storage = params[i].options.storage;
+      regExp = params[i].options.regExp;
+
+      if (storage) {
+        params[i].value = window.localStorage[storage] || params[i].value || '';
+      }
+
+      if (regExp) {
+        params[i].options.regExp = new RegExp(regExp);
+      }
+    }
+
+    viewData = {
+      window: window,
+      auth: document.getElementById(elems.authId),
+      form: document.getElementById(elems.formId),
+      error: document.getElementById(elems.errorId),
+      enter: document.getElementById(elems.enterId)
+    };
+
+    authModel = new AuthModel(socket);
+    authView = new AuthView(authModel, viewData);
+    authCtrl = new AuthCtrl(authModel, authView);
+
+    authCtrl.init(params);
+  });
+
   // для теста
   socket.on('test', function (x) {
     if (x.module === 'chat') {
@@ -476,6 +476,16 @@ require([
       informer.style.display = 'none';
     }
   }
+
+  socket.on('ban', function (data) {
+    var message = 'Dear ' + data[0] + ', You are banned!<br>' +
+      'Reason: ' + data[1] + '<br>' +
+      'Time (hours): ' + (data[2] / 1000 / 60 / 60).toFixed(2) + '<br>' +
+      'Type: ' + data[3] + '<br>' +
+      data[4] + '<br>';
+
+    updateGameInformer(message);
+  });
 
   socket.on('full_server', function (data) {
     var message;
