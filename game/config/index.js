@@ -1,18 +1,8 @@
-var game = require('./model/game');
-var banlist = require('./deps/banlist');
-var vote = require('./deps/vote');
-var map = require('./maps/mini');
+var vote = require('./vote');
 
 // regExp строкой
 // dependencies пути
 module.exports = {
-
-  name: 'VIMP Tank Battle',
-  version: '0.0.1',
-
-  game: game,
-  banlist: banlist,
-  maxPlayers: 2,
 
   // ***** authorization ***** //
   auth: {
@@ -167,9 +157,6 @@ module.exports = {
     manifest: [
       {id: 'poster2', src: '/img/poster2.png'}
     ]
-  },
-
-  // ***** map ***** //
-  map: map
+  }
 
 };

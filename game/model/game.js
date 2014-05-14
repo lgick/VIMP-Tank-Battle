@@ -1,6 +1,5 @@
 var User = require('./User');
 var log = require('../../lib/log')(module);
-var test = require('../../test/testB');
 
 // Singleton
 var game;
@@ -14,6 +13,7 @@ function Game(data) {
 
   this._users = {};
 
+  this._mapList = ['mini', 'arena'];
   this._timeUpdate = 1000;
   this._timeRound = 120000;
   this._teams = ['team1', 'team2', 'spectators'];
@@ -208,5 +208,6 @@ Game.prototype.updateUsers = function () {
 Game.prototype.updateKeys = function (userID, keys) {
   this._users[userID].keys = keys;
 };
+
 
 module.exports = Game;

@@ -16,7 +16,7 @@ var path = require('path');
 var config = require('./config');
 
 config.set('basic', require(path.join(__dirname, '/config/basic.js')));
-config.set('game', require(path.join(__dirname, '/game/config.js')));
+config.set('game', require(path.join(__dirname, '/game/config/')));
 
 
 // EXPRESS

@@ -7,18 +7,10 @@
     "start": "NODE_PORT=3000 NODE_ENV=development nodemon server.js"
   },
   "dependencies": {
-    "socket.io": "~0.9.16",
     "express": "~3.3.4",
     "jade": "~1.1.4",
+    "ws": "0.4.30",
     "winston": "~0.7.2",
-    "mongoose": "~3.8.5",
-    "mongodb": "~1.3.23",
-    "node-uuid": "*",
-    "async": "*",
-    "connect-mongo": "~0.4.0",
-    "validator": "*",
-    "string": "*",
-    "cookie": "~0.1.0",
-    "ws": "*"
+    "async": "0.8.0"
   }
 }
