@@ -1,5 +1,5 @@
-var config = require('../config');
-var title = config.get('basic:name');
+var config = require('../lib/config');
+var title = config.get('server:name');
 
 module.exports = function (app) {
   app.get('/', function (req, res, next) {

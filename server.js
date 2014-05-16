@@ -13,10 +13,11 @@ var path = require('path');
 
 
 // CONFIG
-var config = require('./config');
+var config = require('./lib/config');
 
-config.set('basic', require(path.join(__dirname, '/config/basic.js')));
-config.set('game', require(path.join(__dirname, '/game/config/')));
+config.set('auth', require(path.join(__dirname, '/game/config/auth.js')));
+config.set('server', require(path.join(__dirname, '/game/config/server.js')));
+config.set('client', require(path.join(__dirname, '/game/config/client.js')));
 
 
 // EXPRESS
@@ -34,7 +35,7 @@ require('./routes')(app);
 
 // SERVER
 var server = require('http').createServer(app);
-server.listen(config.get('basic:port'));
+server.listen(config.get('server:port'));
 
 
 // SOCKET.IO

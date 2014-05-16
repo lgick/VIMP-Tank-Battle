@@ -1,36 +1,6 @@
-var vote = require('./vote');
-
 // regExp строкой
 // dependencies пути
 module.exports = {
-
-  // ***** authorization ***** //
-  auth: {
-    elems: {
-      authId: 'auth',
-      formId: 'auth-form',
-      errorId: 'auth-error',
-      enterId: 'auth-enter'
-    },
-    params: [
-      {
-        name: 'name',
-        value: '',
-        options: {
-          regExp: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
-          storage: 'userName'
-        }
-      },
-      {
-        name: 'team',
-        value: '0',
-        options: {
-          regExp: '0|1|2',
-          storage: null
-        }
-      }
-    ]
-  },
 
   // ***** parts ***** //
   parts: [
@@ -146,7 +116,39 @@ module.exports = {
         navActiveClass: 'active'
       },
       params: {
-        vote: vote,
+        vote: [
+          {
+            vote: 'status',
+            title: 'Сменить команду, статус',
+            key: 'status',
+            value: ['team1', 'team2', 'spectator'],
+            next: null
+          },
+          {
+            vote: 'remap',
+            title: 'Предложить новую карту',
+            key: 'map',
+            value: ['arena', 'arena_2.0', 'berlin'],
+            next: null
+          },
+          {
+            vote: 'ban',
+            title: 'Предложить забанить игрока',
+            key: 'user',
+            value: 'users',
+            next: {
+              title: 'Причина бана',
+              key: 'reason',
+              value: ['ЧИТЕР', 'Лузер', 'Флудер', 'Lol', 'lamer', 'bot', 'HIPSTER'],
+              next: {
+                title: 'Время бана (в минутах)',
+                key: 'time',
+                value: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384],
+                next: null
+              }
+            }
+          }
+        ],
         time: 10000
       }
     }

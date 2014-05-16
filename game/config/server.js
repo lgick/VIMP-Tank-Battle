@@ -1,6 +1,6 @@
-var game = require('../game/model/game');
-var banlist = require('../game/deps/banlist');
-var maps = require('../game/maps/');
+var game = require('../model/game');
+var banlist = require('../deps/banlist');
+var maps = require('../maps/');
 
 module.exports = {
   name: 'VIMP Tank Battle',
