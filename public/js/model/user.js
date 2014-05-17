@@ -20,7 +20,6 @@ define(['Publisher'], function (Publisher) {
     this._modes = data.keys.modes;
     this._cmds = data.keys.cmds;
 
-    this._socket = data.socket;
     this._ticker = data.ticker;
 
     this._currentModes = {};  // статусы режимов
@@ -129,7 +128,7 @@ define(['Publisher'], function (Publisher) {
       str = '1' + str;
 
       // отправка данных в системе счисления base36
-      this._socket.emit('keys', this._parseInt(str, 2).toString(36));
+      this.publisher.emit('socket', this._parseInt(str, 2).toString(36));
     }
   };
 

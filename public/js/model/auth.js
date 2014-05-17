@@ -2,7 +2,7 @@ define(['Publisher'], function (Publisher) {
   // Singleton AuthModel
   var authModel;
 
-  function AuthModel(socket) {
+  function AuthModel() {
     if (authModel) {
       return authModel;
     }
@@ -13,8 +13,6 @@ define(['Publisher'], function (Publisher) {
     this._options = {};
     this._errors = [];
     this._sendStatus = false;
-
-    this._socket = socket;
 
     this.publisher = new Publisher();
   }
@@ -80,21 +78,21 @@ define(['Publisher'], function (Publisher) {
         return;
       }
 
-      this._socket.emit('auth', this._data, this.parseRes.bind(this));
+      this.publisher.emit('socket', this._data);
 
       this._sendStatus = true;
     }
   };
 
   // разбор ответа сервера
-  AuthModel.prototype.parseRes = function (err, auth) {
+  AuthModel.prototype.parseRes = function (err) {
     var arr = []
       , data = this._data
       , p
       , name;
 
     // если авторизация успешна
-    if (auth === true) {
+    if (!err) {
       for (p in data) {
         if (data.hasOwnProperty(p)) {
           name = this._options[p].storage;

@@ -9,12 +9,10 @@ define(['Publisher'], function (Publisher) {
 
     chatModel = this;
 
-    this._socket = data.socket;
-
-    this._listLimit = data.params.listLimit || 5;
-    this._lineTime = data.params.lineTime || 15000;
-    this._cacheMin = data.params.cacheMin || 200;
-    this._cacheMax = data.params.cacheMax || 300;
+    this._listLimit = data.listLimit || 5;
+    this._lineTime = data.lineTime || 15000;
+    this._cacheMin = data.cacheMin || 200;
+    this._cacheMax = data.cacheMax || 300;
 
     this._cache = []; // хранилище сообщений
     this._list = [];  // активный чат-лист
@@ -52,7 +50,7 @@ define(['Publisher'], function (Publisher) {
     message = message.replace(/\<|\>|\"|\'|\%|\;|\(|\)|\&|\+|\-/g, '');
 
     if (message) {
-      this._socket.emit('chat', message);
+      this.publisher.emit('socket', message);
     }
   };
 

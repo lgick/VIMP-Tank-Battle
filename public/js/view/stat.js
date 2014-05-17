@@ -97,7 +97,7 @@ define(['Publisher'], function (Publisher) {
               break;
             }
 
-          // иначе, сортировка по возрастанию
+          // иначе сортировка по возрастанию
           } else {
             // если предыдущее значение больше текущего
             if (prevValue > value) {
@@ -135,7 +135,7 @@ define(['Publisher'], function (Publisher) {
               break;
             }
 
-          // иначе, сортировка по возрастанию
+          // иначе сортировка по возрастанию
           } else {
             // если следующее значение меньше текущего
             if (nextValue < value) {
@@ -175,7 +175,7 @@ define(['Publisher'], function (Publisher) {
       if (cellsData === null) {
         row.parentNode.removeChild(row);
 
-      // иначе, обновить строку
+      // иначе обновить строку
       } else {
         cells = row.cells;
 

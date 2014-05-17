@@ -41,5 +41,10 @@ define([], function () {
     this._model.send();
   };
 
+  // разбор ответа сервера
+  AuthCtrl.prototype.parseRes = function (err) {
+    this._model.parseRes(err);
+  }
+
   return AuthCtrl;
 });

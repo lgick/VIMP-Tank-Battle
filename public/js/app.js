@@ -1,5 +1,5 @@
 require([
-  'require', 'io', 'createjs',
+  'require', 'createjs',
   'AuthModel', 'AuthView', 'AuthCtrl',
   'UserModel', 'UserView', 'UserCtrl',
   'GameModel', 'GameView', 'GameCtrl',
@@ -9,7 +9,7 @@ require([
   'VoteModel', 'VoteView', 'VoteCtrl',
   'Factory'
 ], function (
-  require, io, createjs,
+  require, createjs,
   AuthModel, AuthView, AuthCtrl,
   UserModel, UserView, UserCtrl,
   GameModel, GameView, GameCtrl,
@@ -24,15 +24,14 @@ require([
     , document = window.document
     , parseInt = window.parseInt
     , RegExp = window.RegExp
+    , location = window.location
     , localStorage = window.localStorage
+    , JSON = window.JSON
+    , WebSocket = window.WebSocket || window.MozWebSocket
 
     , informer = document.getElementById('informer')
 
-    , socket = io.connect('', {
-        'reconnection delay': 500,
-        'reconnection limit': 500,
-        'max reconnection attempts': 1000
-    })
+    , socket = new WebSocket('ws://' + location.host + '/')
 
     , LoadQueue = createjs.LoadQueue
     , SpriteSheet = createjs.SpriteSheet
@@ -53,297 +52,110 @@ require([
     , parts
 
       // координаты
-    , coords = {}
+    , coords = {x: 0, y: 0}
 
-    , depsStatus = {}
+      // методы для обработки сокет-данных
+    , socketMethods = []
+
   ;
 
 
-  // создает пользователя
-  function runModules(data) {
-    var canvasOptions = data.canvasOptions
-      , keys = data.keys
-      , displayID = data.displayID
+// SOCKET МЕТОДЫ
 
-      , userModel
-      , userView
+  // вывод сообщения о бане
+  socketMethods[0] = function (data) {
+    var message = 'Dear ' + data[0] + ', You are banned!<br>' +
+      'Reason: ' + data[1] + '<br>' +
+      'Time (hours): ' + (data[2] / 1000 / 60 / 60).toFixed(2) + '<br>' +
+      'Type: ' + data[3] + '<br>' +
+      data[4] + '<br>';
 
-      , chatModel
-      , chatView
-      , chatData = data.chat
+    updateGameInformer(message);
+  };
 
-      , panelModel
-      , panelView
-      , panelData = data.panel
+  // установка конфига
+  socketMethods[1] = function (data) {
+    // установка дополнений игры
+    function runParts(data, cb) {
+      parts = data;
 
-      , statModel
-      , statView
-      , statData = data.stat
-
-      , voteModel
-      , voteView
-      , voteData = data.vote
-    ;
-
-
-    //==========================================//
-    // User Module
-    //==========================================//
-
-    userModel = new UserModel({
-      window: window,
-      sizeOptions: canvasOptions,
-      keys: keys,
-      socket: socket,
-      ticker: ticker
-    });
-
-    userView = new UserView(userModel, {
-      window: window,
-      displayID: displayID
-    });
-
-    modules.user = new UserCtrl(userModel, userView);
-
-    // инициализация
-    modules.user.init({
-      width: window.innerWidth,
-      height: window.innerHeight
-    });
-
-
-    //==========================================//
-    // Chat Module
-    //==========================================//
-
-    chatModel = new ChatModel({
-      socket: socket,
-      params: chatData.params
-    });
-
-    chatView = new ChatView(chatModel, {
-      window: window,
-      chat: document.getElementById(chatData.elems.chatBox),
-      cmd: document.getElementById(chatData.elems.cmd)
-    });
-
-    modules.chat = new ChatCtrl(chatModel, chatView);
-
-
-    //==========================================//
-    // Panel Module
-    //==========================================//
-
-    panelModel = new PanelModel(panelData.routes);
-
-    panelView = new PanelView(panelModel, {
-      window: window,
-      panel: panelData.elems
-    });
-
-    modules.panel = new PanelCtrl(panelModel, panelView);
-
-
-    //==========================================//
-    // Stat Module
-    //==========================================//
-
-    statModel = new StatModel(statData.params);
-
-    statView = new StatView(statModel, {
-      window: window,
-      stat: document.getElementById(statData.elems.stat)
-    });
-
-    modules.stat = new StatCtrl(statModel, statView);
-
-
-    //==========================================//
-    // Vote Module
-    //==========================================//
-
-    voteModel = new VoteModel({
-      window: window,
-      socket: socket,
-      vote: voteData.params.vote,
-      time: voteData.params.time
-    });
-
-    voteView = new VoteView(voteModel, {
-      window: window,
-      elems: voteData.elems
-    });
-
-    modules.vote = new VoteCtrl(voteModel, voteView);
-
-
-    //==========================================//
-    // Подписка на события
-    //==========================================//
-
-    // событие активации режима
-    userModel.publisher.on('mode', openMode);
-
-    // подписка на данные от пользователя для режимов
-    userModel.publisher.on('chat', modules.chat.updateCmd.bind(modules.chat));
-    userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
-    userModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
-
-    // после ресайза элементов происходит перерисовка кадра
-    userView.publisher.on('redraw', updateGameControllers);
-
-    chatModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
-    statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
-    voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
-  }
-
-  // создает экземпляр игры
-  function makeGameController(canvasId) {
-    var model = new GameModel()
-      , view = new GameView(model, canvasId)
-      , controller = new GameCtrl(model, view);
-
-    return controller;
-  }
-
-  // обновляет полотна
-  function updateGameControllers() {
-    var name;
-
-    if (!coords) {
-      return;
-    }
-
-    for (name in CTRL) {
-      if (CTRL.hasOwnProperty(name)) {
-        CTRL[name].update(coords, scale[name]);
-      }
-    }
-  }
-
-  // открывает режим
-  function openMode(mode) {
-    if (modules[mode]) {
-      modules[mode].open();
-    }
-  }
-
-  // дозагрузка данных
-  function requestDependences() {
-    if (!depsStatus.parts) {
-      socket.emit('parts');
-    } else if (!depsStatus.user) {
-      socket.emit('user');
-    } else if (!depsStatus.media) {
-      socket.emit('media');
-    } else if (!depsStatus.map) {
-      socket.emit('map');
-    } else {
-      socket.emit('ready');
-    }
-  }
-
-// ДАННЫЕ С СЕРВЕРА
-
-  // разрешение на дозагрузку зависимостей
-  socket.on('deps', requestDependences);
-
-  // дозагрузка зависимостей
-  socket.on('parts', function (data) {
-    parts = data;
-
-    var i = 0
-      , len = data.length
-      , arr = [];
-
-    for (; i < len; i += 1) {
-      arr.push(data[i].path);
-    }
-
-    require(arr, function () {
       var i = 0
-        , len = arguments.length;
+        , len = data.length
+        , arr = [];
 
       for (; i < len; i += 1) {
-        Factory.add(data[i].name, arguments[i]);
+        arr.push(data[i].path);
       }
 
-      depsStatus.parts = true;
-      requestDependences();
-    });
-  });
+      require(arr, function () {
+        var i = 0
+          , len = arguments.length;
 
-  // получение пользовательских данных
-  socket.on('user', function (data) {
-    var canvas
-      , canvasOptions = data.canvasOptions
-      , s;
+        for (; i < len; i += 1) {
+          Factory.add(data[i].name, arguments[i]);
+        }
 
-    runModules(data);
+        cb();
+      });
+    }
 
-    for (canvas in canvasOptions) {
-      if (canvasOptions.hasOwnProperty(canvas)) {
-        // создание контроллера полотна
-        CTRL[canvas] = makeGameController(canvas);
+    // установка пользовательских данных
+    function runUser(data, cb) {
+      var canvas
+        , canvasOptions = data.canvasOptions
+        , s;
 
-        // масштаб изображения на полотне
-        s = canvasOptions[canvas].scale || '1:1';
-        s = s.split(':');
-        scale[canvas] = parseInt(s[0], 10) / parseInt(s[1], 10);
+      runModules(data);
+
+      for (canvas in canvasOptions) {
+        if (canvasOptions.hasOwnProperty(canvas)) {
+          // создание контроллера полотна
+          CTRL[canvas] = makeGameController(canvas);
+
+          // масштаб изображения на полотне
+          s = canvasOptions[canvas].scale || '1:1';
+          s = s.split(':');
+          scale[canvas] = parseInt(s[0], 10) / parseInt(s[1], 10);
+        }
       }
+
+      cb();
     }
 
-    depsStatus.user = true;
-    requestDependences();
-  });
+    // установка медиаданных
+    function runMedia(data, cb) {
+      // загрузка графических файлов
+      loader = new LoadQueue(false);
+      loader.loadManifest(data.manifest);
 
-  // загрузка media
-  socket.on('media', function (data) {
-    // загрузка графических файлов
-    loader = new LoadQueue(false);
-    loader.loadManifest(data.manifest);
+      // событие при завершении загрузки
+      loader.on("complete", function () {
+        cb();
+      });
+    }
 
-    // событие при завершении загрузки
-    loader.on("complete", function () {
-      depsStatus.media = true;
-      requestDependences();
+    runParts(data.parts, function () {
+      runUser(data.user, function () {
+        runMedia(data.media, function () {
+          sending(0);
+        });
+      });
     });
-  });
+  };
 
-  // активация карты
-  socket.on('map', function (data) {
-    var spriteSheet = new SpriteSheet(data.spriteSheet);
+  // вывод сообщения о полном сервере
+  socketMethods[2] = function (data) {
+    var message;
 
-    if (!spriteSheet.complete) {
-      spriteSheet.addEventListener('complete', create);
-    } else {
-      create();
-    }
+    message = 'Server is full! Please wait or come back later!<br>' +
+      'Max players: ' + data[0] + '<br>' +
+      'Your waiting number: ' + data[1] + '<br>';
 
-    function create() {
-      CTRL[parts[0].canvas].parse(
-        ['Map'],
-        [
-          {
-            name: data.name,
-            spriteSheet: spriteSheet,
-            step: data.step,
-            map: data.map,
-            options: data.options
-          }
-        ],
-        false
-      );
-
-      spriteSheet.removeAllEventListeners();
-
-      depsStatus.map = true;
-      requestDependences();
-    }
-  });
+    updateGameInformer(message);
+  };
 
   // авторизация пользователя
-  socket.on('auth', function (data) {
+  socketMethods[3] = function (data) {
     if (typeof data !== 'object') {
       console.log('authorization error');
       return;
@@ -356,7 +168,6 @@ require([
       , params = data.params
       , authModel
       , authView
-      , authCtrl
       , i = 0
       , len = params.length
       , storage
@@ -383,36 +194,62 @@ require([
       enter: document.getElementById(elems.enterId)
     };
 
-    authModel = new AuthModel(socket);
+    authModel = new AuthModel();
     authView = new AuthView(authModel, viewData);
-    authCtrl = new AuthCtrl(authModel, authView);
+    modules.auth = new AuthCtrl(authModel, authView);
 
-    authCtrl.init(params);
-  });
+    authModel.publisher.on('socket', function (data) {
+      sending(1, data);
+    });
 
-  // для теста
-  socket.on('test', function (x) {
-    if (x.module === 'chat') {
-      modules.chat.add({name: 'System', text: x.data});
-    } else if (x.module === 'stat') {
-      modules.stat.update(x.data);
-    } else if (x.module === 'panel') {
-      modules.panel.update(x.data);
-    } else if (x.module === 'vote') {
-      modules.vote.open(x.data);
-    } else if (x.module === 'console') {
-      console.log(x.data);
+    modules.auth.init(params);
+  };
+
+  // подтверждение авторизации с сервера
+  socketMethods[4] = function (data) {
+    modules.auth.parseRes(data);
+  };
+
+  // активация карты
+  socketMethods[5] = function (data) {
+    var spriteSheet = new SpriteSheet(data.spriteSheet);
+
+    if (!spriteSheet.complete) {
+      spriteSheet.addEventListener('complete', create);
+    } else {
+      create();
     }
-  });
+
+    function create() {
+      CTRL[parts[0].canvas].parse(
+        ['Map'],
+        [
+          {
+            name: data.name,
+            spriteSheet: spriteSheet,
+            step: data.step,
+            map: data.map,
+            options: data.options
+          }
+        ],
+        false
+      );
+
+      spriteSheet.removeAllEventListeners();
+      updateGameControllers();
+
+      sending(2);
+    }
+  };
 
   // обновление данных
-  socket.on('shot', function (serverData) {
-    var game = serverData[0]  // массив данных для отрисовки кадра игры
-      , crds = serverData[1]
-      , panel = serverData[2]
-      , stat = serverData[3]
-      , chat = serverData[4]
-      , vote = serverData[5]
+  socketMethods[6] = function (data) {
+    var game = data[0]  // массив данных для отрисовки кадра игры
+      , crds = data[1]
+      , panel = data[2]
+      , stat = data[3]
+      , chat = data[4]
+      , vote = data[5]
 
       , i = 0
       , len = game.length
@@ -464,7 +301,196 @@ require([
     if (vote) {
       modules.vote.open(vote);
     }
-  });
+  };
+
+  // тест
+  socketMethods[7] = function (x) {
+    if (x.module === 'chat') {
+      modules.chat.add({name: 'System', text: x.data});
+    } else if (x.module === 'stat') {
+      modules.stat.update(x.data);
+    } else if (x.module === 'panel') {
+      modules.panel.update(x.data);
+    } else if (x.module === 'vote') {
+      modules.vote.open(x.data);
+    } else if (x.module === 'console') {
+      console.log(x.data);
+    }
+  };
+
+// ФУНКЦИИ
+
+  // создает пользователя
+  function runModules(data) {
+    var canvasOptions = data.canvasOptions
+      , keys = data.keys
+      , displayID = data.displayID
+
+      , userModel
+      , userView
+
+      , chatModel
+      , chatView
+      , chatData = data.chat
+
+      , panelModel
+      , panelView
+      , panelData = data.panel
+
+      , statModel
+      , statView
+      , statData = data.stat
+
+      , voteModel
+      , voteView
+      , voteData = data.vote
+    ;
+
+
+    //==========================================//
+    // User Module
+    //==========================================//
+
+    userModel = new UserModel({
+      window: window,
+      sizeOptions: canvasOptions,
+      keys: keys,
+      ticker: ticker
+    });
+
+    userView = new UserView(userModel, {
+      window: window,
+      displayID: displayID
+    });
+
+    modules.user = new UserCtrl(userModel, userView);
+
+    // инициализация
+    modules.user.init({
+      width: window.innerWidth,
+      height: window.innerHeight
+    });
+
+
+    //==========================================//
+    // Chat Module
+    //==========================================//
+
+    chatModel = new ChatModel(chatData.params);
+
+    chatView = new ChatView(chatModel, {
+      window: window,
+      chat: document.getElementById(chatData.elems.chatBox),
+      cmd: document.getElementById(chatData.elems.cmd)
+    });
+
+    modules.chat = new ChatCtrl(chatModel, chatView);
+
+
+    //==========================================//
+    // Panel Module
+    //==========================================//
+
+    panelModel = new PanelModel(panelData.routes);
+
+    panelView = new PanelView(panelModel, {
+      window: window,
+      panel: panelData.elems
+    });
+
+    modules.panel = new PanelCtrl(panelModel, panelView);
+
+
+    //==========================================//
+    // Stat Module
+    //==========================================//
+
+    statModel = new StatModel(statData.params);
+
+    statView = new StatView(statModel, {
+      window: window,
+      stat: document.getElementById(statData.elems.stat)
+    });
+
+    modules.stat = new StatCtrl(statModel, statView);
+
+
+    //==========================================//
+    // Vote Module
+    //==========================================//
+
+    voteModel = new VoteModel({
+      window: window,
+      vote: voteData.params.vote,
+      time: voteData.params.time
+    });
+
+    voteView = new VoteView(voteModel, {
+      window: window,
+      elems: voteData.elems
+    });
+
+    modules.vote = new VoteCtrl(voteModel, voteView);
+
+
+    //==========================================//
+    // Подписка на события
+    //==========================================//
+
+    // событие активации режима
+    userModel.publisher.on('mode', openMode);
+
+    // подписка на данные от пользователя для режимов
+    userModel.publisher.on('chat', modules.chat.updateCmd.bind(modules.chat));
+    userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
+    userModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
+
+    // после ресайза элементов происходит перерисовка кадра
+    userView.publisher.on('redraw', updateGameControllers);
+
+    chatModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+    statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+    voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+
+    userModel.publisher.on('socket', function (data) {
+      sending(3, data);
+    });
+
+    chatModel.publisher.on('socket', function (data) {
+      sending(4, data);
+    });
+
+    voteModel.publisher.on('socket', function (data) {
+      sending(5, data);
+    });
+  }
+
+  // создает экземпляр игры
+  function makeGameController(canvasId) {
+    var model = new GameModel()
+      , view = new GameView(model, canvasId)
+      , controller = new GameCtrl(model, view);
+
+    return controller;
+  }
+
+  // обновляет полотна
+  function updateGameControllers() {
+    var name;
+
+    for (name in CTRL) {
+      if (CTRL.hasOwnProperty(name)) {
+        CTRL[name].update(coords, scale[name]);
+      }
+    }
+  }
+
+  // открывает режим
+  function openMode(mode) {
+    if (modules[mode]) {
+      modules[mode].open();
+    }
+  }
 
   // вывод сообщения об ошибке соединения
   function updateGameInformer(message) {
@@ -477,40 +503,30 @@ require([
     }
   }
 
-  socket.on('ban', function (data) {
-    var message = 'Dear ' + data[0] + ', You are banned!<br>' +
-      'Reason: ' + data[1] + '<br>' +
-      'Time (hours): ' + (data[2] / 1000 / 60 / 60).toFixed(2) + '<br>' +
-      'Type: ' + data[3] + '<br>' +
-      data[4] + '<br>';
+  // отправляет данные
+  function sending(name, data) {
+    socket.send(JSON.stringify([name, data]));
+  }
 
-    updateGameInformer(message);
-  });
+  // распаковывает данные
+  function unpacking(pack) {
+    return JSON.parse(pack);
+  }
 
-  socket.on('full_server', function (data) {
-    var message;
+// ДАННЫЕ С СЕРВЕРА
 
-    message = 'Server is full! Please wait or come back later!<br>' +
-      'Max players: ' + data[0] + '<br>' +
-      'Your waiting number: ' + data[1] + '<br>';
+  socket.onopen = function (event) {
+    console.log('open');
+  };
 
-    updateGameInformer(message);
-  });
+  socket.onclose = function (event) {
+    console.log('disconnect');
+  };
 
-  socket.on('connect', function () {
-    updateGameInformer();
-  });
+  socket.onmessage = function (event) {
+    var msg = unpacking(event.data);
 
-  socket.on('disconnect', function () {
-    updateGameInformer('Server disconnect :(');
-  });
-
-  socket.on('reconnect_failed', function () {
-    updateGameInformer('Server reconnect failed :/');
-  });
-
-  socket.on('connect_failed', function () {
-    updateGameInformer('Server connect failed :o');
-  });
+    socketMethods[msg[0]](msg[1]);
+  };
 
 });

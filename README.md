@@ -7,6 +7,30 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
 ```
 -->
 
+
+# Socket switch (message-IDs)
+
+## Client switch
+
+    0: ban data
+    1: config data
+    2: full server data
+    3: auth data
+    4: auth errors
+    5: map data
+    6: shot data
+    7: test
+
+## Server switch
+
+    0: config ready
+    1: auth response
+    2: map ready
+    3: keys data
+    4: chat data
+    5: vote data
+
+
 # Модуль STAT
 
 Статистика игры.

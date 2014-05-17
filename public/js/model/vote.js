@@ -14,8 +14,6 @@ define(['Publisher'], function (Publisher) {
     this._String = this._window.String;
     this._parseInt = this._window.parseInt;
 
-    this._socket = data.socket;
-
     this._defaultVote = data.vote;   // голосование по умолчанию
     this._currentVote = null;        // текущее голосование
     this._typeVote = null;           // тип объекта голосования (объект или массив)
@@ -85,10 +83,13 @@ define(['Publisher'], function (Publisher) {
       this._title = vote.title;
 
       if (typeof vote.value === 'string') {
-        this._socket.emit('vote', vote.value, (function (values) {
-          this._values = values;
-          this.show();
-        }).bind(this));
+        this.publisher.emit('socket', vote.value);
+        console.log('ЗАГРУЖАЮ ДАННЫЕ');
+        // TODO: сделать загрузку данных!
+        //this._socket.emit('vote', vote.value, (function (values) {
+        //  this._values = values;
+        //  this.show();
+        //}).bind(this));
       } else {
         this._values = vote.value;
         this.show();
@@ -152,7 +153,7 @@ define(['Publisher'], function (Publisher) {
 
             // иначе, отправляет результат на сервер и завершаем голосование
             } else {
-              this._socket.emit('vote', {
+              this.publisher.emit('socket', {
                 vote: this._voteName,
                 data: this._data
               });
