@@ -421,7 +421,7 @@ require([
 
     voteModel = new VoteModel({
       window: window,
-      vote: voteData.params.vote,
+      menu: voteData.params.menu,
       time: voteData.params.time
     });
 

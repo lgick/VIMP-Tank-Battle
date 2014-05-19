@@ -10,24 +10,26 @@ define(['Publisher'], function (Publisher) {
     voteModel = this;
 
     this._window = data.window;
-    this._Object = this._window.Object;
     this._String = this._window.String;
     this._parseInt = this._window.parseInt;
 
-    this._defaultVote = data.vote;   // голосование по умолчанию
+    this._menu = data.menu;          // меню
+
     this._currentVote = null;        // текущее голосование
-    this._typeVote = null;           // тип объекта голосования (объект или массив)
+    this._type = '';                 // тип ('menu', 'vote')
+    this._waitingValues = false;     // ожидания значений
 
     this._time = data.time || 20000; // время жизни голосования
     this._timerID = null;            // id таймера
 
-    this._voteName = null;           // название голосования
-    this._data = {};                 // данные голосования
+    this._voteName = '';             // название голосования
+    this._data = [];                 // данные голосования
 
     this._title = null;              // заголовок голосования
+    this._values = [];               // все значения голосования
+
     this._back = false;              // флаг back
     this._more = false;              // флаг more
-    this._values = [];               // все значения голосования
     this._currentPage = 0;           // текущая страница вывода значений
     this._currentValues = [];        // значения текущей страницы
 
@@ -43,63 +45,85 @@ define(['Publisher'], function (Publisher) {
   };
 
   // создает голосование
-  VoteModel.prototype.createVote = function (voteData) {
-    var i
-      , len
-      , vote = this._currentVote = voteData || this._defaultVote;
-
-    this._title = null;
-    this._values = [];
-    this._currentPage = 0;
-    this._back = false;
-    this._more = false;
-
-    // определение типа
-    if (this._Object.prototype.toString.call(vote) === '[object Array]') {
-      this._typeVote = 'array';
-    } else if (this._Object.prototype.toString.call(vote) === '[object Object]') {
-      this._typeVote = 'object';
-    } else {
-      this._typeVote = null;
+  VoteModel.prototype.createVote = function (data) {
+    if (this._waitingValues) {
+      return;
     }
 
-    // если тип данных для голосования - массив
-    if (this._typeVote === 'array') {
-      this._title = 'Menu';
+    var values;
 
-      for (i = 0, len = vote.length; i < len; i += 1) {
-        // если значение содержит св-во title
-        if (vote[i].title) {
-          this._values.push(vote[i].title);
-        } else {
-          this._values.push('Menu');
-        }
-      }
+    this._type = 'vote';
+    this._back = false;
+    this._more = false;
+    this._currentPage = 0;
 
+    // если данные: ['name', ['title', 'value', 'next']]
+    if (data.length === 2) {
+      this._voteName = data[0];
+      this._currentVote = data[1];
+
+    // если данные: ['title', 'value', 'next']
+    } else if (data.length === 3) {
+      this._currentVote = data;
+    }
+
+    this._title = this._currentVote[0];
+    values = this._currentVote[1];
+
+    if (typeof values === 'string') {
+      this._waitingValues = true;
+      this.publisher.emit('socket', values);
+    } else {
+      this._values = values;
       this.show();
+    }
+  };
 
-    // иначе, если тип данных для голосования - объект
-    } else if (this._typeVote === 'object') {
-      this._title = vote.title;
+  // создает меню
+  VoteModel.prototype.createMenu = function () {
+    if (this._waitingValues) {
+      return;
+    }
 
-      if (typeof vote.value === 'string') {
-        this.publisher.emit('socket', vote.value);
-        console.log('ЗАГРУЖАЮ ДАННЫЕ');
-        // TODO: сделать загрузку данных!
-        //this._socket.emit('vote', vote.value, (function (values) {
-        //  this._values = values;
-        //  this.show();
-        //}).bind(this));
-      } else {
-        this._values = vote.value;
-        this.show();
-      }
+    var i
+      , len;
+
+    this._currentVote = this._menu;
+
+    this._type = 'menu';
+    this._back = false;
+    this._more = false;
+    this._currentPage = 0;
+
+    this._data = [];
+    this._title = 'Menu';
+    this._values = [];
+    this._voteName = '';
+
+
+    for (i = 0, len = this._currentVote.length; i < len; i += 1) {
+      this._values.push(this._currentVote[i][1][0]);
+    }
+
+    this.show();
+  };
+
+  // обновляет массив значений
+  VoteModel.prototype.updateValues = function (values) {
+    if (this._waitingValues) {
+      this._values = values;
+      this._waitingValues = false;
+      this.show();
     }
   };
 
   // обновляет голосование
   VoteModel.prototype.update = function (keyCode) {
     var number;
+
+    if (this._waitingValues) {
+      return;
+    }
 
     // если keyCode это число от 0 до 9
     if (48 <= keyCode && keyCode <= 57) {
@@ -109,7 +133,6 @@ define(['Publisher'], function (Publisher) {
       // exit
       if (number === 0) {
         this.complete();
-
       // back
       } else if (number === 8) {
         if (this._back) {
@@ -129,35 +152,26 @@ define(['Publisher'], function (Publisher) {
         number = number - 1;
 
         // если тип данных для голосования это массив
-        if (this._typeVote === 'array') {
+        if (this._type === 'menu') {
           // если число есть в массиве значений
           if (this._currentVote[number]) {
             this.createVote(this._currentVote[number]);
           }
 
         // иначе, если тип данных для голосования это объект
-        } else if (this._typeVote === 'object') {
+        } else if (this._type === 'vote') {
           // если число есть в массиве значений
           if (this._currentValues[number]) {
 
-            // если у голосования есть название
-            if (this._currentVote.vote) {
-              this._voteName = this._currentVote.vote;
-            }
-
-            this._data[this._currentVote.key] = this._currentValues[number];
+            this._data.push(this._currentValues[number]);
 
             // если есть вложенный опрос, то создаем новое голосование
-            if (this._currentVote.next) {
-              this.createVote(this._currentVote.next);
+            if (this._currentVote[2]) {
+              this.createVote(this._currentVote[2]);
 
             // иначе, отправляет результат на сервер и завершаем голосование
             } else {
-              this.publisher.emit('socket', {
-                vote: this._voteName,
-                data: this._data
-              });
-
+              this.publisher.emit('socket', [this._voteName, this._data]);
               this.complete();
             }
           }
@@ -198,7 +212,8 @@ define(['Publisher'], function (Publisher) {
 
   // завершает голосование
   VoteModel.prototype.complete = function () {
-    this._data = {};
+    this._data = [];
+    this._waitingValues = false;
     this.publisher.emit('clear', this._timerID);
     this.publisher.emit('mode', {
       name: 'vote',

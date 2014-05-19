@@ -19,14 +19,22 @@ define([], function () {
   }
 
   // включить
-  VoteCtrl.prototype.open = function (vote) {
-    if (vote) {
-      this._model.createVote(vote);
+  VoteCtrl.prototype.open = function (dataArray) {
+    // если есть данные
+    if (dataArray) {
+      // если первый элемент массива null, значит это values
+      if (dataArray[0] === null) {
+        this._model.updateValues(dataArray[1]);
+      // иначе создать голосование
+      } else {
+        this._model.createVote(dataArray);
+        this._model.open();
+      }
+    // иначе открыть меню
     } else {
-      this._model.createVote();
+      this._model.createMenu();
+      this._model.open();
     }
-
-    this._model.open();
   };
 
   // назначает ключ

@@ -79,7 +79,15 @@ module.exports = function (server) {
       // TODO: получить запрос на данные для опроса и отправить их
       // или
       // TODO: создать опрос и разослать его всем
-      var users = ['bob', 'jek', 'vasya', 'petya', 'vovka'];
+      var users = [null, ['bob', 'jek', 'vasya', 'petya', 'vovka']];
+      var vote = [
+          'remap',
+          [
+            'Может поменяем на arena_2?',
+            ['Да', 'Нет'],
+            null
+          ]
+      ];
 
       if (typeof data === 'string') {
         if (data === 'users') {
