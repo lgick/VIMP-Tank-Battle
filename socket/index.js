@@ -1,4 +1,5 @@
 var WebSocketServer = require('ws').Server;
+var uuid = require('node-uuid');
 
 var log = require('../lib/log')(module);
 var security = require('../lib/security');
@@ -16,8 +17,7 @@ var auth = config.get('auth');
 var cConf = config.get('client');
 
 var sessions = {};
-var users = {};
-var allUsers = 0;
+var IPs = {};
 
 module.exports = function (server) {
   var wss = new WebSocketServer({server: server});
@@ -25,35 +25,48 @@ module.exports = function (server) {
   wss.on('connection', function (ws) {
     var address = ws.upgradeReq.connection.remoteAddress;
     var origin = ws.upgradeReq.headers.origin;
+    var id;
 
-    ws.socket = {};
+    security.origin(origin, function (err) {
+      if (err) {
+        ws.close();
+      } else {
+        ws.socket = {};
 
-    // отправляет данные
-    ws.socket.send = function (name, data) {
-      console.log(ws.readyState);
-      if (ws.readyState === 1) {
-        ws.send(JSON.stringify([name, data]));
+        id = ws.socket.id = uuid.v1();
+
+        // отправляет данные
+        ws.socket.send = function (name, data) {
+          console.log(ws.readyState);
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify([name, data]));
+          }
+          //ws.send(samples, {binary: true});
+        };
+
+        // распаковывает данные
+        ws.socket.unpack = function (pack) {
+          return JSON.parse(pack);
+        };
+
+        sessions[id] = ws;
+
+        ws.socket.send(0, cConf);
       }
-      //ws.send(samples, {binary: true});
-    };
-
-    // распаковывает данные
-    ws.socket.unpack = function (pack) {
-      return JSON.parse(pack);
-    };
+    });
 
     var socketMethods = [
       // 0: config ready
       function (err) {
         if (!err) {
           if (oneConnection) {
-            if (sessions[address]) {
-              sessions[address].socket.send(5, [2]);
-              sessions[address].close();
+            if (IPs[address]) {
+              sessions[IPs[address]].socket.send(5, [2]);
+              sessions[IPs[address]].close();
             }
           }
 
-          sessions[address] = ws;
+          IPs[address] = id;
 
           bantools.check(address, function (ban) {
             if (ban) {
@@ -62,7 +75,15 @@ module.exports = function (server) {
             }
           });
 
-          ws.socket.send(1, auth);
+          waiting.check(id, function (empty) {
+            if (empty) {
+              ws.socket.send(1, auth);
+            } else {
+              waiting.add(id, function (data) {
+                ws.socket.send(5, [1, data]);
+              });
+            }
+          });
         }
       },
 
@@ -128,18 +149,27 @@ module.exports = function (server) {
       }
     ];
 
-    security.origin(origin, function (err) {
-      if (err) {
-        ws.close();
-      } else {
-        ws.socket.send(0, cConf);
-      }
-    });
-
     ws.onclose = function () {
-      var address = ws.upgradeReq.connection.remoteAddress;
+      waiting.remove(id);
       delete sessions[address];
+
       console.log('close');
+
+      waiting.getNext(function (id) {
+        if (id) {
+          sessions[id].socket.send(1, auth);
+        }
+      });
+
+      waiting.createNotifyObject(function (notifyObject) {
+        var p;
+
+        for (p in notifyObject) {
+          if (notifyObject.hasOwnProperty(p)) {
+            sessions[p].socket.send(5, [1, notifyObject[p]]);
+          }
+        }
+      });
     };
 
     ws.onmessage = function (event) {
