@@ -12,14 +12,13 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
 
 ## Client switch
 
-    0: ban data
-    1: config data
-    2: full server data
-    3: auth data
-    4: auth errors
-    5: map data
-    6: shot data
-    7: test
+    0: config data
+    1: auth data
+    2: auth errors
+    3: map data
+    4: shot data
+    5: inform data
+    6: test
 
 ## Server switch
 
@@ -130,7 +129,7 @@ statArray = [
 
 ### Меню
 
-По умолчанию при вызове модуля отображает меню.
+По умолчанию при вызове модуля отображается меню.
 
 ![vote-menu](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-menu.png)
 
@@ -386,13 +385,13 @@ canvasOptions: {
     ]
   ],
 
-  // coords (x, y)
+  // coords [x, y]
   [400, 320],
 
   // panel
   [97, 777, 3],
 
-  // stat
+  // stat [tBodies, tHead]
   [
     [
       [6, 0, ['bot 6', '', 5, 1], 0],
@@ -413,10 +412,10 @@ canvasOptions: {
     ]
   ],
 
-  // chat (name, text)
+  // chat [name, text]
   ['User', 'Hello World!'],
 
-  // vote (vote, data)
+  // vote [vote, data]
   [
     'ban',
     [

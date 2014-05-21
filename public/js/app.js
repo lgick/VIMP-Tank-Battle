@@ -31,7 +31,7 @@ require([
 
     , informer = document.getElementById('informer')
 
-    , socket = new WebSocket('ws://' + location.host + '/')
+    , ws = new WebSocket('ws://' + location.host + '/')
 
     , LoadQueue = createjs.LoadQueue
     , SpriteSheet = createjs.SpriteSheet
@@ -54,27 +54,19 @@ require([
       // координаты
     , coords = {x: 0, y: 0}
 
+    , informList = []
+
       // методы для обработки сокет-данных
     , socketMethods = []
 
   ;
 
+  ws.binaryType = 'arraybuffer';
 
 // SOCKET МЕТОДЫ
 
-  // вывод сообщения о бане
-  socketMethods[0] = function (data) {
-    var message = 'Dear ' + data[0] + ', You are banned!<br>' +
-      'Reason: ' + data[1] + '<br>' +
-      'Time (hours): ' + (data[2] / 1000 / 60 / 60).toFixed(2) + '<br>' +
-      'Type: ' + data[3] + '<br>' +
-      data[4] + '<br>';
-
-    updateGameInformer(message);
-  };
-
   // установка конфига
-  socketMethods[1] = function (data) {
+  socketMethods[0] = function (data) {
     // установка дополнений игры
     function runParts(data, cb) {
       parts = data;
@@ -134,28 +126,24 @@ require([
       });
     }
 
+    function runInform(data, cb) {
+      informList = data;
+      cb();
+    }
+
     runParts(data.parts, function () {
       runUser(data.user, function () {
         runMedia(data.media, function () {
-          sending(0);
+          runInform(data.informer, function () {
+            sending(0);
+          });
         });
       });
     });
   };
 
-  // вывод сообщения о полном сервере
-  socketMethods[2] = function (data) {
-    var message;
-
-    message = 'Server is full! Please wait or come back later!<br>' +
-      'Max players: ' + data[0] + '<br>' +
-      'Your waiting number: ' + data[1] + '<br>';
-
-    updateGameInformer(message);
-  };
-
   // авторизация пользователя
-  socketMethods[3] = function (data) {
+  socketMethods[1] = function (data) {
     if (typeof data !== 'object') {
       console.log('authorization error');
       return;
@@ -206,12 +194,12 @@ require([
   };
 
   // подтверждение авторизации с сервера
-  socketMethods[4] = function (data) {
+  socketMethods[2] = function (data) {
     modules.auth.parseRes(data);
   };
 
   // активация карты
-  socketMethods[5] = function (data) {
+  socketMethods[3] = function (data) {
     var spriteSheet = new SpriteSheet(data.spriteSheet);
 
     if (!spriteSheet.complete) {
@@ -243,7 +231,7 @@ require([
   };
 
   // обновление данных
-  socketMethods[6] = function (data) {
+  socketMethods[4] = function (data) {
     var game = data[0]  // массив данных для отрисовки кадра игры
       , crds = data[1]
       , panel = data[2]
@@ -303,8 +291,27 @@ require([
     }
   };
 
+  // informer message
+  socketMethods[5] = function (data) {
+    var id = data[0]
+      , dataArr = data[1]
+      , message = informList[id]
+      , i
+      , len
+      , regExp;
+
+    if (message && dataArr) {
+      for (i = 0, len = dataArr.length; i < len; i += 1) {
+        regExp = new RegExp('#' + i, 'g');
+        message = message.replace(regExp, dataArr[i]);
+      }
+    }
+
+    updateGameInformer(message);
+  };
+
   // тест
-  socketMethods[7] = function (x) {
+  socketMethods[6] = function (x) {
     if (x.module === 'chat') {
       modules.chat.add({name: 'System', text: x.data});
     } else if (x.module === 'stat') {
@@ -505,7 +512,7 @@ require([
 
   // отправляет данные
   function sending(name, data) {
-    socket.send(JSON.stringify([name, data]));
+    ws.send(JSON.stringify([name, data]));
   }
 
   // распаковывает данные
@@ -515,15 +522,15 @@ require([
 
 // ДАННЫЕ С СЕРВЕРА
 
-  socket.onopen = function (event) {
+  ws.onopen = function (event) {
     console.log('open');
   };
 
-  socket.onclose = function (event) {
+  ws.onclose = function (event) {
     console.log('disconnect');
   };
 
-  socket.onmessage = function (event) {
+  ws.onmessage = function (event) {
     var msg = unpacking(event.data);
 
     socketMethods[msg[0]](msg[1]);
