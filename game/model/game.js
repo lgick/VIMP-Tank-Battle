@@ -66,7 +66,7 @@ Game.prototype.init = function () {
     for (p in this._users) {
       if (this._users.hasOwnProperty(p)) {
         if (this._users[p].ready) {
-          this._users[p].socket.emit('shot', [
+          this._users[p].socket.send(4, [
             [
               [[1, 2], data, 1]
             ],

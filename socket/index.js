@@ -26,6 +26,7 @@ module.exports = function (server) {
     var address = ws.upgradeReq.connection.remoteAddress;
     var origin = ws.upgradeReq.headers.origin;
     var id;
+    var gameID;
 
     security.origin(origin, function (err) {
       if (err) {
@@ -37,10 +38,7 @@ module.exports = function (server) {
 
         // отправляет данные
         ws.socket.send = function (name, data) {
-          console.log(ws.readyState);
-          if (ws.readyState === 1) {
             ws.send(JSON.stringify([name, data]));
-          }
           //ws.send(samples, {binary: true});
         };
 
@@ -94,6 +92,9 @@ module.exports = function (server) {
         ws.socket.send(2, err);
 
         if (!err) {
+          game.createUser(data, ws.socket, function (id) {
+            gameID = id;
+          });
           ws.socket.send(3, config.get('server:maps').mini);
         }
       },
@@ -152,24 +153,25 @@ module.exports = function (server) {
     ws.onclose = function () {
       waiting.remove(id);
       delete sessions[address];
+      game.removeUser(gameID, function () {
+        waiting.getNext(function (id) {
+          if (id) {
+            sessions[id].socket.send(1, auth);
+          }
+        });
+
+        waiting.createNotifyObject(function (notifyObject) {
+          var p;
+
+          for (p in notifyObject) {
+            if (notifyObject.hasOwnProperty(p)) {
+              sessions[p].socket.send(5, [1, notifyObject[p]]);
+            }
+          }
+        });
+      });
 
       console.log('close');
-
-      waiting.getNext(function (id) {
-        if (id) {
-          sessions[id].socket.send(1, auth);
-        }
-      });
-
-      waiting.createNotifyObject(function (notifyObject) {
-        var p;
-
-        for (p in notifyObject) {
-          if (notifyObject.hasOwnProperty(p)) {
-            sessions[p].socket.send(5, [1, notifyObject[p]]);
-          }
-        }
-      });
     };
 
     ws.onmessage = function (event) {

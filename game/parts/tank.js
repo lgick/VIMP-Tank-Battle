@@ -79,7 +79,7 @@ define(['createjs'], function (createjs) {
 
     g.setStrokeStyle(1);
     g.beginStroke('#cccccc');
-    g.beginFill('#333333');
+    g.beginFill(this.colorB);
     g.moveTo(28, -3);
     g.lineTo(3, -3);
     g.lineTo(3, 3);
