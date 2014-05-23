@@ -30,7 +30,7 @@ module.exports = function (server) {
 
     security.origin(origin, function (err) {
       if (err) {
-        ws.close();
+        ws.close(4001);
       } else {
         ws.socket = {};
 
@@ -38,8 +38,13 @@ module.exports = function (server) {
 
         // отправляет данные
         ws.socket.send = function (name, data) {
-            ws.send(JSON.stringify([name, data]));
+          ws.send(JSON.stringify([name, data]));
           //ws.send(samples, {binary: true});
+        };
+
+        // закрывает соединение
+        ws.socket.close = function (code, data) {
+          ws.close(code, JSON.stringify(data));
         };
 
         // распаковывает данные
@@ -59,8 +64,7 @@ module.exports = function (server) {
         if (!err) {
           if (oneConnection) {
             if (IPs[address]) {
-              sessions[IPs[address]].socket.send(5, [2]);
-              sessions[IPs[address]].close();
+              sessions[IPs[address]].socket.close(4002, [5, [2]]);
             }
           }
 
@@ -68,17 +72,16 @@ module.exports = function (server) {
 
           bantools.check(address, function (ban) {
             if (ban) {
-              ws.socket.send(5, [0, ban]);
-              ws.close();
-            }
-          });
-
-          waiting.check(id, function (empty) {
-            if (empty) {
-              ws.socket.send(1, auth);
+              ws.socket.close(4003, [5, [0, ban]]);
             } else {
-              waiting.add(id, function (data) {
-                ws.socket.send(5, [1, data]);
+              waiting.check(id, function (empty) {
+                if (empty) {
+                  ws.socket.send(1, auth);
+                } else {
+                  waiting.add(id, function (data) {
+                    ws.socket.send(5, [1, data]);
+                  });
+                }
               });
             }
           });
@@ -114,7 +117,7 @@ module.exports = function (server) {
 
       // 4: chat data
       function (message) {
-        game.addMessage(message);
+        game.addMessage(gameID, message);
         message = validator.chat(message);
 
         if (message) {
@@ -150,8 +153,17 @@ module.exports = function (server) {
       }
     ];
 
-    ws.onclose = function () {
-      delete IPs[address];
+    ws.onclose = function (e) {
+      // e.code:
+      // 4001 - origin conflict
+      // 4002 - oneConnection
+      // 4003 - ban
+
+      // если закрытие вызвано не дублирующим адресом (oneConnection)
+      if (e.code !== 4002) {
+        delete IPs[address];
+      }
+
       delete sessions[id];
       game.removeUser(gameID, function (success) {
         if (!success) {

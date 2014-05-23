@@ -534,16 +534,23 @@ require([
 
 // ДАННЫЕ С СЕРВЕРА
 
-  ws.onopen = function (event) {
+  ws.onopen = function (e) {
     console.log('open');
   };
 
-  ws.onclose = function (event) {
+  ws.onclose = function (e) {
+    var msg;
+
+    if (e.reason) {
+      msg = unpacking(e.reason);
+      socketMethods[msg[0]](msg[1]);
+    }
+
     console.log('disconnect');
   };
 
-  ws.onmessage = function (event) {
-    var msg = unpacking(event.data);
+  ws.onmessage = function (e) {
+    var msg = unpacking(e.data);
 
     socketMethods[msg[0]](msg[1]);
   };
