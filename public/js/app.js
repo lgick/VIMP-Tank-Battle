@@ -225,7 +225,6 @@ require([
 
       spriteSheet.removeAllEventListeners();
       updateGameControllers();
-
       sending(2);
     }
   };
@@ -310,8 +309,21 @@ require([
     updateGameInformer(message);
   };
 
+  // очищает все полотна
+  socketMethods[6] = function () {
+    var p;
+
+    for (p in CTRL) {
+      if (CTRL.hasOwnProperty(p)) {
+        CTRL[p].remove();
+      }
+    }
+
+    updateGameControllers();
+  };
+
   // тест
-  socketMethods[6] = function (x) {
+  socketMethods[10] = function (x) {
     if (x.module === 'chat') {
       modules.chat.add({name: 'System', text: x.data});
     } else if (x.module === 'stat') {

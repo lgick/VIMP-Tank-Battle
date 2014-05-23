@@ -18,7 +18,8 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
     3: map data
     4: shot data
     5: inform data
-    6: test
+    6: clear
+    10: test
 
 ## Server switch
 

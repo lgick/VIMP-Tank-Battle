@@ -11,13 +11,13 @@ var config = require('../lib/config');
 var oneConnection = config.get('server:oneConnection');
 
 var Game = config.get('server:game');
-var game = new Game();
+var game = new Game(config.get('game'));
 
 var auth = config.get('auth');
 var cConf = config.get('client');
 
-var sessions = {};
-var IPs = {};
+var sessions = {}; // { '0ff81720-e2b2-11e3-9614-018be5de670e': ws }
+var IPs = {};      // { '127.0.0.1': '0ff81720-e2b2-11e3-9614-018be5de670e' }
 
 module.exports = function (server) {
   var wss = new WebSocketServer({server: server});
@@ -95,31 +95,31 @@ module.exports = function (server) {
           game.createUser(data, ws.socket, function (id) {
             gameID = id;
           });
-          ws.socket.send(3, config.get('server:maps').mini);
         }
       },
 
       // 2: map ready
       function (err) {
-        if (!err) {
-        }
+        game.mapReady(err, gameID);
       },
 
       // 3: keys data
       function (data) {
+        game.updateKeys(gameID, data);
         // TODO: добавить к сессии игрока нажатые клавиши
         var keys = parseInt(data, 36).toString(2);
         keys = keys.slice(1);
-        ws.socket.send(6, {module: 'chat', data: data + ' (' + keys + ')'});
+        ws.socket.send(10, {module: 'chat', data: data + ' (' + keys + ')'});
       },
 
       // 4: chat data
       function (message) {
+        game.addMessage(message);
         message = validator.chat(message);
 
         if (message) {
           // TODO: добавить в чат-лист имя игрока и сообщение
-          ws.socket.send(6, {module: 'chat', data: message});
+          ws.socket.send(10, {module: 'chat', data: message});
         }
       },
 
@@ -142,33 +142,38 @@ module.exports = function (server) {
 
         if (typeof data === 'string') {
           if (data === 'users') {
-            ws.socket.send(6, {module: 'vote', data: users});
+            ws.socket.send(10, {module: 'vote', data: users});
           }
         } else if (typeof data === 'object') {
-          ws.socket.send(6, {module: 'chat', data: JSON.stringify(data)});
+          ws.socket.send(10, {module: 'chat', data: JSON.stringify(data)});
         }
       }
     ];
 
     ws.onclose = function () {
+      delete IPs[address];
+      delete sessions[id];
+      game.removeUser(gameID, function (success) {
+        if (!success) {
+        }
+      });
+
       waiting.remove(id);
-      delete sessions[address];
-      game.removeUser(gameID, function () {
-        waiting.getNext(function (id) {
-          if (id) {
-            sessions[id].socket.send(1, auth);
-          }
-        });
 
-        waiting.createNotifyObject(function (notifyObject) {
-          var p;
+      waiting.getNext(function (id) {
+        if (id) {
+          sessions[id].socket.send(1, auth);
+        }
+      });
 
-          for (p in notifyObject) {
-            if (notifyObject.hasOwnProperty(p)) {
-              sessions[p].socket.send(5, [1, notifyObject[p]]);
-            }
+      waiting.createNotifyObject(function (notifyObject) {
+        var p;
+
+        for (p in notifyObject) {
+          if (notifyObject.hasOwnProperty(p)) {
+            sessions[p].socket.send(5, [1, notifyObject[p]]);
           }
-        });
+        }
       });
 
       console.log('close');

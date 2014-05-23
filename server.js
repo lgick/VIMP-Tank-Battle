@@ -19,6 +19,7 @@ var config = require('./lib/config');
 config.set('auth', require(path.join(__dirname, '/game/config/auth.js')));
 config.set('server', require(path.join(__dirname, '/game/config/server.js')));
 config.set('client', require(path.join(__dirname, '/game/config/client.js')));
+config.set('game', require(path.join(__dirname, '/game/config/game.js')));
 
 
 // EXPRESS
