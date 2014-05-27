@@ -37,9 +37,9 @@ require([
     , SpriteSheet = createjs.SpriteSheet
     , ticker = createjs.Ticker
 
-    , userName
     , loader
 
+    , modulesConfig
     , modules = {}
 
       // контроллеры
@@ -92,12 +92,12 @@ require([
     }
 
     // установка пользовательских данных
-    function runUser(data, cb) {
+    function runCanvases(data, cb) {
       var canvas
         , canvasOptions = data.canvasOptions
         , s;
 
-      runModules(data);
+      modulesConfig = data;
 
       for (canvas in canvasOptions) {
         if (canvasOptions.hasOwnProperty(canvas)) {
@@ -132,7 +132,7 @@ require([
     }
 
     runParts(data.parts, function () {
-      runUser(data.user, function () {
+      runCanvases(data.user, function () {
         runMedia(data.media, function () {
           runInform(data.informer, function () {
             sending(0);
@@ -194,8 +194,12 @@ require([
   };
 
   // подтверждение авторизации с сервера
-  socketMethods[2] = function (data) {
-    modules.auth.parseRes(data);
+  socketMethods[2] = function (err) {
+    modules.auth.parseRes(err);
+
+    if (!err) {
+      runModules(modulesConfig);
+    }
   };
 
   // активация карты

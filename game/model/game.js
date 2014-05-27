@@ -1,5 +1,4 @@
 var User = require('./User');
-var log = require('../../lib/log')(module);
 
 // Singleton
 var game;
@@ -31,14 +30,14 @@ function Game(data) {
 Game.prototype.init = function () {
   this.loadMap();
 
-  setInterval((function () {
-    //this.voteMap();
-    //this.loadMap(this._mapList[1]);
-  }).bind(this), this._timeMap);
+  //setInterval((function () {
+  //  //this.voteMap();
+  //  //this.loadMap(this._mapList[1]);
+  //}).bind(this), this._timeMap);
 
-  setInterval((function () {
-    //this.createNextRound();
-  }).bind(this), this._timeRound);
+  //setInterval((function () {
+  //  //this.createNextRound();
+  //}).bind(this), this._timeRound);
 
   setInterval((function () {
     this.createShot();
@@ -115,7 +114,6 @@ Game.prototype.getCurrentMap = function (gameID) {
 // сообщает о загрузке карты
 Game.prototype.mapReady = function (err, gameID) {
   if (!err) {
-    console.log(gameID);
     this._users[gameID].ready = true;
   }
 };

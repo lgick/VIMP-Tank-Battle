@@ -1,7 +1,6 @@
 var WebSocketServer = require('ws').Server;
 var uuid = require('node-uuid');
 
-var log = require('../lib/log')(module);
 var security = require('../lib/security');
 var bantools = require('../lib/bantools');
 var waiting = require('../lib/waiting');
@@ -18,6 +17,7 @@ var cConf = config.get('client');
 
 var sessions = {}; // { '0ff81720-e2b2-11e3-9614-018be5de670e': ws }
 var IPs = {};      // { '127.0.0.1': '0ff81720-e2b2-11e3-9614-018be5de670e' }
+var socketMethods = [];
 
 module.exports = function (server) {
   var wss = new WebSocketServer({server: server});
@@ -54,13 +54,14 @@ module.exports = function (server) {
 
         sessions[id] = ws;
 
+        addMetodsConfig();
         ws.socket.send(0, cConf);
       }
     });
 
-    var socketMethods = [
+    function addMetodsConfig() {
       // 0: config ready
-      function (err) {
+      socketMethods[0] = function (err) {
         if (!err) {
           if (oneConnection) {
             if (IPs[address]) {
@@ -76,6 +77,7 @@ module.exports = function (server) {
             } else {
               waiting.check(id, function (empty) {
                 if (empty) {
+                  addMetodsAuth();
                   ws.socket.send(1, auth);
                 } else {
                   waiting.add(id, function (data) {
@@ -86,37 +88,42 @@ module.exports = function (server) {
             }
           });
         }
-      },
+      };
+    }
 
+    function addMetodsAuth() {
       // 1: auth response
-      function (data) {
+      socketMethods[1] = function (data) {
         var err = validator.auth(data);
 
         ws.socket.send(2, err);
 
         if (!err) {
+          addMetodsGame();
           game.createUser(data, ws.socket, function (id) {
             gameID = id;
           });
         }
-      },
+      };
+    }
 
+    function addMetodsGame() {
       // 2: map ready
-      function (err) {
+      socketMethods[2] = function (err) {
         game.mapReady(err, gameID);
-      },
+      };
 
       // 3: keys data
-      function (data) {
+      socketMethods[3] = function (data) {
         game.updateKeys(gameID, data);
         // TODO: добавить к сессии игрока нажатые клавиши
         var keys = parseInt(data, 36).toString(2);
         keys = keys.slice(1);
         ws.socket.send(10, {module: 'chat', data: data + ' (' + keys + ')'});
-      },
+      };
 
       // 4: chat data
-      function (message) {
+      socketMethods[4] = function (message) {
         game.addMessage(gameID, message);
         message = validator.chat(message);
 
@@ -124,10 +131,10 @@ module.exports = function (server) {
           // TODO: добавить в чат-лист имя игрока и сообщение
           ws.socket.send(10, {module: 'chat', data: message});
         }
-      },
+      };
 
       // 5: vote data
-      function (data) {
+      socketMethods[5] = function (data) {
         // TODO: получить данные опроса и обработать их
         // или
         // TODO: получить запрос на данные для опроса и отправить их
@@ -150,10 +157,19 @@ module.exports = function (server) {
         } else if (typeof data === 'object') {
           ws.socket.send(10, {module: 'chat', data: JSON.stringify(data)});
         }
-      }
-    ];
+      };
+    }
 
-    ws.onclose = function (e) {
+    ws.on('message', function (data) {
+      var msg = ws.socket.unpack(data)
+        , socketMethod = socketMethods[msg[0]];
+
+      if (typeof socketMethod === 'function') {
+        socketMethod(msg[1]);
+      }
+    });
+
+    ws.on('close', function (e) {
       // e.code:
       // 4001 - origin conflict
       // 4002 - oneConnection
@@ -172,8 +188,11 @@ module.exports = function (server) {
 
       waiting.remove(id);
 
+      console.log('close');
+
       waiting.getNext(function (id) {
         if (id) {
+          addMetodsAuth();
           sessions[id].socket.send(1, auth);
         }
       });
@@ -187,19 +206,11 @@ module.exports = function (server) {
           }
         }
       });
+    });
 
-      console.log('close');
-    };
-
-    ws.onmessage = function (event) {
-      var msg = ws.socket.unpack(event.data);
-
-      socketMethods[msg[0]](msg[1]);
-    };
-
-    ws.onerror = function () {
+    ws.on('error', function (e) {
       console.log('error');
-    };
+    });
 
   });
 };
