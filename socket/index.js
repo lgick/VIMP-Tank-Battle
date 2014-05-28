@@ -49,7 +49,14 @@ module.exports = function (server) {
 
         // распаковывает данные
         ws.socket.unpack = function (pack) {
-          return JSON.parse(pack);
+          var res;
+
+          try {
+            res = JSON.parse(pack);
+          } catch (e) {
+          }
+
+          return res;
         };
 
         sessions[id] = ws;
@@ -180,10 +187,14 @@ module.exports = function (server) {
 
     ws.on('message', function (data) {
       var msg = ws.socket.unpack(data)
-        , socketMethod = socketMethods[msg[0]];
+        , socketMethod;
 
-      if (typeof socketMethod === 'function') {
-        socketMethod(msg[1]);
+      if (msg) {
+        socketMethod = socketMethods[msg[0]];
+
+        if (typeof socketMethod === 'function') {
+          socketMethod(msg[1]);
+        }
       }
     });
 
