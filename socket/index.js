@@ -123,11 +123,21 @@ module.exports = function (server) {
 
       // 3: keys data
       socketMethods[3] = function (data) {
-        game.updateKeys(gameID, data);
-        // TODO: добавить к сессии игрока нажатые клавиши
-        var keys = parseInt(data, 36).toString(2);
-        keys = keys.slice(1);
-        ws.socket.send(10, {module: 'chat', data: data + ' (' + keys + ')'});
+        var keys;
+
+        if (data) {
+          var keys = parseInt(data, 36);
+
+          // если преобразование в число дало число
+          if (isFinite(keys)) {
+            keys = keys.toString(2);
+            keys = keys.slice(1);
+
+            game.updateKeys(gameID, keys);
+
+            ws.socket.send(10, {module: 'chat', data: data + ' (' + keys + ')'});
+          }
+        }
       };
 
       // 4: chat data
