@@ -92,22 +92,30 @@ module.exports = function (server) {
     }
 
     function addMetodsAuth() {
+      socketMethods[0] = null;
+
       // 1: auth response
       socketMethods[1] = function (data) {
-        var err = validator.auth(data);
+        var err;
 
-        ws.socket.send(2, err);
+        if (data && typeof data === 'object') {
+          err = validator.auth(data);
 
-        if (!err) {
-          addMetodsGame();
-          game.createUser(data, ws.socket, function (id) {
-            gameID = id;
-          });
+          ws.socket.send(2, err);
+
+          if (!err) {
+            addMetodsGame();
+            game.createUser(data, ws.socket, function (id) {
+              gameID = id;
+            });
+          }
         }
       };
     }
 
     function addMetodsGame() {
+      socketMethods[1] = null;
+
       // 2: map ready
       socketMethods[2] = function (err) {
         game.mapReady(err, gameID);
