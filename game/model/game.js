@@ -230,4 +230,15 @@ Game.prototype.updateKeys = function (gameID, keys) {
   this._users[gameID].keys = keys;
 };
 
+// обрабатывает vote данные
+Game.prototype.parseVote = function (gameID, data) {
+  if (typeof data === 'string') {
+    // TODO: данные запроса
+    if (data === 'users') {
+    }
+  } else if (typeof data === 'object') {
+    // TODO: данные голосования
+  }
+};
+
 module.exports = Game;

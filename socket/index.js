@@ -128,57 +128,46 @@ module.exports = function (server) {
     };
 
     // 3: keys data
-    socketMethods[3] = function (data) {
-      var keys;
+    socketMethods[3] = function (keys) {
+      if (keys) {
+        keys = parseInt(keys, 36);
 
-      if (data) {
-        keys = parseInt(data, 36);
-
-        // если преобразование в число дало число
+        // если результат преобразования число
         if (isFinite(keys)) {
           keys = keys.toString(2);
           keys = keys.slice(1);
 
           game.updateKeys(gameID, keys);
 
-          ws.socket.send(10, {module: 'chat', data: data + ' (' + keys + ')'});
+          ws.socket.send(10, {module: 'chat', data: keys});
         }
       }
     };
 
     // 4: chat data
     socketMethods[4] = function (message) {
-      message = validator.chat(message);
+      if (typeof message === 'string') {
+        message = validator.chat(message);
 
-      if (message) {
-        game.addMessage(gameID, message);
-        ws.socket.send(10, {module: 'chat', data: message});
+        if (message) {
+          game.addMessage(gameID, message);
+          ws.socket.send(10, {module: 'chat', data: message});
+        }
       }
     };
 
     // 5: vote data
     socketMethods[5] = function (data) {
-      // TODO: получить данные опроса и обработать их
-      // или
-      // TODO: получить запрос на данные для опроса и отправить их
-      // или
-      // TODO: создать опрос и разослать его всем
-      var users = [null, ['bob', 'jek', 'vasya', 'petya', 'vovka']];
-      var vote = [
-          'remap',
-          [
-            'Может поменяем на arena_2?',
-            ['Да', 'Нет'],
-            null
-          ]
-      ];
+      if (data) {
+        game.parseVote(gameID, data);
 
-      if (typeof data === 'string') {
-        if (data === 'users') {
-          ws.socket.send(10, {module: 'vote', data: users});
+        if (typeof data === 'string') {
+          if (data === 'users') {
+            ws.socket.send(10, {module: 'vote', data: [null, ['b1', 'b2', 'b3']]});
+          }
+        } else if (typeof data === 'object') {
+          ws.socket.send(10, {module: 'chat', data: JSON.stringify(data)});
         }
-      } else if (typeof data === 'object') {
-        ws.socket.send(10, {module: 'chat', data: JSON.stringify(data)});
       }
     };
 
