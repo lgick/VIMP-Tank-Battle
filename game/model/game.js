@@ -220,14 +220,14 @@ Game.prototype.removeUser = function (gameID, cb) {
   });
 };
 
-// добавляет сообщение
-Game.prototype.addMessage = function (gameID, message) {
-  this._users[gameID].message.push(message);
-};
-
 // обновляет команды
 Game.prototype.updateKeys = function (gameID, keys) {
   this._users[gameID].keys = keys;
+};
+
+// добавляет сообщение
+Game.prototype.addMessage = function (gameID, message) {
+  this._users[gameID].message.push(message);
 };
 
 // обрабатывает vote данные

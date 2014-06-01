@@ -178,7 +178,7 @@ module.exports = function (server) {
       if (msg) {
         socketMethod = socketMethods[msg[0]];
 
-        if (typeof socketMethod === 'function' && ws.socket.socketMethods[msg[0]]) {
+        if (ws.socket.socketMethods[msg[0]]) {
           socketMethod(msg[1]);
         }
       }

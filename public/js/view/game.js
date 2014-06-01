@@ -18,6 +18,18 @@ define(['createjs'], function (createjs) {
   // создает экземпляр на полотне
   GameView.prototype.add = function (instance) {
     this._stage.addChild(instance);
+
+    this._stage.sortChildren(function (a, b) {
+      if (a.layer < b.layer) {
+        return -1;
+      }
+
+      if (a.layer > b.layer) {
+        return 1;
+      }
+
+      return 0;
+    });
   };
 
   // вычисляет координаты для отображения
