@@ -65,7 +65,7 @@ require([
 
 // SOCKET МЕТОДЫ
 
-  // установка конфига
+  // config data
   socketMethods[0] = function (data) {
     // установка дополнений игры
     function runParts(data, cb) {
@@ -142,7 +142,7 @@ require([
     });
   };
 
-  // авторизация пользователя
+  // auth data
   socketMethods[1] = function (data) {
     if (typeof data !== 'object') {
       console.log('authorization error');
@@ -193,7 +193,7 @@ require([
     modules.auth.init(params);
   };
 
-  // подтверждение авторизации с сервера
+  // auth errors
   socketMethods[2] = function (err) {
     modules.auth.parseRes(err);
 
@@ -202,7 +202,7 @@ require([
     }
   };
 
-  // активация карты
+  // map data
   socketMethods[3] = function (data) {
     var spriteSheet = new SpriteSheet(data.spriteSheet);
 
@@ -233,14 +233,11 @@ require([
     }
   };
 
-  // обновление данных
+  // shot data
   socketMethods[4] = function (data) {
     var game = data[0]  // массив данных для отрисовки кадра игры
       , crds = data[1]
-      , panel = data[2]
-      , stat = data[3]
-      , chat = data[4]
-      , vote = data[5]
+      , panelData = data[2]
 
       , i = 0
       , len = game.length
@@ -275,27 +272,28 @@ require([
 
     updateGameControllers();
 
-
-    // обновление модулей
-    if (chat) {
-      modules.chat.add({name: chat[0], text: chat[1]});
-    }
-
-    if (panel) {
-      modules.panel.update(panel);
-    }
-
-    if (stat) {
-      modules.stat.update(stat);
-    }
-
-    if (vote) {
-      modules.vote.open(vote);
+    if (panelData) {
+      modules.panel.update(panelData);
     }
   };
 
-  // informer message
+  // stat data
   socketMethods[5] = function (data) {
+    modules.stat.update(data);
+  };
+
+  // chat data
+  socketMethods[6] = function (data) {
+    modules.chat.add({name: data[0], text: data[1]});
+  };
+
+  // vote data
+  socketMethods[7] = function (data) {
+    modules.vote.open(data);
+  };
+
+  // inform data
+  socketMethods[8] = function (data) {
     var id = data[0]
       , dataArr = data[1]
       , message = informList[id]
@@ -313,8 +311,8 @@ require([
     updateGameInformer(message);
   };
 
-  // очищает все полотна
-  socketMethods[6] = function () {
+  // clear
+  socketMethods[9] = function () {
     var p;
 
     for (p in CTRL) {
@@ -326,19 +324,9 @@ require([
     updateGameControllers();
   };
 
-  // тест
-  socketMethods[10] = function (x) {
-    if (x.module === 'chat') {
-      modules.chat.add({name: 'System', text: x.data});
-    } else if (x.module === 'stat') {
-      modules.stat.update(x.data);
-    } else if (x.module === 'panel') {
-      modules.panel.update(x.data);
-    } else if (x.module === 'vote') {
-      modules.vote.open(x.data);
-    } else if (x.module === 'console') {
-      console.log(x.data);
-    }
+  // console
+  socketMethods[10] = function (data) {
+    console.log(data);
   };
 
 // ФУНКЦИИ

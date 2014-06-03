@@ -72,7 +72,7 @@ module.exports = function (server) {
       if (!err) {
         if (oneConnection) {
           if (IPs[address]) {
-            sessions[IPs[address]].socket.close(4002, [5, [2]]);
+            sessions[IPs[address]].socket.close(4002, [8, [2]]);
           }
         }
 
@@ -80,7 +80,7 @@ module.exports = function (server) {
 
         bantools.check(address, function (ban) {
           if (ban) {
-            ws.socket.close(4003, [5, [0, ban]]);
+            ws.socket.close(4003, [8, [0, ban]]);
           } else {
             waiting.check(id, function (empty) {
               if (empty) {
@@ -88,7 +88,7 @@ module.exports = function (server) {
                 ws.socket.send(1, auth);
               } else {
                 waiting.add(id, function (data) {
-                  ws.socket.send(5, [1, data]);
+                  ws.socket.send(8, [1, data]);
                 });
               }
             });
@@ -139,7 +139,7 @@ module.exports = function (server) {
 
           game.updateKeys(gameID, keys);
 
-          ws.socket.send(10, {module: 'chat', data: keys});
+          ws.socket.send(6, ['System (keys)', keys]);
         }
       }
     };
@@ -151,7 +151,7 @@ module.exports = function (server) {
 
         if (message) {
           game.addMessage(gameID, message);
-          ws.socket.send(10, {module: 'chat', data: message});
+          ws.socket.send(6, ['System (chat)', message]);
         }
       }
     };
@@ -163,10 +163,10 @@ module.exports = function (server) {
 
         if (typeof data === 'string') {
           if (data === 'users') {
-            ws.socket.send(10, {module: 'vote', data: [null, ['b1', 'b2', 'b3']]});
+            ws.socket.send(7, [null, ['b1', 'b2', 'b3']]);
           }
         } else if (typeof data === 'object') {
-          ws.socket.send(10, {module: 'chat', data: JSON.stringify(data)});
+          ws.socket.send(6, ['System (vote)', JSON.stringify(data)]);
         }
       }
     };
@@ -220,7 +220,7 @@ module.exports = function (server) {
         for (p in notifyObject) {
           if (notifyObject.hasOwnProperty(p)) {
             if (sessions[p].readyState === 1) {
-              sessions[p].socket.send(5, [1, notifyObject[p]]);
+              sessions[p].socket.send(8, [1, notifyObject[p]]);
             }
           }
         }

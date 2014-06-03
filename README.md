@@ -8,20 +8,23 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
 -->
 
 
-# Socket switch (message-IDs)
+# WebSocket ports (message-IDs)
 
-## Client switch
+## Client ports
 
     0: config data
     1: auth data
     2: auth errors
     3: map data
     4: shot data
-    5: inform data
-    6: clear
-    10: test
+    5: stat data
+    6: chat data
+    7: vote data
+    8: inform data
+    9: clear
+    10: console
 
-## Server switch
+## Server ports
 
     0: config ready
     1: auth response
