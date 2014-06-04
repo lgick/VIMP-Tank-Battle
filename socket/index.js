@@ -7,10 +7,22 @@ var waiting = require('../lib/waiting');
 var validator = require('../lib/validator');
 var config = require('../lib/config');
 
+var portConfig = config.get('server:ports:config');
+var portAuth = config.get('server:ports:auth');
+var portAuthErr = config.get('server:ports:authErr');
+var portMap = config.get('server:ports:map');
+var portShot = config.get('server:ports:shot');
+var portStat = config.get('server:ports:stat');
+var portChat = config.get('server:ports:chat');
+var portVote = config.get('server:ports:vote');
+var portInform = config.get('server:ports:inform');
+var portClear = config.get('server:ports:clear');
+var portLog = config.get('server:ports:log');
+
 var oneConnection = config.get('server:oneConnection');
 
 var Game = config.get('server:game');
-var game = new Game(config.get('game'));
+var game = new Game(config.get('game'), config.get('server:ports'));
 
 var auth = config.get('auth');
 var cConf = config.get('client');
@@ -63,7 +75,7 @@ module.exports = function (server) {
         sessions[id] = ws;
 
         ws.socket.socketMethods[0] = true;
-        ws.socket.send(0, cConf);
+        ws.socket.send(portConfig, cConf);
       }
     });
 
@@ -72,7 +84,7 @@ module.exports = function (server) {
       if (!err) {
         if (oneConnection) {
           if (IPs[address]) {
-            sessions[IPs[address]].socket.close(4002, [8, [2]]);
+            sessions[IPs[address]].socket.close(4002, [portInform, [2]]);
           }
         }
 
@@ -80,15 +92,15 @@ module.exports = function (server) {
 
         bantools.check(address, function (ban) {
           if (ban) {
-            ws.socket.close(4003, [8, [0, ban]]);
+            ws.socket.close(4003, [portInform, [0, ban]]);
           } else {
             waiting.check(id, function (empty) {
               if (empty) {
                 ws.socket.socketMethods[1] = true;
-                ws.socket.send(1, auth);
+                ws.socket.send(portAuth, auth);
               } else {
                 waiting.add(id, function (data) {
-                  ws.socket.send(8, [1, data]);
+                  ws.socket.send(portInform, [1, data]);
                 });
               }
             });
@@ -106,7 +118,7 @@ module.exports = function (server) {
       if (data && typeof data === 'object') {
         err = validator.auth(data);
 
-        ws.socket.send(2, err);
+        ws.socket.send(portAuthErr, err);
 
         if (!err) {
           ws.socket.socketMethods[1] = false;
@@ -139,7 +151,7 @@ module.exports = function (server) {
 
           game.updateKeys(gameID, keys);
 
-          ws.socket.send(6, ['System (keys)', keys]);
+          ws.socket.send(portChat, ['System (keys)', keys]);
         }
       }
     };
@@ -151,7 +163,7 @@ module.exports = function (server) {
 
         if (message) {
           game.addMessage(gameID, message);
-          ws.socket.send(6, ['System (chat)', message]);
+          ws.socket.send(portChat, ['System (chat)', message]);
         }
       }
     };
@@ -163,10 +175,10 @@ module.exports = function (server) {
 
         if (typeof data === 'string') {
           if (data === 'users') {
-            ws.socket.send(7, [null, ['b1', 'b2', 'b3']]);
+            ws.socket.send(portVote, [null, ['b1', 'b2', 'b3']]);
           }
         } else if (typeof data === 'object') {
-          ws.socket.send(6, ['System (vote)', JSON.stringify(data)]);
+          ws.socket.send(portChat, ['System (vote)', JSON.stringify(data)]);
         }
       }
     };
@@ -209,7 +221,7 @@ module.exports = function (server) {
         if (id) {
           if (sessions[id].readyState === 1) {
             sessions[id].socket.socketMethods[1] = true;
-            sessions[id].socket.send(1, auth);
+            sessions[id].socket.send(portAuth, auth);
           }
         }
       });
@@ -220,7 +232,7 @@ module.exports = function (server) {
         for (p in notifyObject) {
           if (notifyObject.hasOwnProperty(p)) {
             if (sessions[p].readyState === 1) {
-              sessions[p].socket.send(8, [1, notifyObject[p]]);
+              sessions[p].socket.send(portInform, [1, notifyObject[p]]);
             }
           }
         }

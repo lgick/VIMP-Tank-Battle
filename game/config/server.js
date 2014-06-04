@@ -10,6 +10,19 @@ module.exports = {
   oneConnection: false,
   maxPlayers: 2,
   game: game,
+  ports: {
+    config: 0,
+    auth: 1,
+    authErr: 2,
+    map: 3,
+    shot: 4,
+    stat: 5,
+    chat: 6,
+    vote: 7,
+    inform: 8,
+    clear: 9,
+    log: 10
+  },
   maps: maps,
   banlist: banlist,
   message: {
