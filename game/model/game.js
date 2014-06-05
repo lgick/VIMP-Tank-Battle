@@ -1,9 +1,13 @@
 var User = require('./User');
 
+function getInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 // Singleton
 var game;
 
-function Game(data) {
+function Game(data, ports) {
   if (game) {
     return game;
   }
@@ -14,10 +18,26 @@ function Game(data) {
   this._mapList = data.mapList;
   this._currentMapName = data.mapList[0];
 
-  this._timeShot = data.timeShot;
-  this._timeRound = data.timeRound;
-  this._timeMap = data.timeMap;
+  this._portConfig = ports.config;
+  this._portAuth = ports.auth;
+  this._portAuthErr = ports.authErr;
+  this._portMap = ports.map;
+  this._portShot = ports.shot;
+  this._portStat = ports.stat;
+  this._portChat = ports.chat;
+  this._portVote = ports.vote;
+  this._portInform = ports.inform;
+  this._portClear = ports.clear;
+  this._portLog = ports.log;
+
+  this._shotTime = data.shotTime;
+  this._roundTime = data.roundTime;
+  this._mapTime = data.mapTime;
+  this._voteMapTime = data.voteMapTime;
+
   this._teams = data.teams;
+
+  this._voteMapArray
 
   this._users = {};
   this._players = [];
@@ -26,22 +46,45 @@ function Game(data) {
   this.init();
 }
 
+// стартует игру
+Game.prototype.startGame = function (name) {
+  name = name || this._mapList[0];
+
+  this.loadMap(name);
+
+  var roundTimer = setInterval((function () {
+    //this.createNextRound();
+  }).bind(this), this._roundTime);
+
+  var shotTimer = setInterval((function () {
+    this.createShot();
+  }).bind(this), this._shotTime);
+
+  setTimeout((function () {
+    clearInterval(shotTimer);
+    clearInterval(roundTimer);
+
+    this.sendVoteMap(function () {
+      this.startGame(name);
+    });
+  }).bind(this), this._mapTime);
+};
+
+// отправляет голосование за новую карту
+Game.prototype.sendVoteMap = function (cb) {
+  //this.send(this._portMap, )
+  setTimeout((function () {
+    cb('complete');
+  }).bind(this), this._voteMapTime);
+};
+
 // инициализация игры
 Game.prototype.init = function () {
-  this.loadMap();
-
-  //setInterval((function () {
-  //  //this.voteMap();
-  //  //this.loadMap(this._mapList[1]);
-  //}).bind(this), this._timeMap);
-
-  //setInterval((function () {
-  //  //this.createNextRound();
-  //}).bind(this), this._timeRound);
+  this.loadMap(this._mapList[getInt(0, 1)]);
 
   setInterval((function () {
     this.createShot();
-  }).bind(this), this._timeShot);
+  }).bind(this), this._shotTime);
 };
 
 // создает кадр игры
@@ -81,6 +124,7 @@ Game.prototype.createShot = function () {
 Game.prototype.loadMap = function (name) {
   var p;
 
+  // если есть имя карты
   if (name) {
     this._currentMapName = name;
   }
@@ -232,11 +276,25 @@ Game.prototype.addMessage = function (gameID, message) {
 
 // обрабатывает vote данные
 Game.prototype.parseVote = function (gameID, data) {
+  var name
+    , value;
+
   if (typeof data === 'string') {
     // TODO: данные запроса
     if (data === 'users') {
     }
   } else if (typeof data === 'object') {
+    name = data[0];
+    value = data[1];
+
+    if (name === 'status') {
+      console.log(value);
+    } else if (name === 'remap') {
+      console.log(value);
+    } else if (name === 'ban') {
+      console.log(value);
+    }
+
     // TODO: данные голосования
   }
 };
