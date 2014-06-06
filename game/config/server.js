@@ -8,7 +8,7 @@ module.exports = {
   domain: 'localhost',
   port: 3000,
   oneConnection: false,
-  maxPlayers: 2,
+  maxPlayers: 4,
   game: game,
   ports: {
     config: 0,

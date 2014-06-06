@@ -1,6 +1,11 @@
 var maps = require('../maps/');
 
 module.exports = {
+  maps: maps,
+  mapList: ['mini', 'arena'],
+  mapTime: 1200000,              // 20 мин
+  currentMap: 'mini',
+
   shotTime: 1000,
 
   roundTime: 120000,             // 2 мин
@@ -8,9 +13,5 @@ module.exports = {
   voteMapTime: 10000,            // 10 сек
   voteMapAmount: 4,
 
-  mapList: ['mini', 'arena'],
-  mapTime: 1200000,              // 20 мин
-
-  maps: maps,
-  teams: ['team1', 'team2', 'spectators']
+  statusList: ['team1', 'team2', 'spectators']
 };

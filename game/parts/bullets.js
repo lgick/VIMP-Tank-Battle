@@ -14,6 +14,8 @@ define(['createjs'], function (createjs) {
   p.initialize = function (params) {
     this.Container_initialize();
 
+    this.layer = 1;
+
     var i = 0
       , len = params.length
       , shape

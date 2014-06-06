@@ -46,8 +46,8 @@ module.exports = function (server) {
       } else {
         ws.socket = {
           // отправляет данные
-          send: function (name, data) {
-            ws.send(JSON.stringify([name, data]));
+          send: function (port, data) {
+            ws.send(JSON.stringify([port, data]));
             //ws.send(samples, {binary: true});
           },
 

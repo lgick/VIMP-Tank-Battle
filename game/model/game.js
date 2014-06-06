@@ -14,9 +14,19 @@ function Game(data, ports) {
 
   game = this;
 
-  this._maps = data.maps;
-  this._mapList = data.mapList;
-  this._currentMapName = data.mapList[0];
+  this._maps = data.maps;                   // карты
+  this._mapList = data.mapList;             // массив с названием карт
+  this._mapTime = data.mapTime;             // продолжительность карты
+  this._currentMap = data.currentMap;       // текущая карта
+
+  this._shotTime = data.shotTime;           // время обновления кадра игры
+
+  this._roundTime = data.roundTime;         // продолжительность раунда
+
+  this._voteMapTime = data.voteMapTime;     // время ожидания голосования
+  this._voteMapAmount = data.voteMapAmount; // всего карт в голосовании
+
+  this._statusList = data.statusList;       // массив состояний в игре
 
   this._portConfig = ports.config;
   this._portAuth = ports.auth;
@@ -30,27 +40,17 @@ function Game(data, ports) {
   this._portClear = ports.clear;
   this._portLog = ports.log;
 
-  this._shotTime = data.shotTime;
-  this._roundTime = data.roundTime;
-  this._mapTime = data.mapTime;
-  this._voteMapTime = data.voteMapTime;
+  this._users = {};                         // игроки
+  this._resultVoteMaps = {};                // результаты голосования за карту
+  this._respawns = {};                      // респауны
 
-  this._teams = data.teams;
-
-  this._voteMapArray
-
-  this._users = {};
-  this._players = [];
-  this._respawns = {};
-
-  this.init();
+  this.startGame();
 }
 
 // стартует игру
-Game.prototype.startGame = function (name) {
-  name = name || this._mapList[0];
-
-  this.loadMap(name);
+Game.prototype.startGame = function () {
+  this.updateCurrentMap();
+  this.sendCurrentMap();
 
   var roundTimer = setInterval((function () {
     //this.createNextRound();
@@ -64,27 +64,54 @@ Game.prototype.startGame = function (name) {
     clearInterval(shotTimer);
     clearInterval(roundTimer);
 
-    this.sendVoteMap(function () {
-      this.startGame(name);
-    });
+    this.sendVoteMap();
   }).bind(this), this._mapTime);
 };
 
 // отправляет голосование за новую карту
-Game.prototype.sendVoteMap = function (cb) {
-  //this.send(this._portMap, )
+Game.prototype.sendVoteMap = function () {
+  var data = [
+    'changeMap',
+    [
+      'Выбирете следующую карту',
+      ['mini', 'arena'],
+      null
+    ]
+  ];
+
+  this.sendForAll(this._portVote, data);
+
+  // собирает результаты голосования и стартует новую игру
   setTimeout((function () {
-    cb('complete');
+    this.startGame();
   }).bind(this), this._voteMapTime);
 };
 
-// инициализация игры
-Game.prototype.init = function () {
-  this.loadMap(this._mapList[getInt(0, 1)]);
+// обновить текущую карту
+Game.prototype.updateCurrentMap = function () {
+  var map = this._currentMap
+    , votes = 0
+    , p;
 
-  setInterval((function () {
-    this.createShot();
-  }).bind(this), this._shotTime);
+  for (p in this._resultVoteMaps) {
+    if (this._resultVoteMaps.hasOwnProperty(p)) {
+      if (this._resultVoteMaps[p] > votes) {
+        map = p;
+        votes = this._resultVoteMaps[p];
+      }
+    }
+  }
+
+  // если карта существует
+  if (this._maps[map]) {
+    this._currentMap = map;
+  // иначе назначить первую из списка
+  } else {
+    this._currentMap = this._mapList[0];
+  }
+
+  this._respawns = this._maps[this._currentMap].respawns;
+  this._resultVoteMaps = {};
 };
 
 // создает кадр игры
@@ -109,7 +136,7 @@ Game.prototype.createShot = function () {
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       if (this._users[p].ready) {
-        this._users[p].socket.send(4, [
+        this._users[p].socket.send(this._portShot, [
           [
             [[1, 2], data, 1]
           ],
@@ -120,39 +147,43 @@ Game.prototype.createShot = function () {
   }
 };
 
-// устанавливает карту
-Game.prototype.loadMap = function (name) {
+// отправляет данные всем
+Game.prototype.sendForAll = function (port, data) {
   var p;
-
-  // если есть имя карты
-  if (name) {
-    this._currentMapName = name;
-  }
-
-  var map = this._maps[this._currentMapName];
-
-  this._respawns = map.respawns;
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
-      this._users[p].socket.send(6);
-      this.getCurrentMap(p);
+      if (this._users[p] !== null) {
+        this._users[p].socket.send(port, data);
+      }
     }
   }
 };
 
-// возвращает текущую карту
-Game.prototype.getCurrentMap = function (gameID) {
-  var map = this._maps[this._currentMapName];
+// отправляет текущую карту
+Game.prototype.sendCurrentMap = function (gameID) {
+  var map = this._maps[this._currentMap]
+    , data = {
+      map: map.map,
+      step: map.step,
+      spriteSheet: map.spriteSheet,
+      options: map.options
+    }
+    , p;
 
-  this._users[gameID].ready = false;
-
-  this._users[gameID].socket.send(3, {
-    map: map.map,
-    step: map.step,
-    spriteSheet: map.spriteSheet,
-    options: map.options
-  });
+  if (gameID) {
+    this._users[gameID].ready = false;
+    this._users[gameID].socket.send(this._portMap, data);
+  } else {
+    for (p in this._users) {
+      if (this._users.hasOwnProperty(p)) {
+        if (this._users[p] !== null) {
+          this._users[p].ready = false;
+          this._users[p].socket.send(this._portMap, data);
+        }
+      }
+    }
+  }
 };
 
 // сообщает о загрузке карты
@@ -170,7 +201,7 @@ Game.prototype.startRound = function () {
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
-      if (this._users[p]) {
+      if (this._users[p] !== null) {
         c[this._users[p].team] = c[this._users[p].team] || 0;
         data = this._respawns[this._users[p].team];
 
@@ -205,7 +236,7 @@ Game.prototype.createUser = function (data, socket, cb) {
 
     for (p in this._users) {
       if (this._users.hasOwnProperty(p)) {
-        if (this._users[p] && this._users[p].game[5] === name) {
+        if (this._users[p] !== null && this._users[p].game[5] === name) {
           if (number > 1) {
             name = name.slice(0, name.lastIndexOf('#')) + '#' + number;
           } else {
@@ -237,7 +268,7 @@ Game.prototype.createUser = function (data, socket, cb) {
 
   this._users[gameID] = new User({team: team, name: name});
   this._users[gameID].socket = socket;
-  this._users[gameID].team = this._teams[team];
+  this._users[gameID].team = this._statusList[team];
   this._users[gameID].ready = false;
   this._users[gameID].keys = '';
   this._users[gameID].message = [];
@@ -246,7 +277,7 @@ Game.prototype.createUser = function (data, socket, cb) {
 
   process.nextTick((function () {
     cb(gameID);
-    this.getCurrentMap(gameID);
+    this.sendCurrentMap(gameID);
   }).bind(this));
 };
 
@@ -287,7 +318,13 @@ Game.prototype.parseVote = function (gameID, data) {
     name = data[0];
     value = data[1];
 
-    if (name === 'status') {
+    if (name === 'changeMap') {
+      if (value[0] in this._resultVoteMaps) {
+        this._resultVoteMaps[value[0]] += 1;
+      } else {
+        this._resultVoteMaps[value[0]] = 1;
+      }
+    } else if (name === 'status') {
       console.log(value);
     } else if (name === 'remap') {
       console.log(value);

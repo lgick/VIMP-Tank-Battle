@@ -17,6 +17,8 @@ define(['createjs'], function (createjs) {
   p.initialize = function (data) {
     this.Container_initialize();
 
+    this.layer = 0;
+
     this.map = data.map;
     this.step = data.step;
 
