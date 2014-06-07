@@ -149,8 +149,6 @@ require([
       return;
     }
 
-    updateGameInformer();
-
     var viewData
       , elems = data.elems
       , params = data.params
@@ -294,21 +292,27 @@ require([
 
   // inform data
   socketMethods[8] = function (data) {
-    var id = data[0]
-      , dataArr = data[1]
-      , message = informList[id]
+    var dataArr
+      , message
       , i
       , len
       , regExp;
 
-    if (message && dataArr) {
-      for (i = 0, len = dataArr.length; i < len; i += 1) {
-        regExp = new RegExp('#' + i, 'g');
-        message = message.replace(regExp, dataArr[i]);
-      }
-    }
+    if (data) {
+      message = informList[data[0]];
+      dataArr = data[1];
 
-    updateGameInformer(message);
+      if (message && dataArr) {
+        for (i = 0, len = dataArr.length; i < len; i += 1) {
+          regExp = new RegExp('#' + i, 'g');
+          message = message.replace(regExp, dataArr[i]);
+        }
+      }
+
+      updateGameInformer(message);
+    } else {
+      updateGameInformer();
+    }
   };
 
   // clear
@@ -503,7 +507,7 @@ require([
     }
   }
 
-  // вывод сообщения об ошибке соединения
+  // вывод сообщения
   function updateGameInformer(message) {
     if (message) {
       informer.innerHTML = message;
@@ -536,6 +540,8 @@ require([
     if (e.reason) {
       msg = unpacking(e.reason);
       socketMethods[msg[0]](msg[1]);
+    } else {
+      socketMethods[8]([4]);
     }
 
     console.log('disconnect');

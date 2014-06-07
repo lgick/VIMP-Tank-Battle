@@ -41,31 +41,71 @@ function Game(data, ports) {
   this._portLog = ports.log;
 
   this._users = {};                         // игроки
-  this._resultVoteMaps = {};                // результаты голосования за карту
+  this._resultVoteMaps = {};                // результаты голосования
   this._respawns = {};                      // респауны
+
+  this._roundTimer;
+  this._shotTimer;
+  this._mapTimer;
 
   this.startGame();
 }
 
 // стартует игру
 Game.prototype.startGame = function () {
+  this.startMapTimer();
+  this.startShotTimer();
+  this.startRoundTimer();
+};
+
+// останавливает игру
+Game.prototype.stopGame = function () {
+  clearInterval(this._shotTimer);
+  clearTimeout(this._roundTimer);
+  clearTimeout(this._mapTimer);
+};
+
+// стартует карту
+Game.prototype.startMapTimer = function () {
   this.updateCurrentMap();
   this.sendCurrentMap();
+  this.sendForAll(this._portChat, ['System', 'new map']);
 
-  var roundTimer = setInterval((function () {
-    //this.createNextRound();
-  }).bind(this), this._roundTime);
-
-  var shotTimer = setInterval((function () {
-    this.createShot();
-  }).bind(this), this._shotTime);
-
-  setTimeout((function () {
-    clearInterval(shotTimer);
-    clearInterval(roundTimer);
-
+  this._mapTimer = setTimeout((function () {
     this.sendVoteMap();
   }).bind(this), this._mapTime);
+};
+
+// останавливает карту
+Game.prototype.stopMapTimer = function () {
+  clearTimeout(this._mapTimer);
+};
+
+// стартует раунд
+Game.prototype.startRoundTimer = function () {
+  this._roundTimer = setTimeout((function () {
+    this.sendForAll(this._portChat, ['System', 'round end']);
+    this.startRoundTimer();
+    this.sendForAll(this._portChat, ['System', 'round start']);
+  }).bind(this), this._roundTime);
+};
+
+// останавливает раунд
+Game.prototype.stopRoundTimer = function () {
+  this.sendForAll(this._portChat, ['System', 'round stop']);
+  clearTimeout(this._roundTimer);
+};
+
+// стартует расчет кадров игры
+Game.prototype.startShotTimer = function () {
+  this._shotTimer = setInterval((function () {
+    this.createShot();
+  }).bind(this), this._shotTime);
+};
+
+// останавливает расчет кадров игры
+Game.prototype.stopShotTimer = function () {
+  clearInterval(this._shotTimer);
 };
 
 // отправляет голосование за новую карту
@@ -73,7 +113,7 @@ Game.prototype.sendVoteMap = function () {
   var data = [
     'changeMap',
     [
-      'Выбирете следующую карту',
+      'Выберете следующую карту',
       ['mini', 'arena'],
       null
     ]
@@ -83,7 +123,16 @@ Game.prototype.sendVoteMap = function () {
 
   // собирает результаты голосования и стартует новую игру
   setTimeout((function () {
-    this.startGame();
+    this.stopRoundTimer();
+    this.stopShotTimer();
+
+    this.sendForAll(this._portInform, [3]);
+
+    setTimeout((function () {
+      this.startMapTimer();
+      this.startRoundTimer();
+      this.startShotTimer();
+    }).bind(this), 2000);
   }).bind(this), this._voteMapTime);
 };
 
@@ -190,6 +239,7 @@ Game.prototype.sendCurrentMap = function (gameID) {
 Game.prototype.mapReady = function (err, gameID) {
   if (!err) {
     this._users[gameID].ready = true;
+    this._users[gameID].socket.send(this._portInform);
   }
 };
 
@@ -277,6 +327,7 @@ Game.prototype.createUser = function (data, socket, cb) {
 
   process.nextTick((function () {
     cb(gameID);
+    this._users[gameID].socket.send(this._portInform);
     this.sendCurrentMap(gameID);
   }).bind(this));
 };
