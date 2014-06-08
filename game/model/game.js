@@ -316,9 +316,9 @@ Game.prototype.createUser = function (data, socket, cb) {
 
   gameID = getUserID.call(this);
 
-  this._users[gameID] = new User({team: team, name: name});
+  this._users[gameID] = new User({team: this._statusList[team], name: name});
   this._users[gameID].socket = socket;
-  this._users[gameID].team = this._statusList[team];
+  this._users[gameID].team = team;
   this._users[gameID].ready = false;
   this._users[gameID].keys = '';
   this._users[gameID].message = [];

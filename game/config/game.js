@@ -13,5 +13,5 @@ module.exports = {
   voteMapTime: 10000,            // 10 сек
   voteMapAmount: 4,
 
-  statusList: ['team1', 'team2', 'spectators']
+  statusList: {team1: 0, team2: 1, spectators: 3}
 };

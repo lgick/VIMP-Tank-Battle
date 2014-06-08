@@ -28,6 +28,7 @@ define(['createjs'], function (createjs) {
     this.y = params[1] || 0;
     this.rotation = params[2] || 0;
     this.gun.rotation = params[3] || 0;
+    this.name = params[5];
 
     this.create(params[4]);
   };

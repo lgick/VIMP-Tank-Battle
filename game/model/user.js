@@ -1,9 +1,5 @@
-var timeUpdate = 1000 / 30;
-var timeRound = 120000;
-var teams = ['team1', 'team2', 'spectators'];
-
 function User(data) {
-  this.game = [0, 0, 0, 0, ~~data.team, data.name];
+  this.game = [0, 0, 0, 0, data.team, data.name];
   this.chat = null;
   this.panel = null;
   this.bullets = [];

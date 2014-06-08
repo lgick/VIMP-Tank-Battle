@@ -17,10 +17,10 @@ module.exports = {
     },
     {
       name: 'team',
-      value: '0',
+      value: 'team1',
       options: {
-        regExp: '0|1|2',
-        storage: null
+        regExp: 'team1|team2|spectators',
+        storage: 'team'
       }
     }
   ]
