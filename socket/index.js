@@ -222,6 +222,7 @@ module.exports = function (server) {
           if (sessions[id].readyState === 1) {
             sessions[id].socket.socketMethods[1] = true;
             sessions[id].socket.send(portAuth, auth);
+            sessions[id].socket.send(portInform);
           }
         }
       });
