@@ -16,12 +16,9 @@ module.exports = {
     authErr: 2,
     map: 3,
     shot: 4,
-    stat: 5,
-    chat: 6,
-    vote: 7,
-    inform: 8,
-    clear: 9,
-    log: 10
+    inform: 5,
+    clear: 6,
+    log: 7
   },
   maps: maps,
   banlist: banlist,

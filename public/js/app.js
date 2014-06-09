@@ -233,9 +233,12 @@ require([
 
   // shot data
   socketMethods[4] = function (data) {
-    var game = data[0]  // массив данных для отрисовки кадра игры
+    var game = data[0]
       , crds = data[1]
-      , panelData = data[2]
+      , panel = data[2]
+      , stat = data[3]
+      , chat = data[4]
+      , vote = data[5]
 
       , i = 0
       , len = game.length
@@ -270,28 +273,26 @@ require([
 
     updateGameControllers();
 
-    if (panelData) {
-      modules.panel.update(panelData);
+    // обновление модулей
+    if (panel) {
+      modules.panel.update(panel);
+    }
+
+    if (stat) {
+      modules.stat.update(stat);
+    }
+
+    if (chat) {
+      modules.chat.add({name: chat[0], text: chat[1]});
+    }
+
+    if (vote) {
+      modules.vote.open(vote);
     }
   };
 
-  // stat data
-  socketMethods[5] = function (data) {
-    modules.stat.update(data);
-  };
-
-  // chat data
-  socketMethods[6] = function (data) {
-    modules.chat.add({name: data[0], text: data[1]});
-  };
-
-  // vote data
-  socketMethods[7] = function (data) {
-    modules.vote.open(data);
-  };
-
   // inform data
-  socketMethods[8] = function (data) {
+  socketMethods[5] = function (data) {
     var dataArr
       , message
       , i
@@ -309,14 +310,16 @@ require([
         }
       }
 
-      updateGameInformer(message);
+      informer.innerHTML = message;
+      informer.style.display = 'block';
     } else {
-      updateGameInformer();
+      informer.innerHTML = '';
+      informer.style.display = 'none';
     }
   };
 
   // clear
-  socketMethods[9] = function () {
+  socketMethods[6] = function () {
     var p;
 
     for (p in CTRL) {
@@ -329,7 +332,7 @@ require([
   };
 
   // console
-  socketMethods[10] = function (data) {
+  socketMethods[7] = function (data) {
     console.log(data);
   };
 
@@ -504,17 +507,6 @@ require([
   function openMode(mode) {
     if (modules[mode]) {
       modules[mode].open();
-    }
-  }
-
-  // вывод сообщения
-  function updateGameInformer(message) {
-    if (message) {
-      informer.innerHTML = message;
-      informer.style.display = 'block';
-    } else {
-      informer.innerHTML = '';
-      informer.style.display = 'none';
     }
   }
 

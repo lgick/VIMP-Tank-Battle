@@ -33,9 +33,6 @@ function Game(data, ports) {
   this._portAuthErr = ports.authErr;
   this._portMap = ports.map;
   this._portShot = ports.shot;
-  this._portStat = ports.stat;
-  this._portChat = ports.chat;
-  this._portVote = ports.vote;
   this._portInform = ports.inform;
   this._portClear = ports.clear;
   this._portLog = ports.log;
@@ -43,6 +40,8 @@ function Game(data, ports) {
   this._users = {};                         // игроки
   this._resultVoteMaps = {};                // результаты голосования
   this._respawns = {};                      // респауны
+  this._statList = [];                      // статистика
+  this._messageList = [];                   // сообщения
 
   this._roundTimer;
   this._shotTimer;
@@ -69,7 +68,7 @@ Game.prototype.stopGame = function () {
 Game.prototype.startMapTimer = function () {
   this.updateCurrentMap();
   this.sendCurrentMap();
-  this.sendForAll(this._portChat, ['System', 'new map']);
+  this.sendForAll(this._portLog, ['System', 'new map']);
 
   this._mapTimer = setTimeout((function () {
     this.sendVoteMap();
@@ -83,16 +82,17 @@ Game.prototype.stopMapTimer = function () {
 
 // стартует раунд
 Game.prototype.startRoundTimer = function () {
+  this.startRound();
   this._roundTimer = setTimeout((function () {
-    this.sendForAll(this._portChat, ['System', 'round end']);
+    this.sendForAll(this._portLog, ['System', 'round end']);
     this.startRoundTimer();
-    this.sendForAll(this._portChat, ['System', 'round start']);
+    this.sendForAll(this._portLog, ['System', 'round start']);
   }).bind(this), this._roundTime);
 };
 
 // останавливает раунд
 Game.prototype.stopRoundTimer = function () {
-  this.sendForAll(this._portChat, ['System', 'round stop']);
+  this.sendForAll(this._portLog, ['System', 'round stop']);
   clearTimeout(this._roundTimer);
 };
 
@@ -119,7 +119,7 @@ Game.prototype.sendVoteMap = function () {
     ]
   ];
 
-  this.sendForAll(this._portVote, data);
+  this.sendForAll(this._portLog, data);
 
   // собирает результаты голосования и стартует новую игру
   setTimeout((function () {
@@ -165,35 +165,56 @@ Game.prototype.updateCurrentMap = function () {
 
 // создает кадр игры
 Game.prototype.createShot = function () {
-  var data = {}
+  var data = []
+    , gameData = {}
     , p;
+
+  data[0] = null;      // game
+  data[1] = null;      // coords
+  data[2] = null;      // panel
+  data[3] = null;      // stat
+  data[4] = null;      // chat
+  data[5] = null;      // vote
+
+  this._statList[0] = [];
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       if (this._users[p] === null) {
-        data[p] = null;
+        gameData[p] = null;
         delete this._users[p];
       } else if (this._users[p].ready) {
         if (this._users[p].team !== 'spectators') {
-          this._users[p].update();
-          data[p] = this._users[p].game;
+          this._users[p].updateData();
+          gameData[p] = this._users[p].data;
+
+          this._statList[0].push([
+            ~~p, this._users[p].data[4], this._users[p].getStat(), 0
+          ]);
+        } else {
+          this._statList[0].push([
+            ~~p, this._users[p].data[4], [this._users[p].data[5]], 0
+          ]);
         }
+
       }
     }
   }
 
+  data[0] = [[[1, 2], gameData, 1]];
+  data[3] = this._statList;
+
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       if (this._users[p].ready) {
-        this._users[p].socket.send(this._portShot, [
-          [
-            [[1, 2], data, 1]
-          ],
-          [this._users[p].game[0], this._users[p].game[1]]
-        ]);
+        data[1] = [this._users[p].data[0], this._users[p].data[1]];
+        data[2] = this._users[p].panel;
+        this._users[p].socket.send(this._portShot, data);
       }
     }
   }
+
+  this._statList = [];
 };
 
 // отправляет данные всем
@@ -257,9 +278,7 @@ Game.prototype.startRound = function () {
 
         if (data) {
           data = data[c[this._users[p].team]];
-          this._users[p].game[0] = data[0];
-          this._users[p].game[1] = data[1];
-          this._users[p].game[2] = data[2];
+          this._users[p].setData(data);
 
           c[this._users[p].team] += 1;
         }
@@ -286,7 +305,7 @@ Game.prototype.createUser = function (data, socket, cb) {
 
     for (p in this._users) {
       if (this._users.hasOwnProperty(p)) {
-        if (this._users[p] !== null && this._users[p].game[5] === name) {
+        if (this._users[p] !== null && this._users[p].data[5] === name) {
           if (number > 1) {
             name = name.slice(0, name.lastIndexOf('#')) + '#' + number;
           } else {
@@ -316,12 +335,14 @@ Game.prototype.createUser = function (data, socket, cb) {
 
   gameID = getUserID.call(this);
 
-  this._users[gameID] = new User({team: this._statusList[team], name: name});
+  this._users[gameID] = new User({
+    team: this._statusList[team],
+    name: name,
+    gameID: gameID
+  });
   this._users[gameID].socket = socket;
   this._users[gameID].team = team;
   this._users[gameID].ready = false;
-  this._users[gameID].keys = '';
-  this._users[gameID].message = [];
 
   this.startRound();
 
@@ -348,12 +369,17 @@ Game.prototype.removeUser = function (gameID, cb) {
 
 // обновляет команды
 Game.prototype.updateKeys = function (gameID, keys) {
-  this._users[gameID].keys = keys;
+  this._users[gameID].updateKeys(keys);
 };
 
 // добавляет сообщение
 Game.prototype.addMessage = function (gameID, message) {
-  this._users[gameID].message.push(message);
+  this._messageList.push({
+    name: this._users[gameID].data[5],
+    message: message,
+    only: false
+  });
+  this._users[gameID].addMessage(message);
 };
 
 // обрабатывает vote данные

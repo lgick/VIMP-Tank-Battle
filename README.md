@@ -17,12 +17,9 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
     2: auth errors
     3: map data
     4: shot data
-    5: stat data
-    6: chat data
-    7: vote data
-    8: inform data
-    9: clear
-    10: console
+    5: inform data
+    6: clear
+    7: console
 
 ## Server ports
 

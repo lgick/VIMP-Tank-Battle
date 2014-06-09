@@ -12,9 +12,6 @@ var portAuth = config.get('server:ports:auth');
 var portAuthErr = config.get('server:ports:authErr');
 var portMap = config.get('server:ports:map');
 var portShot = config.get('server:ports:shot');
-var portStat = config.get('server:ports:stat');
-var portChat = config.get('server:ports:chat');
-var portVote = config.get('server:ports:vote');
 var portInform = config.get('server:ports:inform');
 var portClear = config.get('server:ports:clear');
 var portLog = config.get('server:ports:log');
@@ -151,7 +148,7 @@ module.exports = function (server) {
 
           game.updateKeys(gameID, keys);
 
-          ws.socket.send(portChat, ['System (keys)', keys]);
+          ws.socket.send(portLog, ['System (keys)', keys]);
         }
       }
     };
@@ -163,7 +160,7 @@ module.exports = function (server) {
 
         if (message) {
           game.addMessage(gameID, message);
-          ws.socket.send(portChat, ['System (chat)', message]);
+          ws.socket.send(portLog, ['System (chat)', message]);
         }
       }
     };
@@ -175,10 +172,10 @@ module.exports = function (server) {
 
         if (typeof data === 'string') {
           if (data === 'users') {
-            ws.socket.send(portVote, [null, ['b1', 'b2', 'b3']]);
+            ws.socket.send(portLog, [null, ['b1', 'b2', 'b3']]);
           }
         } else if (typeof data === 'object') {
-          ws.socket.send(portChat, ['System (vote)', JSON.stringify(data)]);
+          ws.socket.send(portLog, ['System (vote)', JSON.stringify(data)]);
         }
       }
     };
