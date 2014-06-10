@@ -44,8 +44,10 @@ module.exports = function (server) {
         ws.socket = {
           // отправляет данные
           send: function (port, data) {
-            ws.send(JSON.stringify([port, data]));
-            //ws.send(samples, {binary: true});
+            if (ws.readyState === 1) {
+              ws.send(JSON.stringify([port, data]));
+              //ws.send(samples, {binary: true});
+            }
           },
 
           // распаковывает данные
@@ -216,11 +218,9 @@ module.exports = function (server) {
 
       waiting.getNext(function (id) {
         if (id) {
-          if (sessions[id].readyState === 1) {
-            sessions[id].socket.socketMethods[1] = true;
-            sessions[id].socket.send(portAuth, auth);
-            sessions[id].socket.send(portInform);
-          }
+          sessions[id].socket.socketMethods[1] = true;
+          sessions[id].socket.send(portAuth, auth);
+          sessions[id].socket.send(portInform);
         }
       });
 
@@ -229,9 +229,7 @@ module.exports = function (server) {
 
         for (p in notifyObject) {
           if (notifyObject.hasOwnProperty(p)) {
-            if (sessions[p].readyState === 1) {
-              sessions[p].socket.send(portInform, [1, notifyObject[p]]);
-            }
+            sessions[p].socket.send(portInform, [1, notifyObject[p]]);
           }
         }
       });
