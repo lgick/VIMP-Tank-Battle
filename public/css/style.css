@@ -294,7 +294,10 @@ body {
   margin: 0 auto 40px;
 }
 
-#chat-box .line {
+#chat-box .line,
+#chat-box .line1,
+#chat-box .line2,
+#chat-box .line3 {
   opacity: 1;
   transition: all 2s;
   word-wrap: break-word;
@@ -302,11 +305,29 @@ body {
   padding: 2px 5px;
 }
 
-#chat-box .line:before {
+#chat-box .line:before,
+#chat-box .line1:before,
+#chat-box .line2:before,
+#chat-box .line3:before {
   content: attr(data-name);
-  color: #f00;
   margin-right: 5px;
   font-weight: bold;
+}
+
+#chat-box .line:before {
+  color: #f00;
+}
+
+#chat-box .line1:before {
+  color: #f56;
+}
+
+#chat-box .line2:before {
+  color: #7ed;
+}
+
+#chat-box .line3:before {
+  color: #fe5;
 }
 
 #cmd {

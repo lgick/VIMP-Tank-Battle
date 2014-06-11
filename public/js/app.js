@@ -283,7 +283,7 @@ require([
     }
 
     if (chat) {
-      modules.chat.add({name: chat[0], text: chat[1]});
+      modules.chat.add(chat);
     }
 
     if (vote) {
@@ -533,7 +533,7 @@ require([
       msg = unpacking(e.reason);
       socketMethods[msg[0]](msg[1]);
     } else {
-      socketMethods[8]([4]);
+      socketMethods[5]([4]);
     }
 
     console.log('disconnect');

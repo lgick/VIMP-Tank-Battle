@@ -51,9 +51,9 @@ define(['Publisher'], function (Publisher) {
       , message = data.message;
 
     line.id = 'line_' + id;
-    line.className = 'line';
-    line.setAttribute('data-name', message.name + ': ');
-    line.innerHTML = message.text;
+    line.className = 'line' + (message[2] || '');
+    line.setAttribute('data-name', message[0] + ': ');
+    line.innerHTML = message[1];
 
     this._chat.appendChild(line);
   };

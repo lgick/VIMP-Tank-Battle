@@ -47,6 +47,8 @@ function Game(data, ports) {
   this._shotTimer;
   this._mapTimer;
 
+  //this._amountUsersInStatus = {};           // общее количество игроков
+
   this.startGame();
 }
 
@@ -167,7 +169,8 @@ Game.prototype.updateCurrentMap = function () {
 Game.prototype.createShot = function () {
   var data = []
     , gameData = {}
-    , p;
+    , p
+    , message;
 
   data[0] = null;      // game
   data[1] = null;      // coords
@@ -175,8 +178,6 @@ Game.prototype.createShot = function () {
   data[3] = null;      // stat
   data[4] = null;      // chat
   data[5] = null;      // vote
-
-  this._statList[0] = [];
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
@@ -204,17 +205,27 @@ Game.prototype.createShot = function () {
   data[0] = [[[1, 2], gameData, 1]];
   data[3] = this._statList;
 
+  message = this._messageList.pop();
+
+  if (message) {
+    if (message.only === false) {
+      data[4] = [message.name, message.message, message.type];
+    }
+  }
+
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       if (this._users[p].ready) {
         data[1] = [this._users[p].data[0], this._users[p].data[1]];
         data[2] = this._users[p].panel;
+
         this._users[p].socket.send(this._portShot, data);
       }
     }
   }
 
-  this._statList = [];
+  this._statList[0] = [];
+
 };
 
 // отправляет данные всем
@@ -358,6 +369,7 @@ Game.prototype.removeUser = function (gameID, cb) {
   var bool = false;
 
   if (this._users[gameID]) {
+    this._statList[0].push([gameID, this._users[gameID].data[4], null, 0]);
     this._users[gameID] = null;
     bool = true;
   }
@@ -365,6 +377,11 @@ Game.prototype.removeUser = function (gameID, cb) {
   process.nextTick(function () {
     cb(bool);
   });
+};
+
+// возвращает количество игроков
+Game.prototype.getAmountUsersInStatus = function () {
+  //return this._amountUsersInStatus;
 };
 
 // обновляет команды
@@ -375,11 +392,12 @@ Game.prototype.updateKeys = function (gameID, keys) {
 // добавляет сообщение
 Game.prototype.addMessage = function (gameID, message) {
   this._messageList.push({
+    gameID: gameID,
     name: this._users[gameID].data[5],
     message: message,
+    type: this._users[gameID].data[4] + 1,
     only: false
   });
-  this._users[gameID].addMessage(message);
 };
 
 // обрабатывает vote данные

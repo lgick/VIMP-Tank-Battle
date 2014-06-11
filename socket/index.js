@@ -162,7 +162,6 @@ module.exports = function (server) {
 
         if (message) {
           game.addMessage(gameID, message);
-          ws.socket.send(portLog, ['System (chat)', message]);
         }
       }
     };
