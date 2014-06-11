@@ -45,8 +45,6 @@ exports.options = {
   backgroundColor: '#f00'
 };
 
-exports.players = 8;
-
 exports.respawns = {
   team1: [
     [100, 128, 0],

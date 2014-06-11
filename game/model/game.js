@@ -47,7 +47,7 @@ function Game(data, ports) {
   this._shotTimer;
   this._mapTimer;
 
-  //this._amountUsersInStatus = {};           // общее количество игроков
+  this._allUsersInTeam = {};                // количество игроков в команде
 
   this.startGame();
 }
@@ -138,7 +138,7 @@ Game.prototype.sendVoteMap = function () {
   }).bind(this), this._voteMapTime);
 };
 
-// обновить текущую карту
+// обновляет текущую карту
 Game.prototype.updateCurrentMap = function () {
   var map = this._currentMap
     , votes = 0
@@ -163,6 +163,40 @@ Game.prototype.updateCurrentMap = function () {
 
   this._respawns = this._maps[this._currentMap].respawns;
   this._resultVoteMaps = {};
+};
+
+// отправляет текущую карту
+Game.prototype.sendCurrentMap = function (gameID) {
+  var map = this._maps[this._currentMap]
+    , data = {
+      map: map.map,
+      step: map.step,
+      spriteSheet: map.spriteSheet,
+      options: map.options
+    }
+    , p;
+
+  if (gameID) {
+    this._users[gameID].ready = false;
+    this._users[gameID].socket.send(this._portMap, data);
+  } else {
+    for (p in this._users) {
+      if (this._users.hasOwnProperty(p)) {
+        if (this._users[p] !== null) {
+          this._users[p].ready = false;
+          this._users[p].socket.send(this._portMap, data);
+        }
+      }
+    }
+  }
+};
+
+// сообщает о загрузке карты
+Game.prototype.mapReady = function (err, gameID) {
+  if (!err) {
+    this._users[gameID].ready = true;
+    this._users[gameID].socket.send(this._portInform);
+  }
 };
 
 // создает кадр игры
@@ -241,40 +275,6 @@ Game.prototype.sendForAll = function (port, data) {
   }
 };
 
-// отправляет текущую карту
-Game.prototype.sendCurrentMap = function (gameID) {
-  var map = this._maps[this._currentMap]
-    , data = {
-      map: map.map,
-      step: map.step,
-      spriteSheet: map.spriteSheet,
-      options: map.options
-    }
-    , p;
-
-  if (gameID) {
-    this._users[gameID].ready = false;
-    this._users[gameID].socket.send(this._portMap, data);
-  } else {
-    for (p in this._users) {
-      if (this._users.hasOwnProperty(p)) {
-        if (this._users[p] !== null) {
-          this._users[p].ready = false;
-          this._users[p].socket.send(this._portMap, data);
-        }
-      }
-    }
-  }
-};
-
-// сообщает о загрузке карты
-Game.prototype.mapReady = function (err, gameID) {
-  if (!err) {
-    this._users[gameID].ready = true;
-    this._users[gameID].socket.send(this._portInform);
-  }
-};
-
 // стартует раунд
 Game.prototype.startRound = function () {
   var p
@@ -306,6 +306,7 @@ Game.prototype.stopRound = function () {
 Game.prototype.createUser = function (data, socket, cb) {
   var name
     , team = data.team
+    , emptyTeam
     , gameID;
 
   // проверяет имя
@@ -334,7 +335,7 @@ Game.prototype.createUser = function (data, socket, cb) {
   name = checkName.call(this, data.name);
 
   // подбирает gameID
-  function getUserID() {
+  function getGameID() {
     var gameID = 0;
 
     while (this._users[gameID]) {
@@ -344,7 +345,42 @@ Game.prototype.createUser = function (data, socket, cb) {
     return gameID;
   }
 
-  gameID = getUserID.call(this);
+  gameID = getGameID.call(this);
+
+  // ищет команды имеющие свободные респауны
+  function searchEmptyTeam() {
+    var team;
+
+    for (team in this._respawns) {
+      if (this._respawns.hasOwnProperty(team)) {
+        if (this._respawns[team].length !== this._allUsersInTeam[team]) {
+          return team;
+        }
+      }
+    }
+  }
+
+  if (team !== 'spectators') {
+    // если количество респаунов на карте в выбраной команде
+    // равно количеству игроков в этой команде
+    if (this._respawns[team].length === this._allUsersInTeam[team]) {
+      emptyTeam = searchEmptyTeam.call(this);
+
+      // если найдена команда с свободным местом
+      // TODO придумать систему оповещения об изменении
+      if (emptyTeam) {
+        team = emptyTeam;
+      } else {
+        team = 'spectators';
+      }
+    }
+  }
+
+  if (this._allUsersInTeam[team]) {
+    this._allUsersInTeam[team] += 1;
+  } else {
+    this._allUsersInTeam[team] = 1;
+  }
 
   this._users[gameID] = new User({
     team: this._statusList[team],
@@ -370,6 +406,7 @@ Game.prototype.removeUser = function (gameID, cb) {
 
   if (this._users[gameID]) {
     this._statList[0].push([gameID, this._users[gameID].data[4], null, 0]);
+    this._allUsersInTeam[this._users[gameID].team] -= 1;
     this._users[gameID] = null;
     bool = true;
   }
@@ -377,11 +414,6 @@ Game.prototype.removeUser = function (gameID, cb) {
   process.nextTick(function () {
     cb(bool);
   });
-};
-
-// возвращает количество игроков
-Game.prototype.getAmountUsersInStatus = function () {
-  //return this._amountUsersInStatus;
 };
 
 // обновляет команды
