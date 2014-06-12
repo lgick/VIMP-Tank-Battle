@@ -253,6 +253,10 @@ Game.prototype.createShot = function () {
         data[1] = [this._users[p].data[0], this._users[p].data[1]];
         data[2] = this._users[p].panel;
 
+        if (this._users[p].bullet) {
+          console.log(this._users[p].bullet);
+        }
+
         this._users[p].socket.send(this._portShot, data);
       }
     }

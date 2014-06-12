@@ -28,14 +28,20 @@ function rangeNumber(value, repeat, max, min) {
   return value;
 }
 
-
-
 function User(data) {
   this.data = [0, 0, 0, 0, data.team, data.name];
+  this.bullet = null;
   this.team = data.team;
   this.panel = [100, 200, 0];
   this._stat = [data.name, '', 0, 0];
   this._keys = null;
+
+  this._acceleration = 0;
+  this._maxForward = 25;
+  this._maxBack = 15;
+
+  this._maxGunAngle = 80;
+  this._gunAngleStep = this._maxGunAngle / 10;
 }
 
 // преобразует данные из base36
@@ -52,70 +58,86 @@ User.prototype.setData = function (data) {
 
 // обновляет данные
 User.prototype.updateData = function () {
-  if (this._keys === null) {
-    return;
-  }
-
-  var keys = this._keys.split('');
   var rad = +(this.data[2] * (Math.PI / 180)).toFixed(10);
+  var vX = Math.cos(rad) * this._acceleration;
+  var vY = Math.sin(rad) * this._acceleration;
 
-  var vX = Math.cos(rad) * 16;
-  var vY = Math.sin(rad) * 16;
+  if (this._keys === null) {
+    if (this._acceleration > 0) {
+      this._acceleration -= 1;
+    } else if (this._acceleration < 0) {
+      this._acceleration += 1;
+    }
 
-  console.log(keys);
-  // forward
-  if (keys[0] === '1') {
-    this.data[0] = Math.round(vX) + this.data[0];
-    this.data[1] = Math.round(vY) + this.data[1];
-    console.log(this.data);
+  } else {
+    var keys = this._keys.split('');
+
+    // forward
+    if (keys[0] === '1') {
+      if (this._acceleration < this._maxForward) {
+        this._acceleration += 1;
+      }
+    } else
+
+    // back
+    if (keys[1] === '1') {
+      if (this._acceleration > -this._maxBack) {
+        this._acceleration -= 1;
+      }
+    } else {
+      if (this._acceleration > 0) {
+        this._acceleration -= 1;
+      } else if (this._acceleration < 0) {
+        this._acceleration += 1;
+      }
+    }
+
+    // left
+    if (keys[2] === '1') {
+      this.data[2] = this.data[2] - 4;
+    }
+
+    // right
+    if (keys[3] === '1') {
+      this.data[2] = this.data[2] + 4;
+    }
+
+    // gCenter
+    if (keys[4] === '1') {
+      this.data[3] = 0;
+    }
+
+    // gLeft
+    if (keys[5] === '1') {
+      if (this.data[3] > -this._maxGunAngle) {
+        this.data[3] = this.data[3] - this._gunAngleStep;
+      }
+    }
+
+    // gRight
+    if (keys[6] === '1') {
+      if (this.data[3] < this._maxGunAngle) {
+        this.data[3] = this.data[3] + this._gunAngleStep;
+      }
+    }
+
+    // fire
+    if (keys[7] === '1') {
+      this.bullet = [this.data[0], this.data[1]];
+    }
+
+    //TODO: для spectators
+    // // next player
+    // if (keys[8] === '1') {
+    // }
+    //
+    // // prev player
+    // if (keys[9] === '1') {
+    // }
   }
 
-  // back
-  if (keys[1] === '1') {
-    this.data[0] = Math.round(vX) - this.data[0];
-    this.data[1] = Math.round(vY) - this.data[1];
-  }
-
-  // left
-  if (keys[2] === '1') {
-    this.data[2] = this.data[2] - 4;
-  }
-
-  // right
-  if (keys[3] === '1') {
-    this.data[2] = this.data[2] + 4;
-  }
-
-  // gCenter
-  if (keys[4] === '1') {
-  }
-
-  // gLeft
-  if (keys[5] === '1') {
-    this.data[3] = this.data[3] - 4;
-  }
-
-  // gRight
-  if (keys[6] === '1') {
-    this.data[3] = this.data[3] + 4;
-  }
-
-  // fire
-  if (keys[7] === '1') {
-  }
-
-// TODO: для spectators
- // // next player
- // if (keys[8] === '1') {
- // }
-
- // // prev player
- // if (keys[9] === '1') {
- // }
-
-
-  //bot[0] = rangeNumber(nX, true, xMax, 0);
-  //bot[1] = rangeNumber(nY, true, yMax, 0);
+  this.data[0] = Math.round(vX) + this.data[0];
+  this.data[1] = Math.round(vY) + this.data[1];
 
   this._keys = null;
 };

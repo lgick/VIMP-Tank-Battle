@@ -6,7 +6,7 @@ module.exports = {
   mapTime: 1200000,              // 20 мин
   currentMap: 'mini',
 
-  shotTime: 30,
+  shotTime: 50,
 
   roundTime: 120000,             // 2 мин
 
