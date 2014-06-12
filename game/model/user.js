@@ -95,11 +95,17 @@ User.prototype.updateData = function () {
     // left
     if (keys[2] === '1') {
       this.data[2] = this.data[2] - 4;
+      if (this.data[2] < 0) {
+        this.data[2] = 356;
+      }
     }
 
     // right
     if (keys[3] === '1') {
       this.data[2] = this.data[2] + 4;
+      if (this.data[2] > 360) {
+        this.data[2] = 4;
+      }
     }
 
     // gCenter

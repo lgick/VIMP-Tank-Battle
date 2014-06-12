@@ -1,12 +1,14 @@
 ![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
 
-<!---
+# VIMP Tank Battle (в работе)
+
+Многопользовательская 2D онлайн реалтайм игра.
+
 # Установка
+
 ```
 git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && bower i && npm start
 ```
--->
-
 
 # WebSocket ports (message-IDs)
 
