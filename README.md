@@ -417,8 +417,8 @@ canvasOptions: {
     ]
   ],
 
-  // chat [name, text]
-  ['User', 'Hello World!'],
+  // chat [text, name, type]
+  ['Hello World!', 'User', 1],
 
   // vote [vote, data]
   [

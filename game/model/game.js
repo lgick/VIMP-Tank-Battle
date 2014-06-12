@@ -243,7 +243,7 @@ Game.prototype.createShot = function () {
 
   if (message) {
     if (message.only === false) {
-      data[4] = [message.name, message.message, message.type];
+      data[4] = [message.message, message.name, message.type];
     }
   }
 

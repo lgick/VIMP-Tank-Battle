@@ -48,12 +48,15 @@ define(['Publisher'], function (Publisher) {
   ChatView.prototype.createLine = function (data) {
     var line = this._document.createElement('div')
       , id = data.id
-      , message = data.message;
+      , message = data.message
+      , text = message[0]
+      , name = message[1] || 'System'
+      , type = message[2] || '';
 
     line.id = 'line_' + id;
-    line.className = 'line' + (message[2] || '');
-    line.setAttribute('data-name', message[0] + ': ');
-    line.innerHTML = message[1];
+    line.className = 'line' + type;
+    line.setAttribute('data-name', name + ': ');
+    line.innerHTML = text;
 
     this._chat.appendChild(line);
   };
