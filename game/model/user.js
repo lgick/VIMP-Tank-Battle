@@ -32,16 +32,26 @@ function User(data) {
   this.data = [0, 0, 0, 0, data.team, data.name];
   this.bullet = null;
   this.team = data.team;
-  this.panel = [100, 200, 0];
-  this._stat = [data.name, '', 0, 0];
+
+  this.panel = this._panel = [100, 200, 0];
+
+  if (this.team !== 2) {
+    this.stat = this._stat = [data.name, '', 0, 0];
+  } else {
+    this.stat = this._stat = [data.name];
+  }
+
   this._keys = null;
 
-  this._acceleration = 0;
-  this._maxForward = 25;
-  this._maxBack = 15;
+  this._layer = 1;
 
-  this._maxGunAngle = 80;
-  this._gunAngleStep = this._maxGunAngle / 10;
+  this._acceleration = 0;
+  this._maxForward = 20;
+  this._maxBack = 10;
+  this._step = 0.5;
+
+  this._maxGunAngle = 90;
+  this._gunAngleStep = this._maxGunAngle / 3;
 }
 
 // преобразует данные из base36
@@ -54,19 +64,21 @@ User.prototype.setData = function (data) {
   this.data[0] = data[0];
   this.data[1] = data[1];
   this.data[2] = data[2];
+  this.data[3] = 0;
 };
 
 // обновляет данные
 User.prototype.updateData = function () {
   var rad = +(this.data[2] * (Math.PI / 180)).toFixed(10);
-  var vX = Math.cos(rad) * this._acceleration;
-  var vY = Math.sin(rad) * this._acceleration;
+  var vX = Math.round(Math.cos(rad) * this._acceleration);
+  var vY = Math.round(Math.sin(rad) * this._acceleration);
+  var radBullet;
 
   if (this._keys === null) {
     if (this._acceleration > 0) {
-      this._acceleration -= 1;
+      this._acceleration -= this._step;
     } else if (this._acceleration < 0) {
-      this._acceleration += 1;
+      this._acceleration += this._step;
     }
 
   } else {
@@ -75,20 +87,20 @@ User.prototype.updateData = function () {
     // forward
     if (keys[0] === '1') {
       if (this._acceleration < this._maxForward) {
-        this._acceleration += 1;
+        this._acceleration += this._step * 4;
       }
     } else
 
     // back
     if (keys[1] === '1') {
       if (this._acceleration > -this._maxBack) {
-        this._acceleration -= 1;
+        this._acceleration -= this._step * 2;
       }
     } else {
       if (this._acceleration > 0) {
-        this._acceleration -= 1;
+        this._acceleration -= this._step;
       } else if (this._acceleration < 0) {
-        this._acceleration += 1;
+        this._acceleration += this._step;
       }
     }
 
@@ -129,7 +141,16 @@ User.prototype.updateData = function () {
 
     // fire
     if (keys[7] === '1') {
-      this.bullet = [this.data[0], this.data[1]];
+      radBullet = +((this.data[3] + this.data[2]) * (Math.PI / 180)).toFixed(2);
+      this.bullet = [
+        Math.round(Math.cos(radBullet) * 20) + this.data[0],
+        Math.round(Math.sin(radBullet) * 20) + this.data[1],
+        radBullet,
+        this._layer,
+        vX,
+        vY,
+        1
+      ];
     }
 
     //TODO: для spectators
@@ -142,8 +163,8 @@ User.prototype.updateData = function () {
     // }
   }
 
-  this.data[0] = Math.round(vX) + this.data[0];
-  this.data[1] = Math.round(vY) + this.data[1];
+  this.data[0] = vX + this.data[0];
+  this.data[1] = vY + this.data[1];
 
   this._keys = null;
 };
@@ -151,15 +172,6 @@ User.prototype.updateData = function () {
 // обновляет клавиши
 User.prototype.updateKeys = function (keys) {
   this._keys = keys;
-};
-
-// возвращает статистику
-User.prototype.getStat = function () {
-  return this._stat;
-};
-
-// создает пулю
-User.prototype.createBullet = function () {
 };
 
 module.exports = User;

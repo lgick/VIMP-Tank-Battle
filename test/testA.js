@@ -90,7 +90,7 @@ exports.game = function (socket, time) {
           cache: true
         },
         {
-          constructors: ['Bullets'],
+          constructors: ['Bullet'],
           instances: {
             bob: [
               [100, 320],

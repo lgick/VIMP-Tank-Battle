@@ -33,7 +33,7 @@ exports.gameA = function () {
           cache: true
         },
         {
-          constructors: ['Bullets'],
+          constructors: ['Bullet'],
           instances: {
             bob: [
               [100, 320],

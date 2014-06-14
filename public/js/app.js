@@ -222,7 +222,7 @@ require([
             options: data.options
           }
         ],
-        false
+        3
       );
 
       spriteSheet.removeAllEventListeners();
@@ -245,7 +245,7 @@ require([
 
       , idArr
       , instances
-      , cache
+      , type
 
       , i2
       , len2
@@ -258,7 +258,7 @@ require([
     for (; i < len; i += 1) {
       idArr = game[i][0];
       instances = game[i][1];
-      cache = game[i][2];
+      type = game[i][2];
 
       i2 = 0;
       len2 = idArr.length;
@@ -267,7 +267,7 @@ require([
         // получение данных о конструкторе по его id
         part = parts[idArr[i2]];
 
-        CTRL[part.canvas].parse(part.name, instances, cache);
+        CTRL[part.canvas].parse(part.name, instances, type);
       }
     }
 

@@ -149,8 +149,6 @@ module.exports = function (server) {
           keys = keys.slice(1);
 
           game.updateKeys(gameID, keys);
-
-          ws.socket.send(portLog, ['System (keys)', keys]);
         }
       }
     };

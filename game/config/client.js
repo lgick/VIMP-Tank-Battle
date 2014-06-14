@@ -20,8 +20,8 @@ module.exports = {
       canvas: 'radar'
     },
     {
-      name: 'Bullets',
-      path: '/parts/bullets.js',
+      name: 'Bullet',
+      path: '/parts/bullet.js',
       canvas: 'vimp'
     }
   ],

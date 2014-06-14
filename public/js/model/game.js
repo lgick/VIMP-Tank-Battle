@@ -7,7 +7,6 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
 
   // Создает экземпляры вида:
   // this._data['Tank']['01'] - игрок c id '01'
-  // this._data['Bullets']['01'] - пули игрока
   //
   // constructor - имя конструктора для экземпляра
   // id          - id экземпляра
@@ -16,6 +15,15 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
     this._data[constructor] = this._data[constructor] || {};
     this._data[constructor][id] = Factory(constructor, data);
     this.publisher.emit('create', this._data[constructor][id]);
+  };
+
+  GameModel.prototype.createMore = function (constructor, id, data) {
+    var object = {
+      data: data,
+      publisher: this.publisher
+    };
+
+    Factory(constructor, object);
   };
 
   // Возвращает данные:

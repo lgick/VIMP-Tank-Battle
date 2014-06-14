@@ -1,4 +1,4 @@
-var User = require('./User');
+var User = require('./user');
 
 function getInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -70,7 +70,9 @@ Game.prototype.stopGame = function () {
 Game.prototype.startMapTimer = function () {
   this.updateCurrentMap();
   this.sendCurrentMap();
+
   this.sendForAll(this._portLog, ['System', 'new map']);
+  this._messageList.push({message: 'new map'});
 
   this._mapTimer = setTimeout((function () {
     this.sendVoteMap();
@@ -87,14 +89,17 @@ Game.prototype.startRoundTimer = function () {
   this.startRound();
   this._roundTimer = setTimeout((function () {
     this.sendForAll(this._portLog, ['System', 'round end']);
+  this._messageList.push({message: 'round end'});
     this.startRoundTimer();
     this.sendForAll(this._portLog, ['System', 'round start']);
+  this._messageList.push({message: 'round start'});
   }).bind(this), this._roundTime);
 };
 
 // останавливает раунд
 Game.prototype.stopRoundTimer = function () {
   this.sendForAll(this._portLog, ['System', 'round stop']);
+  this._messageList.push({message: 'round stop'});
   clearTimeout(this._roundTimer);
 };
 
@@ -122,6 +127,7 @@ Game.prototype.sendVoteMap = function () {
   ];
 
   this.sendForAll(this._portLog, data);
+  this._messageList.push({message: data});
 
   // собирает результаты голосования и стартует новую игру
   setTimeout((function () {
@@ -196,6 +202,8 @@ Game.prototype.mapReady = function (err, gameID) {
   if (!err) {
     this._users[gameID].ready = true;
     this._users[gameID].socket.send(this._portInform);
+    // TODO: оправить общую статистику о игроках
+    // TODO: отправить системное чат сообщение о изменении команды
   }
 };
 
@@ -203,7 +211,10 @@ Game.prototype.mapReady = function (err, gameID) {
 Game.prototype.createShot = function () {
   var data = []
     , gameData = {}
+    , bulletData = {}
     , p
+    , bullet
+    , stat
     , message;
 
   data[0] = null;      // game
@@ -219,43 +230,44 @@ Game.prototype.createShot = function () {
         gameData[p] = null;
         delete this._users[p];
       } else if (this._users[p].ready) {
+        stat = this._users[p].stat;
+        this._users[p].stat = null;
+
+        if (stat) {
+          this._statList[0].push([p, this._users[p].data[4], stat, 0]);
+        }
+
         if (this._users[p].team !== 'spectators') {
           this._users[p].updateData();
           gameData[p] = this._users[p].data;
 
-          this._statList[0].push([
-            ~~p, this._users[p].data[4], this._users[p].getStat(), 0
-          ]);
-        } else {
-          this._statList[0].push([
-            ~~p, this._users[p].data[4], [this._users[p].data[5]], 0
-          ]);
-        }
+          bullet = this._users[p].bullet;
 
+          if (bullet) {
+            bulletData[p] = bullet;
+            this._users[p].bullet = null;
+          }
+        }
       }
     }
   }
 
-  data[0] = [[[1, 2], gameData, 1]];
+  data[0] = [[[1, 2], gameData, 1], [[3], bulletData, 2]];
   data[3] = this._statList;
 
   message = this._messageList.pop();
 
   if (message) {
-    if (message.only === false) {
-      data[4] = [message.message, message.name, message.type];
-    }
+    data[4] = [message.message, message.name, message.type];
   }
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       if (this._users[p].ready) {
         data[1] = [this._users[p].data[0], this._users[p].data[1]];
-        data[2] = this._users[p].panel;
 
-        if (this._users[p].bullet) {
-          console.log(this._users[p].bullet);
-        }
+        data[2] = this._users[p].panel;
+        this._users[p].panel = null;
 
         this._users[p].socket.send(this._portShot, data);
       }
