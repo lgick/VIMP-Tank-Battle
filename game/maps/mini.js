@@ -23,8 +23,6 @@ exports.map = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ];
 
-exports.step = 32;
-
 exports.spriteSheet = {
   images: ['/img/tiles.png'],
   frames: [
@@ -37,13 +35,14 @@ exports.spriteSheet = {
   ]
 };
 
-exports.options = {
-  width: 800,
-  height: 640,
-  borderColor: '#fff',
-  borderThickness: 3,
-  backgroundColor: '#f00'
+exports.layers = {
+  '1': [0, 1, 2, 3, 4],
+  '3': [5]
 };
+
+exports.partID = 0;
+
+exports.step = 32;
 
 exports.respawns = {
   team1: [

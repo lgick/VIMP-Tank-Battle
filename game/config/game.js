@@ -4,7 +4,7 @@ module.exports = {
   maps: maps,
   mapList: ['mini', 'arena'],
   mapTime: 1200000,              // 20 мин
-  currentMap: 'mini',
+  currentMap: 'arena',
 
   shotTime: 50,
 

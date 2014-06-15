@@ -1,33 +1,39 @@
 define(['createjs'], function (createjs) {
   var Shape = createjs.Shape;
 
-  function Bullet(params) {
-    var data = params.data
-      , publisher = params.publisher
-      , shape = new Shape()
-      , vX = Math.round(Math.cos(data[2]) * 20) + data[4]
-      , vY = Math.round(Math.sin(data[2]) * 20) + data[5]
-      , times = 50
-      , g;
+  function Bullet(params, gameModel) {
+    this._gameModel = gameModel;
 
-    shape.x = data[0];
-    shape.y = data[1];
-    shape.layer = data[3];
+    this.initialize(params);
+  }
 
-    shape.addEventListener('tick', function () {
-      if (times) {
-        shape.x += vX;
-        shape.y += vY;
-        times -= 1;
-      } else {
-        shape.removeEventListener('tick');
-        publisher.emit('remove', shape);
-      }
-    });
+  p = Bullet.prototype = new Shape();
+  p.Shape_initialize = p.initialize;
 
-    g = shape.graphics;
+  // инициализация
+  p.initialize = function (params) {
+    this.Shape_initialize();
 
-    switch (data[6]) {
+    var vX = Math.round(Math.cos(params[2]) * 20) + params[4]
+      , vY = Math.round(Math.sin(params[2]) * 20) + params[5];
+
+    this.x = params[0];
+    this.y = params[1];
+    this.layer = params[3];
+
+    this.addEventListener('tick', (function () {
+      this.x += vX;
+      this.y += vY;
+    }).bind(this));
+
+    this.create(params[6]);
+  };
+
+  // создает экземпляр
+  p.create = function (type) {
+    var g = this.graphics;
+
+    switch (type) {
       case 1:
         g.setStrokeStyle(1);
         g.beginStroke('#333');
@@ -41,9 +47,12 @@ define(['createjs'], function (createjs) {
         g.drawCircle(0, 0, 5);
         break;
     }
+  };
 
-    publisher.emit('create', shape);
-  }
+  // обновляет экземпляр
+  p.update = function (params) {
+    this.removeEventListener('tick');
+  };
 
   return Bullet;
 });

@@ -2,12 +2,12 @@ define([], function () {
   // Фабрика для строительства объектов игры
   // создает объект игры указанного типа
   // по заданным параметрам
-  function Factory(type, params) {
+  function Factory(type, params, context) {
     if (typeof Factory[type] !== 'function') {
       return;
     }
 
-    return new Factory[type](params);
+    return new Factory[type](params, context);
   }
 
   // добавление конструктора

@@ -17,49 +17,48 @@ define(['createjs'], function (createjs) {
   p.initialize = function (data) {
     this.Container_initialize();
 
-    this.layer = 0;
+    // data состоит из:
+    // layer - слой
+    // tiles - массив с названием тайлов
+    // spriteSheet - данные картинки
+    // map - карта
+    // step - размер шага
 
-    this.map = data.map;
-    this.step = data.step;
+    this.layer = data.layer;
 
-    this.createBase(data.options);
+    this._tiles = data.tiles;
+    this._map = data.map;
+    this._step = data.step;
+
     this.createMap(data.spriteSheet);
   };
 
   p.createMap = function (spriteSheet) {
     var x
       , y
+      , tile
       , sprite
-      , lenY = this.map.length
-      , lenX = this.map[0].length;
+      , i
+      , len
+      , lenY = this._map.length
+      , lenX = this._map[0].length;
 
     for (y = 0; y < lenY; y += 1) {
       for (x = 0; x < lenX; x += 1) {
-        sprite = new Sprite(spriteSheet);
-        sprite.x = x * this.step;
-        sprite.y = y * this.step;
-        sprite.gotoAndStop(this.map[y][x]);
+        tile = this._map[y][x];
 
-        this.addChild(sprite);
+        for (i = 0, len = this._tiles.length; i < len; i += 1) {
+          if (tile === this._tiles[i]) {
+            sprite = new Sprite(spriteSheet);
+            sprite.x = x * this._step;
+            sprite.y = y * this._step;
+            sprite.gotoAndStop(tile);
+
+            this.addChild(sprite);
+          }
+        }
       }
     }
-  };
-
-  p.createBase = function (data) {
-    var shape = new Shape()
-      , g = shape.graphics
-      , width = data.width || 2000
-      , height = data.height || 2000
-      , borderColor = data.borderColor || '#fff'
-      , borderThickness = data.borderThickness || 10
-      , backgroundColor = data.backgroundColor || '#f00';
-
-    g.beginFill(backgroundColor);
-    g.setStrokeStyle(borderThickness);
-    g.beginStroke(borderColor);
-    g.drawRect(0, 0, width, height);
-
-    this.addChild(shape);
   };
 
   return Map;

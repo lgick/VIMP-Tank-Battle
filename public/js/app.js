@@ -210,20 +210,32 @@ require([
       create();
     }
 
+    // создание карты
     function create() {
-      CTRL[parts[0].canvas].parse(
-        ['Map'],
-        [
-          {
-            name: data.name,
+      var layers = data.layers
+        , part = parts[data.partID]
+        , name = part.name
+        , canvas = part.canvas
+        , mapData = {}
+        , p
+      ;
+
+      // удалить данные старой карты
+      CTRL[canvas].remove(name);
+
+      for (p in layers) {
+        if (layers.hasOwnProperty(p)) {
+          mapData[p] = {
+            layer: p,
+            tiles: layers[p],
             spriteSheet: spriteSheet,
-            step: data.step,
             map: data.map,
-            options: data.options
-          }
-        ],
-        3
-      );
+            step: data.step
+          };
+        }
+      }
+
+      CTRL[canvas].parse(name, mapData);
 
       spriteSheet.removeAllEventListeners();
       updateGameControllers();
@@ -245,7 +257,6 @@ require([
 
       , idArr
       , instances
-      , type
 
       , i2
       , len2
@@ -258,7 +269,6 @@ require([
     for (; i < len; i += 1) {
       idArr = game[i][0];
       instances = game[i][1];
-      type = game[i][2];
 
       i2 = 0;
       len2 = idArr.length;
@@ -267,7 +277,7 @@ require([
         // получение данных о конструкторе по его id
         part = parts[idArr[i2]];
 
-        CTRL[part.canvas].parse(part.name, instances, type);
+        CTRL[part.canvas].parse(part.name, instances);
       }
     }
 

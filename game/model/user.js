@@ -149,7 +149,7 @@ User.prototype.updateData = function () {
         this._layer,
         vX,
         vY,
-        1
+        2
       ];
     }
 

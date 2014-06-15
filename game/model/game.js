@@ -176,9 +176,10 @@ Game.prototype.sendCurrentMap = function (gameID) {
   var map = this._maps[this._currentMap]
     , data = {
       map: map.map,
-      step: map.step,
       spriteSheet: map.spriteSheet,
-      options: map.options
+      layers: map.layers,
+      partID: map.partID,
+      step: map.step
     }
     , p;
 
@@ -252,7 +253,7 @@ Game.prototype.createShot = function () {
     }
   }
 
-  data[0] = [[[1, 2], gameData, 1], [[3], bulletData, 2]];
+  data[0] = [[[1, 2], gameData], [[3], bulletData]];
   data[3] = this._statList;
 
   message = this._messageList.pop();
