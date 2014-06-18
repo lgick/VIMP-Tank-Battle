@@ -142,13 +142,13 @@ User.prototype.updateData = function () {
     // fire
     if (keys[7] === '1') {
       radBullet = +((this.data[3] + this.data[2]) * (Math.PI / 180)).toFixed(2);
+
       this.bullet = [
         Math.round(Math.cos(radBullet) * 20) + this.data[0],
         Math.round(Math.sin(radBullet) * 20) + this.data[1],
-        radBullet,
+        Math.round(Math.cos(radBullet) * 20) + vX,
+        Math.round(Math.sin(radBullet) * 20) + vY,
         this._layer,
-        vX,
-        vY,
         2
       ];
     }

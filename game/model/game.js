@@ -49,6 +49,17 @@ function Game(data, ports) {
 
   this._allUsersInTeam = {};                // количество игроков в команде
 
+  // итеративный таймер
+  // с каждым тиком увеличивается текущее время
+  // и проверяется если ли данные (например пуль) для этого времени
+  this._currentTime = 0;
+  this._minTime = 1;
+  this._maxTime = 100;
+
+  this._bulletTime = 10;                    // время жизни пули
+  this._bullets = {};                       // this._bullets[time] = [id, id]
+  this._currentBulletID = 0;                // id для пуль
+
   this.startGame();
 }
 
@@ -71,7 +82,6 @@ Game.prototype.startMapTimer = function () {
   this.updateCurrentMap();
   this.sendCurrentMap();
 
-  this.sendForAll(this._portLog, ['System', 'new map']);
   this._messageList.push({message: 'new map'});
 
   this._mapTimer = setTimeout((function () {
@@ -88,17 +98,14 @@ Game.prototype.stopMapTimer = function () {
 Game.prototype.startRoundTimer = function () {
   this.startRound();
   this._roundTimer = setTimeout((function () {
-    this.sendForAll(this._portLog, ['System', 'round end']);
-  this._messageList.push({message: 'round end'});
+    this._currentBulletID = 0;
     this.startRoundTimer();
-    this.sendForAll(this._portLog, ['System', 'round start']);
-  this._messageList.push({message: 'round start'});
+    this._messageList.push({message: 'next round'});
   }).bind(this), this._roundTime);
 };
 
 // останавливает раунд
 Game.prototype.stopRoundTimer = function () {
-  this.sendForAll(this._portLog, ['System', 'round stop']);
   this._messageList.push({message: 'round stop'});
   clearTimeout(this._roundTimer);
 };
@@ -126,7 +133,6 @@ Game.prototype.sendVoteMap = function () {
     ]
   ];
 
-  this.sendForAll(this._portLog, data);
   this._messageList.push({message: data});
 
   // собирает результаты голосования и стартует новую игру
@@ -214,7 +220,12 @@ Game.prototype.createShot = function () {
     , gameData = {}
     , bulletData = {}
     , p
+    , bulletTime
     , bullet
+    , oldBullets
+    , bulletID
+    , i
+    , len
     , stat
     , message;
 
@@ -224,6 +235,28 @@ Game.prototype.createShot = function () {
   data[3] = null;      // stat
   data[4] = null;      // chat
   data[5] = null;      // vote
+
+  this._currentTime += 1;
+
+  if (this._currentTime > this._maxTime) {
+    this._currentTime = this._minTime;
+  }
+
+  bulletTime = this._currentTime + this._bulletTime;
+
+  if (bulletTime > this._maxTime) {
+    bulletTime = bulletTime - this._maxTime;
+  }
+
+  this._bullets[bulletTime] = [];
+
+  oldBullets = this._bullets[this._currentTime];
+
+  if (oldBullets && oldBullets.length) {
+    for (i = 0, len = oldBullets.length; i < len; i += 1) {
+      bulletData[oldBullets[i]] = null;
+    }
+  }
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
@@ -245,7 +278,10 @@ Game.prototype.createShot = function () {
           bullet = this._users[p].bullet;
 
           if (bullet) {
-            bulletData[p] = bullet;
+            bulletID = this._currentBulletID.toString(36);
+            bulletData[bulletID] = bullet;
+            this._bullets[bulletTime].push(bulletID);
+            this._currentBulletID += 1;
             this._users[p].bullet = null;
           }
         }

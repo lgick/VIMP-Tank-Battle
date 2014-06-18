@@ -8,14 +8,14 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
   // Создает экземпляры вида:
   // this._data['Tank']['01']   - игрок c id '01'
   // this._data['Map']['1']     - данные карты на 1 слое
-  // this._data['Bullet']['01'] - пули игрока с id '01'
+  // this._data['Bullet']['f2'] - пуля с id 'f2'
   //
   // constructor - имя конструктора для экземпляра
   // id          - id экземпляра
   // data        - данные для создания экземпляра
   GameModel.prototype.create = function (constructor, id, data) {
     this._data[constructor] = this._data[constructor] || {};
-    this._data[constructor][id] = Factory(constructor, data, this);
+    this._data[constructor][id] = Factory(constructor, data);
     this.publisher.emit('create', this._data[constructor][id]);
   };
 

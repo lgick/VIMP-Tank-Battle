@@ -1,9 +1,7 @@
 define(['createjs'], function (createjs) {
   var Shape = createjs.Shape;
 
-  function Bullet(params, gameModel) {
-    this._gameModel = gameModel;
-
+  function Bullet(params) {
     this.initialize(params);
   }
 
@@ -14,19 +12,19 @@ define(['createjs'], function (createjs) {
   p.initialize = function (params) {
     this.Shape_initialize();
 
-    var vX = Math.round(Math.cos(params[2]) * 20) + params[4]
-      , vY = Math.round(Math.sin(params[2]) * 20) + params[5];
-
     this.x = params[0];
     this.y = params[1];
-    this.layer = params[3];
+    this.vX = params[2];
+    this.vY = params[3];
+
+    this.layer = params[4];
 
     this.addEventListener('tick', (function () {
-      this.x += vX;
-      this.y += vY;
+      this.x += this.vX;
+      this.y += this.vY;
     }).bind(this));
 
-    this.create(params[6]);
+    this.create(params[5]);
   };
 
   // создает экземпляр
@@ -50,8 +48,7 @@ define(['createjs'], function (createjs) {
   };
 
   // обновляет экземпляр
-  p.update = function (params) {
-    this.removeEventListener('tick');
+  p.update = function () {
   };
 
   return Bullet;
