@@ -56,7 +56,7 @@ function Game(data, ports) {
   this._minTime = 1;
   this._maxTime = 100;
 
-  this._bulletTime = 10;                    // время жизни пули
+  this._bulletTime = 20;                    // время жизни пули
   this._bullets = {};                       // this._bullets[time] = [id, id]
   this._currentBulletID = 0;                // id для пуль
 

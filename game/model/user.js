@@ -43,7 +43,7 @@ function User(data) {
 
   this._keys = null;
 
-  this._layer = 1;
+  this._layer = 2;
 
   this._acceleration = 0;
   this._maxForward = 20;
