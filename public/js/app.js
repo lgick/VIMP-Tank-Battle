@@ -252,50 +252,56 @@ require([
       , chat = data[4]
       , vote = data[5]
 
-      , i = 0
-      , len = game.length
+      , i
+      , len
 
       , idArr
       , instances
 
       , i2
       , len2
-      , part;
+      , part
+    ;
 
-    // объект персональных данных (координаты, панель, чат)
-    coords.x = crds[0];
-    coords.y = crds[1];
+    // игра
+    if (game) {
+      for (i = 0, len = game.length; i < len; i += 1) {
+        idArr = game[i][0];
+        instances = game[i][1];
 
-    for (; i < len; i += 1) {
-      idArr = game[i][0];
-      instances = game[i][1];
+        for (i2 = 0, len2 = idArr.length; i2 < len2; i2 += 1) {
+          // получение данных о конструкторе по его id
+          part = parts[idArr[i2]];
 
-      i2 = 0;
-      len2 = idArr.length;
-
-      for (; i2 < len2; i2 += 1) {
-        // получение данных о конструкторе по его id
-        part = parts[idArr[i2]];
-
-        CTRL[part.canvas].parse(part.name, instances);
+          CTRL[part.canvas].parse(part.name, instances);
+        }
       }
+    }
+
+    // координаты
+    if (crds) {
+      coords.x = crds[0];
+      coords.y = crds[1];
     }
 
     updateGameControllers();
 
-    // обновление модулей
+    // панель
     if (panel) {
       modules.panel.update(panel);
     }
 
+    // статистика
     if (stat) {
       modules.stat.update(stat);
     }
 
+    // чат
     if (chat) {
       modules.chat.add(chat);
     }
 
+    // голосование
     if (vote) {
       modules.vote.open(vote);
     }

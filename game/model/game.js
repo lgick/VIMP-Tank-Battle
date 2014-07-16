@@ -40,13 +40,15 @@ function Game(data, ports) {
   this._users = {};                         // игроки
   this._resultVoteMaps = {};                // результаты голосования
   this._respawns = {};                      // респауны
-  this._statList = [];                      // статистика
   this._messageList = [];                   // сообщения
+  this._voteList = [];                      // голосования
+  this._statForRemove = [];                 // статистика для удаления
 
   this._roundTimer;
   this._shotTimer;
   this._mapTimer;
 
+  this._firstShotMessage = {};              // сообщение приветствия
   this._allUsersInTeam = {};                // количество игроков в команде
 
   // итеративный таймер
@@ -82,7 +84,7 @@ Game.prototype.startMapTimer = function () {
   this.updateCurrentMap();
   this.sendCurrentMap();
 
-  this._messageList.push({message: 'new map'});
+  this._messageList.push({text: 'new map'});
 
   this._mapTimer = setTimeout((function () {
     this.sendVoteMap();
@@ -100,13 +102,13 @@ Game.prototype.startRoundTimer = function () {
   this._roundTimer = setTimeout((function () {
     this._currentBulletID = 0;
     this.startRoundTimer();
-    this._messageList.push({message: 'next round'});
+    this._messageList.push({text: 'next round'});
   }).bind(this), this._roundTime);
 };
 
 // останавливает раунд
 Game.prototype.stopRoundTimer = function () {
-  this._messageList.push({message: 'round stop'});
+  this._messageList.push({text: 'round stop'});
   clearTimeout(this._roundTimer);
 };
 
@@ -133,7 +135,8 @@ Game.prototype.sendVoteMap = function () {
     ]
   ];
 
-  this._messageList.push({message: data});
+  this._messageList.push({text: data});
+  this._voteList.push(data);
 
   // собирает результаты голосования и стартует новую игру
   setTimeout((function () {
@@ -207,27 +210,19 @@ Game.prototype.sendCurrentMap = function (gameID) {
 // сообщает о загрузке карты
 Game.prototype.mapReady = function (err, gameID) {
   if (!err) {
-    this._users[gameID].ready = true;
     this._users[gameID].socket.send(this._portInform);
-    // TODO: оправить общую статистику о игроках
-    // TODO: отправить системное чат сообщение о изменении команды
+    this.sendFirstShot(gameID);
+    this._users[gameID].ready = true;
   }
 };
 
-// создает кадр игры
-Game.prototype.createShot = function () {
+// отправляет первый shot
+Game.prototype.sendFirstShot = function (gameID) {
+  // TODO: отправить всю текущую статистику
+  // TODO: отправить системное чат сообщение о изменении команды
   var data = []
-    , gameData = {}
-    , bulletData = {}
-    , p
-    , bulletTime
-    , bullet
-    , oldBullets
-    , bulletID
-    , i
-    , len
-    , stat
-    , message;
+    , stat = []
+    , p;
 
   data[0] = null;      // game
   data[1] = null;      // coords
@@ -235,6 +230,61 @@ Game.prototype.createShot = function () {
   data[3] = null;      // stat
   data[4] = null;      // chat
   data[5] = null;      // vote
+
+  stat[0] = [];        // <tbody>
+  stat[1] = [];        // <thead>
+
+  data[2] = this._users[gameID].panel;
+
+  for (p in this._users) {
+    if (this._users.hasOwnProperty(p)) {
+      stat[0].push([
+        p, this._users[p].data[4], this._users[p].stat, 0
+      ]);
+    }
+  }
+
+  // TODO: данные для <thead> общие и могут хранится в this
+  stat[1] = [
+    [0, [3, '', 20, ''], 0],
+    [1, [4, '', 30, ''], 0]
+  ];
+
+  data[3] = stat;
+
+  data[4] = [this._firstShotMessage[gameID]];
+
+  delete this._firstShotMessage[gameID];
+
+  this._users[gameID].socket.send(this._portShot, data);
+};
+
+// создает кадр игры
+Game.prototype.createShot = function () {
+  var data = []
+    , gameData = {}
+    , bulletData = {}
+    , stat = []
+    , p
+    , bulletTime
+    , bullet
+    , oldBullets
+    , bulletID
+    , i
+    , len
+    , message
+    , vote
+  ;
+
+  data[0] = null;      // game
+  data[1] = null;      // coords
+  data[2] = null;      // panel
+  data[3] = null;      // stat
+  data[4] = null;      // chat
+  data[5] = null;      // vote
+
+  stat[0] = [];        // <tbody>
+  stat[1] = [];        // <thead>
 
   this._currentTime += 1;
 
@@ -264,11 +314,13 @@ Game.prototype.createShot = function () {
         gameData[p] = null;
         delete this._users[p];
       } else if (this._users[p].ready) {
-        stat = this._users[p].stat;
-        this._users[p].stat = null;
+        // если статистика обновилась
+        if (this._users[p].statStatus === true) {
+          stat[0].push([
+            p, this._users[p].data[4], this._users[p].stat, 0
+          ]);
 
-        if (stat) {
-          this._statList[0].push([p, this._users[p].data[4], stat, 0]);
+          this._users[p].statStatus = false;
         }
 
         if (this._users[p].team !== 'spectators') {
@@ -289,13 +341,28 @@ Game.prototype.createShot = function () {
     }
   }
 
+  for (i = 0, len = this._statForRemove.length; i < len; i += 1) {
+    stat[0].push(this._statForRemove[i]);
+  }
+
+  this._statForRemove = [];
+
   data[0] = [[[1, 2], gameData], [[3], bulletData]];
-  data[3] = this._statList;
+
+  if (stat[0].length || stat[1].length) {
+    data[3] = stat;
+  }
 
   message = this._messageList.pop();
 
   if (message) {
-    data[4] = [message.message, message.name, message.type];
+    data[4] = [message.text, message.name, message.type];
+  }
+
+  vote = this._voteList.pop();
+
+  if (vote) {
+    data[5] = vote;
   }
 
   for (p in this._users) {
@@ -303,16 +370,15 @@ Game.prototype.createShot = function () {
       if (this._users[p].ready) {
         data[1] = [this._users[p].data[0], this._users[p].data[1]];
 
-        data[2] = this._users[p].panel;
-        this._users[p].panel = null;
+        if (this._users[p].panel) {
+          data[2] = this._users[p].panel;
+          this._users[p].panel = null;
+        }
 
         this._users[p].socket.send(this._portShot, data);
       }
     }
   }
-
-  this._statList[0] = [];
-
 };
 
 // отправляет данные всем
@@ -360,7 +426,9 @@ Game.prototype.createUser = function (data, socket, cb) {
   var name
     , team = data.team
     , emptyTeam
-    , gameID;
+    , gameID
+    , message
+  ;
 
   // проверяет имя
   function checkName(name, number) {
@@ -389,7 +457,7 @@ Game.prototype.createUser = function (data, socket, cb) {
 
   // подбирает gameID
   function getGameID() {
-    var gameID = 0;
+    var gameID = 1;
 
     while (this._users[gameID]) {
       gameID += 1;
@@ -422,12 +490,20 @@ Game.prototype.createUser = function (data, socket, cb) {
       // если найдена команда с свободным местом
       // TODO придумать систему оповещения об изменении
       if (emptyTeam) {
+        message = team + ' is full. Current team: ' + emptyTeam;
         team = emptyTeam;
       } else {
+        message = 'All teams is full. Current status: spectators';
         team = 'spectators';
       }
+    } else {
+      message = 'Current team: ' + team;
     }
+  } else {
+    message = 'Current status: spectators';
   }
+
+  this._firstShotMessage[gameID] = message;
 
   if (this._allUsersInTeam[team]) {
     this._allUsersInTeam[team] += 1;
@@ -457,10 +533,23 @@ Game.prototype.createUser = function (data, socket, cb) {
 Game.prototype.removeUser = function (gameID, cb) {
   var bool = false;
 
+  // если gameID === undefined,
+  // значит пользователь вышел, не успев войти в игру
   if (this._users[gameID]) {
-    this._statList[0].push([gameID, this._users[gameID].data[4], null, 0]);
+    this._statForRemove.push([
+      gameID, this._users[gameID].data[4], null, 0
+    ]);
+
     this._allUsersInTeam[this._users[gameID].team] -= 1;
-    this._users[gameID] = null;
+
+    // если игрок был в spectators, то удалить
+    if (this._users[gameID].team === 'spectators') {
+      delete this._users[gameID];
+    // иначе сделать null, чтобы удалить экземпляр на клиенте
+    } else {
+      this._users[gameID] = null;
+    }
+
     bool = true;
   }
 
@@ -475,11 +564,11 @@ Game.prototype.updateKeys = function (gameID, keys) {
 };
 
 // добавляет сообщение
-Game.prototype.addMessage = function (gameID, message) {
+Game.prototype.addMessage = function (gameID, text) {
   this._messageList.push({
     gameID: gameID,
     name: this._users[gameID].data[5],
-    message: message,
+    text: text,
     type: this._users[gameID].data[4] + 1,
     only: false
   });

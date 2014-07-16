@@ -36,10 +36,12 @@ function User(data) {
   this.panel = this._panel = [100, 200, 0];
 
   if (this.team !== 2) {
-    this.stat = this._stat = [data.name, '', 0, 0];
+    this.stat = [data.name, '', 0, 0];
   } else {
-    this.stat = this._stat = [data.name];
+    this.stat = [data.name];
   }
+
+  this.statStatus = true;
 
   this._keys = null;
 
