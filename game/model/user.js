@@ -33,7 +33,7 @@ function User(data) {
   this.bullet = null;
   this.team = data.team;
 
-  this.panel = this._panel = [100, 200, 0];
+  this.panel = [100, 200, 0];
 
   if (this.team !== 2) {
     this.stat = [data.name, '', 0, 0];
@@ -41,7 +41,14 @@ function User(data) {
     this.stat = [data.name];
   }
 
+  this.messageList = [];
+
+  this.vote = null;
+
+  this.panelStatus = true;
   this.statStatus = true;
+  this.chatStatus = false;
+  this.voteStatus = false;
 
   this._keys = null;
 

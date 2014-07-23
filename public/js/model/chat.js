@@ -55,31 +55,41 @@ define(['Publisher'], function (Publisher) {
   };
 
   // обновляет чат-лист
-  ChatModel.prototype.updateChat = function (message) {
-    // если количество сообщений в хранилище достигло предела - удалить лишние
+  ChatModel.prototype.updateChat = function (messageList) {
+    var i
+      , len
+      , message;
+
+    // если количество сообщений в хранилище достигло предела -
+    // удалить лишние
     if (this._cache.length === this._cacheMax) {
       this._cache.splice(0, this._cache.length - this._cacheMin);
     }
 
-    // добавить объект сообщения в хранилище
-    this._cache.push(message);
+    for (i = 0, len = messageList.length; i < len; i += 1) {
+      message = messageList[i];
 
-    // если количество выделенных линий исчерпано - удалить линию принудительно
-    if (this._list.length === this._listLimit) {
-      this.removeFromList(true);
+      // добавить объект сообщения в хранилище
+      this._cache.push(message);
+
+      // если количество выделенных линий исчерпано -
+      // удалить линию принудительно
+      if (this._list.length === this._listLimit) {
+        this.removeFromList(true);
+      }
+
+      this.publisher.emit('newLine', {
+        id: this._count,
+        message: message
+      });
+
+      this.publisher.emit('newTimer', {
+        id: this._count,
+        time: this._lineTime
+      });
+
+      this._count += 1;
     }
-
-    this.publisher.emit('newLine', {
-      id: this._count,
-      message: message
-    });
-
-    this.publisher.emit('newTimer', {
-      id: this._count,
-      time: this._lineTime
-    });
-
-    this._count += 1;
   };
 
   // добавляет объект в чат-лист
