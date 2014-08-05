@@ -97,7 +97,7 @@ define(['createjs'], function (createjs) {
     this.rotation = params[2];
     this.gun.rotation = params[3];
 
-    if (params[4]) {
+    if (typeof params[4] === 'number') {
       this.create(params[4]);
     }
   };

@@ -11,7 +11,7 @@ module.exports = {
   roundTime: 120000,             // 2 мин
 
   voteMapTime: 10000,            // 10 сек
-  voteMapAmount: 4,
+  voteMapAmount: 4,              // количество карт в голосовании
 
   statusList: {team1: 0, team2: 1, spectators: 2}
 };

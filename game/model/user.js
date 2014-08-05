@@ -1,54 +1,26 @@
-// проверяет число в заданном диапазоне
-// Если repeat === true, то диапазон зациклен
-// Если repeat === false, то диапазон ограничен значениями
-// Возвращает значение
-function rangeNumber(value, repeat, max, min) {
-  repeat = repeat || false;
-  max = max || 360;
-  min = min || 0;
+function User(name, team) {
+  this.data = [0, 0, 0, 0];
 
-  // зациклить
-  if (repeat === true) {
-    if (value <= min) {
-      value = max + value;
-    }
-    if (value >= max) {
-      value = value - max;
-    }
-  // не зацикливать
-  } else {
-    if (value <= min) {
-      value = min;
-    }
-    if (value >= max) {
-      value = max;
-    }
-  }
-
-  return value;
-}
-
-function User(data) {
-  this.data = [0, 0, 0, 0, data.team, data.name];
   this.bullet = null;
-  this.team = data.team;
+
+  this.name = name;
+  this.team = team;
 
   this.panel = [100, 200, 0];
 
-  if (this.team !== 2) {
-    this.stat = [data.name, '', 0, 0];
-  } else {
-    this.stat = [data.name];
-  }
+  this.stat = [this.name, '', 0, 0];
 
   this.messageList = [];
 
   this.vote = null;
 
-  this.panelStatus = true;
-  this.statStatus = true;
-  this.chatStatus = false;
-  this.voteStatus = false;
+  this.userChanged = false;
+  this.panelChanged = true;
+  this.statChanged = false;
+  this.chatChanged = false;
+  this.voteChanged = false;
+
+  this.removeGameModel = false;
 
   this._keys = null;
 
@@ -181,6 +153,23 @@ User.prototype.updateData = function () {
 // обновляет клавиши
 User.prototype.updateKeys = function (keys) {
   this._keys = keys;
+};
+
+// добавляет сообщение
+User.prototype.addMessage = function (text) {
+  this.messageList.push([text]);
+  this.chatChanged = true;
+};
+
+// добавляет данные для голосования
+User.prototype.addVoteData = function (data) {
+  this.vote = [null, data];
+  this.voteChanged = true;
+};
+
+// меняет команду
+User.prototype.changeTeam = function (team) {
+  this.team = team;
 };
 
 module.exports = User;

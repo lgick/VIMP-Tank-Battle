@@ -144,6 +144,7 @@ body {
   table-layout: fixed;
   font-size: 1em;
   line-height: 1.2em;
+  border-collapse: collapse;
 }
 
 #stat table td {
@@ -188,17 +189,16 @@ body {
   color: #fe5;
 }
 
-#team1 tHead td,
-#team2 tHead td,
-#spectators tHead td {
+#team1 tHead tr,
+#team2 tHead tr,
+#spectators tHead tr {
   border-bottom: 1px solid #888;
   text-transform: capitalize;
   font-weight: bold;
 }
 
-#team1 tBody td,
-#team2 tBody td,
-#spectators tBody td {
+#team1 tBody tr,
+#team2 tBody tr {
   border-bottom: 1px solid #444;
 }
 
@@ -222,6 +222,17 @@ body {
   content: 'spectators';
 }
 
+#spectators tBody td:nth-child(1) {
+  padding: 0 1%;
+  line-height: 1.4em;
+}
+
+#spectators tBody td:nth-child(2),
+#spectators tBody td:nth-child(3),
+#spectators tBody td:nth-child(4) {
+  display: none;
+}
+
 /*vote*/
 
 #vote {
@@ -241,12 +252,11 @@ body {
 }
 
 #vote .vote-title {
-  font-size: 15px;
-  line-height: 17px;
+  font-size: 14px;
+  line-height: 16px;
   font-weight: bold;
-  margin: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 3px 3px 0;
+  white-space: normal;
 }
 
 #vote .vote-list {
@@ -264,7 +274,7 @@ body {
 
 #vote .vote-nav {
   padding: 0 0 0 5px;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 
 #vote .vote-nav p {

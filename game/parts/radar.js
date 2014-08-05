@@ -65,7 +65,7 @@ define(['createjs'], function (createjs) {
     this.y = params[1];
     this.rotation = params[2];
 
-    if (params[4]) {
+    if (typeof params[4] === 'number') {
       this.create(params[4]);
     }
   };
