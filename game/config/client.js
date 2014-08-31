@@ -45,18 +45,18 @@ module.exports = {
 
     // keys
     keys: {
-      keys: [
-        87,  // forward (w)
-        83,  // back (s)
-        65,  // left (a)
-        68,  // right (d)
-        85,  // gCenter (u)
-        75,  // gLeft (k)
-        76,  // gRight (l)
-        74,  // fire (j)
-        78,  // next player (n)
-        80   // prev player (p)
-      ],
+      keySet: {
+        87: 1 << 0,  // forward (w)
+        83: 1 << 1,  // back (s)
+        65: 1 << 2,  // left (a)
+        68: 1 << 3,  // right (d)
+        85: 1 << 4,  // gCenter (u)
+        75: 1 << 5,  // gLeft (k)
+        76: 1 << 6,  // gRight (l)
+        74: 1 << 7,  // fire (j)
+        78: 1 << 8,  // next player (n)
+        80: 1 << 9   // prev player (p)
+      },
       modes: {
         67: 'chat',    // чат (c)
         77: 'vote',    // опрос (m)

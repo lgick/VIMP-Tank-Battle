@@ -28,14 +28,20 @@ function User(name, team) {
   this._maxBack = 10;
   this._step = 0.5;
 
+  this._keyForward = 1;
+  this._keyBack = 2;
+  this._keyLeft = 4;
+  this._keyRight = 8;
+  this._keyGCenter = 16;
+  this._keyGLeft = 32;
+  this._keyGRight = 64;
+  this._keyFire = 128;
+  this._keyNextPlayer = 256;
+  this._keyPrevPlayer = 512;
+
   this._maxGunAngle = 90;
   this._gunAngleStep = this._maxGunAngle / 3;
 }
-
-// преобразует данные из base36
-User.prototype.parseKeys = function () {
-  var cmd = parseInt(this.keys, 36).toString(2);
-};
 
 // назначает данные
 User.prototype.setData = function (data) {
@@ -60,17 +66,16 @@ User.prototype.updateData = function () {
     }
 
   } else {
-    var keys = this._keys.split('');
 
     // forward
-    if (keys[0] === '1') {
+    if (this._keys & this._keyForward) {
       if (this._acceleration < this._maxForward) {
         this._acceleration += this._step * 4;
       }
     } else
 
     // back
-    if (keys[1] === '1') {
+    if (this._keys & this._keyBack) {
       if (this._acceleration > -this._maxBack) {
         this._acceleration -= this._step * 2;
       }
@@ -83,7 +88,7 @@ User.prototype.updateData = function () {
     }
 
     // left
-    if (keys[2] === '1') {
+    if (this._keys & this._keyLeft) {
       this.data[2] = this.data[2] - 4;
       if (this.data[2] < 0) {
         this.data[2] = 356;
@@ -91,7 +96,7 @@ User.prototype.updateData = function () {
     }
 
     // right
-    if (keys[3] === '1') {
+    if (this._keys & this._keyRight) {
       this.data[2] = this.data[2] + 4;
       if (this.data[2] > 360) {
         this.data[2] = 4;
@@ -99,26 +104,26 @@ User.prototype.updateData = function () {
     }
 
     // gCenter
-    if (keys[4] === '1') {
+    if (this._keys & this._keyGCenter) {
       this.data[3] = 0;
     }
 
     // gLeft
-    if (keys[5] === '1') {
+    if (this._keys & this._keyGLeft) {
       if (this.data[3] > -this._maxGunAngle) {
         this.data[3] = this.data[3] - this._gunAngleStep;
       }
     }
 
     // gRight
-    if (keys[6] === '1') {
+    if (this._keys & this._keyGRight) {
       if (this.data[3] < this._maxGunAngle) {
         this.data[3] = this.data[3] + this._gunAngleStep;
       }
     }
 
     // fire
-    if (keys[7] === '1') {
+    if (this._keys & this._keyFire) {
       radBullet = +((this.data[3] + this.data[2]) * (Math.PI / 180)).toFixed(2);
 
       this.bullet = [
@@ -133,11 +138,11 @@ User.prototype.updateData = function () {
 
     //TODO: для spectators
     // // next player
-    // if (keys[8] === '1') {
+    // if (this._keys & this._keyNextPlayer) {
     // }
     //
     // // prev player
-    // if (keys[9] === '1') {
+    // if (this._keys & this._keyPrevPlayer) {
     // }
   }
 

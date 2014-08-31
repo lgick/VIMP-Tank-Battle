@@ -141,15 +141,7 @@ module.exports = function (server) {
     // 3: keys data
     socketMethods[3] = function (keys) {
       if (keys) {
-        keys = parseInt(keys, 36);
-
-        // если результат преобразования число
-        if (isFinite(keys)) {
-          keys = keys.toString(2);
-          keys = keys.slice(1);
-
-          game.updateKeys(gameID, keys);
-        }
+        game.updateKeys(gameID, keys);
       }
     };
 

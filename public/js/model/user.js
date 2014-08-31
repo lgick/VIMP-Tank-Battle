@@ -16,29 +16,20 @@ define(['Publisher'], function (Publisher) {
 
     this._sizeOptions = data.sizeOptions;
 
-    this._keySet = data.keys.keys;
+    this._keySet = data.keys.keySet;
     this._modes = data.keys.modes;
     this._cmds = data.keys.cmds;
 
     this._ticker = data.ticker;
 
     this._currentModes = {};  // статусы режимов
-    this._keys = [];          // массив состояния клавиш
+    this._keys = 0;           // состояние клавиш
 
     this.publisher = new Publisher();
   }
 
   // инициализация
   UserModel.prototype.init = function () {
-    var i
-      , len;
-
-    this._keys.length = this._keySet.length;
-
-    for (i = 0, len = this._keys.length; i < len; i += 1) {
-      this._keys[i] = 0;
-    }
-
     // запуск счетчика игры
     this._ticker.addEventListener('tick', this.sendKeys.bind(this));
 
@@ -104,31 +95,22 @@ define(['Publisher'], function (Publisher) {
 
   // обновляет набор состояния клавиш
   UserModel.prototype.updateKeysState = function (keyCode, press) {
-    var i = 0
-      , len = this._keySet.length;
+    var key = this._keySet[keyCode];
 
-    for (; i < len; i += 1) {
-      if (this._keySet[i] === keyCode) {
-        if (press) {
-          this._keys[i] = 1;
-        } else {
-          this._keys[i] = 0;
-        }
+    if (key) {
+      if (press) {
+        this._keys = this._keys | key;
+      } else {
+        this._keys = this._keys & ~ key;
       }
     }
   };
 
   // отправляет информацию о клавишах на сервер
   UserModel.prototype.sendKeys = function () {
-    var str = this._keys.join('');
-
-    // если в строке НЕ все нули
-    if (~~str) {
-      // первое число не должно быть 0
-      str = '1' + str;
-
-      // отправка данных в системе счисления base36
-      this.publisher.emit('socket', this._parseInt(str, 2).toString(36));
+    // если есть команды, то отправка данных
+    if (this._keys !== 0) {
+      this.publisher.emit('socket', this._keys);
     }
   };
 
