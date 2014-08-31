@@ -219,12 +219,12 @@ Game.prototype.sendFirstShot = function (gameID) {
     , teamID
     , p;
 
-  data[0] = null;      // game
-  data[1] = null;      // coords
-  data[2] = null;      // panel
-  data[3] = null;      // stat
-  data[4] = null;      // chat
-  data[5] = null;      // vote
+  data[0] = 0;      // game
+  data[1] = 0;      // coords
+  data[2] = 0;      // panel
+  data[3] = 0;      // stat
+  data[4] = 0;      // chat
+  data[5] = 0;      // vote
 
   stat[0] = [];        // <tbody>
   stat[1] = [];        // <thead>
@@ -252,6 +252,7 @@ Game.prototype.sendFirstShot = function (gameID) {
   this._users[gameID].statChanged = true;
 
   data[2] = this._users[gameID].panel;
+  this._users[gameID].panelChanged = false;
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
@@ -287,15 +288,14 @@ Game.prototype.createShot = function () {
     , bulletID
     , i
     , len
-    , vote
   ;
 
-  data[0] = null;      // game
-  data[1] = null;      // coords
-  data[2] = null;      // panel
-  data[3] = null;      // stat
-  data[4] = null;      // chat
-  data[5] = null;      // vote
+  data[0] = 0;      // game
+  data[1] = 0;      // coords
+  data[2] = 0;      // panel
+  data[3] = 0;      // stat
+  data[4] = 0;      // chat
+  data[5] = 0;      // vote
 
   stat[0] = [];        // <tbody>
   stat[1] = [];        // <thead>
@@ -388,61 +388,32 @@ Game.prototype.createShot = function () {
     data[3] = stat;
   }
 
-  if (this._messageList.length) {
-    data[4] = this._messageList;
-    this._messageList = [];
-  }
-
-  vote = this._voteList.shift();
-
-  if (vote) {
-    data[5] = vote;
-  }
+  data[4] = this._messageList.shift();
+  data[5] = this._voteList.shift();
 
   function getUserData(gameID) {
-    var user = this._users[gameID]
-      , coords = null
-      , panel = null
-      , messageList = null
-      , vote = null;
+    var user = this._users[gameID];
 
     // coords
-    coords = [user.data[0], user.data[1]];
+    data[1] = [user.data[0], user.data[1]];
 
     // если появились данные для panel
     if (user.panelChanged === true) {
-      panel = user.panel;
+      data[2] = user.panel;
       this._users[gameID].panelChanged = false;
     }
 
     // если общих сообщений нет
-    // и появились данные для chat
-    if (data[4] === null && user.chatChanged === true) {
-      messageList = user.messageList;
-      this._users[gameID].messageList = [];
-      this._users[gameID].chatChanged = false;
-    } else {
-      messageList = data[4];
+    if (!data[4]) {
+      data[4] = user.messageList.shift() || 0;
     }
 
-    // если появились данные для vote
-    if (user.voteChanged === true) {
-      // если общих данных для голосования нет
-      if (!data[5]) {
-        vote = user.vote;
-      } else {
-        vote = data[5];
-      }
-
-      this._users[gameID].vote = null;
-      this._users[gameID].voteChanged = false;
-    } else {
-      vote = data[5];
+    // если общих данных для голосования нет
+    if (!data[5]) {
+      data[5] = user.voteList.shift() || 0;
     }
 
-    return [
-      data[0], coords, panel, data[3], messageList, vote
-    ];
+    return data;
   }
 
   for (p in this._users) {

@@ -264,7 +264,7 @@ require([
     ;
 
     // игра
-    if (game) {
+    if (game !== 0) {
       for (i = 0, len = game.length; i < len; i += 1) {
         idArr = game[i][0];
         instances = game[i][1];
@@ -279,7 +279,7 @@ require([
     }
 
     // координаты
-    if (crds) {
+    if (crds !== 0) {
       coords.x = crds[0];
       coords.y = crds[1];
     }
@@ -287,22 +287,22 @@ require([
     updateGameControllers();
 
     // панель
-    if (panel) {
+    if (panel !== 0) {
       modules.panel.update(panel);
     }
 
     // статистика
-    if (stat) {
+    if (stat !== 0) {
       modules.stat.update(stat);
     }
 
     // чат
-    if (chat) {
+    if (chat !== 0) {
       modules.chat.add(chat);
     }
 
     // голосование
-    if (vote) {
+    if (vote !== 0) {
       modules.vote.open(vote);
     }
   };

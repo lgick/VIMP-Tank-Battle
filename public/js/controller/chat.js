@@ -39,8 +39,8 @@ define([], function () {
   };
 
   // добавляет сообщения
-  ChatCtrl.prototype.add = function (messageList) {
-    this._model.updateChat(messageList);
+  ChatCtrl.prototype.add = function (message) {
+    this._model.updateChat(message);
   };
 
   // добавляет таймер

@@ -11,14 +11,11 @@ function User(name, team) {
   this.stat = [this.name, '', 0, 0];
 
   this.messageList = [];
-
-  this.vote = null;
+  this.voteList = [];
 
   this.userChanged = false;
   this.panelChanged = true;
   this.statChanged = false;
-  this.chatChanged = false;
-  this.voteChanged = false;
 
   this.removeGameModel = false;
 
@@ -158,13 +155,11 @@ User.prototype.updateKeys = function (keys) {
 // добавляет сообщение
 User.prototype.addMessage = function (text) {
   this.messageList.push([text]);
-  this.chatChanged = true;
 };
 
 // добавляет данные для голосования
 User.prototype.addVoteData = function (data) {
-  this.vote = [null, data];
-  this.voteChanged = true;
+  this.voteList.push([null, data]);
 };
 
 // меняет команду
