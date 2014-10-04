@@ -151,7 +151,7 @@ module.exports = function (server) {
         message = validator.chat(message);
 
         if (message) {
-          game.addMessage(gameID, message);
+          game.chat.push(message, gameID);
         }
       }
     };

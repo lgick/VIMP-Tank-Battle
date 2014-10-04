@@ -44,7 +44,7 @@ define(['Publisher'], function (Publisher) {
     ;
 
     for (; i < len; i += 1) {
-      cells[i].innerHTML = cellsData[i] || '';
+      cells[i].innerHTML = cellsData[i];
     }
   };
 

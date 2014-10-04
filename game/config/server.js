@@ -1,4 +1,4 @@
-var game = require('../model/game');
+var game = require('../models');
 var banlist = require('../deps/banlist');
 var maps = require('../maps/');
 

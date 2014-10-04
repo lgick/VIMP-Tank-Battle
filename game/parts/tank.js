@@ -37,10 +37,10 @@ define(['createjs'], function (createjs) {
   p.create = function (type) {
     var g;
 
-    if (type === 0) {
+    if (type === 1) {
       this.colorA = '#eee';
       this.colorB = '#522';
-    } else if (type === 1) {
+    } else if (type === 2) {
       this.colorA = '#eee';
       this.colorB = '#252';
     } else {

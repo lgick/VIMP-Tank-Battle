@@ -1,4 +1,8 @@
 var User = require('./user');
+//var Panel = require('./panel');
+var Stat = require('./stat');
+var Chat = require('./chat');
+//var Vote = require('./vote');
 
 // Singleton
 var game;
@@ -23,6 +27,7 @@ function Game(data, ports) {
   this._voteMapAmount = data.voteMapAmount; // всего карт в голосовании
 
   this._statusList = data.statusList;       // массив состояний в игре
+  this._spectatorID = data.spectatorID;     // id наблюдателя
 
   this._portConfig = ports.config;
   this._portAuth = ports.auth;
@@ -36,9 +41,7 @@ function Game(data, ports) {
   this._users = {};                         // игроки
   this._resultVoteMaps = {};                // результаты голосования
   this._respawns = {};                      // респауны
-  this._messageList = [];                   // сообщения
   this._voteList = [];                      // голосования
-  this._statForRemove = [];                 // статистика для удаления
 
   this._roundTimer = null;
   this._shotTimer = null;
@@ -57,11 +60,15 @@ function Game(data, ports) {
   this._bullets = {};                       // this._bullets[time] = [id, id]
   this._currentBulletID = 0;                // id для пуль
 
+  this.chat = new Chat(this._users);
+  this.stat = new Stat(this._users, this._statusList);
+
   this.startGame();
 }
 
 // стартует игру
 Game.prototype.startGame = function () {
+  this.stat.init();
   this.startMapTimer();
   this.startShotTimer();
   this.startRoundTimer();
@@ -79,7 +86,7 @@ Game.prototype.startMapTimer = function () {
   this.updateCurrentMap();
   this.sendCurrentMap();
 
-  this._messageList.push(['new map']);
+  this.chat.push('new map');
 
   this._mapTimer = setTimeout((function () {
     this.sendVoteMap();
@@ -97,13 +104,13 @@ Game.prototype.startRoundTimer = function () {
   this._roundTimer = setTimeout((function () {
     this._currentBulletID = 0;
     this.startRoundTimer();
-    this._messageList.push(['next round']);
+    this.chat.push('next round');
   }).bind(this), this._roundTime);
 };
 
 // останавливает раунд
 Game.prototype.stopRoundTimer = function () {
-  this._messageList.push(['round stop']);
+  this.chat.push('round stop');
   clearTimeout(this._roundTimer);
 };
 
@@ -130,7 +137,7 @@ Game.prototype.sendVoteMap = function () {
     ]
   ];
 
-  this._messageList.push([data]);
+  this.chat.push(data);
   this._voteList.push(data);
 
   // собирает результаты голосования и стартует новую игру
@@ -141,9 +148,7 @@ Game.prototype.sendVoteMap = function () {
     this.sendForAll(this._portInform, [3]);
 
     setTimeout((function () {
-      this.startMapTimer();
-      this.startRoundTimer();
-      this.startShotTimer();
+      this.startGame();
     }).bind(this), 2000);
   }).bind(this), this._voteMapTime);
 };
@@ -213,7 +218,6 @@ Game.prototype.mapReady = function (err, gameID) {
 // отправляет первый shot
 Game.prototype.sendFirstShot = function (gameID) {
   var data = []
-    , stat = []
     , gameData = {}
     , oldTeamID
     , teamID
@@ -226,61 +230,49 @@ Game.prototype.sendFirstShot = function (gameID) {
   data[4] = 0;      // chat
   data[5] = 0;      // vote
 
-  stat[0] = [];        // <tbody>
-  stat[1] = [];        // <thead>
-
   oldTeamID = this._users[gameID].teamID;
   teamID = this._statusList[this._users[gameID].team];
 
   // если назначенный teamID не совпадает с новым
   if (oldTeamID !== teamID) {
-    // если oldTeamID был назначен
-    if (typeof oldTeamID !== 'undefined') {
-      this._statForRemove.push([gameID, oldTeamID, null, 0]);
+    this._users[gameID].userChanged = true;
 
-      // если новый teamID равен 2,
+    // если oldTeamID был назначен
+    // (пользователь сменил команду)
+    if (typeof oldTeamID !== 'undefined') {
+      this.stat.removeUser(gameID);
+
+      // если новый teamID - id наблюдателя,
       // то удалить модель игрока
-      if (teamID === 2) {
+      if (teamID === this._spectatorID) {
         this._users[gameID].removeGameModel = true;
       }
     }
 
     this._users[gameID].teamID = teamID;
-    this._users[gameID].userChanged = true;
-  }
+    this.stat.createUser(gameID);
 
-  this._users[gameID].statChanged = true;
-
-  data[2] = this._users[gameID].panel;
-  this._users[gameID].panelChanged = false;
-
-  for (p in this._users) {
-    if (this._users.hasOwnProperty(p)) {
-      if (typeof this._users[p].teamID === 'number') {
-        stat[0].push([
-          p, this._users[p].teamID, this._users[p].stat, 0
-        ]);
-      }
+    // если oldTeamID не был назначен
+    // (новый пользователь)
+    if (typeof oldTeamID === 'undefined') {
+      data[3] = this.stat.getStat();
     }
   }
 
-  // TODO: данные для <thead> общие и могут хранится в this
-  stat[1] = [
-    [0, [3, '', 20, ''], 0],
-    [1, [4, '', 30, ''], 0]
-  ];
-
-  data[3] = stat;
+  data[2] = this._users[gameID].panel;
+  this._users[gameID].panelChanged = false;
 
   this._users[gameID].socket.send(this._portShot, data);
 };
 
 // создает кадр игры
 Game.prototype.createShot = function () {
-  var data = []
+  var game = 0
+    , stat = 0
+    , chat = 0
+    , vote = 0
     , gameData = {}
     , bulletData = {}
-    , stat = []
     , p
     , bulletTime
     , bullet
@@ -289,16 +281,6 @@ Game.prototype.createShot = function () {
     , i
     , len
   ;
-
-  data[0] = 0;      // game
-  data[1] = 0;      // coords
-  data[2] = 0;      // panel
-  data[3] = 0;      // stat
-  data[4] = 0;      // chat
-  data[5] = 0;      // vote
-
-  stat[0] = [];        // <tbody>
-  stat[1] = [];        // <thead>
 
   this._currentTime += 1;
 
@@ -337,17 +319,8 @@ Game.prototype.createShot = function () {
           this._users[p].removeGameModel = false;
         }
 
-        // если статистика обновилась
-        if (this._users[p].statChanged === true) {
-          stat[0].push([
-            p, this._users[p].teamID, this._users[p].stat, 0
-          ]);
-
-          this._users[p].statChanged = false;
-        }
-
-        // если teamID не spectators
-        if (this._users[p].teamID !== 2) {
+        // если teamID не id наблюдателя
+        if (this._users[p].teamID !== this._spectatorID) {
           this._users[p].updateData();
 
           gameData[p] = [
@@ -376,44 +349,47 @@ Game.prototype.createShot = function () {
     }
   }
 
-  for (i = 0, len = this._statForRemove.length; i < len; i += 1) {
-    stat[0].push(this._statForRemove[i]);
-  }
+  game = [[[1, 2], gameData], [[3], bulletData]];
 
-  this._statForRemove = [];
+  stat = this.stat.getLastStat();
 
-  data[0] = [[[1, 2], gameData], [[3], bulletData]];
-
-  if (stat[0].length || stat[1].length) {
-    data[3] = stat;
-  }
-
-  data[4] = this._messageList.shift();
-  data[5] = this._voteList.shift();
+  chat = this.chat.shift();
+  vote = this._voteList.shift();
 
   function getUserData(gameID) {
-    var user = this._users[gameID];
+    var user = this._users[gameID]
+      , coords
+      , panel
+      , chatUser
+      , voteUser
+    ;
 
     // coords
-    data[1] = [user.data[0], user.data[1]];
+    coords = [user.data[0], user.data[1]];
 
     // если появились данные для panel
     if (user.panelChanged === true) {
-      data[2] = user.panel;
+      panel = user.panel;
       this._users[gameID].panelChanged = false;
+    } else {
+      panel = 0;
     }
 
     // если общих сообщений нет
-    if (!data[4]) {
-      data[4] = user.messageList.shift() || 0;
+    if (!chat) {
+      chatUser = this.chat.shiftByUser(gameID) || 0;
+    } else {
+      chatUser = chat;
     }
 
     // если общих данных для голосования нет
-    if (!data[5]) {
-      data[5] = user.voteList.shift() || 0;
+    if (!vote) {
+      voteUser = user.voteList.shift() || 0;
+    } else {
+      voteUser = vote;
     }
 
-    return data;
+    return [game, coords, panel, stat, chatUser, voteUser];
   }
 
   for (p in this._users) {
@@ -561,7 +537,8 @@ Game.prototype.createUser = function (data, socket, cb) {
   this._users[gameID].socket = socket;
   this._users[gameID].ready = false;
 
-  this._users[gameID].addMessage(message);
+  this.chat.addUser(gameID);
+  this.chat.pushByUser(message, gameID);
 
   this.startRound();
 
@@ -579,9 +556,7 @@ Game.prototype.removeUser = function (gameID, cb) {
   // если gameID === undefined,
   // значит пользователь вышел, не успев войти в игру
   if (this._users[gameID]) {
-    this._statForRemove.push([
-      gameID, this._users[gameID].teamID, null, 0
-    ]);
+    this.stat.removeUser(gameID);
 
     this._allUsersInTeam[this._users[gameID].team] -= 1;
 
@@ -592,6 +567,8 @@ Game.prototype.removeUser = function (gameID, cb) {
     } else {
       this._users[gameID] = null;
     }
+
+    this.chat.removeUser(gameID);
 
     bool = true;
   }
@@ -604,20 +581,6 @@ Game.prototype.removeUser = function (gameID, cb) {
 // обновляет команды
 Game.prototype.updateKeys = function (gameID, keys) {
   this._users[gameID].updateKeys(keys);
-};
-
-// добавляет сообщение
-Game.prototype.addMessage = function (gameID, text) {
-  // TODO выпилить эту хрень
-  if (text === 'n') {
-    this.startRound();
-  }
-
-  this._messageList.push([
-    text,
-    this._users[gameID].name,
-    this._users[gameID].teamID + 1
-  ]);
 };
 
 // обрабатывает vote данные
@@ -658,7 +621,7 @@ Game.prototype.parseVote = function (gameID, data) {
           this._allUsersInTeam[value] = 1;
         }
 
-        this._users[gameID].addMessage('Your next status: ' + value);
+        this.chat.pushByUser('Your next status: ' + value, gameID);
       }
     }
   }

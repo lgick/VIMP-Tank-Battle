@@ -51,7 +51,8 @@ define(['Publisher'], function (Publisher) {
       , message = data.message
       , text = message[0]
       , name = message[1] || 'System'
-      , type = message[2] || '';
+      , type = typeof message[2] === 'number' ? message[2] : ''
+    ;
 
     line.id = 'line_' + id;
     line.className = 'line' + type;

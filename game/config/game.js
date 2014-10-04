@@ -13,5 +13,7 @@ module.exports = {
   voteMapTime: 10000,            // 10 сек
   voteMapAmount: 4,              // количество карт в голосовании
 
-  statusList: {team1: 0, team2: 1, spectators: 2}
+  spectatorID: 3,
+
+  statusList: {team1: 1, team2: 2, spectators: 3}
 };

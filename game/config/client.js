@@ -98,7 +98,15 @@ module.exports = {
         stat: 'stat'
       },
       params: {
-        tables: ['team1', 'team2', 'spectators'],
+        heads: {
+          1: 'team1',
+          2: 'team2'
+        },
+        bodies: {
+          1: 'team1',
+          2: 'team2',
+          3: 'spectators',
+        },
         sortList: {
           'team1': [[2, true], [3, false]],
           'team2': [[2, true], [3, false]]
