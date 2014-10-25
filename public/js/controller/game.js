@@ -11,9 +11,12 @@ define([], function () {
 
     for (id in instances) {
       if (instances.hasOwnProperty(id)) {
+        // если экземпляр существует - обновить
         if (this._model.read(constructor, id)) {
           this._model.update(constructor, id, instances[id]);
-        } else {
+
+        // иначе, если есть данные для создания экземпляра - создать
+        } else if (instances[id]) {
           this._model.create(constructor, id, instances[id]);
         }
       }
