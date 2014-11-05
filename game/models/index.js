@@ -1,5 +1,5 @@
 var User = require('./user');
-//var Panel = require('./panel');
+var Panel = require('./panel');
 var Stat = require('./stat');
 var Chat = require('./chat');
 //var Vote = require('./vote');
@@ -43,9 +43,13 @@ function Game(data, ports) {
   this._respawns = {};                      // респауны
   this._voteList = [];                      // голосования
 
+  this._stepTimer = null;
   this._roundTimer = null;
   this._shotTimer = null;
   this._mapTimer = null;
+
+  this._time = this._roundTime;             // время игры
+  this._timeStatus = false;                 // флаг обновления времени игры
 
   this._allUsersInTeam = {};                // количество игроков в команде
 
@@ -60,8 +64,9 @@ function Game(data, ports) {
   this._bullets = {};                       // this._bullets[time] = [id, id]
   this._currentBulletID = 0;                // id для пуль
 
-  this.chat = new Chat(this._users);
+  this.panel = new Panel();
   this.stat = new Stat(this._users, this._statusList);
+  this.chat = new Chat(this._users);
 
   this.startGame();
 }
@@ -76,6 +81,8 @@ Game.prototype.startGame = function () {
 
 // останавливает игру
 Game.prototype.stopGame = function () {
+  console.log('stop all timers');
+  clearInterval(this._stepTimer)
   clearInterval(this._shotTimer);
   clearTimeout(this._roundTimer);
   clearTimeout(this._mapTimer);
@@ -95,13 +102,28 @@ Game.prototype.startMapTimer = function () {
 
 // останавливает карту
 Game.prototype.stopMapTimer = function () {
+  console.log('map timer stop');
   clearTimeout(this._mapTimer);
 };
 
 // стартует раунд
 Game.prototype.startRoundTimer = function () {
   this.startRound();
+  this.panel.init();
+
+  this._time = this._roundTime / 1000 - 3;
+  this._timeStatus = true;
+
+  this._stepTimer = setInterval((function () {
+    if (this._time > 0) {
+      this._time -= 1;
+      this._timeStatus = true;
+    }
+  }).bind(this), 1000);
+
   this._roundTimer = setTimeout((function () {
+    clearInterval(this._stepTimer);
+
     this._currentBulletID = 0;
     this.startRoundTimer();
     this.chat.push('next round');
@@ -110,7 +132,7 @@ Game.prototype.startRoundTimer = function () {
 
 // останавливает раунд
 Game.prototype.stopRoundTimer = function () {
-  this.chat.push('round stop');
+  console.log('round timer stop');
   clearTimeout(this._roundTimer);
 };
 
@@ -123,6 +145,7 @@ Game.prototype.startShotTimer = function () {
 
 // останавливает расчет кадров игры
 Game.prototype.stopShotTimer = function () {
+  console.log('shot timer stop');
   clearInterval(this._shotTimer);
 };
 
@@ -142,8 +165,7 @@ Game.prototype.sendVoteMap = function () {
 
   // собирает результаты голосования и стартует новую игру
   setTimeout((function () {
-    this.stopRoundTimer();
-    this.stopShotTimer();
+    this.stopGame();
 
     this.sendForAll(this._portInform, [3]);
 
@@ -244,8 +266,12 @@ Game.prototype.sendFirstShot = function (gameID) {
 
       // если новый teamID - id наблюдателя,
       // то удалить модель игрока
+      // и очистить панель
       if (teamID === this._spectatorID) {
         this._users[gameID].removeGameModel = true;
+
+        data[2] = [this._time, null];
+        this.panel.removeUser(gameID);
       }
     }
 
@@ -257,10 +283,11 @@ Game.prototype.sendFirstShot = function (gameID) {
     if (typeof oldTeamID === 'undefined') {
       data[3] = this.stat.getStat();
     }
-  }
 
-  data[2] = this._users[gameID].panel;
-  this._users[gameID].panelChanged = false;
+    if (teamID !== this._spectatorID) {
+      this.panel.addUser(gameID);
+    }
+  }
 
   this._users[gameID].socket.send(this._portShot, data);
 };
@@ -271,6 +298,7 @@ Game.prototype.createShot = function () {
     , stat = 0
     , chat = 0
     , vote = 0
+    , time
     , gameData = {}
     , bulletData = {}
     , p
@@ -350,11 +378,12 @@ Game.prototype.createShot = function () {
   }
 
   game = [[[1, 2], gameData], [[3], bulletData]];
-
   stat = this.stat.getLastStat();
-
   chat = this.chat.shift();
   vote = this._voteList.shift();
+
+  time = this._timeStatus === true ? this._time : '';
+  this._timeStatus = false;
 
   function getUserData(gameID) {
     var user = this._users[gameID]
@@ -367,10 +396,11 @@ Game.prototype.createShot = function () {
     // coords
     coords = [user.data[0], user.data[1]];
 
-    // если появились данные для panel
-    if (user.panelChanged === true) {
-      panel = user.panel;
-      this._users[gameID].panelChanged = false;
+    // panel
+    panel = this.panel.getPanel(gameID) || '';
+
+    if (typeof time === 'number' || panel) {
+      panel = [time, panel];
     } else {
       panel = 0;
     }
@@ -568,6 +598,7 @@ Game.prototype.removeUser = function (gameID, cb) {
       this._users[gameID] = null;
     }
 
+    this.panel.removeUser(gameID);
     this.chat.removeUser(gameID);
 
     bool = true;

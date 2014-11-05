@@ -52,9 +52,10 @@ body {
 #panel table td {
   border: 1px solid #555;
   background-color: rgba(0, 0, 0, 0.5);
-  width: 33%;
+  text-shadow: 0 0 2px #333;
   white-space: nowrap;
   overflow: hidden;
+  width: 50%;
 }
 
 #panel table td#panel-health:before {
@@ -65,12 +66,8 @@ body {
   content: '%';
 }
 
-#panel table td#panel-score:before {
-  content: 'score: ';
-}
-
-#panel table td#panel-rank:before {
-  content: 'rank: ';
+#panel table td#panel-time:before {
+  content: 'time: ';
 }
 
 #vimp {

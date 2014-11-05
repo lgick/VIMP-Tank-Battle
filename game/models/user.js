@@ -6,10 +6,6 @@ function User(name, team) {
   this.name = name;
   this.team = team;
 
-  this.panel = [100, 200, 0];
-
-  this.stat = [this.name, '', 0, 0];
-
   this.messageList = [];
   this.voteList = [];
 

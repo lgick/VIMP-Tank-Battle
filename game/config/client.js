@@ -85,11 +85,10 @@ module.exports = {
     // panel
     panel: {
       elems: {
-        health: 'panel-health',
-        score: 'panel-score',
-        rank: 'panel-rank'
+        time: 'panel-time',
+        health: 'panel-health'
       },
-      routes: ['health', 'score', 'rank']
+      panels: ['health']
     },
 
     // stat

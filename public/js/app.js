@@ -425,7 +425,7 @@ require([
     // Panel Module
     //==========================================//
 
-    panelModel = new PanelModel(panelData.routes);
+    panelModel = new PanelModel(panelData.panels);
 
     panelView = new PanelView(panelModel, {
       window: window,
