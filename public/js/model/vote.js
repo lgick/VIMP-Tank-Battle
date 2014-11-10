@@ -100,7 +100,6 @@ define(['Publisher'], function (Publisher) {
     this._values = [];
     this._voteName = '';
 
-
     for (i = 0, len = this._currentVote.length; i < len; i += 1) {
       this._values.push(this._currentVote[i][1][0]);
     }
@@ -119,7 +118,8 @@ define(['Publisher'], function (Publisher) {
 
   // обновляет голосование
   VoteModel.prototype.update = function (keyCode) {
-    var number;
+    var number
+      , value;
 
     if (this._waitingValues) {
       return;
@@ -162,8 +162,10 @@ define(['Publisher'], function (Publisher) {
         } else if (this._type === 'vote') {
           // если число есть в массиве значений
           if (this._currentValues[number]) {
+            value = this._currentValues[number].split(':');
+            value = value.length === 2 ? value[1] : value[0];
 
-            this._data.push(this._currentValues[number]);
+            this._data.push(value);
 
             // если есть вложенный опрос, то создаем новое голосование
             if (this._currentVote[2]) {
@@ -183,7 +185,10 @@ define(['Publisher'], function (Publisher) {
   // отображает голосование
   VoteModel.prototype.show = function () {
     var begin = this._currentPage * 7
-      , max = begin + 7;
+      , max = begin + 7
+      , currentValues = []
+      , i
+      , len;
 
     this._currentValues = this._values.slice(begin, max);
 
@@ -199,11 +204,19 @@ define(['Publisher'], function (Publisher) {
       this._more = false;
     }
 
+    if (this._type === 'vote') {
+      for (i = 0, len = this._currentValues.length; i < len; i += 1) {
+        currentValues.push(this._currentValues[i].split(':')[0]);
+      }
+    } else {
+      currentValues = this._currentValues;
+    }
+
     this.publisher.emit('clear', this._timerID);
 
     this.publisher.emit('vote', {
       title: this._title,
-      list: this._currentValues,
+      list: currentValues,
       back: this._back,
       more: this._more,
       time: this._time
