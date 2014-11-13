@@ -10,12 +10,12 @@ define(['createjs'], function (createjs) {
     }
   }
 
-  p = Map.prototype = new Container();
-  p.Container_initialize = p.initialize;
+  p = Map.prototype = createjs.extend(Map, Container);
+  Map = createjs.promote(Map, 'Container');
 
   // инициализация
   p.initialize = function (data) {
-    this.Container_initialize();
+    this.Container_constructor();
 
     // data состоит из:
     // layer - слой

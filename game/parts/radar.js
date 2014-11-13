@@ -7,12 +7,12 @@ define(['createjs'], function (createjs) {
     this.initialize(params);
   }
 
-  p = Radar.prototype = new Shape();
-  p.Shape_initialize = p.initialize;
+  p = Radar.prototype = createjs.extend(Radar, Shape);
+  Radar = createjs.promote(Radar, 'Shape');
 
   // инициализация
   p.initialize = function (params) {
-    this.Shape_initialize();
+    this.Shape_constructor();
 
     this.layer = 0;
 

@@ -42,5 +42,5 @@ var server = require('http').createServer(app);
 server.listen(config.get('server:port'));
 
 
-// SOCKET.IO
+// WS
 var io = require('./socket')(server);

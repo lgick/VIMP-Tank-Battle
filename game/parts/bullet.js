@@ -5,12 +5,12 @@ define(['createjs'], function (createjs) {
     this.initialize(params);
   }
 
-  p = Bullet.prototype = new Shape();
-  p.Shape_initialize = p.initialize;
+  p = Bullet.prototype = createjs.extend(Bullet, Shape);
+  Bullet = createjs.promote(Bullet, 'Shape');
 
   // инициализация
   p.initialize = function (params) {
-    this.Shape_initialize();
+    this.Shape_constructor();
 
     this.x = params[0];
     this.y = params[1];

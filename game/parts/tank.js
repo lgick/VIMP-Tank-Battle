@@ -7,12 +7,12 @@ define(['createjs'], function (createjs) {
     this.initialize(params);
   }
 
-  p = Tank.prototype = new Container();
-  p.Container_initialize = p.initialize;
+  p = Tank.prototype = createjs.extend(Tank, Container);
+  Tank = createjs.promote(Tank, 'Container');
 
   // инициализация
   p.initialize = function (params) {
-    this.Container_initialize();
+    this.Container_constructor();
 
     this.layer = 2;
 
