@@ -321,7 +321,7 @@ require([
 
       if (message && dataArr) {
         for (i = 0, len = dataArr.length; i < len; i += 1) {
-          regExp = new RegExp('#' + i, 'g');
+          regExp = new RegExp('\\{' + i + '\\}', 'g');
           message = message.replace(regExp, dataArr[i]);
         }
       }
@@ -410,7 +410,14 @@ require([
     // Chat Module
     //==========================================//
 
-    chatModel = new ChatModel(chatData.params);
+    chatModel = new ChatModel({
+      window: window,
+      listLimit: chatData.params.listLimit,
+      lineTime: chatData.params.lineTime,
+      cacheMin: chatData.params.cacheMin,
+      cacheMax: chatData.params.cacheMax,
+      messageList: chatData.params.messageList
+    });
 
     chatView = new ChatView(chatModel, {
       window: window,

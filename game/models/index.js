@@ -82,7 +82,7 @@ Game.prototype.startGame = function () {
 // останавливает игру
 Game.prototype.stopGame = function () {
   console.log('stop all timers');
-  clearInterval(this._stepTimer)
+  clearInterval(this._stepTimer);
   clearInterval(this._shotTimer);
   clearTimeout(this._roundTimer);
   clearTimeout(this._mapTimer);
@@ -93,7 +93,7 @@ Game.prototype.startMapTimer = function () {
   this.updateCurrentMap();
   this.sendCurrentMap();
 
-  this.chat.push('new map');
+  this.chat.pushSystem([5]);
 
   this._mapTimer = setTimeout((function () {
     this.sendVoteMap();
@@ -126,7 +126,7 @@ Game.prototype.startRoundTimer = function () {
 
     this._currentBulletID = 0;
     this.startRoundTimer();
-    this.chat.push('next round');
+    this.chat.pushSystem([6]);
   }).bind(this), this._roundTime);
 };
 
@@ -160,7 +160,6 @@ Game.prototype.sendVoteMap = function () {
     ]
   ];
 
-  this.chat.push(data);
   this._voteList.push(data);
 
   // собирает результаты голосования и стартует новую игру
@@ -543,17 +542,17 @@ Game.prototype.createUser = function (data, socket, cb) {
 
       // если найдена команда с свободным местом
       if (emptyTeam) {
-        message = team + ' is full. Current team: ' + emptyTeam;
+        message = [0, [team, emptyTeam]];
         team = emptyTeam;
       } else {
-        message = 'Teams is full. Current status: spectators';
+        message = [1];
         team = 'spectators';
       }
     } else {
-      message = 'Current team: ' + team;
+      message = [2, [team]];
     }
   } else {
-    message = 'Current status: spectators';
+    message = [3];
   }
 
   if (this._allUsersInTeam[team]) {
@@ -568,7 +567,7 @@ Game.prototype.createUser = function (data, socket, cb) {
   this._users[gameID].ready = false;
 
   this.chat.addUser(gameID);
-  this.chat.pushByUser(message, gameID);
+  this.chat.pushSystem(message, gameID);
 
   this.startRound();
 
@@ -652,7 +651,7 @@ Game.prototype.parseVote = function (gameID, data) {
           this._allUsersInTeam[value] = 1;
         }
 
-        this.chat.pushByUser('Your next status: ' + value, gameID);
+        this.chat.pushSystem([4, [value]], gameID);
       }
     }
   }

@@ -24,21 +24,21 @@ Chat.prototype.removeUser = function (gameID) {
 };
 
 // добавляет сообщение
-Chat.prototype.push = function (text, gameID) {
-  if (gameID) {
-    this._list.push([
-      text,
-      this._users[gameID].name,
-      this._users[gameID].teamID
-    ]);
-  } else {
-    this._list.push([text]);
-  }
+Chat.prototype.push = function (data, gameID) {
+  this._list.push([
+    data,
+    this._users[gameID].name,
+    this._users[gameID].teamID
+  ]);
 };
 
-// добавляет сообщение для пользователя
-Chat.prototype.pushByUser = function (text, gameID) {
-  this._userList[gameID].push([text]);
+// добавляет системное сообщение
+Chat.prototype.pushSystem = function (arr, gameID) {
+  if (gameID) {
+    this._userList[gameID].push(arr);
+  } else {
+    this._list.push(arr);
+  }
 };
 
 // возвращает сообщение

@@ -46,16 +46,16 @@ module.exports = {
     // keys
     keys: {
       keySet: {
-        87: 1 << 0,  // forward (w)
-        83: 1 << 1,  // back (s)
-        65: 1 << 2,  // left (a)
-        68: 1 << 3,  // right (d)
-        85: 1 << 4,  // gCenter (u)
-        75: 1 << 5,  // gLeft (k)
-        76: 1 << 6,  // gRight (l)
-        74: 1 << 7,  // fire (j)
-        78: 1 << 8,  // next player (n)
-        80: 1 << 9   // prev player (p)
+        87: 1 << 0,    // forward (w)
+        83: 1 << 1,    // back (s)
+        65: 1 << 2,    // left (a)
+        68: 1 << 3,    // right (d)
+        85: 1 << 4,    // gCenter (u)
+        75: 1 << 5,    // gLeft (k)
+        76: 1 << 6,    // gRight (l)
+        74: 1 << 7,    // fire (j)
+        78: 1 << 8,    // next player (n)
+        80: 1 << 9     // prev player (p)
       },
       modes: {
         67: 'chat',    // чат (c)
@@ -78,7 +78,16 @@ module.exports = {
         listLimit: 5,
         lineTime: 15000,
         cacheMin: 200,
-        cacheMax: 300
+        cacheMax: 300,
+        messageList: [
+          '{0} is full. Current team: {1}',
+          'Teams is full. Current status: spectators',
+          'Current team: {0}',
+          'Current status: spectators',
+          'Your next status: {0}',
+          'new map',
+          'next round'
+        ]
       }
     },
 
@@ -171,16 +180,16 @@ module.exports = {
 
   // ***** informer ***** //
   informer: [
-    'Дорогой #0, Вы забанены!<br>' +
-    'Причина: #1<br>' +
-    'Время бана (час): #2<br>' +
-    'Тип бана: #3<br>' +
-    '#4<br>',
+    'Дорогой {0}, Вы забанены!<br>' +
+    'Причина: {1}<br>' +
+    'Время бана (час): {2}<br>' +
+    'Тип бана: {3}<br>' +
+    '{4}<br>',
 
 
     'Сервер полный! Пожалуйста ждите или зайдите позже!<br>' +
-    'Максимум игроков: #0<br>' +
-    'Вы в очереди ожидающих под номером: #1<br>',
+    'Максимум игроков: {0}<br>' +
+    'Вы в очереди ожидающих под номером: {1}<br>',
 
     'Соединение прервано по причине нового подключения к серверу!',
 
