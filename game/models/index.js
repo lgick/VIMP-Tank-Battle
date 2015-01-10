@@ -2,7 +2,7 @@ var User = require('./user');
 var Panel = require('./panel');
 var Stat = require('./stat');
 var Chat = require('./chat');
-//var Vote = require('./vote');
+var Vote = require('./vote');
 
 // Singleton
 var game;
@@ -14,19 +14,13 @@ function Game(data, ports) {
 
   game = this;
 
-  this._maps = data.maps;                   // карты
-  this._mapList = data.mapList;             // массив с названием карт
-  this._mapTime = data.mapTime;             // продолжительность карты
-  this._currentMap = data.currentMap;       // текущая карта
+  this._maps = data.map.maps;               // карты
 
-  this._shotTime = data.shotTime;           // время обновления кадра игры
+  this._mapTime = data.time.mapTime;        // продолжительность карты
+  this._shotTime = data.time.shotTime;      // время обновления кадра игры
+  this._roundTime = data.time.roundTime;    // продолжительность раунда
 
-  this._roundTime = data.roundTime;         // продолжительность раунда
-
-  this._voteMapTime = data.voteMapTime;     // время ожидания голосования
-  this._voteMapAmount = data.voteMapAmount; // всего карт в голосовании
-
-  this._statusList = data.statusList;       // массив состояний в игре
+  this._teams = data.teams;                 // команды
   this._spectatorID = data.spectatorID;     // id наблюдателя
 
   this._portConfig = ports.config;
@@ -39,9 +33,7 @@ function Game(data, ports) {
   this._portLog = ports.log;
 
   this._users = {};                         // игроки
-  this._resultVoteMaps = {};                // результаты голосования
-  this._respawns = {};                      // респауны
-  this._voteList = [];                      // голосования
+  this._currentMapData = null;              // данные текущей карты
 
   this._stepTimer = null;
   this._roundTimer = null;
@@ -65,10 +57,16 @@ function Game(data, ports) {
   this._currentBulletID = 0;                // id для пуль
 
   this.panel = new Panel();
-  this.stat = new Stat(this._users, this._statusList);
+  this.stat = new Stat(this._users, this._teams);
   this.chat = new Chat(this._users);
+  this.vote = new Vote(this._users, data);
 
-  this.startGame();
+  this._pubVote = this.vote.publisher;
+  this._pubVote.on('map', 'initMap', this);
+  this._pubVote.on('chat', 'pushMessage', this);
+  this._pubVote.on('team', 'changeTeam', this);
+
+  this.initMap();
 }
 
 // стартует игру
@@ -90,13 +88,10 @@ Game.prototype.stopGame = function () {
 
 // стартует карту
 Game.prototype.startMapTimer = function () {
-  this.updateCurrentMap();
-  this.sendCurrentMap();
-
   this.chat.pushSystem([5]);
 
   this._mapTimer = setTimeout((function () {
-    this.sendVoteMap();
+    this.vote.changeMap();
   }).bind(this), this._mapTime);
 };
 
@@ -149,79 +144,42 @@ Game.prototype.stopShotTimer = function () {
   clearInterval(this._shotTimer);
 };
 
-// отправляет голосование за новую карту
-Game.prototype.sendVoteMap = function () {
-  var data = [
-    'map',
-    [
-      'Выберете следующую карту',
-      ['mini', 'arena'],
-      null
-    ]
-  ];
+// инициализирует карту
+Game.prototype.initMap = function () {
+  var p;
 
-  this._voteList.push(data);
+  this._currentMapData = this._maps[this.vote.getCurrentMap()];
+  this.stopGame();
+  this._allUsersInTeam = {};
 
-  // собирает результаты голосования и стартует новую игру
-  setTimeout((function () {
-    this.stopGame();
-
-    this.sendForAll(this._portInform, [3]);
-
-    setTimeout((function () {
-      this.startGame();
-    }).bind(this), 2000);
-  }).bind(this), this._voteMapTime);
-};
-
-// обновляет текущую карту
-Game.prototype.updateCurrentMap = function () {
-  var map = this._currentMap
-    , votes = 0
-    , p;
-
-  for (p in this._resultVoteMaps) {
-    if (this._resultVoteMaps.hasOwnProperty(p)) {
-      if (this._resultVoteMaps[p] > votes) {
-        map = p;
-        votes = this._resultVoteMaps[p];
+  // корректирование статуса игроков под новые респауны и смена карты
+  for (p in this._users) {
+    if (this._users.hasOwnProperty(p)) {
+      if (this._users[p] !== null) {
+        this.changeTeam({gameID: p, team: this._users[p].team});
       }
     }
   }
 
-  // если карта существует
-  if (this._maps[map]) {
-    this._currentMap = map;
-  // иначе назначить первую из списка
-  } else {
-    this._currentMap = this._mapList[0];
-  }
-
-  this._respawns = this._maps[this._currentMap].respawns;
-  this._resultVoteMaps = {};
+  this.changeMap();
+  this.startGame();
 };
 
-// отправляет текущую карту
-Game.prototype.sendCurrentMap = function (gameID) {
-  var map = this._maps[this._currentMap]
-    , data = {
-      map: map.map,
-      spriteSheet: map.spriteSheet,
-      layers: map.layers,
-      partID: map.partID,
-      step: map.step
-    }
-    , p;
+// меняет карту
+Game.prototype.changeMap = function (gameID) {
+  var p;
 
   if (gameID) {
+    this._users[gameID].socket.send(this._portInform, [3]);
     this._users[gameID].ready = false;
-    this._users[gameID].socket.send(this._portMap, data);
+    this._users[gameID].socket.send(this._portMap, this._currentMapData);
   } else {
     for (p in this._users) {
       if (this._users.hasOwnProperty(p)) {
         if (this._users[p] !== null) {
+          this._users[p].socket.send(this._portInform, [3]);
           this._users[p].ready = false;
-          this._users[p].socket.send(this._portMap, data);
+          this._users[p].socket.send(this._portMap, this._currentMapData);
         }
       }
     }
@@ -236,7 +194,7 @@ Game.prototype.mapReady = function (err, gameID) {
   }
 };
 
-// отправляет первый shot
+// отправляет первый shot (каждый раунд)
 Game.prototype.sendFirstShot = function (gameID) {
   var data = []
     , gameData = {}
@@ -252,7 +210,7 @@ Game.prototype.sendFirstShot = function (gameID) {
   data[5] = 0;      // vote
 
   oldTeamID = this._users[gameID].teamID;
-  teamID = this._statusList[this._users[gameID].team];
+  teamID = this._teams[this._users[gameID].team];
 
   // если назначенный teamID не совпадает с новым
   if (oldTeamID !== teamID) {
@@ -275,7 +233,7 @@ Game.prototype.sendFirstShot = function (gameID) {
     }
 
     this._users[gameID].teamID = teamID;
-    this.stat.createUser(gameID);
+    this.stat.addUser(gameID);
 
     // если oldTeamID не был назначен
     // (новый пользователь)
@@ -358,6 +316,8 @@ Game.prototype.createShot = function () {
           ];
 
           if (this._users[p].userChanged === true) {
+            // TODO убирать флаг:
+            //this._users[p].userChanged = false;
             gameData[p][4] = this._users[p].teamID;
             gameData[p][5] = this._users[p].name;
           }
@@ -379,7 +339,7 @@ Game.prototype.createShot = function () {
   game = [[[1, 2], gameData], [[3], bulletData]];
   stat = this.stat.getLastStat();
   chat = this.chat.shift();
-  vote = this._voteList.shift();
+  vote = this.vote.shift();
 
   time = this._timeStatus === true ? this._time : '';
   this._timeStatus = false;
@@ -413,7 +373,7 @@ Game.prototype.createShot = function () {
 
     // если общих данных для голосования нет
     if (!vote) {
-      voteUser = user.voteList.shift() || 0;
+      voteUser = this.vote.shiftByUser(gameID) || 0;
     } else {
       voteUser = vote;
     }
@@ -433,37 +393,30 @@ Game.prototype.createShot = function () {
   }
 };
 
-// отправляет данные всем
-Game.prototype.sendForAll = function (port, data) {
-  var p;
-
-  for (p in this._users) {
-    if (this._users.hasOwnProperty(p)) {
-      if (this._users[p] !== null) {
-        this._users[p].socket.send(port, data);
-      }
-    }
-  }
-};
-
 // стартует раунд
+// перемещает игроков на респауны и отправляет первый shot
 Game.prototype.startRound = function () {
-  var p
+  var respawns = this._currentMapData.respawns
+    , p
+    , user
     , data
-    , c = {};
+    , respID = {};
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
-      if (this._users[p] !== null) {
+      user = this._users[p];
+
+      // если пользователь существует
+      if (user !== null) {
         this.sendFirstShot(p);
-        c[this._users[p].team] = c[this._users[p].team] || 0;
-        data = this._respawns[this._users[p].team];
+
+        respID[user.team] = respID[user.team] || 0;
+        data = respawns[user.team];
 
         if (data) {
-          data = data[c[this._users[p].team]];
-          this._users[p].setData(data);
-
-          c[this._users[p].team] += 1;
+          data = data[respID[user.team]];
+          user.setData(data);
+          respID[user.team] += 1;
         }
       }
     }
@@ -474,14 +427,83 @@ Game.prototype.startRound = function () {
 Game.prototype.stopRound = function () {
 };
 
+// меняет команду игрока
+Game.prototype.changeTeam = function (data) {
+  var team = data.team
+    , gameID = data.gameID
+    , oldTeam = data.oldTeam
+    , respawns = this._currentMapData.respawns
+    , emptyTeam
+  ;
+
+  // ищет команды имеющие свободные респауны
+  function searchEmptyTeam() {
+    var p;
+
+    for (p in respawns) {
+      if (respawns.hasOwnProperty(p)) {
+        if (respawns[p].length !== this._allUsersInTeam[p]) {
+          return p;
+        }
+      }
+    }
+  }
+
+  if (team !== 'spectators') {
+    // если количество респаунов на карте в выбраной команде
+    // равно количеству игроков в этой команде
+    if (respawns[team].length === this._allUsersInTeam[team]) {
+      // если есть старый статус (смена команды пользователем)
+      if (oldTeam) {
+        this.chat.pushSystem([0, [team, oldTeam]], gameID);
+        return;
+
+      // иначе поиск статуса
+      } else {
+        emptyTeam = searchEmptyTeam.call(this);
+
+        // если найдена команда с свободным местом
+        if (emptyTeam) {
+          this.chat.pushSystem([0, [team, emptyTeam]], gameID);
+          team = emptyTeam;
+        } else {
+          this.chat.pushSystem([1], gameID);
+          team = 'spectators';
+        }
+      }
+
+    } else {
+      // если смена команды пользователем
+      if (oldTeam) {
+        this.chat.pushSystem([4, [team]], gameID);
+      } else {
+        this.chat.pushSystem([2, [team]], gameID);
+      }
+    }
+
+  } else {
+    this.chat.pushSystem([3], gameID);
+  }
+
+  this._users[gameID].team = team;
+
+  // если есть старый статус
+  if (oldTeam) {
+    this._allUsersInTeam[oldTeam] -= 1;
+  }
+
+  if (this._allUsersInTeam[team]) {
+    this._allUsersInTeam[team] += 1;
+  } else {
+    this._allUsersInTeam[team] = 1;
+  }
+};
+
 // создает нового игрока
 Game.prototype.createUser = function (data, socket, cb) {
-  var name
+  var name = data.name
     , team = data.team
-    , emptyTeam
-    , gameID
-    , message
-  ;
+    , gameID;
 
   // проверяет имя
   function checkName(name, number) {
@@ -506,8 +528,6 @@ Game.prototype.createUser = function (data, socket, cb) {
     return name;
   }
 
-  name = checkName.call(this, data.name);
-
   // подбирает gameID
   function getGameID() {
     var gameID = 1;
@@ -519,62 +539,27 @@ Game.prototype.createUser = function (data, socket, cb) {
     return gameID;
   }
 
+  name = checkName.call(this, name);
   gameID = getGameID.call(this);
 
-  // ищет команды имеющие свободные респауны
-  function searchEmptyTeam() {
-    var team;
-
-    for (team in this._respawns) {
-      if (this._respawns.hasOwnProperty(team)) {
-        if (this._respawns[team].length !== this._allUsersInTeam[team]) {
-          return team;
-        }
-      }
-    }
-  }
-
-  if (team !== 'spectators') {
-    // если количество респаунов на карте в выбраной команде
-    // равно количеству игроков в этой команде
-    if (this._respawns[team].length === this._allUsersInTeam[team]) {
-      emptyTeam = searchEmptyTeam.call(this);
-
-      // если найдена команда с свободным местом
-      if (emptyTeam) {
-        message = [0, [team, emptyTeam]];
-        team = emptyTeam;
-      } else {
-        message = [1];
-        team = 'spectators';
-      }
-    } else {
-      message = [2, [team]];
-    }
-  } else {
-    message = [3];
-  }
-
-  if (this._allUsersInTeam[team]) {
-    this._allUsersInTeam[team] += 1;
-  } else {
-    this._allUsersInTeam[team] = 1;
-  }
-
-  this._users[gameID] = new User(name, team);
+  this._users[gameID] = new User();
 
   this._users[gameID].socket = socket;
   this._users[gameID].ready = false;
 
   this.chat.addUser(gameID);
-  this.chat.pushSystem(message, gameID);
+  this.vote.addUser(gameID);
 
-  this.startRound();
+  this._users[gameID].name = name;
+  this.changeTeam({gameID: gameID, team: team});
+
+  this.sendFirstShot(gameID);
+  // до нового раунда статус наблюдателя
+  this._users[gameID].teamID = this._spectatorID;
 
   process.nextTick((function () {
     cb(gameID);
-    this._users[gameID].socket.send(this._portInform);
-    this.sendCurrentMap(gameID);
+    this.changeMap(gameID);
   }).bind(this));
 };
 
@@ -595,10 +580,11 @@ Game.prototype.removeUser = function (gameID, cb) {
     // иначе сделать null, чтобы удалить экземпляр на клиенте
     } else {
       this._users[gameID] = null;
+      this.panel.removeUser(gameID);
     }
 
-    this.panel.removeUser(gameID);
     this.chat.removeUser(gameID);
+    this.vote.removeUser(gameID);
 
     bool = true;
   }
@@ -613,48 +599,9 @@ Game.prototype.updateKeys = function (gameID, keys) {
   this._users[gameID].updateKeys(keys);
 };
 
-// обрабатывает vote данные
-Game.prototype.parseVote = function (gameID, data) {
-  var name
-    , value;
-
-  // если данные 'строка' (запрос данных)
-  if (typeof data === 'string') {
-    if (data === 'maps') {
-      this._users[gameID].addVoteData(this._mapList);
-    }
-  // если данные 'объект' (результат голосования)
-  } else if (typeof data === 'object') {
-    name = data[0];
-    value = data[1][0];
-
-    // если смена карты системой
-    if (name === 'map') {
-      if (value[0] in this._resultVoteMaps) {
-        this._resultVoteMaps[value] += 1;
-      } else {
-        this._resultVoteMaps[value] = 1;
-      }
-    // если смена карты пользователем
-    } else if (name === 'mapUser') {
-      console.log(value);
-    // если смена статуса
-    } else if (name === 'status') {
-      if (this._users[gameID].team !== value) {
-        this._allUsersInTeam[this._users[gameID].team] -= 1;
-
-        this._users[gameID].changeTeam(value);
-
-        if (this._allUsersInTeam[value]) {
-          this._allUsersInTeam[value] += 1;
-        } else {
-          this._allUsersInTeam[value] = 1;
-        }
-
-        this.chat.pushSystem([4, [value]], gameID);
-      }
-    }
-  }
+// добавляет сообщение
+Game.prototype.pushMessage = function (data) {
+  this.chat.pushSystem(data.data, data.gameID);
 };
 
 module.exports = Game;

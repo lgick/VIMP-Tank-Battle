@@ -1,19 +1,35 @@
 var maps = require('../maps/');
+var Factory = require('../../lib/factory');
+var Publisher = require('../../lib/publisher');
 
 module.exports = {
-  maps: maps,
-  mapList: ['mini', 'arena'],
-  mapTime: 1200000,              // 20 мин
-  currentMap: 'arena',
+  utils: {
+    Publisher: Publisher,
+    Factory: Factory
+  },
 
-  shotTime: 50,
+  map: {
+    maps: maps,                  // карты
+    currentMap: 'arena'          // название карты по умолчанию
+  },
 
-  roundTime: 120000,             // 2 мин
+  time: {
+    shotTime: 50,                // время обновления кадра
+    roundTime: 60000,            // время раунда (1 мин)
+    mapTime: 180000              // время карты (3 мин)
+  },
 
-  voteMapTime: 10000,            // 10 сек
-  voteMapAmount: 4,              // количество карт в голосовании
+  vote: {
+    time: 10000,                 // время ожидания результатов голосования (10 сек)
+    timeBlockedRemap: 20000,     // время ожидания при повторной смене карты пользователем (20 сек)
+    mapsInVote: 4                // количество карт в голосовании
+  },
 
-  spectatorID: 3,
+  spectatorID: 3,                // id наблюдателя
 
-  statusList: {team1: 1, team2: 2, spectators: 3}
+  teams: {
+    team1: 1,
+    team2: 2,
+    spectators: 3
+  }
 };

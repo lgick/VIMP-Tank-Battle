@@ -436,6 +436,19 @@ body {
   text-align: right;
 }
 
+#auth-controls {
+  background-color: #444;
+  padding: 7px 13px;
+  margin: 10px 0;
+  border-radius: 4px;
+  border: 1px solid #999;
+}
+
+#auth-controls h4 {
+  margin: 0 0 4px 0;
+  text-align: center;
+}
+
 /*informer*/
 
 #informer {

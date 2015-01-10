@@ -53,7 +53,7 @@ Stat.prototype.init = function () {
 };
 
 // добавляет пользователя
-Stat.prototype.createUser = function (gameID) {
+Stat.prototype.addUser = function (gameID) {
   var user = this._users[gameID]
     , team = user.team
     , head = this._head[team][1]

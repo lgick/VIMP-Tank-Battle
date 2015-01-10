@@ -1,17 +1,9 @@
-function User(name, team) {
+function User() {
   this.data = [0, 0, 0, 0];
 
   this.bullet = null;
 
-  this.name = name;
-  this.team = team;
-
-  this.messageList = [];
-  this.voteList = [];
-
   this.userChanged = false;
-  this.panelChanged = true;
-  this.statChanged = false;
 
   this.removeGameModel = false;
 
@@ -151,21 +143,6 @@ User.prototype.updateData = function () {
 // обновляет клавиши
 User.prototype.updateKeys = function (keys) {
   this._keys = keys;
-};
-
-// добавляет сообщение
-User.prototype.addMessage = function (text) {
-  this.messageList.push([text]);
-};
-
-// добавляет данные для голосования
-User.prototype.addVoteData = function (data) {
-  this.voteList.push([null, data]);
-};
-
-// меняет команду
-User.prototype.changeTeam = function (team) {
-  this.team = team;
 };
 
 module.exports = User;

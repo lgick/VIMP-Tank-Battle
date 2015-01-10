@@ -166,7 +166,7 @@ statArray = [
 ```
 menu = [
   [
-    'status',   // vote name
+    'team',                              // vote name
     [
       'Сменить команду, статус',         // 0: title
       ['team1', 'team2', 'spectator'],   // 1: value
