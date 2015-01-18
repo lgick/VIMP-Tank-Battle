@@ -33,11 +33,12 @@ Chat.prototype.push = function (data, gameID) {
 };
 
 // добавляет системное сообщение
-Chat.prototype.pushSystem = function (arr, gameID) {
+// ''
+Chat.prototype.pushSystem = function (str, gameID) {
   if (gameID) {
-    this._userList[gameID].push(arr);
+    this._userList[gameID].push(str);
   } else {
-    this._list.push(arr);
+    this._list.push(str);
   }
 };
 

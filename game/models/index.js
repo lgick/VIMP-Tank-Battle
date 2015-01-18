@@ -88,7 +88,7 @@ Game.prototype.stopGame = function () {
 
 // стартует карту
 Game.prototype.startMapTimer = function () {
-  this.chat.pushSystem([5]);
+  this.chat.pushSystem('t:0');
 
   this._mapTimer = setTimeout((function () {
     this.vote.changeMap();
@@ -121,7 +121,7 @@ Game.prototype.startRoundTimer = function () {
 
     this._currentBulletID = 0;
     this.startRoundTimer();
-    this.chat.pushSystem([6]);
+    this.chat.pushSystem('t:1');
   }).bind(this), this._roundTime);
 };
 
@@ -455,7 +455,7 @@ Game.prototype.changeTeam = function (data) {
     if (respawns[team].length === this._allUsersInTeam[team]) {
       // если есть старый статус (смена команды пользователем)
       if (oldTeam) {
-        this.chat.pushSystem([0, [team, oldTeam]], gameID);
+        this.chat.pushSystem('s:0:' + team + ',' + oldTeam, gameID);
         return;
 
       // иначе поиск статуса
@@ -464,10 +464,10 @@ Game.prototype.changeTeam = function (data) {
 
         // если найдена команда с свободным местом
         if (emptyTeam) {
-          this.chat.pushSystem([0, [team, emptyTeam]], gameID);
+          this.chat.pushSystem('s:0:' + team + ',' + emptyTeam, gameID);
           team = emptyTeam;
         } else {
-          this.chat.pushSystem([1], gameID);
+          this.chat.pushSystem('s:1', gameID);
           team = 'spectators';
         }
       }
@@ -475,14 +475,14 @@ Game.prototype.changeTeam = function (data) {
     } else {
       // если смена команды пользователем
       if (oldTeam) {
-        this.chat.pushSystem([4, [team]], gameID);
+        this.chat.pushSystem('s:4:' + team, gameID);
       } else {
-        this.chat.pushSystem([2, [team]], gameID);
+        this.chat.pushSystem('s:2:' + team, gameID);
       }
     }
 
   } else {
-    this.chat.pushSystem([3], gameID);
+    this.chat.pushSystem('s:3', gameID);
   }
 
   this._users[gameID].team = team;
@@ -600,8 +600,8 @@ Game.prototype.updateKeys = function (gameID, keys) {
 };
 
 // добавляет сообщение
-Game.prototype.pushMessage = function (data) {
-  this.chat.pushSystem(data.data, data.gameID);
+Game.prototype.pushMessage = function (arr) {
+  this.chat.pushSystem(arr[0], arr[1]);
 };
 
 module.exports = Game;

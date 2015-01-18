@@ -79,22 +79,31 @@ module.exports = {
         lineTime: 15000,
         cacheMin: 200,
         cacheMax: 300,
-        messageList: [
-          '{0} is full. Current team: {1}',
-          'Teams is full. Current status: spectators',
-          'Current team: {0}',
-          'Current status: spectators',
-          'Your next status: {0}',
-          'new map',
-          'next round',
-          'Ваш голос принят!',
-          'Карта {0} является текущей',
-          'Голосование за новую карту запущено',
-          'Смена карты временно недоступна',
-          'Голосование завершено! Следующая карта: {0}',
-          'Голосование за новую карту завершилось без результата',
-          'Опция бана находится в разработке и {0} {1} будет вскоре наказан!'
-        ]
+        messages: {
+          // teams/status
+          s: [
+            '{0} is full. Current team: {1}',
+            'Teams is full. Current status: spectators',
+            'Current team: {0}',
+            'Current status: spectators',
+            'Your next status: {0}',
+          ],
+          // timers
+          t: [
+            'new map',
+            'next round',
+          ],
+          // vote
+          v: [
+            'Ваш голос принят!',
+            'Карта {0} является текущей',
+            'Голосование за новую карту запущено',
+            'Смена карты временно недоступна',
+            'Голосование завершено! Следующая карта: {0}',
+            'Голосование за новую карту завершилось без результата',
+            'Опция бана находится в разработке и {0} {1} будет вскоре наказан!'
+          ]
+        }
       }
     },
 

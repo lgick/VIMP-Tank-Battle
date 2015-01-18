@@ -416,7 +416,7 @@ require([
       lineTime: chatData.params.lineTime,
       cacheMin: chatData.params.cacheMin,
       cacheMax: chatData.params.cacheMax,
-      messageList: chatData.params.messageList
+      messages: chatData.params.messages
     });
 
     chatView = new ChatView(chatModel, {

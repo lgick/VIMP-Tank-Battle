@@ -16,7 +16,7 @@ define(['Publisher'], function (Publisher) {
     this._lineTime = data.lineTime || 15000;
     this._cacheMin = data.cacheMin || 200;
     this._cacheMax = data.cacheMax || 300;
-    this._messageList = data.messageList || [];
+    this._messages = data.messages || {};
 
     this._cache = []; // хранилище сообщений
     this._list = [];  // активный чат-лист
@@ -58,30 +58,37 @@ define(['Publisher'], function (Publisher) {
     }
   };
 
-  // обновляет чат-лист
+  // обновляет чат-лист. Данные могут быть 2-х видов:
+  // - в виде строки '<группа шаблонов>:<номер шаблона>:<параметры (через запятую)>'
+  // - в виде массива [<текст сообщения>,<имя автора>,<тип для класса>]
   ChatModel.prototype.updateChat = function (arr) {
     var message
-      , dataArr
+      , params
       , regExp
       , i
       , len
     ;
 
-    // если первый элемент число
-    if (typeof arr[0] === 'number') {
-      message = this._messageList[arr[0]];
-      dataArr = arr[1];
+    // если данные - строка
+    if (typeof arr === 'string') {
+      arr = arr.split(':');
 
-      // если сообщение не найдено
-      if (!message) {
+      // если сообщений не найдено
+      if (!this._messages[arr[0]] || !this._messages[arr[0]][arr[1]]) {
         return;
       }
 
-      // если есть массив с данными
-      if (dataArr) {
-        for (i = 0, len = dataArr.length; i < len; i += 1) {
+      message = this._messages[arr[0]][arr[1]];
+
+      params = arr[2];
+
+      // если есть параметры
+      if (params) {
+        params = params.split(',');
+
+        for (i = 0, len = params.length; i < len; i += 1) {
           regExp = new this._RegExp('\\{' + i + '\\}', 'g');
-          message = message.replace(regExp, dataArr[i]);
+          message = message.replace(regExp, params[i]);
         }
       }
 

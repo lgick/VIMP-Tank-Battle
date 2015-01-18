@@ -86,14 +86,14 @@ Vote.prototype.parseVote = function (gameID, data) {
         this._resultVoteMaps[value] = 1;
       }
 
-      this.publisher.emit('chat', {data: [7], gameID: gameID});
+      this.publisher.emit('chat', ['v:0', gameID]);
 
     // если смена карты пользователем
     } else if (name === 'mapUser') {
       value = value[0];
 
       if (value === this._currentMap) {
-        this.publisher.emit('chat', {data: [8, [value]], gameID: gameID});
+        this.publisher.emit('chat', ['v:1:' + value, gameID]);
       } else {
         this.changeMap(gameID.toString(), value);
       }
@@ -109,15 +109,14 @@ Vote.prototype.parseVote = function (gameID, data) {
           gameID: gameID
         });
       } else {
-        this.publisher.emit('chat', {data: [2, [value]], gameID: gameID});
+        this.publisher.emit('chat', ['s:2:' + value, gameID]);
       }
 
     // если смена статуса
     } else if (name === 'ban') {
-      this.publisher.emit('chat', {
-        data: [13, [value[1], this._users[value[0]].name]],
-        gameID: gameID
-      });
+      this.publisher.emit('chat', [
+        'v:6:' + value[1] + ',' + this._users[value[0]].name, gameID
+      ]);
     }
   }
 };
@@ -174,7 +173,7 @@ Vote.prototype.changeMap = function (gameID, map) {
         }
       }
 
-      this.publisher.emit('chat', {data: [9], gameID: gameID});
+      this.publisher.emit('chat', ['v:2', gameID]);
 
     // иначе голосование создает игра
     } else {
@@ -202,7 +201,7 @@ Vote.prototype.changeMap = function (gameID, map) {
 
   } else {
     if (gameID) {
-      this.publisher.emit('chat', {data: [10], gameID: gameID});
+      this.publisher.emit('chat', ['v:3', gameID]);
     }
   }
 };
@@ -225,12 +224,12 @@ Vote.prototype.updateCurrentMap = function () {
   // если есть результат и карта существует
   if (map && this._mapList.indexOf(map) !== -1) {
     this._currentMap = map;
-    this.publisher.emit('chat', {data: [11, [map]]});
+    this.publisher.emit('chat', ['v:4:' + map]);
     setTimeout((function () {
       this.publisher.emit('map');
     }.bind(this)), 2000);
   } else {
-    this.publisher.emit('chat', {data: [12]});
+    this.publisher.emit('chat', ['v:5']);
   }
 };
 
