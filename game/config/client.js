@@ -45,26 +45,65 @@ module.exports = {
 
     // keys
     keys: {
-      keySet: {
-        87: 1 << 0,    // forward (w)
-        83: 1 << 1,    // back (s)
-        65: 1 << 2,    // left (a)
-        68: 1 << 3,    // right (d)
-        85: 1 << 4,    // gCenter (u)
-        75: 1 << 5,    // gLeft (k)
-        76: 1 << 6,    // gRight (l)
-        74: 1 << 7,    // fire (j)
-        78: 1 << 8,    // next player (n)
-        80: 1 << 9     // prev player (p)
-      },
+      keySetList: [
+        // spectator keyset
+        {
+          // next player (n)
+          78: {
+            key: 1 << 0,
+            type: 1
+          },
+          // prev player (p)
+          80: {
+            key: 1 << 1,
+            type: 1
+          }
+        },
+        // game keyset
+        {
+          // forward (w)
+          87: {
+            key: 1 << 0
+          },
+          // back (s)
+          83: {
+            key: 1 << 1
+          },
+          // left (a)
+          65: {
+            key: 1 << 2
+          },
+          // right (d)
+          68: {
+            key: 1 << 3
+          },
+          // gCenter (u)
+          85: {
+            key: 1 << 4
+          },
+          // gLeft (k)
+          75: {
+            key: 1 << 5
+          },
+          // gRight (l)
+          76: {
+            key: 1 << 6
+          },
+          // fire (j)
+          74: {
+            key: 1 << 7,
+            type: 1
+          }
+        }
+      ],
       modes: {
-        67: 'chat',    // чат (c)
-        77: 'vote',    // опрос (m)
-        9: 'stat'      // статистика (tab)
+        67: 'chat',      // чат (c)
+        77: 'vote',      // опрос (m)
+        9: 'stat'        // статистика (tab)
       },
       cmds: {
-        27: 'escape',  // отмена (escape)
-        13: 'enter'    // ввод (enter)
+        27: 'escape',    // отмена (escape)
+        13: 'enter'      // ввод (enter)
       }
     },
 

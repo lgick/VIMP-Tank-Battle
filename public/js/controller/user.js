@@ -40,6 +40,11 @@ define([], function () {
     this._model.setMode(data.name, data.status);
   };
 
+  // меняет набор клавиш
+  UserCtrl.prototype.changeKeySet = function (keySet) {
+    this._model.changeKeySet(keySet);
+  };
+
   // обновляет размеры
   UserCtrl.prototype.resize = function (data) {
     this._model.resize(data);

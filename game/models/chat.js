@@ -24,16 +24,15 @@ Chat.prototype.removeUser = function (gameID) {
 };
 
 // добавляет сообщение
-Chat.prototype.push = function (data, gameID) {
+Chat.prototype.push = function (message, gameID) {
   this._list.push([
-    data,
+    message,
     this._users[gameID].name,
     this._users[gameID].teamID
   ]);
 };
 
 // добавляет системное сообщение
-// ''
 Chat.prototype.pushSystem = function (str, gameID) {
   if (gameID) {
     this._userList[gameID].push(str);

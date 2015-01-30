@@ -1,14 +1,4 @@
 function User() {
-  this.data = [0, 0, 0, 0];
-
-  this.bullet = null;
-
-  this.userChanged = false;
-
-  this.removeGameModel = false;
-
-  this._keys = null;
-
   this._layer = 2;
 
   this._acceleration = 0;
@@ -16,6 +6,7 @@ function User() {
   this._maxBack = 10;
   this._step = 0.5;
 
+  // TODO перенести в конструктор
   this._keyForward = 1;
   this._keyBack = 2;
   this._keyLeft = 4;
@@ -46,7 +37,7 @@ User.prototype.updateData = function () {
   var vY = Math.round(Math.sin(rad) * this._acceleration);
   var radBullet;
 
-  if (this._keys === null) {
+  if (this.keys === null) {
     if (this._acceleration > 0) {
       this._acceleration -= this._step;
     } else if (this._acceleration < 0) {
@@ -56,14 +47,14 @@ User.prototype.updateData = function () {
   } else {
 
     // forward
-    if (this._keys & this._keyForward) {
+    if (this.keys & this._keyForward) {
       if (this._acceleration < this._maxForward) {
         this._acceleration += this._step * 4;
       }
     } else
 
     // back
-    if (this._keys & this._keyBack) {
+    if (this.keys & this._keyBack) {
       if (this._acceleration > -this._maxBack) {
         this._acceleration -= this._step * 2;
       }
@@ -76,7 +67,7 @@ User.prototype.updateData = function () {
     }
 
     // left
-    if (this._keys & this._keyLeft) {
+    if (this.keys & this._keyLeft) {
       this.data[2] = this.data[2] - 4;
       if (this.data[2] < 0) {
         this.data[2] = 356;
@@ -84,7 +75,7 @@ User.prototype.updateData = function () {
     }
 
     // right
-    if (this._keys & this._keyRight) {
+    if (this.keys & this._keyRight) {
       this.data[2] = this.data[2] + 4;
       if (this.data[2] > 360) {
         this.data[2] = 4;
@@ -92,26 +83,26 @@ User.prototype.updateData = function () {
     }
 
     // gCenter
-    if (this._keys & this._keyGCenter) {
+    if (this.keys & this._keyGCenter) {
       this.data[3] = 0;
     }
 
     // gLeft
-    if (this._keys & this._keyGLeft) {
+    if (this.keys & this._keyGLeft) {
       if (this.data[3] > -this._maxGunAngle) {
         this.data[3] = this.data[3] - this._gunAngleStep;
       }
     }
 
     // gRight
-    if (this._keys & this._keyGRight) {
+    if (this.keys & this._keyGRight) {
       if (this.data[3] < this._maxGunAngle) {
         this.data[3] = this.data[3] + this._gunAngleStep;
       }
     }
 
     // fire
-    if (this._keys & this._keyFire) {
+    if (this.keys & this._keyFire) {
       radBullet = +((this.data[3] + this.data[2]) * (Math.PI / 180)).toFixed(2);
 
       this.bullet = [
@@ -124,25 +115,12 @@ User.prototype.updateData = function () {
       ];
     }
 
-    //TODO: для spectators
-    // // next player
-    // if (this._keys & this._keyNextPlayer) {
-    // }
-    //
-    // // prev player
-    // if (this._keys & this._keyPrevPlayer) {
-    // }
   }
 
   this.data[0] = vX + this.data[0];
   this.data[1] = vY + this.data[1];
 
-  this._keys = null;
-};
-
-// обновляет клавиши
-User.prototype.updateKeys = function (keys) {
-  this._keys = keys;
+  this.keys = null;
 };
 
 module.exports = User;

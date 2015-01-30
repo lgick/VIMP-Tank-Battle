@@ -2,13 +2,17 @@
 var vote;
 
 function Vote(users, data) {
-  var mapData = data.map
-    , voteData = data.vote
-    , Publisher = data.utils.Publisher;
+  var mapData
+    , voteData
+    , Publisher;
 
   if (vote) {
     return vote;
   }
+
+  mapData = data.map;
+  voteData = data.vote;
+  Publisher = data.utils.Publisher;
 
   vote = this;
 

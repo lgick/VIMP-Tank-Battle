@@ -16,14 +16,17 @@ define(['Publisher'], function (Publisher) {
 
     this._sizeOptions = data.sizeOptions;
 
-    this._keySet = data.keys.keySet;
+    this._keySetList = data.keys.keySetList;
     this._modes = data.keys.modes;
     this._cmds = data.keys.cmds;
 
     this._ticker = data.ticker;
 
-    this._currentModes = {};  // статусы режимов
-    this._keys = 0;           // состояние клавиш
+    this._currentKeySet = this._keySetList[0]; // текущий набор клавиш
+    this._currentModes = {};     // статусы режимов
+    this._keys = 0;              // состояние клавиш
+    this._keysOneShot = 0;       // состояние клавиш одиночного нажатия
+    this._keysOneShotData = {};  // данные активности oneShot-клавиш
 
     this.publisher = new Publisher();
   }
@@ -93,24 +96,66 @@ define(['Publisher'], function (Publisher) {
     }
   };
 
-  // обновляет набор состояния клавиш
-  UserModel.prototype.updateKeysState = function (keyCode, press) {
-    var key = this._keySet[keyCode];
+  // меняет набор клавиш
+  UserModel.prototype.changeKeySet = function (keySet) {
+    this._currentKeySet = this._keySetList[keySet];
+    this._keys = 0;
+    this._keysOneShot = 0;
+  };
 
-    if (key) {
+  // обновляет набор состояния клавиш
+  // Данные объекта нажатой клавиши:
+  // - key- число клавиши
+  // - type- тип отработки нажатия на клавишу
+  // 0 (по умолчанию): выполняет каждый keyDown и keyUp
+  // 1 : выполняет один раз keyDown
+  // 2 : выполняет только keyUp (имитация клика)
+  UserModel.prototype.updateKeysState = function (keyCode, press) {
+    var keyData = this._currentKeySet[keyCode]
+      , type;
+
+    if (keyData) {
+      key = keyData.key;
+      type = keyData.type;
+
+      // если нажатие
       if (press) {
-        this._keys = this._keys | key;
+        // если тип не назначен (либо тип 0)
+        if (!type) {
+          this._keys = this._keys | key;
+
+        // иначе если одна команда (первый тип) и она еще не была активирована
+        } else if (type === 1 && this._keysOneShotData[key] !== true) {
+          this._keysOneShot = this._keysOneShot | key;
+          this._keysOneShotData[key] = true;
+        }
+
+      // иначе отжатие
       } else {
-        this._keys = this._keys & ~ key;
+        // если тип не назначен (либо тип 0)
+        if (!type) {
+          this._keys = this._keys & ~ key;
+
+        // иначе если одна команда (первый тип)
+        } else if (type === 1) {
+          this._keysOneShotData[key] = false;
+
+        // иначе если команда на отжатие (второй тип)
+        } else if (type === 2) {
+          this._keysOneShot = this._keysOneShot | key;
+        }
       }
     }
   };
 
   // отправляет информацию о клавишах на сервер
   UserModel.prototype.sendKeys = function () {
+    var keys = this._keys | this._keysOneShot;
+
     // если есть команды, то отправка данных
-    if (this._keys !== 0) {
-      this.publisher.emit('socket', this._keys);
+    if (keys !== 0) {
+      this.publisher.emit('socket', keys);
+      this._keysOneShot = 0;
     }
   };
 

@@ -164,7 +164,8 @@ require([
       regExp = params[i].options.regExp;
 
       if (storage) {
-        params[i].value = window.localStorage[storage] || params[i].value || '';
+        params[i].value =
+          window.localStorage[storage] || params[i].value || '';
       }
 
       if (regExp) {
@@ -251,6 +252,7 @@ require([
       , stat = data[3]
       , chat = data[4]
       , vote = data[5]
+      , keySet = data[6]
 
       , i
       , len
@@ -304,6 +306,11 @@ require([
     // голосование
     if (vote !== 0) {
       modules.vote.open(vote);
+    }
+
+    // набор клавиш
+    if (typeof keySet === 'number') {
+      modules.user.changeKeySet(keySet);
     }
   };
 
