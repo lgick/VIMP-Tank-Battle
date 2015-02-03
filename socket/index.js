@@ -24,8 +24,6 @@ var game = new Game(config.get('game'), config.get('server:ports'));
 var auth = config.get('auth');
 var cConf = config.get('client');
 
-cConf.user.vote.params.time = config.get('game:vote:time');
-
 var sessions = {}; // { '0ff81720-e2b2-11e3-9614-018be5de670e': ws }
 var IPs = {};      // { '127.0.0.1': '0ff81720-e2b2-11e3-9614-018be5de670e' }
 

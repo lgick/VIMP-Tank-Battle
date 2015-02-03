@@ -13,6 +13,7 @@
 
 var express = require('express');
 var path = require('path');
+var argv = require('minimist')(process.argv.slice(2));
 
 
 // CONFIG
@@ -22,6 +23,42 @@ config.set('auth', require(path.join(__dirname, '/game/config/auth.js')));
 config.set('server', require(path.join(__dirname, '/game/config/server.js')));
 config.set('client', require(path.join(__dirname, '/game/config/client.js')));
 config.set('game', require(path.join(__dirname, '/game/config/game.js')));
+
+// время ожидания vote-модуля
+config.set('client:user:vote:params:time', config.get('game:vote:time'));
+
+// если задан домен
+if (argv.domain) {
+  config.set('server:domain', argv.domain);
+  console.info('Domain: ' + argv.domain);
+}
+
+// если задан порт
+if (argv.port) {
+  config.set('server:port', argv.port);
+  console.info('Port: ' + argv.port);
+}
+
+// если задана карта
+if (argv.map) {
+  // если карта существует
+  if (config.get('game:map:maps')[argv.map]) {
+    config.set('game:map:currentMap', argv.map);
+    console.info('Current map: ' + argv.map);
+  } else {
+    console.info('Map ' + argv.map + ': not found');
+  }
+}
+
+// если задано количество игроков
+if (argv.players) {
+  if (typeof argv.players === 'number') {
+    config.set('server:maxPlayers', argv.players);
+    console.info('Limit players in server: ' + argv.players);
+  } else {
+    console.info('Limit players in server: ' + config.get('server:maxPlayers'));
+  }
+}
 
 
 // EXPRESS

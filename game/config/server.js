@@ -1,5 +1,4 @@
 var game = require('../models');
-var banlist = require('../deps/banlist');
 
 module.exports = {
   name: 'VIMP Tank Battle',
@@ -18,9 +17,5 @@ module.exports = {
     inform: 5,
     clear: 6,
     log: 7
-  },
-  banlist: banlist,
-  message: {
-    ban: 'Обжаловать бан можно на site.ru'
   }
 };

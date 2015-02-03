@@ -1,4 +1,5 @@
 var maps = require('../maps/');
+var banlist = require('../deps/banlist');
 var Factory = require('../../lib/factory');
 var Publisher = require('../../lib/publisher');
 
@@ -7,6 +8,8 @@ module.exports = {
     Publisher: Publisher,
     Factory: Factory
   },
+
+  banlist: banlist,
 
   map: {
     maps: maps,                  // карты
