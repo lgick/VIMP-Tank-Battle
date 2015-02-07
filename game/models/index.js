@@ -63,12 +63,12 @@ function Game(data, ports) {
 
   this.panel = new Panel();
   this.stat = new Stat(this._users, this._teams);
-  this.chat = new Chat(this._users);
+  this.chat = new Chat();
   this.vote = new Vote(this._users, data);
 
   this._pubVote = this.vote.publisher;
   this._pubVote.on('map', 'initMap', this);
-  this._pubVote.on('chat', 'pushMessage', this);
+  this._pubVote.on('chat', 'pushSystemMessage', this);
   this._pubVote.on('team', 'changeTeam', this);
 
   this.initMap();
@@ -767,7 +767,14 @@ Game.prototype.updateKeys = function (gameID, keys) {
 };
 
 // добавляет сообщение
-Game.prototype.pushMessage = function (arr) {
+Game.prototype.pushMessage = function (message, gameID) {
+  var user = this._users[gameID];
+
+  this.chat.push(message, user.name, user.teamID);
+};
+
+// добавляет системное сообщение
+Game.prototype.pushSystemMessage = function (arr) {
   this.chat.pushSystem(arr[0], arr[1]);
 };
 

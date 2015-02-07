@@ -1,14 +1,13 @@
 // Singleton Chat
 var chat;
 
-function Chat(users) {
+function Chat() {
   if (chat) {
     return chat;
   }
 
   chat = this;
 
-  this._users = users;
   this._list = [];
   this._userList = {};
 }
@@ -24,12 +23,8 @@ Chat.prototype.removeUser = function (gameID) {
 };
 
 // добавляет сообщение
-Chat.prototype.push = function (message, gameID) {
-  this._list.push([
-    message,
-    this._users[gameID].name,
-    this._users[gameID].teamID
-  ]);
+Chat.prototype.push = function (message, name, teamID) {
+  this._list.push([message, name, teamID]);
 };
 
 // добавляет системное сообщение
