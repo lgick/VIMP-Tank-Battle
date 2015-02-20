@@ -22,6 +22,35 @@ module.exports = {
     mapTime: 180000              // время карты (180)
   },
 
+  stat: {
+    name: {
+      key: 0,
+      bodyMethod: 'replace',
+      headSync: true,
+      headMethod: 'quantity'
+    },
+    status: {
+      key: 1,
+      bodyMethod: 'replace',
+      bodyValue: 'dead',
+      headValue: ''
+    },
+    score: {
+      key: 2,
+      bodyMethod: 'add',
+      bodyValue: 0,
+      headMethod: 'add',
+      headValue: 0
+    },
+    deaths: {
+      key: 3,
+      bodyMethod: 'add',
+      bodyValue: 0,
+      headMethod: 'add',
+      headValue: 0
+    }
+  },
+
   vote: {
     time: 10000,                 // время ожидания результатов голосования (10)
     timeBlockedRemap: 20000,     // время ожидания повторной смены карты (20)

@@ -62,7 +62,7 @@ function Game(data, ports) {
   this._currentBulletID = 0;     // id для пуль
 
   this.panel = new Panel();
-  this.stat = new Stat(this._users, this._teams);
+  this.stat = new Stat(data.stat, this._teams);
   this.chat = new Chat();
   this.vote = new Vote(this._users, data);
 
@@ -76,7 +76,6 @@ function Game(data, ports) {
 
 // стартует игру
 Game.prototype.startGame = function () {
-  this.stat.init();
   this.startMapTimer();
   this.startShotTimer();
   this.startRoundTimer();
@@ -158,6 +157,7 @@ Game.prototype.initMap = function () {
   this._currentMapData = this._maps[this.vote.getCurrentMap()];
   this.stopGame();
   this._allUsersInTeam = {};
+  this.stat.reset();
 
   // корректирование статуса игроков под новые респауны и смена карты
   for (p in this._users) {
@@ -207,11 +207,10 @@ Game.prototype.mapReady = function (err, gameID) {
 
 // отправляет первый shot (в начале каждого раунда)
 Game.prototype.sendFirstShot = function (gameID) {
-  var data = []
-    , gameData = {}
-    , oldTeamID
-    , teamID
-    , p;
+  var user = this._users[gameID]
+    , nextTeam = user.nextTeam
+    , teamID = user.teamID
+    , data = [];
 
   data[0] = 0;      // game
   data[1] = 0;      // coords
@@ -220,53 +219,36 @@ Game.prototype.sendFirstShot = function (gameID) {
   data[4] = 0;      // chat
   data[5] = 0;      // vote
 
-  oldTeamID = this._users[gameID].teamID;
-  teamID = this._teams[this._users[gameID].team];
+  // если пользователь сменил команду
+  if (nextTeam !== null) {
+    user.nextTeam = null;
 
-  // если назначенный teamID не совпадает с новым
-  if (oldTeamID !== teamID) {
-    this._users[gameID].userChanged = true;
+    // перемещение пользователя в статистике
+    this.stat.moveUser(gameID, teamID, this._teams[nextTeam]);
 
-    // если oldTeamID был назначен
-    // (пользователь сменил команду)
-    if (typeof oldTeamID !== 'undefined') {
-      this.stat.removeUser(gameID);
+    teamID = user.teamID = this._teams[nextTeam];
+    user.team = nextTeam;
+    user.userChanged = true;
 
-      // если новый teamID - id наблюдателя,
-      // то удалить модель игрока
-      // и очистить панель
-      if (teamID === this._spectatorID) {
-        this._users[gameID].removeGameModel = true;
-
-        data[2] = [this._time, null];
-        this.panel.removeUser(gameID);
-      }
-    }
-
-    this._users[gameID].teamID = teamID;
-    this.stat.addUser(gameID);
-
-    // если oldTeamID не был назначен
-    // (новый пользователь)
-    if (typeof oldTeamID === 'undefined') {
-      data[3] = this.stat.getStat();
-    }
-
-    if (teamID !== this._spectatorID) {
-      this.panel.addUser(gameID);
+    if (teamID === this._spectatorID) {
+      user.removeGameModel = true;
     }
   }
 
   if (teamID !== this._spectatorID) {
-    this._users[gameID].lookOnly = false;
-    this._users[gameID].keySet = 1;
+    user.lookOnly = false;
+    user.keySet = 1;
     this._playersList.push(gameID);
+    this.panel.addUser(gameID);
   } else {
-    this._users[gameID].lookOnly = true;
-    this._users[gameID].keySet = 0;
+    user.lookOnly = true;
+    user.keySet = 0;
+    this.panel.removeUser(gameID);
   }
 
-  this._users[gameID].socket.send(this._portShot, data);
+  data[2] = [this._time, null];
+
+  user.socket.send(this._portShot, data);
 };
 
 // создает кадр игры
@@ -324,8 +306,7 @@ Game.prototype.createShot = function () {
           this._users[p].removeGameModel = false;
         }
 
-        // если teamID не id наблюдателя
-        // TODO убрал проверку на teamID !== this._spectatorID
+        // если игрок - наблюдатель
         if (this._users[p].lookOnly !== true) {
           this._users[p].updateData();
 
@@ -360,7 +341,7 @@ Game.prototype.createShot = function () {
 
   // TODO сделать динамический конструктор
   game = [[[1, 2], gameData], [[3], bulletData]];
-  stat = this.stat.getLastStat();
+  stat = this.stat.getLast();
   chat = this.chat.shift();
   vote = this.vote.shift();
 
@@ -444,6 +425,9 @@ Game.prototype.startRound = function () {
     , data
     , respID = {};
 
+  // TODO респауны при смене карты на arena_1x1 не обновляются
+  // пользователи не перемещаются в свободные команды
+
   // очищение списка играющих
   this._playersList = [];
 
@@ -498,7 +482,7 @@ Game.prototype.changeTeam = function (data) {
     this.chat.pushSystem('s:3', gameID);
   }
 
-  this._users[gameID].team = team;
+  this._users[gameID].nextTeam = team;
   this._allUsersInTeam[oldTeam] -= 1;
 
   if (this._allUsersInTeam[team]) {
@@ -610,6 +594,7 @@ Game.prototype.createUser = function (params, socket, cb) {
     , data = []
     , teamData
     , gameID
+    , teamID
   ;
 
   data[0] = 0;      // game
@@ -660,6 +645,8 @@ Game.prototype.createUser = function (params, socket, cb) {
   team = teamData.team;
   message = teamData.message;
 
+  teamID = this._teams[team];
+
   this._users[gameID] = new User();
 
   // ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
@@ -676,7 +663,7 @@ Game.prototype.createUser = function (params, socket, cb) {
   // название команды в следующем раунде
   this._users[gameID].nextTeam = null;
   // ID команды
-  this._users[gameID].teamID = this._teams[team];
+  this._users[gameID].teamID = teamID;
   // gameID игрока
   this._users[gameID].gameID = gameID;
   // флаг наблюдателя игры
@@ -696,7 +683,7 @@ Game.prototype.createUser = function (params, socket, cb) {
 
   this.chat.addUser(gameID);
   this.vote.addUser(gameID);
-  this.stat.addUser(gameID);
+  this.stat.addUser(gameID, teamID, {name: name});
 
   if (team !== this._spectatorTeam) {
     this.panel.addUser(gameID);
@@ -707,7 +694,7 @@ Game.prototype.createUser = function (params, socket, cb) {
   // TODO сделать дефолтные данные в индексе из юзера
   data[1] = [0, 0]; // TODO получить дефолтные данные наблюдателя
   data[2] = [this._time, null];
-  data[3] = this.stat.getStat();
+  data[3] = this.stat.getFull();
   data[4] = message;
 
   this._users[gameID].socket.send(this._portShot, data);
@@ -720,17 +707,20 @@ Game.prototype.createUser = function (params, socket, cb) {
 
 // удаляет игрока
 Game.prototype.removeUser = function (gameID, cb) {
-  var bool = false;
+  var bool = false
+    , user = this._users[gameID];
+
+  // TODO gameID брать из user???
 
   // если gameID === undefined,
   // значит пользователь вышел, не успев войти в игру
-  if (this._users[gameID]) {
-    this.stat.removeUser(gameID);
+  if (user) {
+    this.stat.removeUser(gameID, user.teamID);
 
-    this._allUsersInTeam[this._users[gameID].team] -= 1;
+    this._allUsersInTeam[user.team] -= 1;
 
     // если игрок - наблюдатель, то удалить
-    if (this._users[gameID].team === this._spectatorTeam) {
+    if (user.team === this._spectatorTeam) {
       delete this._users[gameID];
     // иначе сделать null, чтобы удалить экземпляр на клиенте
     } else {

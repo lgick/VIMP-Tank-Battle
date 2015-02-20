@@ -66,7 +66,45 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
 
 ![stat](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/stat/stat.png)
 
-## Конфиг для модели
+## Конфиг для модели (сервер)
+
+``` js
+name: {
+  key: 0,
+  bodyMethod: 'replace',
+  headSync: true,
+  headMethod: 'quantity'
+},
+status: {
+  key: 1,
+  bodyMethod: 'replace',
+  bodyValue: 'dead',
+  headValue: ''
+},
+score: {
+  key: 2,
+  bodyMethod: 'add',
+  bodyValue: 0,
+  headMethod: 'add',
+  headValue: 0
+},
+deaths: {
+  key: 3,
+  bodyMethod: 'add',
+  bodyValue: 0,
+  headMethod: 'add',
+  headValue: 0
+}
+```
+
+* ``key`` - порядковый номер в массиве
+* ``bodyMethod`` - метод обновления в body (``replace`` - замена, ``add`` - добавление)
+* ``bodyValue`` - значение по умолчанию в body
+* ``headSync`` - синхронизация body с head (``true`` или ``false``)
+* ``headMethod`` - метод обновления в head (``quantity`` - количество значений, ``replace`` - замена, ``add`` - добавление)
+* ``headValue`` - значение по умолчанию в head
+
+## Конфиг для модели (клиент)
 
 ``` js
 tables: ['team1', 'team2', 'spectators'],
@@ -94,17 +132,17 @@ sortList: {
 ``` js
 statArray = [
   [
-    ['6', 0, ['bot 6', '', 5, 1], 0],
-    ['1', 0, ['bot 1', 'dead', 2, 3], 0],
-    ['4', 0, ['bot 4', '', 0, 4], 0],
-    ['3', 1, ['bot 3', 'dead', 2, 0], 0],
-    ['8', 1, ['bot 8', '', 1, 10], 0],
-    ['23', 1, ['bot 23', '', 1, 8], 0],
-    ['12', 1, ['bot 12', 'dead', 1, 7], 0],
-    ['33', 1, null, 0],
-    ['17', 2, ['bot 17'], 0],
-    ['64', 2, ['bot 64'], 0],
-    ['19', 2, null, 0]
+    [6, 0, ['bot 6', '', 5, 1], 0],
+    [1, 0, ['bot 1', 'dead', 2, 3], 0],
+    [4, 0, ['bot 4', '', 0, 4], 0],
+    [3, 1, ['bot 3', 'dead', 2, 0], 0],
+    [8, 1, ['bot 8', '', 1, 10], 0],
+    [23, 1, ['bot 23', '', 1, 8], 0],
+    [12, 1, ['bot 12', 'dead', 1, 7], 0],
+    [33, 1, null, 0],
+    [17, 2, ['bot 17'], 0],
+    [64, 2, ['bot 64'], 0],
+    [19, 2, null, 0]
   ],
   [
     [0, [3, '', 20, ''], 0],
@@ -489,17 +527,17 @@ keys: {
   // stat [tBodies, tHead]
   [
     [
-      ['6', 0, ['bot 6', '', 5, 1], 0],
-      ['1', 0, ['bot 1', 'dead', 2, 3], 0],
-      ['4', 0, ['bot 4', '', 0, 4], 0],
-      ['3', 1, ['bot 3', 'dead', 2, 0], 0],
-      ['8', 1, ['bot 8', '', 1, 10], 0],
-      ['23', 1, ['bot 23', '', 1, 8], 0],
-      ['12', 1, ['bot 12', 'dead', 1, 7], 0],
-      ['33', 1, null, 0],
-      ['17', 2, ['bot 17'], 0],
-      ['64', 2, ['bot 64'], 0],
-      ['19', 2, null, 0]
+      [6, 0, ['bot 6', '', 5, 1], 0],
+      [1, 0, ['bot 1', 'dead', 2, 3], 0],
+      [4, 0, ['bot 4', '', 0, 4], 0],
+      [3, 1, ['bot 3', 'dead', 2, 0], 0],
+      [8, 1, ['bot 8', '', 1, 10], 0],
+      [23, 1, ['bot 23', '', 1, 8], 0],
+      [12, 1, ['bot 12', 'dead', 1, 7], 0],
+      [33, 1, null, 0],
+      [17, 2, ['bot 17'], 0],
+      [64, 2, ['bot 64'], 0],
+      [19, 2, null, 0]
     ],
     [
       [0, [3, '', 20, '']],

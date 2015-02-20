@@ -1,7 +1,7 @@
 // Singleton Stat
 var stat;
 
-function Stat(users, teams) {
+function Stat(config, teams) {
   var p;
 
   if (stat) {
@@ -10,165 +10,220 @@ function Stat(users, teams) {
 
   stat = this;
 
-  this._users = users;
+  this._config = config;
 
   this._head = {};
   this._body = {};
 
-  this._headStatus = {};
+  this._lastHead = [];
   this._lastBody = [];
 
   for (p in teams) {
     if (teams.hasOwnProperty(p)) {
-      this._head[p] = [teams[p], [0, '', 0, '']];
-      this._body[p] = {};
+      this._head[teams[p]] = [teams[p], []];
+      this._body[teams[p]] = {};
     }
   }
 }
 
-// инициализация статистики
-Stat.prototype.init = function () {
-  var team
-    , user
-    , body;
+// сбрасывает статистику
+Stat.prototype.reset = function () {
+  var stat
+    , teamID
+    , bodyStats
+    , gameID
+    , p
+    , conf;
 
-  for (team in this._head) {
-    if (this._head.hasOwnProperty(team)) {
-      this._head[team][1][2] = 0;
-      this._headStatus[team] = true;
+  for (teamID in this._body) {
+    if (this._body.hasOwnProperty(teamID)) {
+      bodyStats = this._body[teamID];
 
-      for (user in this._body[team]) {
-        if (this._body[team].hasOwnProperty(user)) {
-          body = this._body[team][user];
-
-          body[2][1] = '';
-          body[2][2] = 0;
-          body[2][3] = 0;
-
-          this._lastBody.push(body);
+      for (gameID in bodyStats) {
+        if (bodyStats.hasOwnProperty(gameID)) {
+          stat = bodyStats[gameID];
+          stat[2] = this.getDefaultBody(stat[2]);
+          this._lastBody.push(stat);
         }
       }
     }
   }
+
+  for (teamID in this._head) {
+    if (this._head.hasOwnProperty(teamID)) {
+      stat = this._head[teamID];
+
+      for (p in this._config) {
+        if (this._config.hasOwnProperty(p)) {
+          conf = this._config[p];
+
+          if (conf.headSync) {
+            this.updateHeadSync(teamID, p);
+          } else if (typeof conf.headValue !== 'undefined') {
+            stat[1][conf.key] = conf.headValue;
+          }
+        }
+      }
+
+      this._lastHead.push(stat);
+    }
+  }
+};
+
+// возвращает дефолтные данные для body
+Stat.prototype.getDefaultBody = function (stat) {
+  var p
+    , conf;
+
+  stat = stat || [];
+
+  for (p in this._config) {
+    if (this._config.hasOwnProperty(p)) {
+      conf = this._config[p];
+
+      if (typeof conf.bodyValue !== 'undefined') {
+        stat[conf.key] = conf.bodyValue;
+      }
+    }
+  }
+
+  return stat;
 };
 
 // добавляет пользователя
-Stat.prototype.addUser = function (gameID) {
-  var user = this._users[gameID]
-    , team = user.team
-    , head = this._head[team][1]
-    , body;
+Stat.prototype.addUser = function (gameID, teamID, data) {
+  this._body[teamID][gameID] = [gameID, teamID, this.getDefaultBody()];
 
-  head[0] += 1;
-
-  body = this._body[team][gameID] = [
-    gameID, user.teamID, [user.name, '', 0, 0]
-  ];
-
-  this._headStatus[team] = true;
-  this._lastBody.push(body);
+  if (typeof data === 'object') {
+    this.updateUser(gameID, teamID, data);
+  }
 };
 
-// удаляет пользователя
-Stat.prototype.removeUser = function (gameID) {
-  var team
-    , head
-    , body;
+// удаляет пользователя и возвращает его данные
+Stat.prototype.removeUser = function (gameID, teamID) {
+  var data = this._body[teamID][gameID]
+    , stat = {}
+    , p
+    , conf
+    , value;
 
-  for (team in this._body) {
-    if (this._body.hasOwnProperty(team)) {
-      head = this._head[team][1];
-      body = this._body[team][gameID];
+  delete this._body[teamID][gameID];
+  this._lastBody.push([data[0], data[1], null]);
 
-      if (body) {
-        head[0] -= 1;
-        body[2] = null;
+  data = data[2];
 
-        this._headStatus[team] = true;
-        this._lastBody.push(body);
+  // преобразование данных пользователя из массива в объект и
+  // обновление head
+  for (p in this._config) {
+    if (this._config.hasOwnProperty(p)) {
+      conf = this._config[p];
+      value = data[conf.key];
 
-        delete this._body[team][gameID];
+      stat[p] = value;
 
-        return;
+      if (conf.headSync === true) {
+        this.updateHeadSync(teamID, p, true);
       }
     }
   }
+
+  return stat;
 };
 
-// меняет имя пользователя
-Stat.prototype.renameUser = function (gameID) {
-  var user = this._users[gameID]
-    , body = this._body[user.team][gameID];
-
-  body[2][0] = user.name;
-
-  this._lastBody.push(body);
+// перемещает пользователя в новую команду
+Stat.prototype.moveUser = function (gameID, teamID, newTeamID) {
+  this.addUser(gameID, newTeamID, this.removeUser(gameID, teamID));
 };
 
-// добавляет score
-Stat.prototype.addScore = function (gameID) {
-  var user = this._users[gameID]
-    , body = this._body[user.team][gameID];
+// обновляет статистику пользователя
+Stat.prototype.updateUser = function (gameID, teamID, data) {
+  var stat = this._body[teamID][gameID]
+    , p
+    , conf
+    , method
+    , value;
 
-  body[2][2] += 1;
+  for (p in data) {
+    if (data.hasOwnProperty(p)) {
+      conf = this._config[p];
+      method = conf.bodyMethod;
+      value = data[p];
 
-  this._lastBody.push(body);
-};
+      // если метод 'замена'
+      if (method === 'replace') {
+        stat[2][conf.key] = value;
 
-// добавляет score в head
-Stat.prototype.addScoreHead = function (team) {
-  this._head[team][1][2] += 1;
-  this._headStatus[team] = true;
-};
+      // иначе если метод 'добавление'
+      } else if (method === 'add') {
+        stat[2][conf.key] += value;
+      }
 
-// добавляет death
-Stat.prototype.addDeath = function (gameID) {
-  var user = this._users[gameID]
-    , body = this._body[user.team][gameID];
-
-  body[2][3] += 1;
-
-  this._lastBody.push(body);
-};
-
-// меняет статус пользователя
-Stat.prototype.toggleStatusUser = function (gameID, dead) {
-  var user = this._users[gameID]
-    , body = this._body[user.team][gameID];
-
-  if (dead) {
-    body[2][1] = 'dead';
-  } else {
-    body[2][1] = '';
+      if (conf.headSync === true) {
+        this.updateHeadSync(teamID, p, true);
+      }
+    }
   }
 
-  this._lastBody.push(body);
+  this._lastBody.push(stat);
+};
+
+// обновляет статистику head
+Stat.prototype.updateHead = function (teamID, param, value) {
+  var stat = this._head[teamID]
+    , conf = this._config[param]
+    , method = conf.headMethod
+    , key = conf.key;
+
+  // если метод 'добавление'
+  if (method === 'add') {
+    stat[1][key] += value;
+
+  // если метод 'замена'
+  } else if (method === 'replace') {
+    stat[1][key] = value;
+  }
+
+  this._lastHead.push(stat);
+};
+
+// обновляет статистику head синхронизированную с body
+Stat.prototype.updateHeadSync = function (teamID, param, save) {
+  var stat = this._head[teamID]
+    , bodyStats = this._body[teamID]
+    , conf = this._config[param]
+    , method = conf.headMethod
+    , key = conf.key
+    , p
+    , value;
+
+  // если метод 'количество'
+  if (method === 'quantity') {
+    value = Object.keys(bodyStats).length;
+
+  // иначе если метод 'добавление'
+  } else if (method === 'add') {
+    value = 0;
+
+    for (p in bodyStats) {
+      if (bodyStats.hasOwnProperty(p)) {
+        value += bodyStats[p][2][key];
+      }
+    }
+  }
+
+  stat[1][key] = value;
+
+  if (save === true) {
+    this._lastHead.push(stat);
+  }
 };
 
 // возвращает последние изменения
-Stat.prototype.getLastStat = function () {
-  var stat = []
-    , i = 0
-    , len = this._lastBody.length
-    , team;
-
-  stat[0] = [];
-  stat[1] = [];
-
-  for (team in this._headStatus) {
-    if (this._headStatus.hasOwnProperty(team)) {
-      if (this._headStatus[team] === true) {
-        stat[1].push(this._head[team]);
-        this._headStatus[team] = false;
-      }
-    }
-  }
-
-  for (; i < len; i += 1) {
-    stat[0].push(this._lastBody[i]);
-  }
+Stat.prototype.getLast = function () {
+  var stat = [this._lastBody, this._lastHead];
 
   this._lastBody = [];
+  this._lastHead = [];
 
   if (!stat[0].length && !stat[1].length) {
     stat = 0;
@@ -178,24 +233,30 @@ Stat.prototype.getLastStat = function () {
 };
 
 // возвращает полную статистику
-Stat.prototype.getStat = function () {
+Stat.prototype.getFull = function () {
   var stat = []
-    , team
-    , user
-    , body;
+    , teamID
+    , bodyStats
+    , gameID;
 
   stat[0] = [];
   stat[1] = [];
 
-  for (team in this._head) {
-    if (this._head.hasOwnProperty(team)) {
-      stat[1].push(this._head[team]);
+  for (teamID in this._body) {
+    if (this._body.hasOwnProperty(teamID)) {
+      bodyStats = this._body[teamID];
 
-      for (user in this._body[team]) {
-        if (this._body[team].hasOwnProperty(user)) {
-          stat[0].push(this._body[team][user]);
+      for (gameID in bodyStats) {
+        if (bodyStats.hasOwnProperty(gameID)) {
+          stat[0].push(bodyStats[gameID]);
         }
       }
+    }
+  }
+
+  for (teamID in this._head) {
+    if (this._head.hasOwnProperty(teamID)) {
+      stat[1].push(this._head[teamID]);
     }
   }
 
