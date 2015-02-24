@@ -159,7 +159,7 @@ module.exports = function (server) {
     // 5: vote data
     socketMethods[5] = function (data) {
       if (data) {
-        game.vote.parseVote(gameID, data);
+        game.parseVote(gameID, data);
 
         if (typeof data === 'string') {
           if (data === 'users') {

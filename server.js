@@ -25,7 +25,7 @@ config.set('client', require(path.join(__dirname, '/game/config/client.js')));
 config.set('game', require(path.join(__dirname, '/game/config/game.js')));
 
 // время ожидания vote-модуля
-config.set('client:user:vote:params:time', config.get('game:vote:time'));
+config.set('client:user:vote:params:time', config.get('game:voteTime'));
 
 // если задан домен
 if (argv.domain) {

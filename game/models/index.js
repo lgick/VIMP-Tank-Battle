@@ -14,14 +14,20 @@ function Game(data, ports) {
 
   game = this;
 
-  this._maps = data.map.maps;               // карты
+  this._maps = data.maps;                   // карты
+  this._mapList = Object.keys(this._maps);  // список карт массивом
+  this._mapsInVote = data.mapsInVote;       // карт в голосовании
 
-  this._mapTime = data.time.mapTime;        // продолжительность карты
-  this._shotTime = data.time.shotTime;      // время обновления кадра игры
-  this._roundTime = data.time.roundTime;    // продолжительность раунда
+  this._mapTime = data.mapTime;             // продолжительность карты
+  this._shotTime = data.shotTime;           // время обновления кадра игры
+  this._roundTime = data.roundTime;         // продолжительность раунда
+  this._voteTime = data.voteTime;           // время голосования
+  this._timeBlockedRemap = data.timeBlockedRemap;
 
   // команды
   this._teams = data.teams;
+  // список команд массивом
+  this._teamList = Object.keys(this._teams);
   // название команды наблюдателя
   this._spectatorTeam = data.spectatorTeam;
   // id команды наблюдателя
@@ -50,6 +56,9 @@ function Game(data, ports) {
   this._allUsersInTeam = {};     // количество игроков в команде
   this._playersList = [];        // список играющих (у кого lookOnly === false)
 
+  this._blockedRemap = false;    // флаг блокировки голосования за новую карту
+  this._startMapNumber = 0;      // номер первой карты в голосовании
+
   // итеративный таймер
   // с каждым тиком увеличивается текущее время
   // и проверяется если ли данные (например пуль) для этого времени
@@ -64,14 +73,9 @@ function Game(data, ports) {
   this.panel = new Panel();
   this.stat = new Stat(data.stat, this._teams);
   this.chat = new Chat();
-  this.vote = new Vote(this._users, data);
+  this.vote = new Vote();
 
-  this._pubVote = this.vote.publisher;
-  this._pubVote.on('map', 'initMap', this);
-  this._pubVote.on('chat', 'pushSystemMessage', this);
-  this._pubVote.on('team', 'changeTeam', this);
-
-  this.initMap();
+  this.initMap(data.currentMap);
 }
 
 // стартует игру
@@ -95,7 +99,7 @@ Game.prototype.startMapTimer = function () {
   this.chat.pushSystem('t:0');
 
   this._mapTimer = setTimeout((function () {
-    this.vote.changeMap();
+    this.sendMap();
   }).bind(this), this._mapTime);
 };
 
@@ -149,12 +153,12 @@ Game.prototype.stopShotTimer = function () {
 };
 
 // инициализирует карту
-Game.prototype.initMap = function () {
+Game.prototype.initMap = function (map) {
   var p
     , user
     , teamData;
 
-  this._currentMapData = this._maps[this.vote.getCurrentMap()];
+  this._currentMapData = this._maps[map];
   this.stopGame();
   this._allUsersInTeam = {};
   this.stat.reset();
@@ -172,12 +176,12 @@ Game.prototype.initMap = function () {
     }
   }
 
-  this.changeMap();
+  this.sendMap();
   this.startGame();
 };
 
-// меняет карту
-Game.prototype.changeMap = function (gameID) {
+// отправляет карту
+Game.prototype.sendMap = function (gameID) {
   var p;
 
   if (gameID) {
@@ -457,12 +461,10 @@ Game.prototype.stopRound = function () {
 };
 
 // меняет команду игрока
-Game.prototype.changeTeam = function (data) {
+Game.prototype.changeTeam = function (gameID, team) {
 // TODO проверять переход в другую команду с учетом следующего раунда
 // и вновь зашедших игроков
-  var team = data.team
-    , gameID = data.gameID
-    , oldTeam = data.oldTeam
+  var oldTeam = this._users[gameID].team
     , respawns = this._currentMapData.respawns
     , emptyTeam
   ;
@@ -701,7 +703,7 @@ Game.prototype.createUser = function (params, socket, cb) {
 
   process.nextTick((function () {
     cb(gameID);
-    this.changeMap(gameID);
+    this.sendMap(gameID);
   }).bind(this));
 };
 
@@ -763,9 +765,170 @@ Game.prototype.pushMessage = function (message, gameID) {
   this.chat.push(message, user.name, user.teamID);
 };
 
-// добавляет системное сообщение
-Game.prototype.pushSystemMessage = function (arr) {
-  this.chat.pushSystem(arr[0], arr[1]);
+// обрабатывает vote-данные пользователя
+Game.prototype.parseVote = function (gameID, data) {
+  var type
+    , value
+    , p
+    , dataArr = [];
+
+  // если данные 'строка' (запрос данных)
+  if (typeof data === 'string') {
+    // если запрос списка команд
+    if (data === 'teams') {
+      this.vote.pushByUser(gameID, [null, this._teamList]);
+
+    // если запрос всех карт
+    } else if (data === 'maps') {
+      this.vote.pushByUser(gameID, [null, this._mapList]);
+
+    // если запрос пользователей
+    } else if (data === 'users') {
+      for (p in this._users) {
+        if (this._users.hasOwnProperty(p)) {
+          dataArr.push(this._users[p].name + ':' + p);
+        }
+      }
+
+      this.vote.pushByUser(gameID, [null, dataArr]);
+    }
+
+  // если данные 'объект' (результат голосования)
+  } else if (typeof data === 'object') {
+    type = data[0];
+    value = data[1];
+
+    // если пользователь проголосовал за карту
+    if (type === 'changeMap') {
+      value = value[0];
+
+      this.vote.addInVote(type, value);
+      this.chat.pushSystem('v:0', gameID);
+
+    // иначе если пользователь захотел сменить карту
+    } else if (type === 'mapUser') {
+      value = value[0];
+
+      // если карта является текущей
+      if (value === this._currentMapData.name) {
+        this.chat.pushSystem('v:1:' + value, gameID);
+      } else {
+        this.changeMap(gameID, value);
+      }
+
+    // иначе если смена статуса
+    } else if (type === 'team') {
+      value = value[0];
+
+      // если статус является текущим
+      if (value === this._users[gameID].team) {
+        this.chat.pushSystem('s:2:' + value, gameID);
+      } else {
+        this.changeTeam(gameID, value);
+      }
+
+    // иначе если пользователь предложил забанить игрока
+    } else if (type === 'ban') {
+      this.chat.pushSystem(
+        'v:6:' + value[1] + ',' + this._users[value[0]].name, gameID
+      );
+    }
+  }
+};
+
+// отправляет голосование за новую карту
+Game.prototype.changeMap = function (gameID, map) {
+  var p
+    , arr
+    , id
+    , userList = [];
+
+  // возвращает список карт для голосования
+  function getMapList() {
+    var maps
+      , endNumber;
+
+    if (this._mapList.length <= this._mapsInVote) {
+      return this._mapList;
+    }
+
+    endNumber = this._startMapNumber + this._mapsInVote;
+    maps = this._mapList.slice(this._startMapNumber, endNumber);
+
+    if (maps.length < this._mapsInVote) {
+      endNumber = this._mapsInVote - maps.length;
+      maps = maps.concat(this._mapList.slice(0, endNumber));
+    }
+
+    this._startMapNumber = endNumber;
+
+    return maps;
+  }
+
+  // если смена карты возможна
+  if (this._blockedRemap === false) {
+    this._blockedRemap = true;
+
+    // если есть gameID и карта (голосование создает пользователь)
+    if (typeof gameID !== 'undefined' && typeof map === 'string') {
+
+      arr = [
+        this._users[gameID].name + ' предложил карту: ' + map,
+        ['Сменить:' + map, 'Не менять:'],
+        null
+      ];
+
+      for (p in this._users) {
+        if (this._users.hasOwnProperty(p)) {
+          id = this._users[p].gameID;
+
+          if (id !== gameID) {
+            userList.push(id);
+          }
+        }
+      }
+
+      this.vote.createVote('changeMap', arr, userList);
+      this.vote.addInVote('changeMap', map); // голос за пользователя
+      this.chat.pushSystem('v:2', gameID);
+
+    // иначе голосование создает игра
+    } else {
+      arr = [
+        'Выберете следующую карту',
+        getMapList.call(this),
+        null
+      ];
+
+      this.vote.createVote('changeMap', arr);
+    }
+
+    // собирает результаты голосования и стартует новую игру
+    setTimeout((function () {
+      var map = this.vote.getResult('changeMap');
+
+      // если есть результат и карта существует
+      if (map && this._maps[map]) {
+        this.chat.pushSystem('v:4:' + map);
+
+        setTimeout((function () {
+          this.initMap(map);
+        }.bind(this)), 2000);
+      } else {
+        this.chat.pushSystem('v:5');
+      }
+
+      // снимает блокировку смены карты
+      setTimeout((function () {
+        this._blockedRemap = false;
+      }).bind(this), this._timeBlockedRemap);
+    }).bind(this), this._voteTime);
+
+  } else {
+    if (typeof gameID !== 'undefined') {
+      this.chat.pushSystem('v:3', gameID);
+    }
+  }
 };
 
 module.exports = Game;
