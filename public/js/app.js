@@ -439,7 +439,10 @@ require([
     // Panel Module
     //==========================================//
 
-    panelModel = new PanelModel(panelData.panels);
+    panelModel = new PanelModel({
+      window: window,
+      panels: panelData.panels
+    });
 
     panelView = new PanelView(panelModel, {
       window: window,

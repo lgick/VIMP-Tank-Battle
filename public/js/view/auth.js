@@ -12,6 +12,8 @@ define(['Publisher'], function (Publisher) {
     this._mPublic = model.publisher;
 
     this._window = data.window;
+    this._localStorage = this._window.localStorage;
+
     this._auth = data.auth;
     this._form = data.form;
     this._error = data.error;
@@ -48,13 +50,12 @@ define(['Publisher'], function (Publisher) {
 
   // скрывает форму
   AuthView.prototype.hideAuth = function (data) {
-    if (data) {
-      var storage = this._window.localStorage
-        , i = 0
-        , len = data.length;
+    var i
+      , len;
 
-      for (; i < len; i += 1) {
-        storage[data[i].name] = data[i].value;
+    if (data) {
+      for (i = 0, len = data.length; i < len; i += 1) {
+        this._localStorage[data[i].name] = data[i].value;
       }
     }
 

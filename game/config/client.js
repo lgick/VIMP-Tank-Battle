@@ -152,7 +152,7 @@ module.exports = {
         time: 'panel-time',
         health: 'panel-health'
       },
-      panels: ['health']
+      panels: ['time', 'health']
     },
 
     // stat

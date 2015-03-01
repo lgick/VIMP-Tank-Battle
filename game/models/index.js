@@ -50,8 +50,7 @@ function Game(data, ports) {
   this._shotTimer = null;
   this._mapTimer = null;
 
-  this._time = this._roundTime;  // время игры
-  this._timeStatus = false;      // флаг обновления времени игры
+  this._time = 0;                // текущее время раунда
 
   this._allUsersInTeam = {};     // количество игроков в команде
   this._playersList = [];        // список играющих (у кого lookOnly === false)
@@ -111,18 +110,16 @@ Game.prototype.stopMapTimer = function () {
 
 // стартует раунд
 Game.prototype.startRoundTimer = function () {
-  this.startRound();
-  this.panel.init();
-
   this._time = this._roundTime / 1000 - 3;
-  this._timeStatus = true;
 
   this._stepTimer = setInterval((function () {
     if (this._time > 0) {
       this._time -= 1;
-      this._timeStatus = true;
     }
   }).bind(this), 1000);
+
+  this.startRound();
+  this.panel.init();
 
   this._roundTimer = setTimeout((function () {
     clearInterval(this._stepTimer);
@@ -243,14 +240,13 @@ Game.prototype.sendFirstShot = function (gameID) {
     user.lookOnly = false;
     user.keySet = 1;
     this._playersList.push(gameID);
-    this.panel.addUser(gameID);
+    this.stat.updateUser(gameID, teamID, {status: ''});
+    data[2] = [this._time];
   } else {
     user.lookOnly = true;
     user.keySet = 0;
-    this.panel.removeUser(gameID);
+    data[2] = [this._time].concat(this.panel.getEmpty());
   }
-
-  data[2] = [this._time, null];
 
   user.socket.send(this._portShot, data);
 };
@@ -261,7 +257,6 @@ Game.prototype.createShot = function () {
     , stat = 0
     , chat = 0
     , vote = 0
-    , time
     , gameData = {}
     , bulletData = {}
     , p
@@ -349,9 +344,6 @@ Game.prototype.createShot = function () {
   chat = this.chat.shift();
   vote = this.vote.shift();
 
-  time = this._timeStatus === true ? this._time : '';
-  this._timeStatus = false;
-
   function getUserData(gameID) {
     var user = this._users[gameID]
       , keySet = user.keySet
@@ -377,11 +369,15 @@ Game.prototype.createShot = function () {
       coords = [user.data[0], user.data[1]];
     }
 
-    // panel
-    panel = this.panel.getPanel(gameID) || '';
+    if (user.lookOnly === false) {
+      // panel
+      panel = this.panel.getPanel(gameID);
 
-    if (typeof time === 'number' || panel) {
-      panel = [time, panel];
+      if (panel) {
+        panel = [null].concat(panel);
+      } else {
+        panel = 0;
+      }
     } else {
       panel = 0;
     }
@@ -686,16 +682,13 @@ Game.prototype.createUser = function (params, socket, cb) {
   this.chat.addUser(gameID);
   this.vote.addUser(gameID);
   this.stat.addUser(gameID, teamID, {name: name});
-
-  if (team !== this._spectatorTeam) {
-    this.panel.addUser(gameID);
-  }
+  this.panel.addUser(gameID);
 
   this.changeLookID(gameID);
 
   // TODO сделать дефолтные данные в индексе из юзера
   data[1] = [0, 0]; // TODO получить дефолтные данные наблюдателя
-  data[2] = [this._time, null];
+  data[2] = [this._time];
   data[3] = this.stat.getFull();
   data[4] = message;
 

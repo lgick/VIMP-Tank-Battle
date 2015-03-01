@@ -10,9 +10,9 @@ define(['Publisher'], function (Publisher) {
     panelView = this;
 
     this._window = data.window;
-    this._panel = data.panel;
-
     this._document = this._window.document;
+
+    this._panel = data.panel;
 
     this.publisher = new Publisher();
 

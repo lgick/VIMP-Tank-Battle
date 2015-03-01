@@ -49,6 +49,11 @@ Panel.prototype.getPanel = function (gameID) {
   }
 };
 
+// возвращает пустые данные
+Panel.prototype.getEmpty = function () {
+  return [''];
+};
+
 // обновляет health
 Panel.prototype.updateHealth = function (gameID, power) {
   var user = this._data[gameID]
