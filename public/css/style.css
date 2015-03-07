@@ -55,7 +55,7 @@ body {
   text-shadow: 0 0 2px #333;
   white-space: nowrap;
   overflow: hidden;
-  width: 50%;
+  width: 33%;
 }
 
 #panel table td#panel-health:before {
@@ -64,6 +64,10 @@ body {
 
 #panel table td#panel-health:after {
   content: '%';
+}
+
+#panel table td#panel-bullets:before {
+  content: 'bullets: ';
 }
 
 #panel table td#panel-time:before {

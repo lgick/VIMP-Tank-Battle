@@ -69,7 +69,7 @@ function Game(data, ports) {
   this._bullets = {};            // this._bullets[time] = [id, id]
   this._currentBulletID = 0;     // id для пуль
 
-  this.panel = new Panel();
+  this.panel = new Panel(data.panel);
   this.stat = new Stat(data.stat, this._teams);
   this.chat = new Chat();
   this.vote = new Vote();
@@ -119,7 +119,7 @@ Game.prototype.startRoundTimer = function () {
   }).bind(this), 1000);
 
   this.startRound();
-  this.panel.init();
+  this.panel.reset();
 
   this._roundTimer = setTimeout((function () {
     clearInterval(this._stepTimer);

@@ -24,29 +24,44 @@ module.exports = {
   stat: {
     name: {
       key: 0,
-      bodyMethod: 'replace',
+      bodyMethod: '=',
       headSync: true,
-      headMethod: 'quantity'
+      headMethod: '#'
     },
     status: {
       key: 1,
-      bodyMethod: 'replace',
+      bodyMethod: '=',
       bodyValue: 'dead',
       headValue: ''
     },
     score: {
       key: 2,
-      bodyMethod: 'add',
+      bodyMethod: '+',
       bodyValue: 0,
-      headMethod: 'add',
+      headMethod: '+',
       headValue: 0
     },
     deaths: {
       key: 3,
-      bodyMethod: 'add',
+      bodyMethod: '+',
       bodyValue: 0,
-      headMethod: 'add',
+      headMethod: '+',
       headValue: 0
+    }
+  },
+
+  panel: {
+    health: {
+      key: 0,
+      method: '-',
+      value: 100,
+      minValue: 0
+    },
+    bullets: {
+      key: 1,
+      method: '-',
+      value: 1000,
+      minValue: 0
     }
   },
 

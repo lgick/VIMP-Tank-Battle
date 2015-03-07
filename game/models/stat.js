@@ -150,11 +150,11 @@ Stat.prototype.updateUser = function (gameID, teamID, data) {
       value = data[p];
 
       // если метод 'замена'
-      if (method === 'replace') {
+      if (method === '=') {
         stat[2][conf.key] = value;
 
       // иначе если метод 'добавление'
-      } else if (method === 'add') {
+      } else if (method === '+') {
         stat[2][conf.key] += value;
       }
 
@@ -175,11 +175,11 @@ Stat.prototype.updateHead = function (teamID, param, value) {
     , key = conf.key;
 
   // если метод 'добавление'
-  if (method === 'add') {
+  if (method === '+') {
     stat[1][key] += value;
 
   // если метод 'замена'
-  } else if (method === 'replace') {
+  } else if (method === '=') {
     stat[1][key] = value;
   }
 
@@ -197,11 +197,11 @@ Stat.prototype.updateHeadSync = function (teamID, param, save) {
     , value;
 
   // если метод 'количество'
-  if (method === 'quantity') {
+  if (method === '#') {
     value = Object.keys(bodyStats).length;
 
   // иначе если метод 'добавление'
-  } else if (method === 'add') {
+  } else if (method === '+') {
     value = 0;
 
     for (p in bodyStats) {

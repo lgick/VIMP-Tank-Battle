@@ -18,9 +18,9 @@ define(['Publisher'], function (Publisher) {
     this._cacheMax = data.cacheMax || 300;
     this._messages = data.messages || {};
 
-    this._cache = []; // хранилище сообщений
-    this._list = [];  // активный чат-лист
-    this._count = 0;  // id для сообщения чат-листа
+    this._cache = [];   // хранилище сообщений
+    this._list = [];    // активный чат-лист
+    this._counter = 0;  // id для сообщения чат-листа
 
     this.publisher = new Publisher();
   }
@@ -111,16 +111,16 @@ define(['Publisher'], function (Publisher) {
     }
 
     this.publisher.emit('newLine', {
-      id: this._count,
+      id: this._counter,
       message: arr
     });
 
     this.publisher.emit('newTimer', {
-      id: this._count,
+      id: this._counter,
       time: this._lineTime
     });
 
-    this._count += 1;
+    this._counter += 1;
   };
 
   // добавляет объект в чат-лист

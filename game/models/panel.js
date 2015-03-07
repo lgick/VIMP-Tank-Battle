@@ -1,34 +1,68 @@
 // Singleton Panel
 var panel;
 
-function Panel() {
+function Panel(config) {
+  var counter = 0
+    , p;
+
   if (panel) {
     return panel;
   }
 
   panel = this;
 
-  this._healthDefault = 100;
-  this._healthStep = 1;
+  this._config = config;
+  this._emptyPanel = [];
 
   this._data = {};
+
+  for (p in this._config) {
+    if (this._config.hasOwnProperty(p)) {
+      this._emptyPanel[counter] = '';
+      counter += 1;
+    }
+  }
 }
 
-// инициализация в начале раунда
-Panel.prototype.init = function () {
-  var gameID;
+// сбрасывает данные пользователей
+Panel.prototype.reset = function () {
+  var gameID
+    , user;
 
   for (gameID in this._data) {
     if (this._data.hasOwnProperty(gameID)) {
-      this.addUser(gameID);
+      user = this._data[gameID];
+
+      user.values = this.getDefault(user.values);
+      user.status = true;
     }
   }
+};
+
+// возвращает дефолтные данные
+Panel.prototype.getDefault = function (panel) {
+  var p
+    , conf;
+
+  panel = panel || [];
+
+  for (p in this._config) {
+    if (this._config.hasOwnProperty(p)) {
+      conf = this._config[p];
+
+      if (typeof conf.value !== 'undefined') {
+        panel[conf.key] = conf.value;
+      }
+    }
+  }
+
+  return panel;
 };
 
 // добавляет пользователя
 Panel.prototype.addUser = function (gameID) {
   this._data[gameID] = {
-    values: [this._healthDefault],
+    values: this.getDefault(),
     status: true
   };
 };
@@ -36,6 +70,31 @@ Panel.prototype.addUser = function (gameID) {
 // удаляет пользователя
 Panel.prototype.removeUser = function (gameID) {
   delete this._data[gameID];
+};
+
+// обновляет данные пользователя
+Panel.prototype.updateUser = function (gameID, param, value) {
+  var user = this._data[gameID]
+    , conf = this._config[param]
+    , method = conf.method
+    , minValue = conf.minValue
+    , key = conf.key;
+
+  // если метод 'уменьшение'
+  if (method === '-') {
+    value = user.values[key] - value;
+
+  // иначе если метод 'замена'
+  } else if (method === '=') {
+  }
+
+  // если есть минимально допустимое значение и оно больше текущего
+  if (typeof minValue !== 'undefined' && value < minValue) {
+    value = minValue;
+  }
+
+  user.values[key] = value;
+  user.status = true;
 };
 
 // возвращает данные
@@ -51,20 +110,7 @@ Panel.prototype.getPanel = function (gameID) {
 
 // возвращает пустые данные
 Panel.prototype.getEmpty = function () {
-  return [''];
-};
-
-// обновляет health
-Panel.prototype.updateHealth = function (gameID, power) {
-  var user = this._data[gameID]
-    , health = user.values[0] - this._healthStep * (power || 1);
-
-  if (health < 0) {
-    health = 0;
-  }
-
-  user.values[0] = health;
-  user.status = true;
+  return this._emptyPanel;
 };
 
 module.exports = Panel;

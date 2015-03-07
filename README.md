@@ -53,6 +53,46 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
 
 Первый элемент массива - время игры. Если значение данных ``null`` - данные игнорируются!
 
+## Конфиг для сервера
+
+``` js
+panel: {
+  health: {
+    key: 0,
+    method: '-',
+    value: 100,
+    minValue: 0
+  },
+  bullets: {
+    key: 1,
+    method: '-',
+    value: 1000,
+    minValue: 0
+  }
+}
+```
+
+* ``key``       - порядковый номер в массиве
+* ``method``    - метод обновления (``=`` - замена, ``-`` - вычитание)
+* ``value``     - значение по умолчанию (обновляется каждый раунд)
+* ``minValue``  - минимально допустимое значение
+
+## Конфиг для клиента
+
+```js
+panel: {
+  elems: {
+    time: 'panel-time',
+    health: 'panel-health',
+    bullets: 'panel-bullets'
+  },
+  panels: ['time', 'health', 'bullets']
+}
+```
+
+* ``elems``   - id элементов
+* ``panels``  - список названий элементов
+
 
 # Модуль STAT
 
@@ -65,38 +105,38 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
 ``` js
 name: {
   key: 0,
-  bodyMethod: 'replace',
+  bodyMethod: '=',
   headSync: true,
-  headMethod: 'quantity'
+  headMethod: '#'
 },
 status: {
   key: 1,
-  bodyMethod: 'replace',
+  bodyMethod: '=',
   bodyValue: 'dead',
   headValue: ''
 },
 score: {
   key: 2,
-  bodyMethod: 'add',
+  bodyMethod: '+',
   bodyValue: 0,
-  headMethod: 'add',
+  headMethod: '+',
   headValue: 0
 },
 deaths: {
   key: 3,
-  bodyMethod: 'add',
+  bodyMethod: '+',
   bodyValue: 0,
-  headMethod: 'add',
+  headMethod: '+',
   headValue: 0
 }
 ```
 
-* ``key`` - порядковый номер в массиве
-* ``bodyMethod`` - метод обновления в body (``replace`` - замена, ``add`` - добавление)
-* ``bodyValue`` - значение по умолчанию в body
-* ``headSync`` - синхронизация body с head (``true`` или ``false``)
-* ``headMethod`` - метод обновления в head (``quantity`` - количество значений, ``replace`` - замена, ``add`` - добавление)
-* ``headValue`` - значение по умолчанию в head
+* ``key``         - порядковый номер в массиве
+* ``bodyMethod``  - метод обновления в body (``=`` - замена, ``+`` - добавление)
+* ``bodyValue``   - значение по умолчанию в body
+* ``headSync``    - синхронизация body с head (``true`` или ``false``)
+* ``headMethod``  - метод обновления в head (``#`` - количество значений, ``=`` - замена, ``+`` - добавление)
+* ``headValue``   - значение по умолчанию в head
 
 ## Конфиг для модели (клиент)
 
@@ -108,8 +148,8 @@ sortList: {
 }
 ```
 
-* ``tables`` - массив с id таблиц
-* ``sortList`` - объект с параметрам сортировки
+* ``tables``    - массив с id таблиц
+* ``sortList``  - объект с параметрам сортировки
 
 #### Сортировка таблиц
 

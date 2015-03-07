@@ -150,9 +150,10 @@ module.exports = {
     panel: {
       elems: {
         time: 'panel-time',
-        health: 'panel-health'
+        health: 'panel-health',
+        bullets: 'panel-bullets'
       },
-      panels: ['time', 'health']
+      panels: ['time', 'health', 'bullets']
     },
 
     // stat
