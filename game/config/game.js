@@ -1,4 +1,5 @@
 var maps = require('../maps/');
+var models = require('../models/');
 var banlist = require('../deps/banlist');
 var Factory = require('../../lib/factory');
 var Publisher = require('../../lib/publisher');
@@ -9,11 +10,13 @@ module.exports = {
     Factory: Factory
   },
 
+  models: models,
   banlist: banlist,
 
   maps: maps,                  // карты
   currentMap: 'arena',         // название карты по умолчанию
   mapsInVote: 4,               // количество карт в голосовании
+  mapSetID: 0,                 // дефолтный id конструктора создания карты
 
   shotTime: 50,                // время обновления кадра
   roundTime: 60000,            // время раунда (60)
@@ -71,5 +74,10 @@ module.exports = {
     team1: 1,
     team2: 2,
     spectators: 3
+  },
+
+  defaultBullet: {
+    m1: 'b1',
+    m2: 'b2'
   }
 };

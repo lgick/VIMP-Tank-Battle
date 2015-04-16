@@ -42,8 +42,8 @@ if (argv.port) {
 // если задана карта
 if (argv.map) {
   // если карта существует
-  if (config.get('game:map:maps')[argv.map]) {
-    config.set('game:map:currentMap', argv.map);
+  if (config.get('game:maps')[argv.map]) {
+    config.set('game:currentMap', argv.map);
     console.info('Current map: ' + argv.map);
   } else {
     console.info('Map ' + argv.map + ': not found');

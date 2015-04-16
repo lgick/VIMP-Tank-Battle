@@ -22,6 +22,14 @@ module.exports = {
         regExp: 'team1|team2|spectators',
         storage: 'team'
       }
+    },
+    {
+      name: 'model',
+      value: 'm1',
+      options: {
+        regExp: 'm1|m2',
+        storage: 'model'
+      }
     }
   ]
 };

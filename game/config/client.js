@@ -3,28 +3,43 @@
 module.exports = {
 
   // ***** parts ***** //
-  parts: [
-    {
-      name: 'Map',
-      path: '/parts/map.js',
-      canvas: 'vimp'
+  parts: {
+    mapSets: {
+      0: ['map']
     },
-    {
-      name: 'Tank',
-      path: '/parts/tank.js',
-      canvas: 'vimp'
+    gameSets: {
+      m1: ['tank', 'radar'],
+      m2: ['tank2', 'radar'],
+      b1: ['pistol'],
+      b2: ['gun']
     },
-    {
-      name: 'Radar',
-      path: '/parts/radar.js',
-      canvas: 'radar'
-    },
-    {
-      name: 'Bullet',
-      path: '/parts/bullet.js',
-      canvas: 'vimp'
+    modules: {
+      map: {
+        path: '/parts/map.js',
+        canvas: 'vimp'
+      },
+      radar: {
+        path: '/parts/radar.js',
+        canvas: 'radar'
+      },
+      tank: {
+        path: '/parts/tank.js',
+        canvas: 'vimp'
+      },
+      tank2: {
+        path: '/parts/tank2.js',
+        canvas: 'vimp'
+      },
+      gun: {
+        path: '/parts/gun.js',
+        canvas: 'vimp'
+      },
+      pistol: {
+        path: '/parts/pistol.js',
+        canvas: 'vimp'
+      }
     }
-  ],
+  },
 
   // ***** user ***** //
   user: {

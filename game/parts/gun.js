@@ -1,12 +1,12 @@
 define(['createjs'], function (createjs) {
   var Shape = createjs.Shape;
 
-  function Bullet(params) {
+  function Gun(params) {
     this.initialize(params);
   }
 
-  p = Bullet.prototype = createjs.extend(Bullet, Shape);
-  Bullet = createjs.promote(Bullet, 'Shape');
+  p = Gun.prototype = createjs.extend(Gun, Shape);
+  Gun = createjs.promote(Gun, 'Shape');
 
   // инициализация
   p.initialize = function (params) {
@@ -24,32 +24,22 @@ define(['createjs'], function (createjs) {
       this.y += this.vY;
     }).bind(this));
 
-    this.create(params[5]);
+    this.create();
   };
 
   // создает экземпляр
-  p.create = function (type) {
+  p.create = function () {
     var g = this.graphics;
 
-    switch (type) {
-      case 1:
-        g.setStrokeStyle(1);
-        g.beginStroke('#333');
-        g.beginFill('#fff');
-        g.drawCircle(0, 0, 2);
-        break;
-      case 2:
-        g.setStrokeStyle(1);
-        g.beginStroke('#fff');
-        g.beginFill('#500');
-        g.drawCircle(0, 0, 5);
-        break;
-    }
+    g.setStrokeStyle(1);
+    g.beginStroke('#333');
+    g.beginFill('#f00');
+    g.drawCircle(0, 0, 6);
   };
 
   // обновляет экземпляр
   p.update = function () {
   };
 
-  return Bullet;
+  return Gun;
 });

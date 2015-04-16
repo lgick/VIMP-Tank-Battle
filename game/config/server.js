@@ -1,4 +1,4 @@
-var game = require('../models');
+var game = require('../modules');
 
 module.exports = {
   name: 'VIMP Tank Battle',

@@ -42,23 +42,14 @@ require([
     , modulesConfig
     , modules = {}
 
-      // контроллеры
-    , CTRL = {}
-
-      // масштабы
-    , scale = {}
-
-      // данные конструкторов
-    , parts
-
-      // координаты
-    , coords = {x: 0, y: 0}
-
-    , informList = []
-
-      // методы для обработки сокет-данных
-    , socketMethods = []
-
+    , CTRL = {}               // контроллеры
+    , scale = {}              // масштабы
+    , mapSets                 // наборы конструкторов для отрисовки карт
+    , gameSets                // наборы конструкторов (название: [наборы])
+    , parts                   // конструкторы
+    , coords = {x: 0, y: 0}   // координаты
+    , informList = []         // массив системных сообщений
+    , socketMethods = []      // методы для обработки сокет-данных
   ;
 
   ws.binaryType = 'arraybuffer';
@@ -67,16 +58,21 @@ require([
 
   // config data
   socketMethods[0] = function (data) {
-    // установка дополнений игры
+    // загрузка дополнительных модулей игры
     function runParts(data, cb) {
-      parts = data;
+      mapSets = data.mapSets;
+      gameSets = data.gameSets;
+      parts = data.modules;
 
-      var i = 0
-        , len = data.length
+      var p
+        , names = []
         , arr = [];
 
-      for (; i < len; i += 1) {
-        arr.push(data[i].path);
+      for (p in parts) {
+        if (parts.hasOwnProperty(p)) {
+          names.push(p);
+          arr.push(parts[p].path);
+        }
       }
 
       require(arr, function () {
@@ -84,7 +80,7 @@ require([
           , len = arguments.length;
 
         for (; i < len; i += 1) {
-          Factory.add(data[i].name, arguments[i]);
+          Factory.add(names[i], arguments[i]);
         }
 
         cb();
@@ -211,18 +207,22 @@ require([
       create();
     }
 
-    // создание карты
+    // обновление карты
+    function updateMap(name, data) {
+      var canvas = parts[name].canvas;
+
+      CTRL[canvas].remove(name);
+      CTRL[canvas].parse(name, data);
+    }
+
+    // создание данных карты
     function create() {
       var layers = data.layers
-        , part = parts[data.partID]
-        , name = part.name
-        , canvas = part.canvas
+        , nameArr = mapSets[data.setID]
         , mapData = {}
-        , p
-      ;
-
-      // удалить данные старой карты
-      CTRL[canvas].remove(name);
+        , i = 0
+        , len = nameArr.length
+        , p;
 
       for (p in layers) {
         if (layers.hasOwnProperty(p)) {
@@ -236,7 +236,9 @@ require([
         }
       }
 
-      CTRL[canvas].parse(name, mapData);
+      for (; i < len; i += 1) {
+        updateMap(nameArr[i], mapData);
+      }
 
       spriteSheet.removeAllEventListeners();
       updateGameControllers();
@@ -254,28 +256,24 @@ require([
       , vote = data[5]
       , keySet = data[6]
 
+      , p
       , i
       , len
 
-      , idArr
+      , nameArr
+      , name
       , instances
-
-      , i2
-      , len2
-      , part
     ;
 
-    // игра
-    if (game !== 0) {
-      for (i = 0, len = game.length; i < len; i += 1) {
-        idArr = game[i][0];
-        instances = game[i][1];
+    // данные игры
+    for (p in game) {
+      if (game.hasOwnProperty(p)) {
+        nameArr = gameSets[p];
+        instances = game[p];
 
-        for (i2 = 0, len2 = idArr.length; i2 < len2; i2 += 1) {
-          // получение данных о конструкторе по его id
-          part = parts[idArr[i2]];
-
-          CTRL[part.canvas].parse(part.name, instances);
+        for (i = 0, len = nameArr.length; i < len; i += 1) {
+          name = nameArr[i];
+          CTRL[parts[name].canvas].parse(name, instances);
         }
       }
     }
@@ -503,17 +501,9 @@ require([
     statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
     voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
 
-    userModel.publisher.on('socket', function (data) {
-      sending(3, data);
-    });
-
-    chatModel.publisher.on('socket', function (data) {
-      sending(4, data);
-    });
-
-    voteModel.publisher.on('socket', function (data) {
-      sending(5, data);
-    });
+    userModel.publisher.on('socket', function (data) { sending(3, data); });
+    chatModel.publisher.on('socket', function (data) { sending(4, data); });
+    voteModel.publisher.on('socket', function (data) { sending(5, data); });
   }
 
   // создает экземпляр игры
