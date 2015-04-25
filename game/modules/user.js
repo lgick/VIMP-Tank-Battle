@@ -83,6 +83,8 @@ User.prototype.updateName = function (name) {
 
 // обновляет данные
 User.prototype.updateData = function () {
+  // TODO выставлять флаг обновления и отправлять данные
+  // только в случае их изменения
   var rad = +(this._data[2] * (Math.PI / 180)).toFixed(10);
   var vX = Math.round(Math.cos(rad) * this._acceleration);
   var vY = Math.round(Math.sin(rad) * this._acceleration);

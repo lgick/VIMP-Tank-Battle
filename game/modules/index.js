@@ -351,6 +351,7 @@ Game.prototype.createShot = function () {
 
         // если игрок не наблюдатель
         } else if (user.lookOnly !== true) {
+          // TODO объединить updateData и getData
           user.updateData();
 
           game[model] = game[model] || {};
@@ -482,35 +483,61 @@ Game.prototype.stopRound = function () {
 
 // меняет команду игрока
 Game.prototype.changeTeam = function (gameID, team) {
-// TODO проверять переход в другую команду с учетом следующего раунда
-// и вновь зашедших игроков
-  var oldTeam = this._users[gameID].team
-    , respawns = this._currentMapData.respawns
-    , emptyTeam
-  ;
+  var user = this._users[gameID]
+    , currentTeam = user.team
+    , nextTeam = user.nextTeam
+    , respawns = this._currentMapData.respawns;
 
-  if (team !== this._spectatorTeam) {
-    // если количество респаунов на карте в выбраной команде
-    // равно количеству игроков в этой команде
-    if (respawns[team].length === this._allUsersInTeam[team]) {
-      this.chat.pushSystem('s:0:' + team + ',' + oldTeam, gameID);
-      return;
-
+  // если команда уже была выбрана
+  if (team === nextTeam) {
+    if (team !== this._spectatorTeam) {
+      this.chat.pushSystem('s:5:' + team, gameID);
     } else {
-      this.chat.pushSystem('s:4:' + team, gameID);
+      this.chat.pushSystem('s:6', gameID);
     }
 
-  } else {
-    this.chat.pushSystem('s:3', gameID);
-  }
+  // иначе если команда является текущей и не изменится в следующем раунде
+  } else if (team === currentTeam && nextTeam === null) {
+    if (team !== this._spectatorTeam) {
+      this.chat.pushSystem('s:3:' + team, gameID);
+    } else {
+      this.chat.pushSystem('s:4', gameID);
+    }
 
-  this._users[gameID].nextTeam = team;
-  this._allUsersInTeam[oldTeam] -= 1;
-
-  if (this._allUsersInTeam[team]) {
-    this._allUsersInTeam[team] += 1;
+  // иначе смена команды
   } else {
-    this._allUsersInTeam[team] = 1;
+    currentTeam  = nextTeam !== null ? nextTeam : currentTeam;
+
+    if (team !== this._spectatorTeam) {
+      // если количество респаунов на карте в выбраной команде
+      // равно количеству игроков в этой команде (смена невозможна)
+      if (respawns[team].length === this._allUsersInTeam[team]) {
+        if (currentTeam !== this._spectatorTeam) {
+          this.chat.pushSystem('s:0:' + team + ',' + currentTeam, gameID);
+        } else {
+          this.chat.pushSystem('s:1:' + team, gameID);
+        }
+
+        return;
+
+      } else {
+        this.chat.pushSystem('s:5:' + team, gameID);
+      }
+
+    } else {
+      this.chat.pushSystem('s:6', gameID);
+    }
+
+
+    this._allUsersInTeam[currentTeam] -= 1;
+
+    user.nextTeam = team;
+
+    if (this._allUsersInTeam[team]) {
+      this._allUsersInTeam[team] += 1;
+    } else {
+      this._allUsersInTeam[team] = 1;
+    }
   }
 };
 
@@ -542,19 +569,19 @@ Game.prototype.checkTeam = function (team) {
 
       // если найдена команда с свободным местом
       if (emptyTeam) {
-        team = emptyTeam;
         message = 's:0:' + team + ',' + emptyTeam;
+        team = emptyTeam;
       } else {
+        message = 's:2';
         team = this._spectatorTeam;
-        message = 's:1';
       }
 
     } else {
-      message = 's:2:' + team;
+      message = 's:3:' + team;
     }
 
   } else {
-    message = 's:3';
+    message = 's:4';
   }
 
   if (this._allUsersInTeam[team]) {
@@ -732,19 +759,24 @@ Game.prototype.createUser = function (params, socket, cb) {
 // удаляет игрока
 Game.prototype.removeUser = function (gameID, cb) {
   var bool = false
-    , user = this._users[gameID];
+    , user = this._users[gameID]
+    , team
+    , nextTeam;
 
   // TODO gameID брать из user???
 
   // если gameID === undefined,
   // значит пользователь вышел, не успев войти в игру
   if (user) {
+    team = user.team;
+    nextTeam = user.nextTeam;
+
     this.stat.removeUser(gameID, user.teamID);
 
-    this._allUsersInTeam[user.team] -= 1;
+    this._allUsersInTeam[nextTeam !== null ? nextTeam : team] -= 1;
 
     // если игрок - наблюдатель, то удалить
-    if (user.team === this._spectatorTeam) {
+    if (team === this._spectatorTeam) {
       delete this._users[gameID];
     // иначе начать удаление
     } else {
@@ -843,19 +875,20 @@ Game.prototype.parseVote = function (gameID, data) {
       if (value === this._currentMap) {
         this.chat.pushSystem('v:1:' + value, gameID);
       } else {
-        this.changeMap(gameID, value);
+        // если пользователь один в игре (смена карты)
+        if (Object.keys(this._users).length === 1) {
+          this._currentMap = value;
+          this.initMap();
+
+        // иначе запуск голосования
+        } else {
+          this.changeMap(gameID, value);
+        }
       }
 
     // иначе если смена статуса
     } else if (type === 'team') {
-      value = value[0];
-
-      // если статус является текущим
-      if (value === this._users[gameID].team) {
-        this.chat.pushSystem('s:2:' + value, gameID);
-      } else {
-        this.changeTeam(gameID, value);
-      }
+      this.changeTeam(gameID, value[0]);
 
     // иначе если пользователь предложил забанить игрока
     } else if (type === 'ban') {
