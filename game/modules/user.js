@@ -2,9 +2,13 @@ function User(data) {
   this._layer = 2;
 
   this._acceleration = 0;
+
   this._maxForward = 20;
   this._maxBack = 10;
   this._step = 0.5;
+
+  this._maxGunAngle = 90;
+  this._gunAngleStep = this._maxGunAngle / 3;
 
   // TODO перенести в конструктор
   this._keyForward = 1;
@@ -17,9 +21,6 @@ function User(data) {
   this._keyFire = 128;
   this._keyNextPlayer = 256;
   this._keyPrevPlayer = 512;
-
-  this._maxGunAngle = 90;
-  this._gunAngleStep = this._maxGunAngle / 3;
 
   this._teamID = data.teamID;
   this._name = data.name;

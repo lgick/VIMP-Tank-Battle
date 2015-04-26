@@ -16,10 +16,12 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i
 * ``port`` - порт (по умолчанию ``3000``)
 * ``map`` - карта при запуске (по умолчанию ``arena``)
 * ``players`` - лимит игроков на сервере (по умолчанию ``10``)
+* ``rtime`` - время раунда (по умолчанию ``60000``)
+* ``mtime`` - время карты (по умолчанию ``180000``)
 
 Пример запуска:
 
-``node server.js --players=20 --domain=192.33.44.55 --port=3000 --map=mini``
+``node server.js --players=20 --domain=192.33.44.55 --port=3000 --map=mini --rtime=50000 --mtime=150000``
 
 
 # WebSocket ports (message-IDs)
@@ -471,9 +473,9 @@ keys: {
 
 ``type`` может иметь значение:
 
-* 0 (по умолчанию): выполняет каждый keyDown и keyUp
-* 1 : выполняет один раз keyDown
-* 2 : выполняет только keyUp (имитация клика)
+* 0 (по умолчанию): многократное нажатие (начинается на keyDown, завершается на keyUp)
+* 1 : выполняется один раз на keyDown
+* 2 : выполняется один раз на keyUp
 
 #### modes
 

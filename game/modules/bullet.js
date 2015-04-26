@@ -1,4 +1,4 @@
-// Singleton Stat
+// Singleton Bullet
 var bullet;
 
 function Bullet(models) {

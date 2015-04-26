@@ -60,6 +60,26 @@ if (argv.players) {
   }
 }
 
+// если задано время раунда
+if (argv.rtime) {
+  if (typeof argv.rtime === 'number') {
+    config.set('game:roundTime', argv.rtime);
+    console.info('Round time: ' + argv.rtime);
+  } else {
+    console.info('Round time: ' + config.get('game:roundTime'));
+  }
+}
+
+// если задано время карты
+if (argv.mtime) {
+  if (typeof argv.mtime === 'number') {
+    config.set('game:mapTime', argv.mtime);
+    console.info('Map time: ' + argv.mtime);
+  } else {
+    console.info('Map time: ' + config.get('game:mapTime'));
+  }
+}
+
 
 // EXPRESS
 var app = express();

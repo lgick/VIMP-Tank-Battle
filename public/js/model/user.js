@@ -107,9 +107,9 @@ define(['Publisher'], function (Publisher) {
   // Данные объекта нажатой клавиши:
   // - key- число клавиши
   // - type- тип отработки нажатия на клавишу
-  // 0 (по умолчанию): выполняет каждый keyDown и keyUp
-  // 1 : выполняет один раз keyDown
-  // 2 : выполняет только keyUp (имитация клика)
+  // 0 : многократное нажатие (начинается на keyDown, завершается на keyUp)
+  // 1 : выполняется один раз на keyDown
+  // 2 : выполняется один раз на keyUp
   UserModel.prototype.updateKeysState = function (keyCode, press) {
     var keyData = this._currentKeySet[keyCode]
       , type;
