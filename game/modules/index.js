@@ -1,4 +1,4 @@
-var User = require('./user');
+// смена моделей
 var Panel = require('./panel');
 var Stat = require('./stat');
 var Chat = require('./chat');
@@ -21,6 +21,18 @@ function Game(data, ports) {
   this._mapSetID = data.mapSetID;           // дефолтный id конструктора карт
   this._defaultBullet = data.defaultBullet; // дефолтные значения пуль моделей
   this._currentMap = data.currentMap;       // название текущей карты
+  this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
+  this._keys = data.keys;                   // клавиши
+
+  // регулярные выражения
+  this._expressions = {
+    name: new RegExp(data.expressions.name),
+    message: new RegExp(data.expressions.message, 'g')
+  };
+
+  this._constructors = data.constructors;
+  this._models = data.models;
+  this._bullets = data.bullets;
 
   this._mapTime = data.mapTime;             // продолжительность карты
   this._shotTime = data.shotTime;           // время обновления кадра игры
@@ -63,11 +75,14 @@ function Game(data, ports) {
   this._blockedRemap = false;    // флаг блокировки голосования за новую карту
   this._startMapNumber = 0;      // номер первой карты в голосовании
 
-  this.panel = new Panel(data.panel);
-  this.stat = new Stat(data.stat, this._teams);
-  this.chat = new Chat();
-  this.vote = new Vote();
-  this.bullet = new Bullet(data.models);
+  this._panel = new Panel(data.panel);
+  this._stat = new Stat(data.stat, this._teams);
+  this._chat = new Chat();
+  this._vote = new Vote();
+  this._bullet = new Bullet(this._bullets);
+
+  this._factory = data.utils.factory;
+  this._factory.add(this._constructors);
 
   this.initMap();
 }
@@ -90,7 +105,7 @@ Game.prototype.stopGame = function () {
 
 // стартует карту
 Game.prototype.startMapTimer = function () {
-  this.chat.pushSystem('t:0');
+  this._chat.pushSystem('t:0');
 
   this._mapTimer = setTimeout((function () {
     this.sendMap();
@@ -114,14 +129,13 @@ Game.prototype.startRoundTimer = function () {
   }).bind(this), 1000);
 
   this.startRound();
-  this.panel.reset();
+  this._panel.reset();
 
   this._roundTimer = setTimeout((function () {
     clearInterval(this._stepTimer);
 
-    this.bullet.resetBulletID();
     this.startRoundTimer();
-    this.chat.pushSystem('t:1');
+    this._chat.pushSystem('t:1');
   }).bind(this), this._roundTime);
 };
 
@@ -159,7 +173,7 @@ Game.prototype.initMap = function () {
 
   this.stopGame();
   this._allUsersInTeam = {};
-  this.stat.reset();
+  this._stat.reset();
 
   // корректирование статуса игроков под новые респауны и смена карты
   for (p in this._users) {
@@ -173,7 +187,7 @@ Game.prototype.initMap = function () {
         user.nextTeam = teamData.team;
       }
 
-      this.chat.pushSystem(teamData.message, user.gameID);
+      this._chat.pushSystem(teamData.message, user.gameID);
     }
   }
 
@@ -207,7 +221,11 @@ Game.prototype.sendMap = function (gameID) {
 
 // сообщает о загрузке карты
 Game.prototype.mapReady = function (err, gameID) {
-  var user = this._users[gameID];
+  var user = this._users[gameID]
+    , p
+    , anyUser
+    , model
+    , gameData = {};
 
   if (!err) {
     user.socket.send(this._portInform);
@@ -216,69 +234,51 @@ Game.prototype.mapReady = function (err, gameID) {
     // если есть необходимость в полной загрузке game-данных
     if (user.fullGameData === true) {
       user.fullGameData = false;
-      this.sendFullGameData(gameID);
-    }
-  }
-};
 
-// отправляет полный вид данных
-Game.prototype.sendFullGameData = function (gameID) {
-  var p
-    , user
-    , gameData = {};
+      for (p in this._users) {
+        if (this._users.hasOwnProperty(p)) {
+          anyUser = this._users[p];
 
-  for (p in this._users) {
-    if (this._users.hasOwnProperty(p)) {
-      user = this._users[p];
-
-      // TODO нужно ли проверять user.mapReady?
-
-      // если игрок не наблюдатель
-      if (user.lookOnly !== true) {
-        model = user.model;
-        gameData[model] = gameData[model] || {};
-        gameData[model][p] = user.getFullData();
+          // если игрок не наблюдатель
+          if (anyUser.lookOnly !== true) {
+            model = anyUser.model;
+            gameData[model] = gameData[model] || {};
+            gameData[model][p] = anyUser.gameModel.getFullData(
+              [anyUser.teamID, anyUser.name]
+            );
+          }
+        }
       }
-    }
-  }
 
-  if (gameID) {
-    this._users[gameID].socket.send(this._portShot, [gameData, 0, 0, 0, 0, 0]);
-  } else {
-    for (p in this._users) {
-      if (this._users.hasOwnProperty(p)) {
-        user = this._users[p];
-
-        user.socket.send(this._portShot, [gameData, 0, 0, 0, 0, 0]);
-      }
+      user.socket.send(this._portShot, [gameData, 0, 0, 0, 0, 0]);
     }
   }
 };
 
 // отправляет первый shot (в начале каждого раунда)
-Game.prototype.sendFirstShot = function (gameID) {
+Game.prototype.sendFirstShot = function (gameID, gameData) {
   var user = this._users[gameID]
     , nextTeam = user.nextTeam
     , teamID = user.teamID
     , data = [];
 
-  data[0] = {};     // game
-  data[1] = 0;      // coords
-  data[2] = 0;      // panel
-  data[3] = 0;      // stat
-  data[4] = 0;      // chat
-  data[5] = 0;      // vote
+  data[0] = gameData || {};     // game
+  data[1] = 0;                  // coords
+  data[2] = 0;                  // panel
+  data[3] = 0;                  // stat
+  data[4] = 0;                  // chat
+  data[5] = 0;                  // vote
 
   // если пользователь сменил команду
   if (nextTeam !== null) {
     user.nextTeam = null;
 
     // перемещение пользователя в статистике
-    this.stat.moveUser(gameID, teamID, this._teams[nextTeam]);
+    this._stat.moveUser(gameID, teamID, this._teams[nextTeam]);
 
     teamID = user.teamID = this._teams[nextTeam];
     user.team = nextTeam;
-    user.updateTeamID(teamID);
+    user.fullUserData = true;
 
     if (teamID === this._spectatorID) {
       user.removeGameModel = true;
@@ -289,12 +289,12 @@ Game.prototype.sendFirstShot = function (gameID) {
     user.lookOnly = false;
     user.keySet = 1;
     this._playersList.push(gameID);
-    this.stat.updateUser(gameID, teamID, {status: ''});
+    this._stat.updateUser(gameID, teamID, {status: ''});
     data[2] = [this._time];
   } else {
     user.lookOnly = true;
     user.keySet = 0;
-    data[2] = [this._time].concat(this.panel.getEmpty());
+    data[2] = [this._time].concat(this._panel.getEmpty());
   }
 
   user.socket.send(this._portShot, data);
@@ -309,22 +309,23 @@ Game.prototype.createShot = function () {
     , vote = 0
     , p
     , model
-    , bModel
+    , bulletName
     , bullet
     , oldBulletArr
     , bulletID
+    , gameModel
     , i
     , len
   ;
 
-  oldBulletArr = this.bullet.nextTime();
+  oldBulletArr = this._bullet.nextTime();
 
   for (i = 0, len = oldBulletArr.length; i < len; i += 1) {
-    bModel = oldBulletArr[i][0];
+    bulletName = oldBulletArr[i][0];
     bulletID = oldBulletArr[i][1];
 
-    game[bModel] = game[bModel] || {};
-    game[bModel][bulletID] = null;
+    game[bulletName] = game[bulletName] || {};
+    game[bulletName][bulletID] = null;
   }
 
   while (this._removeList.length) {
@@ -351,19 +352,28 @@ Game.prototype.createShot = function () {
 
         // если игрок не наблюдатель
         } else if (user.lookOnly !== true) {
-          // TODO объединить updateData и getData
-          user.updateData();
+          gameModel = user.gameModel;
+
+          gameModel.updateData();
 
           game[model] = game[model] || {};
-          game[model][p] = user.getData();
 
-          bullet = user.getBullet();
+          if (user.fullUserData === true) {
+            user.fullUserData = false;
+            game[model][p] = gameModel.getFullData(
+              [user.teamID, user.name]
+            );
+          } else {
+            game[model][p] = gameModel.getData();
+          }
+
+          bullet = gameModel.getBulletData();
 
           if (bullet) {
-            bModel = user.bModel;
-            bulletID = this.bullet.addBullet(bModel);
-            game[bModel] = game[bModel] || {};
-            game[bModel][bulletID] = bullet;
+            bulletName = gameModel.getBulletName();
+            bulletID = this._bullet.addBullet(bulletName);
+            game[bulletName] = game[bulletName] || {};
+            game[bulletName][bulletID] = bullet;
           }
 
         // иначе режим наблюдателя
@@ -373,9 +383,9 @@ Game.prototype.createShot = function () {
     }
   }
 
-  stat = this.stat.getLast();
-  chat = this.chat.shift();
-  vote = this.vote.shift();
+  stat = this._stat.getLast();
+  chat = this._chat.shift();
+  vote = this._vote.shift();
 
   function getUserData(gameID) {
     var user = this._users[gameID]
@@ -397,14 +407,14 @@ Game.prototype.createShot = function () {
         lookUser = this._users[user.lookID];
       }
 
-      coords = lookUser.getCoords();
+      coords = lookUser.gameModel.getCoords();
     } else {
-      coords = user.getCoords();
+      coords = user.gameModel.getCoords();
     }
 
     if (user.lookOnly === false) {
       // panel
-      panel = this.panel.getPanel(gameID);
+      panel = this._panel.getPanel(gameID);
 
       if (panel) {
         panel = [null].concat(panel);
@@ -417,14 +427,14 @@ Game.prototype.createShot = function () {
 
     // если общих сообщений нет
     if (!chat) {
-      chatUser = this.chat.shiftByUser(gameID) || 0;
+      chatUser = this._chat.shiftByUser(gameID) || 0;
     } else {
       chatUser = chat;
     }
 
     // если общих данных для голосования нет
     if (!vote) {
-      voteUser = this.vote.shiftByUser(gameID) || 0;
+      voteUser = this._vote.shiftByUser(gameID) || 0;
     } else {
       voteUser = vote;
     }
@@ -449,6 +459,12 @@ Game.prototype.createShot = function () {
 // перемещает игроков на респауны и отправляет первый shot
 Game.prototype.startRound = function () {
   var respawns = this._currentMapData.respawns
+    , oldBulletArr = this._bullet.reset()
+    , bulletName
+    , bulletID
+    , gameData = {}
+    , i
+    , len
     , p
     , user
     , data
@@ -457,28 +473,73 @@ Game.prototype.startRound = function () {
   // очищение списка играющих
   this._playersList = [];
 
+  // очищение пуль предыдущего раунда
+  for (i = 0, len = oldBulletArr.length; i < len; i += 1) {
+    bulletName = oldBulletArr[i][0];
+    bulletID = oldBulletArr[i][1];
+
+    gameData[bulletName] = gameData[bulletName] || {};
+    gameData[bulletName][bulletID] = null;
+  }
+
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       user = this._users[p];
 
-      this.sendFirstShot(user.gameID);
+      this.sendFirstShot(user.gameID, gameData);
 
       respID[user.team] = respID[user.team] || 0;
       data = respawns[user.team];
 
       if (data) {
         data = data[respID[user.team]];
-        user.setData(data);
+        user.gameModel.setData(data);
         respID[user.team] += 1;
       }
     }
   }
-
-  this.sendFullGameData();
 };
 
 // заканчивает раунд
 Game.prototype.stopRound = function () {
+};
+
+// проверяет имя
+Game.prototype.checkName = function (name, number) {
+  var p;
+
+  number = number || 1;
+
+  for (p in this._users) {
+    if (this._users.hasOwnProperty(p)) {
+      if (this._users[p].name === name) {
+        if (number > 1) {
+          name = name.slice(0, name.lastIndexOf('#')) + '#' + number;
+        } else {
+          name = name + '#' + number;
+        }
+
+        return this.checkName(name, number + 1);
+      }
+    }
+  }
+
+  return name;
+};
+
+// меняет ник игрока
+Game.prototype.changeName = function (gameID, name) {
+  var user = this._users[gameID];
+
+  if (this._expressions.name.test(name)) {
+    name = this.checkName(name);
+    user.name = name;
+    user.fullUserData = true;
+    this._stat.updateUser(gameID, user.teamID, {name: name});
+    this._chat.pushSystem('n:1', gameID);
+  } else {
+    this._chat.pushSystem('n:0', gameID);
+  }
 };
 
 // меняет команду игрока
@@ -491,17 +552,17 @@ Game.prototype.changeTeam = function (gameID, team) {
   // если команда уже была выбрана
   if (team === nextTeam) {
     if (team !== this._spectatorTeam) {
-      this.chat.pushSystem('s:5:' + team, gameID);
+      this._chat.pushSystem('s:5:' + team, gameID);
     } else {
-      this.chat.pushSystem('s:6', gameID);
+      this._chat.pushSystem('s:6', gameID);
     }
 
   // иначе если команда является текущей и не изменится в следующем раунде
   } else if (team === currentTeam && nextTeam === null) {
     if (team !== this._spectatorTeam) {
-      this.chat.pushSystem('s:3:' + team, gameID);
+      this._chat.pushSystem('s:3:' + team, gameID);
     } else {
-      this.chat.pushSystem('s:4', gameID);
+      this._chat.pushSystem('s:4', gameID);
     }
 
   // иначе смена команды
@@ -513,19 +574,19 @@ Game.prototype.changeTeam = function (gameID, team) {
       // равно количеству игроков в этой команде (смена невозможна)
       if (respawns[team].length === this._allUsersInTeam[team]) {
         if (currentTeam !== this._spectatorTeam) {
-          this.chat.pushSystem('s:0:' + team + ',' + currentTeam, gameID);
+          this._chat.pushSystem('s:0:' + team + ',' + currentTeam, gameID);
         } else {
-          this.chat.pushSystem('s:1:' + team, gameID);
+          this._chat.pushSystem('s:1:' + team, gameID);
         }
 
         return;
 
       } else {
-        this.chat.pushSystem('s:5:' + team, gameID);
+        this._chat.pushSystem('s:5:' + team, gameID);
       }
 
     } else {
-      this.chat.pushSystem('s:6', gameID);
+      this._chat.pushSystem('s:6', gameID);
     }
 
 
@@ -623,7 +684,7 @@ Game.prototype.changeLookID = function (gameID, back) {
 
     if (key < 0) {
       key = this._playersList.length - 1;
-    } else if (key > this._playersList.length) {
+    } else if (key >= this._playersList.length) {
       key = 0;
     }
 
@@ -634,6 +695,28 @@ Game.prototype.changeLookID = function (gameID, back) {
   }
 
   this._users[gameID].lookID = lookID;
+};
+
+// инициализирует игровую модель игрока
+Game.prototype.initGameModel = function (gameID, model) {
+  var user = this._users[gameID]
+    , modelData = this._models[model]
+    , gameData;
+
+  if (user.gameModel) {
+    gameData = user.gameModel.getCopyData();
+  }
+
+  if (modelData) {
+    user.gameModel = this._factory(modelData.constructor, {
+      model: modelData,
+      keys: this._keys,
+      coords: gameData
+    });
+
+    user.model = model;
+    user.fullUserData = true;
+  }
 };
 
 // создает нового игрока
@@ -655,29 +738,6 @@ Game.prototype.createUser = function (params, socket, cb) {
   data[4] = 0;      // chat
   data[5] = 0;      // vote
 
-  // проверяет имя
-  function checkName(name, number) {
-    number = number || 1;
-
-    var p;
-
-    for (p in this._users) {
-      if (this._users.hasOwnProperty(p)) {
-        if (this._users[p].name === name) {
-          if (number > 1) {
-            name = name.slice(0, name.lastIndexOf('#')) + '#' + number;
-          } else {
-            name = name + '#' + number;
-          }
-
-          return checkName.call(this, name, number + 1);
-        }
-      }
-    }
-
-    return name;
-  }
-
   // подбирает gameID
   function getGameID() {
     var gameID = 1;
@@ -689,7 +749,7 @@ Game.prototype.createUser = function (params, socket, cb) {
     return gameID;
   }
 
-  name = checkName.call(this, name);
+  name = this.checkName(name);
   gameID = getGameID.call(this);
   teamData = this.checkTeam(team);
 
@@ -698,17 +758,17 @@ Game.prototype.createUser = function (params, socket, cb) {
 
   teamID = this._teams[team];
 
-  user = this._users[gameID] = new User({
-    name: name,
-    teamID: teamID,
-    model: model
-  });
+  user = this._users[gameID] = {};
 
   // ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
   // сокет
   user.socket = socket;
-  // флаг загрузки полных game-данных для пользователя
+  // данные модели игрока
+  user.gameModel = null;
+  // флаг полной загрузки game-данных для пользователя
   user.fullGameData = true;
+  // флаг отправки полных данных пользователя
+  user.fullUserData = true;
   // флаг загрузки текущей карты
   user.mapReady = false;
   // имя пользователя
@@ -717,8 +777,6 @@ Game.prototype.createUser = function (params, socket, cb) {
   user.team = team;
   // модель игрока
   user.model = model;
-  // модель пуль игрока
-  user.bModel = this._defaultBullet[model];
   // название команды в следующем раунде
   user.nextTeam = null;
   // ID команды
@@ -736,16 +794,17 @@ Game.prototype.createUser = function (params, socket, cb) {
   // флаг удаление игрока с полотна
   user.removeGameModel = false;
 
-  this.chat.addUser(gameID);
-  this.vote.addUser(gameID);
-  this.stat.addUser(gameID, teamID, {name: name});
-  this.panel.addUser(gameID);
+  this._chat.addUser(gameID);
+  this._vote.addUser(gameID);
+  this._stat.addUser(gameID, teamID, {name: name});
+  this._panel.addUser(gameID);
 
   this.changeLookID(gameID);
+  this.initGameModel(gameID, model);
 
   data[1] = [0, 0];
   data[2] = [this._time];
-  data[3] = this.stat.getFull();
+  data[3] = this._stat.getFull();
   data[4] = message;
 
   user.socket.send(this._portShot, data);
@@ -771,7 +830,7 @@ Game.prototype.removeUser = function (gameID, cb) {
     team = user.team;
     nextTeam = user.nextTeam;
 
-    this.stat.removeUser(gameID, user.teamID);
+    this._stat.removeUser(gameID, user.teamID);
 
     this._allUsersInTeam[nextTeam !== null ? nextTeam : team] -= 1;
 
@@ -781,7 +840,7 @@ Game.prototype.removeUser = function (gameID, cb) {
     // иначе начать удаление
     } else {
       this.removeFromLookIDList(gameID);
-      this.panel.removeUser(gameID);
+      this._panel.removeUser(gameID);
 
       this._removeList.push({
         gameID: user.gameID,
@@ -791,8 +850,8 @@ Game.prototype.removeUser = function (gameID, cb) {
       delete this._users[gameID];
     }
 
-    this.chat.removeUser(gameID);
-    this.vote.removeUser(gameID);
+    this._chat.removeUser(gameID);
+    this._vote.removeUser(gameID);
 
     bool = true;
   }
@@ -808,23 +867,31 @@ Game.prototype.updateKeys = function (gameID, keys) {
 
   if (user.lookOnly === true) {
     // next player
-    if (keys & 1 << 0) {
+    if (keys & this._spectatorKeys.nextPlayer) {
       this.changeLookID(gameID);
 
     // prev player
-    } else if (keys & 1 << 1) {
+    } else if (keys & this._spectatorKeys.prevPlayer) {
       this.changeLookID(gameID, true);
     }
   } else {
-    user.keys = keys;
+    user.gameModel.updateKeys(keys);
   }
 };
 
 // добавляет сообщение
-Game.prototype.pushMessage = function (message, gameID) {
+Game.prototype.pushMessage = function (gameID, message) {
   var user = this._users[gameID];
 
-  this.chat.push(message, user.name, user.teamID);
+  message = message.replace(this._expressions.message, '');
+
+  if (message) {
+    if (message.charAt(0) === '/') {
+      this.parseCommand(gameID, message);
+    } else {
+      this._chat.push(message, user.name, user.teamID);
+    }
+  }
 };
 
 // обрабатывает vote-данные пользователя
@@ -838,11 +905,11 @@ Game.prototype.parseVote = function (gameID, data) {
   if (typeof data === 'string') {
     // если запрос списка команд
     if (data === 'teams') {
-      this.vote.pushByUser(gameID, [null, this._teamList]);
+      this._vote.pushByUser(gameID, [null, this._teamList]);
 
     // если запрос всех карт
     } else if (data === 'maps') {
-      this.vote.pushByUser(gameID, [null, this._mapList]);
+      this._vote.pushByUser(gameID, [null, this._mapList]);
 
     // если запрос пользователей
     } else if (data === 'users') {
@@ -852,7 +919,7 @@ Game.prototype.parseVote = function (gameID, data) {
         }
       }
 
-      this.vote.pushByUser(gameID, [null, dataArr]);
+      this._vote.pushByUser(gameID, [null, dataArr]);
     }
 
   // если данные 'объект' (результат голосования)
@@ -864,8 +931,8 @@ Game.prototype.parseVote = function (gameID, data) {
     if (type === 'changeMap') {
       value = value[0];
 
-      this.vote.addInVote(type, value);
-      this.chat.pushSystem('v:0', gameID);
+      this._vote.addInVote(type, value);
+      this._chat.pushSystem('v:0', gameID);
 
     // иначе если пользователь захотел сменить карту
     } else if (type === 'mapUser') {
@@ -873,7 +940,7 @@ Game.prototype.parseVote = function (gameID, data) {
 
       // если карта является текущей
       if (value === this._currentMap) {
-        this.chat.pushSystem('v:1:' + value, gameID);
+        this._chat.pushSystem('v:1:' + value, gameID);
       } else {
         // если пользователь один в игре (смена карты)
         if (Object.keys(this._users).length === 1) {
@@ -892,7 +959,7 @@ Game.prototype.parseVote = function (gameID, data) {
 
     // иначе если пользователь предложил забанить игрока
     } else if (type === 'ban') {
-      this.chat.pushSystem(
+      this._chat.pushSystem(
         'v:6:' + value[1] + ',' + this._users[value[0]].name, gameID
       );
     }
@@ -951,9 +1018,9 @@ Game.prototype.changeMap = function (gameID, map) {
         }
       }
 
-      this.vote.createVote('changeMap', arr, userList);
-      this.vote.addInVote('changeMap', map); // голос за пользователя
-      this.chat.pushSystem('v:2', gameID);
+      this._vote.createVote('changeMap', arr, userList);
+      this._vote.addInVote('changeMap', map); // голос за пользователя
+      this._chat.pushSystem('v:2', gameID);
 
     // иначе голосование создает игра
     } else {
@@ -963,23 +1030,23 @@ Game.prototype.changeMap = function (gameID, map) {
         null
       ];
 
-      this.vote.createVote('changeMap', arr);
+      this._vote.createVote('changeMap', arr);
     }
 
     // собирает результаты голосования и стартует новую игру
     setTimeout((function () {
-      var map = this.vote.getResult('changeMap');
+      var map = this._vote.getResult('changeMap');
 
       // если есть результат и карта существует
       if (map && this._maps[map]) {
-        this.chat.pushSystem('v:4:' + map);
+        this._chat.pushSystem('v:4:' + map);
 
         setTimeout((function () {
           this._currentMap = map;
           this.initMap();
         }.bind(this)), 2000);
       } else {
-        this.chat.pushSystem('v:5');
+        this._chat.pushSystem('v:5');
       }
 
       // снимает блокировку смены карты
@@ -990,8 +1057,50 @@ Game.prototype.changeMap = function (gameID, map) {
 
   } else {
     if (typeof gameID !== 'undefined') {
-      this.chat.pushSystem('v:3', gameID);
+      this._chat.pushSystem('v:3', gameID);
     }
+  }
+};
+
+// обрабатывает команду от пользователя
+Game.prototype.parseCommand = function (gameID, message) {
+  var arr
+    , cmd
+    , param;
+
+  message = message.replace(/\s\s+/g, ' ');
+  arr = message.split(' ');
+  cmd = arr[0];
+  param = arr[1];
+
+  switch (cmd) {
+    // смена ника
+    case '/name':
+      this.changeName(gameID, param);
+      break;
+    // смена модели
+    case '/model':
+      this.initGameModel(gameID, param);
+      break;
+    // смена пуль
+    case '/bullet':
+      this._users[gameID].gameModel.setBulletName(param);
+      break;
+    // новый раунд
+    case '/nextround':
+      this.stopRoundTimer();
+      this.startRoundTimer();
+      break;
+    // время карты
+    case '/timeleft':
+      this._chat.pushSystem(['2:00'], gameID);
+      break;
+    // название текущей карты
+    case '/mapname':
+      this._chat.pushSystem([this._currentMap], gameID);
+      break;
+    default:
+      this._chat.pushSystem(['Command not found'], gameID);
   }
 };
 

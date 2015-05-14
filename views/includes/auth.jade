@@ -5,11 +5,11 @@ div#auth
     h2= 'VIMP Tank Battle'
 
     div#auth-name
-      span= 'Please name:'
+      span= 'Name:'
       input#auth-name-input(type='text', name='name' maxlength='15', placeholder='Vanya')
 
     div#auth-team
-      span= 'Please your team:'
+      span= 'Team:'
       br
       label
         input(type='radio', name='team', value='team1')
@@ -24,7 +24,7 @@ div#auth
         = 'spectators'
 
     div#auth-tank
-      span= 'Please your tank:'
+      span= 'Tank:'
       br
       label
         input(type='radio', name='model', value='m1')
@@ -59,6 +59,14 @@ div#auth
       span
         b= 'J'
         = ' - огонь'
+      br
+      span
+        b= 'N'
+        = ' -  следующее оружие'
+      br
+      span
+        b= 'P'
+        = ' - предыдущее оружие'
       br
       br
       span

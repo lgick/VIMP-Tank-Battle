@@ -17,6 +17,7 @@ define(['Publisher'], function (Publisher) {
     this._cacheMin = data.cacheMin || 200;
     this._cacheMax = data.cacheMax || 300;
     this._messages = data.messages || {};
+    this._messageExp = new this._RegExp(data.messageExp, 'g');
 
     this._cache = [];   // хранилище сообщений
     this._list = [];    // активный чат-лист
@@ -51,7 +52,7 @@ define(['Publisher'], function (Publisher) {
 
   // отправляет сообщение на сервер
   ChatModel.prototype.sendMessage = function (message) {
-    message = message.replace(/<|\>|\"|\'|\%|\;|\(|\)|\&|\+|\-/g, '');
+    message = message.replace(this._messageExp, '');
 
     if (message) {
       this.publisher.emit('socket', message);

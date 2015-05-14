@@ -148,11 +148,7 @@ module.exports = function (server) {
     // 4: chat data
     socketMethods[4] = function (message) {
       if (typeof message === 'string') {
-        message = validator.chat(message);
-
-        if (message) {
-          game.pushMessage(message, gameID);
-        }
+        game.pushMessage(gameID, message);
       }
     };
 

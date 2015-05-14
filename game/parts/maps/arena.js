@@ -22,7 +22,7 @@ exports.map = [
 ];
 
 exports.spriteSheet = {
-  images: ['/img/tiles.png'],
+  images: ['parts/img/tiles.png'],
   frames: [
     [480, 64, 32, 32, 0],
     [0, 256, 32, 32, 0],

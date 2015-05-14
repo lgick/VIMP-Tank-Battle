@@ -26,6 +26,10 @@ config.set('game', require(path.join(__dirname, '/game/config/game.js')));
 
 // время ожидания vote-модуля
 config.set('client:user:vote:params:time', config.get('game:voteTime'));
+// регулярное выражение для сообщений
+config.set(
+  'client:user:chat:params:messageExp', config.get('game:expressions:message')
+);
 
 // если задан домен
 if (argv.domain) {
@@ -90,7 +94,6 @@ app.set('view engine', 'jade');
 app.use(express.favicon(path.join(__dirname, '/public/img/favicon.ico')));
 app.use(express.static(path.join(__dirname, '/public')));
 app.use(express.static(path.join(__dirname, '/lib')));
-app.use(express.static(path.join(__dirname, '/game')));
 
 require('./routes')(app);
 

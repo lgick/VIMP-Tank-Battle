@@ -14,7 +14,7 @@ define(['createjs'], function (createjs) {
   p.initialize = function (params) {
     this.Container_constructor();
 
-    this.layer = 2;
+    this.layer = 3;
 
     this.body = new Shape();
     this.gun = new Shape();

@@ -28,11 +28,14 @@ Chat.prototype.push = function (message, name, teamID) {
 };
 
 // добавляет системное сообщение
-Chat.prototype.pushSystem = function (str, gameID) {
+// message может быть:
+// - шаблонным сообщением '<группа шаблонов>:<номер шаблона>:<параметры>'
+// - сообщением в виде массива [<текст сообщения>]
+Chat.prototype.pushSystem = function (message, gameID) {
   if (gameID) {
-    this._userList[gameID].push(str);
+    this._userList[gameID].push(message);
   } else {
-    this._list.push(str);
+    this._list.push(message);
   }
 };
 

@@ -2,13 +2,14 @@ define(['createjs'], function (createjs) {
   var Container = createjs.Container
     , Shape = createjs.Shape
     , Sprite = createjs.Sprite
+    , Map
     , p;
 
-  function Map(data) {
+  Map = function (data) {
     if (typeof data === 'object') {
       this.initialize(data);
     }
-  }
+  };
 
   p = Map.prototype = createjs.extend(Map, Container);
   Map = createjs.promote(Map, 'Container');
@@ -24,7 +25,8 @@ define(['createjs'], function (createjs) {
     // map - карта
     // step - размер шага
 
-    this.layer = data.layer;
+    //this.layer = data.layer;
+    this.layer = 1;
 
     this._tiles = data.tiles;
     this._map = data.map;

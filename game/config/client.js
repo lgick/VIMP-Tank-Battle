@@ -11,31 +11,36 @@ module.exports = {
       m1: ['tank', 'radar'],
       m2: ['tank2', 'radar'],
       b1: ['pistol'],
-      b2: ['gun']
+      b2: ['gun'],
+      b3: ['bomb']
     },
     modules: {
       map: {
-        path: '/parts/map.js',
+        path: 'parts/constructors/map.js',
         canvas: 'vimp'
       },
       radar: {
-        path: '/parts/radar.js',
+        path: 'parts/constructors/radar.js',
         canvas: 'radar'
       },
       tank: {
-        path: '/parts/tank.js',
+        path: 'parts/constructors/tank.js',
         canvas: 'vimp'
       },
       tank2: {
-        path: '/parts/tank2.js',
+        path: 'parts/constructors/tank2.js',
         canvas: 'vimp'
       },
       gun: {
-        path: '/parts/gun.js',
+        path: 'parts/constructors/gun.js',
         canvas: 'vimp'
       },
       pistol: {
-        path: '/parts/pistol.js',
+        path: 'parts/constructors/pistol.js',
+        canvas: 'vimp'
+      },
+      bomb: {
+        path: 'parts/constructors/bomb.js',
         canvas: 'vimp'
       }
     }
@@ -108,6 +113,16 @@ module.exports = {
           74: {
             key: 1 << 7,
             type: 1
+          },
+          // next bullet (n)
+          78: {
+            key: 1 << 8,
+            type: 1
+          },
+          // prev bullet (p)
+          80: {
+            key: 1 << 9,
+            type: 1
           }
         }
       ],
@@ -158,6 +173,11 @@ module.exports = {
             'Голосование завершено! Следующая карта: {0}',
             'Голосование за новую карту завершилось без результата',
             'Опция бана находится в разработке и {0} {1} будет вскоре наказан!'
+          ],
+          // name
+          n: [
+            'Имя не корректно',
+            'Имя изменилось'
           ]
         }
       }

@@ -17,7 +17,7 @@ exports.map = [
 ];
 
 exports.spriteSheet = {
-  images: ['/img/tiles.png'],
+  images: ['parts/img/tiles.png'],
   frames: [
     [480, 64, 32, 32, 0],
     [0, 256, 32, 32, 0],
@@ -30,8 +30,7 @@ exports.spriteSheet = {
 };
 
 exports.layers = {
-  '1': [0, 1, 2, 3, 4, 5],
-  '5': [6]
+  '1': [0, 1, 2, 3, 4, 5]
 };
 
 exports.step = 32;

@@ -1,28 +1,31 @@
 define(['createjs'], function (createjs) {
-  var Shape = createjs.Shape;
+  var Shape = createjs.Shape
+    , Bomb
+    , p;
 
-  function Gun(params) {
+  Bomb = function (params) {
     this.initialize(params);
-  }
+  };
 
-  p = Gun.prototype = createjs.extend(Gun, Shape);
-  Gun = createjs.promote(Gun, 'Shape');
+  p = Bomb.prototype = createjs.extend(Bomb, Shape);
+  Bomb = createjs.promote(Bomb, 'Shape');
 
   // инициализация
   p.initialize = function (params) {
     this.Shape_constructor();
 
+    this.layer = 2;
+
     this.x = params[0];
     this.y = params[1];
     this.vX = params[2];
     this.vY = params[3];
+    this.rotation = params[4];
 
-    this.layer = params[4];
-
-    this.addEventListener('tick', (function () {
-      this.x += this.vX;
-      this.y += this.vY;
-    }).bind(this));
+    //this.addEventListener('tick', (function () {
+    //  this.x += this.vX;
+    //  this.y += this.vY;
+    //}).bind(this));
 
     this.create();
   };
@@ -33,13 +36,13 @@ define(['createjs'], function (createjs) {
 
     g.setStrokeStyle(1);
     g.beginStroke('#333');
-    g.beginFill('#f00');
-    g.drawCircle(0, 0, 6);
+    g.beginFill('#275C2D');
+    g.drawRect(-15, -15, 30, 30, 3);
   };
 
   // обновляет экземпляр
   p.update = function () {
   };
 
-  return Gun;
+  return Bomb;
 });

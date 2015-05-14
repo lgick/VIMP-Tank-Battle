@@ -1,16 +1,26 @@
-var maps = require('../maps/');
-var models = require('../models/');
+var maps = require('../parts/maps/');
+var constructors = require('../constructors/');
+var models = require('../parts/models/');
+var bullets = require('../parts/bullets/');
 var banlist = require('../deps/banlist');
-var Factory = require('../../lib/factory');
-var Publisher = require('../../lib/publisher');
+var factory = require('../../lib/factory');
+var publisher = require('../../lib/publisher');
 
 module.exports = {
   utils: {
-    Publisher: Publisher,
-    Factory: Factory
+    publisher: publisher,
+    factory: factory
   },
 
+  expressions: {
+    name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
+    message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-'
+  },
+
+  constructors: constructors,
   models: models,
+  bullets: bullets,
+
   banlist: banlist,
 
   maps: maps,                  // карты
@@ -79,5 +89,23 @@ module.exports = {
   defaultBullet: {
     m1: 'b1',
     m2: 'b2'
+  },
+
+  spectatorKeys: {
+    nextPlayer: 1 << 0,
+    prevPlayer: 1 << 1
+  },
+
+  keys: {
+    forward: 1 << 0,
+    back: 1 << 1,
+    left: 1 << 2,
+    right: 1 << 3,
+    gCenter: 1 << 4,
+    gLeft: 1 << 5,
+    gRight: 1 << 6,
+    fire: 1 << 7,
+    nextBullet: 1 << 8,
+    prevBullet: 1 << 9
   }
 };

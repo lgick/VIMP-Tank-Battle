@@ -1,9 +1,11 @@
 define(['createjs'], function (createjs) {
-  var Shape = createjs.Shape;
+  var Shape = createjs.Shape
+    , Pistol
+    , p;
 
-  function Pistol(params) {
+  Pistol = function (params) {
     this.initialize(params);
-  }
+  };
 
   p = Pistol.prototype = createjs.extend(Pistol, Shape);
   Pistol = createjs.promote(Pistol, 'Shape');
@@ -12,12 +14,13 @@ define(['createjs'], function (createjs) {
   p.initialize = function (params) {
     this.Shape_constructor();
 
+    this.layer = 2;
+
     this.x = params[0];
     this.y = params[1];
     this.vX = params[2];
     this.vY = params[3];
-
-    this.layer = params[4];
+    this.rotation = params[4];
 
     this.addEventListener('tick', (function () {
       this.x += this.vX;

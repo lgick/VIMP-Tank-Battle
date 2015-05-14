@@ -37,9 +37,21 @@ function Bullet(models) {
   }
 }
 
-// сброс ID пуль
-Bullet.prototype.resetBulletID = function () {
+// сброс ID и возвращения массива из старых пуль
+Bullet.prototype.reset = function () {
+  var p
+    , arr = [];
+
   this._currentBulletID = 0;
+
+  for (p in this._data) {
+    if (this._data.hasOwnProperty(p)) {
+      arr = arr.concat(this._data[p]);
+      this._data[p] = [];
+    }
+  }
+
+  return arr;
 };
 
 // обновляет время и возвращает массив старых пуль

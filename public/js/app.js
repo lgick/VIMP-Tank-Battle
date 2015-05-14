@@ -77,12 +77,14 @@ require([
 
       require(arr, function () {
         var i = 0
-          , len = arguments.length;
+          , len = arguments.length
+          , data = {};
 
         for (; i < len; i += 1) {
-          Factory.add(names[i], arguments[i]);
+          data[names[i]] = arguments[i];
         }
 
+        Factory.add(data);
         cb();
       });
     }
@@ -421,7 +423,8 @@ require([
       lineTime: chatData.params.lineTime,
       cacheMin: chatData.params.cacheMin,
       cacheMax: chatData.params.cacheMax,
-      messages: chatData.params.messages
+      messages: chatData.params.messages,
+      messageExp: chatData.params.messageExp
     });
 
     chatView = new ChatView(chatModel, {
