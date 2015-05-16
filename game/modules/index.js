@@ -1,4 +1,3 @@
-// смена моделей
 var Panel = require('./panel');
 var Stat = require('./stat');
 var Chat = require('./chat');

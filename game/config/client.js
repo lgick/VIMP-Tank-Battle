@@ -10,6 +10,7 @@ module.exports = {
     gameSets: {
       m1: ['tank', 'radar'],
       m2: ['tank2', 'radar'],
+      m3: ['soldier', 'radar'],
       b1: ['pistol'],
       b2: ['gun'],
       b3: ['bomb']
@@ -22,6 +23,10 @@ module.exports = {
       radar: {
         path: 'parts/constructors/radar.js',
         canvas: 'radar'
+      },
+      soldier: {
+        path: 'parts/constructors/soldier.js',
+        canvas: 'vimp'
       },
       tank: {
         path: 'parts/constructors/tank.js',

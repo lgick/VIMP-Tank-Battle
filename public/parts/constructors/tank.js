@@ -1,11 +1,12 @@
 define(['createjs'], function (createjs) {
   var Container = createjs.Container
     , Shape = createjs.Shape
+    , Tank
     , p;
 
-  function Tank(params) {
+  Tank = function (params) {
     this.initialize(params);
-  }
+  };
 
   p = Tank.prototype = createjs.extend(Tank, Container);
   Tank = createjs.promote(Tank, 'Container');
