@@ -8,6 +8,21 @@ module.exports = {
   oneConnection: false,
   maxPlayers: 10,
   game: game,
+  invite: {
+    transport: {
+      host: 'smtp.yandex.ru',
+      port: 465,
+      secure: true,
+      auth: {
+        user: 'noreply.vimp',
+        pass: '4rfv5tgb'
+      }
+    },
+    sender: '{name} <noreply.vimp@yandex.ru>',
+    subject: '{name} - game server',
+    html: 'Приглашение посетить игровой сервер: ' +
+      '<a href="{protocol}//{domain}:{port}">{name}</a> !'
+  },
   ports: {
     config: 0,
     auth: 1,

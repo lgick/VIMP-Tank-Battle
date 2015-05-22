@@ -10,7 +10,6 @@
 // TODO: memoryUsage control
 // TODO: блокировка сообщений ws
 
-
 var express = require('express');
 var path = require('path');
 var argv = require('minimist')(process.argv.slice(2));
@@ -19,17 +18,11 @@ var argv = require('minimist')(process.argv.slice(2));
 // CONFIG
 var config = require('./lib/config');
 
+// auth config
 config.set('auth', require(path.join(__dirname, '/game/config/auth.js')));
-config.set('server', require(path.join(__dirname, '/game/config/server.js')));
-config.set('client', require(path.join(__dirname, '/game/config/client.js')));
-config.set('game', require(path.join(__dirname, '/game/config/game.js')));
 
-// время ожидания vote-модуля
-config.set('client:user:vote:params:time', config.get('game:voteTime'));
-// регулярное выражение для сообщений
-config.set(
-  'client:user:chat:params:messageExp', config.get('game:expressions:message')
-);
+// server config
+config.set('server', require(path.join(__dirname, '/game/config/server.js')));
 
 // если задан домен
 if (argv.domain) {
@@ -43,6 +36,19 @@ if (argv.port) {
   console.info('Port: ' + argv.port);
 }
 
+// если задано количество игроков
+if (argv.players) {
+  if (typeof argv.players === 'number') {
+    config.set('server:maxPlayers', argv.players);
+    console.info('Limit players in server: ' + argv.players);
+  } else {
+    console.info('Limit players in server: ' + config.get('server:maxPlayers'));
+  }
+}
+
+// game config
+config.set('game', require(path.join(__dirname, '/game/config/game.js')));
+
 // если задана карта
 if (argv.map) {
   // если карта существует
@@ -51,16 +57,6 @@ if (argv.map) {
     console.info('Current map: ' + argv.map);
   } else {
     console.info('Map ' + argv.map + ': not found');
-  }
-}
-
-// если задано количество игроков
-if (argv.players) {
-  if (typeof argv.players === 'number') {
-    config.set('server:maxPlayers', argv.players);
-    console.info('Limit players in server: ' + argv.players);
-  } else {
-    console.info('Limit players in server: ' + config.get('server:maxPlayers'));
   }
 }
 
@@ -83,6 +79,17 @@ if (argv.mtime) {
     console.info('Map time: ' + config.get('game:mapTime'));
   }
 }
+
+// client config
+config.set('client', require(path.join(__dirname, '/game/config/client.js')));
+
+// время ожидания vote-модуля
+config.set('client:user:vote:params:time', config.get('game:voteTime'));
+
+// регулярное выражение для сообщений
+config.set(
+  'client:user:chat:params:messageExp', config.get('game:expressions:message')
+);
 
 
 // EXPRESS

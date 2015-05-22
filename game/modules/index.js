@@ -26,7 +26,8 @@ function Game(data, ports) {
   // регулярные выражения
   this._expressions = {
     name: new RegExp(data.expressions.name),
-    message: new RegExp(data.expressions.message, 'g')
+    message: new RegExp(data.expressions.message, 'g'),
+    email: new RegExp(data.expressions.email, 'i')
   };
 
   this._constructors = data.constructors;
@@ -82,6 +83,8 @@ function Game(data, ports) {
 
   this._factory = data.utils.factory;
   this._factory.add(this._constructors);
+
+  this._email = data.utils.email;
 
   this.initMap();
 }
@@ -1065,28 +1068,44 @@ Game.prototype.changeMap = function (gameID, map) {
 Game.prototype.parseCommand = function (gameID, message) {
   var arr
     , cmd
-    , param;
+    , value;
 
   message = message.replace(/\s\s+/g, ' ');
   arr = message.split(' ');
-  cmd = arr[0];
-  param = arr[1];
+  cmd = arr.shift();
+  value = arr.join(' ');
 
   switch (cmd) {
+    // приглашение друга
+    case '/invite':
+      if (this._expressions.email.test(value)) {
+        this._email.invite(value, (function (err) {
+          if (err) {
+            this._chat.pushSystem('i:2', gameID);
+          } else {
+            this._chat.pushSystem('i:1', gameID);
+          }
+        }).bind(this));
+      } else {
+        this._chat.pushSystem('i:0', gameID);
+      }
+
+      break;
     // смена ника
+    // TODO сохранять в localstorage
     case '/name':
-      this.changeName(gameID, param);
+      this.changeName(gameID, value);
       break;
     // смена модели
     case '/model':
-      this.initGameModel(gameID, param);
+      this.initGameModel(gameID, value);
       break;
     // смена пуль
     case '/bullet':
-      this._users[gameID].gameModel.setBulletName(param);
+      this._users[gameID].gameModel.setBulletName(value);
       break;
     // новый раунд
-    case '/nextround':
+    case '/nr':
       this.stopRoundTimer();
       this.startRoundTimer();
       break;

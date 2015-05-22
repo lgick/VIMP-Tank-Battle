@@ -441,7 +441,7 @@ body {
   text-align: right;
 }
 
-#auth-controls {
+.auth-inform {
   background-color: #444;
   padding: 7px 13px;
   margin: 10px 0;
@@ -449,9 +449,18 @@ body {
   border: 1px solid #999;
 }
 
-#auth-controls h4 {
+.auth-inform h4 {
   margin: 0 0 4px 0;
   text-align: center;
+}
+
+.auth-inform p {
+  margin: 0;
+  padding: 1px 4px;
+}
+
+.auth-inform p.last {
+  margin-bottom: 10px;
 }
 
 /*informer*/

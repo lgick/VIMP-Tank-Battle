@@ -4,17 +4,18 @@ var models = require('../parts/models');
 var bullets = require('../parts/bullets');
 var banlist = require('../deps/banlist');
 var factory = require('../../lib/factory');
-var publisher = require('../../lib/publisher');
+var email = require('../../lib/email');
 
 module.exports = {
   utils: {
-    publisher: publisher,
-    factory: factory
+    factory: factory,
+    email: email
   },
 
   expressions: {
     name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
-    message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-'
+    message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-',
+    email: '.+@.+\\..+'
   },
 
   constructors: constructors,

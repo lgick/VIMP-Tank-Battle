@@ -38,57 +38,56 @@ div#auth
 
     input#auth-enter(type='button', autofocus, value='Enter')
 
-    div#auth-controls
+    div.auth-inform
       h4= 'Управление'
-      span
+      p
         b= 'W,A,S,D'
         = ' - перемещение танка'
-      br
-      span
+      p
         b= 'K'
         = ' - поворот пушки влево'
-      br
-      span
+      p
         b= 'L'
         = ' - поворот пушки вправо'
-      br
-      span
+      p
         b= 'U'
         = ' - пушка по центру'
-      br
-      span
+      p
         b= 'J'
         = ' - огонь'
-      br
-      span
+      p
         b= 'N'
         = ' -  следующее оружие'
-      br
-      span
+      p.last
         b= 'P'
         = ' - предыдущее оружие'
-      br
-      br
-      span
+      p
         b= 'C'
         = ' - чат/командная строка'
-      br
-      span
+      p
         b= 'M'
         = ' - управление игрой'
-      br
-      span
+      p.last
         b= 'TAB'
         = ' - статистика игры'
-      br
-      br
-      span
+      p
         b= 'escape'
         = ' - сброс'
-      br
-      span
+      p
         b= 'enter'
         = ' - ввод'
+
+    div.auth-inform
+      h4= 'Команды'
+      p
+        b= '/invite <email>'
+        = ' - сообщение с приглашением на почту'
+      p
+        b= '/name <name>'
+        = ' - смена ника'
+      p
+        b= '/mapname'
+        = ' - название карты'
 
     div#auth-link
       p
