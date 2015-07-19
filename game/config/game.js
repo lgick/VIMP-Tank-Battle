@@ -1,5 +1,5 @@
-var maps = require('../parts/maps/');
-var constructors = require('../parts/constructors/');
+var maps = require('../maps/');
+var constructors = require('../parts/constructors');
 var models = require('../parts/models');
 var bullets = require('../parts/bullets');
 var banlist = require('../deps/banlist');
@@ -7,10 +7,8 @@ var factory = require('../../lib/factory');
 var email = require('../../lib/email');
 
 module.exports = {
-  utils: {
-    factory: factory,
-    email: email
-  },
+  factory: factory,
+  email: email,
 
   expressions: {
     name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
@@ -18,16 +16,18 @@ module.exports = {
     email: '.+@.+\\..+'
   },
 
-  constructors: constructors,
-  models: models,
-  bullets: bullets,
+  parts: {
+    constructors: constructors,
+    models: models,
+    bullets: bullets
+  },
 
   banlist: banlist,
 
   maps: maps,                  // карты
   currentMap: 'arena',         // название карты по умолчанию
   mapsInVote: 4,               // количество карт в голосовании
-  mapSetID: 0,                 // дефолтный id конструктора создания карты
+  mapSetID: 'c1',              // дефолтный id конструкторов создания карт
 
   shotTime: 50,                // время обновления кадра
   roundTime: 60000,            // время раунда (60)

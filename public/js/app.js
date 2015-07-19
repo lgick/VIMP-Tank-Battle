@@ -44,9 +44,9 @@ require([
 
     , CTRL = {}               // контроллеры
     , scale = {}              // масштабы
-    , mapSets                 // наборы конструкторов для отрисовки карт
-    , gameSets                // наборы конструкторов (название: [наборы])
+    , gameSets                // наборы конструкторов (id: [наборы])
     , parts                   // конструкторы
+    , currentMapSetID         // текущий ID набора конструкторов для карт
     , coords = {x: 0, y: 0}   // координаты
     , informList = []         // массив системных сообщений
     , socketMethods = []      // методы для обработки сокет-данных
@@ -60,7 +60,6 @@ require([
   socketMethods[0] = function (data) {
     // загрузка дополнительных модулей игры
     function runParts(data, cb) {
-      mapSets = data.mapSets;
       gameSets = data.gameSets;
       parts = data.modules;
 
@@ -204,26 +203,46 @@ require([
     var spriteSheet = new SpriteSheet(data.spriteSheet);
 
     if (!spriteSheet.complete) {
-      spriteSheet.addEventListener('complete', create);
+      spriteSheet.addEventListener('complete', readyData);
     } else {
-      create();
+      readyData();
     }
 
-    // обновление карты
-    function updateMap(name, data) {
-      var canvas = parts[name].canvas;
+    // удаление данных карт
+    function removeMap(setID) {
+      var nameArr = gameSets[setID]
+        , i
+        , len
+        , name;
 
-      CTRL[canvas].remove(name);
-      CTRL[canvas].parse(name, data);
+      // если есть конструкторы для удаления
+      if (nameArr) {
+        for (i = 0, len = nameArr.length; i < len; i += 1) {
+          name = nameArr[i];
+          CTRL[parts[name].canvas].remove(name);
+        }
+      }
     }
 
-    // создание данных карты
-    function create() {
+    // создание карт
+    function createMap(setID, data) {
+      var nameArr = gameSets[setID]
+        , i
+        , len
+        , name;
+
+      for (i = 0, len = nameArr.length; i < len; i += 1) {
+        name = nameArr[i];
+        CTRL[parts[name].canvas].parse(name, data);
+      }
+
+      currentMapSetID = setID;
+    }
+
+    // готовность данныx для создания карт
+    function readyData() {
       var layers = data.layers
-        , nameArr = mapSets[data.setID]
         , mapData = {}
-        , i = 0
-        , len = nameArr.length
         , p;
 
       for (p in layers) {
@@ -238,9 +257,8 @@ require([
         }
       }
 
-      for (; i < len; i += 1) {
-        updateMap(nameArr[i], mapData);
-      }
+      removeMap(currentMapSetID);
+      createMap(data.setID, mapData);
 
       spriteSheet.removeAllEventListeners();
       updateGameControllers();

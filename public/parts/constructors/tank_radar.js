@@ -14,7 +14,7 @@ define(['createjs'], function (createjs) {
   p.initialize = function (params) {
     this.Shape_constructor();
 
-    this.layer = 0;
+    this.layer = 3;
 
     // params с сервера имеют вид:
     // [x, y, rotation, gunRotation, type]

@@ -2,17 +2,17 @@ var Panel = require('./panel');
 var Stat = require('./stat');
 var Chat = require('./chat');
 var Vote = require('./vote');
-var Bullet = require('./bullet');
+var Game = require('./game');
 
 // Singleton
-var game;
+var vimp;
 
-function Game(data, ports) {
-  if (game) {
-    return game;
+function VIMP(data, ports) {
+  if (vimp) {
+    return vimp;
   }
 
-  game = this;
+  vimp = this;
 
   this._maps = data.maps;                   // карты
   this._mapList = Object.keys(this._maps);  // список карт массивом
@@ -21,7 +21,6 @@ function Game(data, ports) {
   this._defaultBullet = data.defaultBullet; // дефолтные значения пуль моделей
   this._currentMap = data.currentMap;       // название текущей карты
   this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
-  this._keys = data.keys;                   // клавиши
 
   // регулярные выражения
   this._expressions = {
@@ -29,10 +28,6 @@ function Game(data, ports) {
     message: new RegExp(data.expressions.message, 'g'),
     email: new RegExp(data.expressions.email, 'i')
   };
-
-  this._constructors = data.constructors;
-  this._models = data.models;
-  this._bullets = data.bullets;
 
   this._mapTime = data.mapTime;             // продолжительность карты
   this._shotTime = data.shotTime;           // время обновления кадра игры
@@ -79,25 +74,22 @@ function Game(data, ports) {
   this._stat = new Stat(data.stat, this._teams);
   this._chat = new Chat();
   this._vote = new Vote();
-  this._bullet = new Bullet(this._bullets);
+  this._game = new Game(data.factory, data.parts, data.keys, data.shotTime);
 
-  this._factory = data.utils.factory;
-  this._factory.add(this._constructors);
-
-  this._email = data.utils.email;
+  this._email = data.email;
 
   this.initMap();
 }
 
 // стартует игру
-Game.prototype.startGame = function () {
+VIMP.prototype.startGame = function () {
   this.startMapTimer();
   this.startShotTimer();
   this.startRoundTimer();
 };
 
 // останавливает игру
-Game.prototype.stopGame = function () {
+VIMP.prototype.stopGame = function () {
   console.log('stop all timers');
   clearInterval(this._stepTimer);
   clearInterval(this._shotTimer);
@@ -106,7 +98,7 @@ Game.prototype.stopGame = function () {
 };
 
 // стартует карту
-Game.prototype.startMapTimer = function () {
+VIMP.prototype.startMapTimer = function () {
   this._chat.pushSystem('t:0');
 
   this._mapTimer = setTimeout((function () {
@@ -115,13 +107,13 @@ Game.prototype.startMapTimer = function () {
 };
 
 // останавливает карту
-Game.prototype.stopMapTimer = function () {
+VIMP.prototype.stopMapTimer = function () {
   console.log('map timer stop');
   clearTimeout(this._mapTimer);
 };
 
 // стартует раунд
-Game.prototype.startRoundTimer = function () {
+VIMP.prototype.startRoundTimer = function () {
   this._time = this._roundTime / 1000 - 3;
 
   this._stepTimer = setInterval((function () {
@@ -142,26 +134,26 @@ Game.prototype.startRoundTimer = function () {
 };
 
 // останавливает раунд
-Game.prototype.stopRoundTimer = function () {
+VIMP.prototype.stopRoundTimer = function () {
   console.log('round timer stop');
   clearTimeout(this._roundTimer);
 };
 
 // стартует расчет кадров игры
-Game.prototype.startShotTimer = function () {
+VIMP.prototype.startShotTimer = function () {
   this._shotTimer = setInterval((function () {
     this.createShot();
   }).bind(this), this._shotTime);
 };
 
 // останавливает расчет кадров игры
-Game.prototype.stopShotTimer = function () {
+VIMP.prototype.stopShotTimer = function () {
   console.log('shot timer stop');
   clearInterval(this._shotTimer);
 };
 
 // инициализирует карту
-Game.prototype.initMap = function () {
+VIMP.prototype.initMap = function () {
   var p
     , user
     , teamData;
@@ -169,15 +161,18 @@ Game.prototype.initMap = function () {
   this._currentMapData = this._maps[this._currentMap];
 
   // если нет индивидуального конструктора для создания карты
-  if (!this._currentMapData.partID) {
+  if (!this._currentMapData.setID) {
     this._currentMapData.setID = this._mapSetID;
   }
 
   this.stopGame();
   this._allUsersInTeam = {};
   this._stat.reset();
+  this._game.clear();
 
-  // корректирование статуса игроков под новые респауны и смена карты
+  this._game.initMap(this._currentMapData);
+
+  // корректирование статуса игроков под новые респауны
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       user = this._users[p];
@@ -198,7 +193,7 @@ Game.prototype.initMap = function () {
 };
 
 // отправляет карту
-Game.prototype.sendMap = function (gameID) {
+VIMP.prototype.sendMap = function (gameID) {
   var p
     , user;
 
@@ -222,43 +217,25 @@ Game.prototype.sendMap = function (gameID) {
 };
 
 // сообщает о загрузке карты
-Game.prototype.mapReady = function (err, gameID) {
-  var user = this._users[gameID]
-    , p
-    , anyUser
-    , model
-    , gameData = {};
+VIMP.prototype.mapReady = function (err, gameID) {
+  var user = this._users[gameID];
 
   if (!err) {
-    user.socket.send(this._portInform);
-    user.mapReady = true;
-
     // если есть необходимость в полной загрузке game-данных
     if (user.fullGameData === true) {
       user.fullGameData = false;
-
-      for (p in this._users) {
-        if (this._users.hasOwnProperty(p)) {
-          anyUser = this._users[p];
-
-          // если игрок не наблюдатель
-          if (anyUser.lookOnly !== true) {
-            model = anyUser.model;
-            gameData[model] = gameData[model] || {};
-            gameData[model][p] = anyUser.gameModel.getFullData(
-              [anyUser.teamID, anyUser.name]
-            );
-          }
-        }
-      }
-
-      user.socket.send(this._portShot, [gameData, 0, 0, 0, 0, 0]);
+      user.socket.send(this._portShot, [
+        this._game.getFullUsersData(), 0, 0, 0, 0, 0
+      ]);
     }
+
+    user.socket.send(this._portInform);
+    user.mapReady = true;
   }
 };
 
 // отправляет первый shot (в начале каждого раунда)
-Game.prototype.sendFirstShot = function (gameID, gameData) {
+VIMP.prototype.sendFirstShot = function (gameID, gameData) {
   var user = this._users[gameID]
     , nextTeam = user.nextTeam
     , teamID = user.teamID
@@ -280,10 +257,12 @@ Game.prototype.sendFirstShot = function (gameID, gameData) {
 
     teamID = user.teamID = this._teams[nextTeam];
     user.team = nextTeam;
-    user.fullUserData = true;
 
     if (teamID === this._spectatorID) {
-      user.removeGameModel = true;
+      this._removeList.push({
+        gameID: gameID,
+        model: user.model
+      });
     }
   }
 
@@ -303,33 +282,25 @@ Game.prototype.sendFirstShot = function (gameID, gameData) {
 };
 
 // создает кадр игры
-Game.prototype.createShot = function () {
-  var user
-    , game = {}
+VIMP.prototype.createShot = function () {
+  var game = 0
     , stat = 0
     , chat = 0
     , vote = 0
-    , p
+    , user
     , model
-    , bulletName
-    , bullet
-    , oldBulletArr
-    , bulletID
-    , gameModel
-    , i
-    , len
+    , p
   ;
 
-  oldBulletArr = this._bullet.nextTime();
+  // обновление данных и физики
+  this._game.updateData();
 
-  for (i = 0, len = oldBulletArr.length; i < len; i += 1) {
-    bulletName = oldBulletArr[i][0];
-    bulletID = oldBulletArr[i][1];
+  game = this._game.getGameData();
+  stat = this._stat.getLast();
+  chat = this._chat.shift();
+  vote = this._vote.shift();
 
-    game[bulletName] = game[bulletName] || {};
-    game[bulletName][bulletID] = null;
-  }
-
+  // игроки для удаления с полотна
   while (this._removeList.length) {
     user = this._removeList.pop();
     model = user.model;
@@ -337,57 +308,6 @@ Game.prototype.createShot = function () {
     game[model] = game[model] || {};
     game[model][user.gameID] = null;
   }
-
-  for (p in this._users) {
-    if (this._users.hasOwnProperty(p)) {
-      user = this._users[p];
-      model = user.model;
-
-      // иначе если пользователь готов
-      if (user.mapReady) {
-
-        // если удалить модель с полотна
-        if (user.removeGameModel === true) {
-          user.removeGameModel = false;
-          game[model] = game[model] || {};
-          game[model][p] = null;
-
-        // если игрок не наблюдатель
-        } else if (user.lookOnly !== true) {
-          gameModel = user.gameModel;
-
-          gameModel.updateData();
-
-          game[model] = game[model] || {};
-
-          if (user.fullUserData === true) {
-            user.fullUserData = false;
-            game[model][p] = gameModel.getFullData(
-              [user.teamID, user.name]
-            );
-          } else {
-            game[model][p] = gameModel.getData();
-          }
-
-          bullet = gameModel.getBulletData();
-
-          if (bullet) {
-            bulletName = gameModel.getBulletName();
-            bulletID = this._bullet.addBullet(bulletName);
-            game[bulletName] = game[bulletName] || {};
-            game[bulletName][bulletID] = bullet;
-          }
-
-        // иначе режим наблюдателя
-        } else {
-        }
-      }
-    }
-  }
-
-  stat = this._stat.getLast();
-  chat = this._chat.shift();
-  vote = this._vote.shift();
 
   function getUserData(gameID) {
     var user = this._users[gameID]
@@ -399,23 +319,28 @@ Game.prototype.createShot = function () {
       , voteUser
     ;
 
-    // если статус наблюдателя и есть наблюдаемые
-    if (user.lookOnly === true && this._playersList.length) {
-      lookUser = this._users[user.lookID];
+    // TODO проверить работу lookUser и Panel
+    // если статус наблюдателя
+    if (user.lookOnly === true) {
+      panel = 0;
 
-      // если наблюдаемый игрок не существует (завершил игру)
-      if (!lookUser) {
-        this.changeLookID(gameID);
+      // если есть наблюдаемые
+      if (this._playersList.length) {
         lookUser = this._users[user.lookID];
+
+        // если наблюдаемый игрок не существует (завершил игру)
+        if (!lookUser) {
+          this.changeLookID(gameID);
+          lookUser = this._users[user.lookID];
+        }
+
+        coords = this._game.getUserCoords(lookUser.gameID);
+      } else {
+        coords = [0, 0];
       }
 
-      coords = lookUser.gameModel.getCoords();
     } else {
-      coords = user.gameModel.getCoords();
-    }
-
-    if (user.lookOnly === false) {
-      // panel
+      coords = this._game.getUserCoords(gameID);
       panel = this._panel.getPanel(gameID);
 
       if (panel) {
@@ -423,8 +348,6 @@ Game.prototype.createShot = function () {
       } else {
         panel = 0;
       }
-    } else {
-      panel = 0;
     }
 
     // если общих сообщений нет
@@ -449,9 +372,9 @@ Game.prototype.createShot = function () {
     }
   }
 
+  // отправка данных
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
-      // отправка данных
       this._users[p].socket.send(this._portShot, getUserData.call(this, p));
     }
   }
@@ -459,43 +382,40 @@ Game.prototype.createShot = function () {
 
 // стартует раунд
 // перемещает игроков на респауны и отправляет первый shot
-Game.prototype.startRound = function () {
+VIMP.prototype.startRound = function () {
   var respawns = this._currentMapData.respawns
-    , oldBulletArr = this._bullet.reset()
-    , bulletName
-    , bulletID
-    , gameData = {}
-    , i
-    , len
     , p
     , user
     , data
-    , respID = {};
+    , respID = {}
+    , gameID
+    , oldBulletData;
 
   // очищение списка играющих
   this._playersList = [];
 
-  // очищение пуль предыдущего раунда
-  for (i = 0, len = oldBulletArr.length; i < len; i += 1) {
-    bulletName = oldBulletArr[i][0];
-    bulletID = oldBulletArr[i][1];
-
-    gameData[bulletName] = gameData[bulletName] || {};
-    gameData[bulletName][bulletID] = null;
-  }
+  // удаление всех игроков
+  this._game.removeUsers();
+  // сбрасывание карты в первоначальный вид
+  this._game.resetMap();
+  oldBulletData = this._game.resetBulletData();
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       user = this._users[p];
+      gameID = user.gameID;
 
-      this.sendFirstShot(user.gameID, gameData);
+      this.sendFirstShot(gameID, oldBulletData);
 
       respID[user.team] = respID[user.team] || 0;
       data = respawns[user.team];
 
+      // если есть данные для создания модели
       if (data) {
         data = data[respID[user.team]];
-        user.gameModel.setData(data);
+        this._game.createUser(
+          gameID, user.model, user.name, user.teamID, data
+        );
         respID[user.team] += 1;
       }
     }
@@ -503,11 +423,11 @@ Game.prototype.startRound = function () {
 };
 
 // заканчивает раунд
-Game.prototype.stopRound = function () {
+VIMP.prototype.stopRound = function () {
 };
 
 // проверяет имя
-Game.prototype.checkName = function (name, number) {
+VIMP.prototype.checkName = function (name, number) {
   var p;
 
   number = number || 1;
@@ -530,13 +450,13 @@ Game.prototype.checkName = function (name, number) {
 };
 
 // меняет ник игрока
-Game.prototype.changeName = function (gameID, name) {
+VIMP.prototype.changeName = function (gameID, name) {
   var user = this._users[gameID];
 
   if (this._expressions.name.test(name)) {
     name = this.checkName(name);
     user.name = name;
-    user.fullUserData = true;
+    this._game.changeName(gameID, name);
     this._stat.updateUser(gameID, user.teamID, {name: name});
     this._chat.pushSystem('n:1', gameID);
   } else {
@@ -545,7 +465,7 @@ Game.prototype.changeName = function (gameID, name) {
 };
 
 // меняет команду игрока
-Game.prototype.changeTeam = function (gameID, team) {
+VIMP.prototype.changeTeam = function (gameID, team) {
   var user = this._users[gameID]
     , currentTeam = user.team
     , nextTeam = user.nextTeam
@@ -605,7 +525,7 @@ Game.prototype.changeTeam = function (gameID, team) {
 };
 
 // проверяет команду на свободные респауны и возвращает сообщение
-Game.prototype.checkTeam = function (team) {
+VIMP.prototype.checkTeam = function (team) {
   var respawns = this._currentMapData.respawns
     , emptyTeam
     , message;
@@ -657,7 +577,7 @@ Game.prototype.checkTeam = function (team) {
 };
 
 // удаляет из списка наблюдаемых игроков
-Game.prototype.removeFromLookIDList = function (gameID) {
+VIMP.prototype.removeFromLookIDList = function (gameID) {
   var i = 0
     , len = this._playersList.length;
 
@@ -669,7 +589,7 @@ Game.prototype.removeFromLookIDList = function (gameID) {
 };
 
 // меняет или назначает ID наблюдаемого игрока
-Game.prototype.changeLookID = function (gameID, back) {
+VIMP.prototype.changeLookID = function (gameID, back) {
   var currentID = this._users[gameID].lookID
     , key = this._playersList.indexOf(currentID)
     , lookID;
@@ -699,30 +619,8 @@ Game.prototype.changeLookID = function (gameID, back) {
   this._users[gameID].lookID = lookID;
 };
 
-// инициализирует игровую модель игрока
-Game.prototype.initGameModel = function (gameID, model) {
-  var user = this._users[gameID]
-    , modelData = this._models[model]
-    , gameData;
-
-  if (user.gameModel) {
-    gameData = user.gameModel.getCopyData();
-  }
-
-  if (modelData) {
-    user.gameModel = this._factory(modelData.constructor, {
-      model: modelData,
-      keys: this._keys,
-      coords: gameData
-    });
-
-    user.model = model;
-    user.fullUserData = true;
-  }
-};
-
 // создает нового игрока
-Game.prototype.createUser = function (params, socket, cb) {
+VIMP.prototype.createUser = function (params, socket, cb) {
   var name = params.name
     , team = params.team
     , model = params.model
@@ -765,12 +663,8 @@ Game.prototype.createUser = function (params, socket, cb) {
   // ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
   // сокет
   user.socket = socket;
-  // данные модели игрока
-  user.gameModel = null;
   // флаг полной загрузки game-данных для пользователя
   user.fullGameData = true;
-  // флаг отправки полных данных пользователя
-  user.fullUserData = true;
   // флаг загрузки текущей карты
   user.mapReady = false;
   // имя пользователя
@@ -793,8 +687,6 @@ Game.prototype.createUser = function (params, socket, cb) {
   user.keySet = 0;
   // набор нажатых клавиш
   user.keys = null;
-  // флаг удаление игрока с полотна
-  user.removeGameModel = false;
 
   this._chat.addUser(gameID);
   this._vote.addUser(gameID);
@@ -802,7 +694,6 @@ Game.prototype.createUser = function (params, socket, cb) {
   this._panel.addUser(gameID);
 
   this.changeLookID(gameID);
-  this.initGameModel(gameID, model);
 
   data[1] = [0, 0];
   data[2] = [this._time];
@@ -818,13 +709,11 @@ Game.prototype.createUser = function (params, socket, cb) {
 };
 
 // удаляет игрока
-Game.prototype.removeUser = function (gameID, cb) {
+VIMP.prototype.removeUser = function (gameID, cb) {
   var bool = false
     , user = this._users[gameID]
     , team
     , nextTeam;
-
-  // TODO gameID брать из user???
 
   // если gameID === undefined,
   // значит пользователь вышел, не успев войти в игру
@@ -843,9 +732,10 @@ Game.prototype.removeUser = function (gameID, cb) {
     } else {
       this.removeFromLookIDList(gameID);
       this._panel.removeUser(gameID);
+      this._game.removeUser(gameID);
 
       this._removeList.push({
-        gameID: user.gameID,
+        gameID: gameID,
         model: user.model
       });
 
@@ -864,7 +754,7 @@ Game.prototype.removeUser = function (gameID, cb) {
 };
 
 // обновляет команды
-Game.prototype.updateKeys = function (gameID, keys) {
+VIMP.prototype.updateKeys = function (gameID, keys) {
   var user = this._users[gameID];
 
   if (user.lookOnly === true) {
@@ -877,12 +767,12 @@ Game.prototype.updateKeys = function (gameID, keys) {
       this.changeLookID(gameID, true);
     }
   } else {
-    user.gameModel.updateKeys(keys);
+    this._game.updateKeys(gameID, keys);
   }
 };
 
 // добавляет сообщение
-Game.prototype.pushMessage = function (gameID, message) {
+VIMP.prototype.pushMessage = function (gameID, message) {
   var user = this._users[gameID];
 
   message = message.replace(this._expressions.message, '');
@@ -897,7 +787,7 @@ Game.prototype.pushMessage = function (gameID, message) {
 };
 
 // обрабатывает vote-данные пользователя
-Game.prototype.parseVote = function (gameID, data) {
+VIMP.prototype.parseVote = function (gameID, data) {
   var type
     , value
     , p
@@ -969,7 +859,7 @@ Game.prototype.parseVote = function (gameID, data) {
 };
 
 // отправляет голосование за новую карту
-Game.prototype.changeMap = function (gameID, map) {
+VIMP.prototype.changeMap = function (gameID, map) {
   var p
     , arr
     , id
@@ -1065,7 +955,7 @@ Game.prototype.changeMap = function (gameID, map) {
 };
 
 // обрабатывает команду от пользователя
-Game.prototype.parseCommand = function (gameID, message) {
+VIMP.prototype.parseCommand = function (gameID, message) {
   var arr
     , cmd
     , value;
@@ -1098,11 +988,11 @@ Game.prototype.parseCommand = function (gameID, message) {
       break;
     // смена модели
     case '/model':
-      this.initGameModel(gameID, value);
+      this._game.changeModel(gameID, value);
       break;
     // смена пуль
     case '/bullet':
-      this._users[gameID].gameModel.setBulletName(value);
+      this._game.setUserBullet(gameID, value);
       break;
     // новый раунд
     case '/nr':
@@ -1122,4 +1012,4 @@ Game.prototype.parseCommand = function (gameID, message) {
   }
 };
 
-module.exports = Game;
+module.exports = VIMP;

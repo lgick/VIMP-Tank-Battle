@@ -23,6 +23,10 @@ define(['createjs'], function (createjs) {
     // map - карта
     // step - размер шага
 
+    // все модели на радаре увеличены в 20 раз
+    this.scaleX = 1;
+    this.scaleY = 1;
+
     this.layer = data.layer || 1;
     this._tiles = data.tiles;
     this._map = data.map;

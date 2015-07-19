@@ -1,5 +1,6 @@
 // tank
 exports.m1 = {
+  mass: 4,
   acceleration: 0,
   maxForward: 20,
   maxBack: 10,
@@ -11,12 +12,13 @@ exports.m1 = {
   bullets: {
     b1: 1000,
     b2: 3000,
-    b3: 10
+    b3: 30
   }
 };
 
 // tank2
 exports.m2 = {
+  mass: 5,
   acceleration: 0,
   maxForward: 40,
   maxBack: 10,
@@ -24,7 +26,7 @@ exports.m2 = {
   maxGunAngle: 90,
   gunAngleStep: 30,
   constructor: 'tank',
-  currentBullet: 'b1',
+  currentBullet: 'b2',
   bullets: {
     b1: 1000,
     b2: 3000
@@ -33,9 +35,10 @@ exports.m2 = {
 
 // soldier
 exports.m3 = {
+  mass: 1,
   maxForward: 10,
   constructor: 'soldier',
-  currentBullet: 'b1',
+  currentBullet: 'b3',
   bullets: {
     b1: 1000,
     b2: 3000,

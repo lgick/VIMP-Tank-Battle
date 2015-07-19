@@ -4,13 +4,12 @@ module.exports = {
 
   // ***** parts ***** //
   parts: {
-    mapSets: {
-      0: ['map']
-    },
     gameSets: {
-      m1: ['tank', 'radar'],
-      m2: ['tank2', 'radar'],
-      m3: ['soldier', 'radar'],
+      c1: ['map', 'map_radar'],
+      c2: ['map'],
+      m1: ['tank', 'tank_radar'],
+      m2: ['tank2', 'tank_radar'],
+      m3: ['soldier', 'tank_radar'],
       b1: ['pistol'],
       b2: ['gun'],
       b3: ['bomb']
@@ -20,8 +19,12 @@ module.exports = {
         path: 'parts/constructors/map.js',
         canvas: 'vimp'
       },
-      radar: {
-        path: 'parts/constructors/radar.js',
+      map_radar: {
+        path: 'parts/constructors/map_radar.js',
+        canvas: 'radar'
+      },
+      tank_radar: {
+        path: 'parts/constructors/tank_radar.js',
         canvas: 'radar'
       },
       soldier: {
