@@ -225,15 +225,33 @@ require([
     }
 
     // создание карт
-    function createMap(setID, data) {
+    function createMap(setID, mapData) {
       var nameArr = gameSets[setID]
+        , dynamicArr = data.physicsDynamic
+        , dynamicData = {}
+        , item
+        , name
+        , canvas
         , i
         , len
-        , name;
+        , i2
+        , len2;
 
-      for (i = 0, len = nameArr.length; i < len; i += 1) {
-        name = nameArr[i];
-        CTRL[parts[name].canvas].parse(name, data);
+      for (i = 0, len = dynamicArr.length; i < len; i += 1) {
+        item = 'd' + i;
+        dynamicData[item] = dynamicArr[i];
+        dynamicData[item].type = 'dynamic';
+      }
+
+      for (i2 = 0, len2 = nameArr.length; i2 < len2; i2 += 1) {
+        name = nameArr[i2];
+        canvas = parts[name].canvas;
+
+        // статические данные карты
+        CTRL[canvas].parse(name, mapData);
+
+        // динамические данные карты
+        CTRL[canvas].parse(name, dynamicData);
       }
 
       currentMapSetID = setID;
@@ -247,12 +265,13 @@ require([
 
       for (p in layers) {
         if (layers.hasOwnProperty(p)) {
-          mapData[p] = {
-            layer: p,
-            tiles: layers[p],
+          mapData['s' + p] = {
+            type: 'static',
             spriteSheet: spriteSheet,
             map: data.map,
-            step: data.step
+            step: data.step,
+            layer: p,
+            tiles: layers[p]
           };
         }
       }

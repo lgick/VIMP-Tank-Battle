@@ -25,7 +25,7 @@ exports.map = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
-exports.setID = 'c1';
+exports.setID = 'c2';
 
 exports.spriteSheet = {
   images: ['parts/img/tiles.png'],
@@ -44,6 +44,90 @@ exports.layers = {
 };
 
 exports.physicsStatic = [1];
+
+exports.physicsDynamic = [
+  {
+    mass: 150,
+    layer: 2,
+    position: [90, 200],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/stalin.jpg'
+  },
+  {
+    mass: 3,
+    layer: 2,
+    position: [122, 200],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/bob.jpg'
+  },
+  {
+    mass: 3,
+    layer: 2,
+    position: [154, 200],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/bob.jpg'
+  },
+  {
+    mass: 1,
+    layer: 2,
+    position: [186, 200],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/b1.png'
+  },
+  {
+    mass: 1,
+    layer: 2,
+    position: [200, 200],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/b1.png'
+  },
+  {
+    mass: 1,
+    layer: 2,
+    position: [122, 232],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/b1.png'
+  },
+  {
+    mass: 1,
+    layer: 2,
+    position: [122, 264],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/b1.png'
+  },
+  {
+    mass: 1,
+    layer: 2,
+    position: [122, 296],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/b1.png'
+  },
+  {
+    mass: 1,
+    layer: 2,
+    position: [154, 328],
+    angle: 0,
+    width: 32,
+    height: 32,
+    src: 'parts/img/b1.png'
+  }
+];
 
 exports.step = 32;
 

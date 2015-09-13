@@ -24,7 +24,7 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
   // - всех экземляров конструктора
   // - все данные
   GameModel.prototype.read = function (constructor, id) {
-   // если нужны данные по конструктору
+    // если нужны данные по конструктору
     if (constructor) {
       // .. и они существуют
       if (this._data[constructor]) {

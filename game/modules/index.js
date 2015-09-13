@@ -102,7 +102,7 @@ VIMP.prototype.startMapTimer = function () {
   this._chat.pushSystem('t:0');
 
   this._mapTimer = setTimeout((function () {
-    this.sendMap();
+    this.changeMap();
   }).bind(this), this._mapTime);
 };
 
@@ -170,7 +170,7 @@ VIMP.prototype.initMap = function () {
   this._stat.reset();
   this._game.clear();
 
-  this._game.initMap(this._currentMapData);
+  this._game.createMap(this._currentMapData);
 
   // корректирование статуса игроков под новые респауны
   for (p in this._users) {
@@ -300,6 +300,8 @@ VIMP.prototype.createShot = function () {
   chat = this._chat.shift();
   vote = this._vote.shift();
 
+  game[this._currentMapData.setID] = this._game.getDynamicMapData();
+
   // игроки для удаления с полотна
   while (this._removeList.length) {
     user = this._removeList.pop();
@@ -312,12 +314,20 @@ VIMP.prototype.createShot = function () {
   function getUserData(gameID) {
     var user = this._users[gameID]
       , keySet = user.keySet
+      , gameUser
       , lookUser
       , coords
       , panel
       , chatUser
       , voteUser
     ;
+
+    // если карта готова
+    if (user.mapReady === true) {
+      gameUser = game;
+    } else {
+      gameUser = 0;
+    }
 
     // TODO проверить работу lookUser и Panel
     // если статус наблюдателя
@@ -366,9 +376,9 @@ VIMP.prototype.createShot = function () {
 
     if (typeof keySet === 'number') {
       user.keySet = null;
-      return [game, coords, panel, stat, chatUser, voteUser, keySet];
+      return [gameUser, coords, panel, stat, chatUser, voteUser, keySet];
     } else {
-      return [game, coords, panel, stat, chatUser, voteUser];
+      return [gameUser, coords, panel, stat, chatUser, voteUser];
     }
   }
 
@@ -389,23 +399,26 @@ VIMP.prototype.startRound = function () {
     , data
     , respID = {}
     , gameID
-    , oldBulletData;
+    , gameData;
 
   // очищение списка играющих
   this._playersList = [];
 
   // удаление всех игроков
   this._game.removeUsers();
-  // сбрасывание карты в первоначальный вид
-  this._game.resetMap();
-  oldBulletData = this._game.resetBulletData();
+
+  // сбрасывание динамических элементов карты в первоначальный вид
+  this._game.resetDynamicMapData();
+
+  gameData = this._game.resetBulletData();
+  gameData[this._currentMapData.setID] = this._game.getDynamicMapData();
 
   for (p in this._users) {
     if (this._users.hasOwnProperty(p)) {
       user = this._users[p];
       gameID = user.gameID;
 
-      this.sendFirstShot(gameID, oldBulletData);
+      this.sendFirstShot(gameID, gameData);
 
       respID[user.team] = respID[user.team] || 0;
       data = respawns[user.team];

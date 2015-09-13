@@ -6,14 +6,8 @@ define(['createjs'], function (createjs) {
     , p;
 
   Map = function (data) {
-    this.initialize(data);
-  };
+    var constructor = this.constructor;
 
-  p = Map.prototype = createjs.extend(Map, Container);
-  Map = createjs.promote(Map, 'Container');
-
-  // инициализация
-  p.initialize = function (data) {
     this.Container_constructor();
 
     // data состоит из:
@@ -23,19 +17,20 @@ define(['createjs'], function (createjs) {
     // map - карта
     // step - размер шага
 
-    // все модели на радаре увеличены в 20 раз
-    this.scaleX = 1;
-    this.scaleY = 1;
+    this._map = constructor.map;
+    this._spriteSheet = constructor.spriteSheet;
+    this._step = constructor.step;
 
     this.layer = data.layer || 1;
     this._tiles = data.tiles;
-    this._map = data.map;
-    this._step = data.step;
 
-    this.create(data.spriteSheet);
+    this.create();
   };
 
-  p.create = function (spriteSheet) {
+  p = Map.prototype = createjs.extend(Map, Container);
+  Map = createjs.promote(Map, 'Container');
+
+  p.create = function () {
     var x
       , y
       , tile
@@ -48,7 +43,7 @@ define(['createjs'], function (createjs) {
         tile = this._map[y][x];
 
         if (this._tiles.indexOf(tile) !== -1) {
-          sprite = new Sprite(spriteSheet);
+          sprite = new Sprite(this._spriteSheet);
           sprite.x = x * this._step;
           sprite.y = y * this._step;
           sprite.gotoAndStop(tile);

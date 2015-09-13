@@ -338,18 +338,32 @@ menu = [
 ['ban', ['bob', 'ЧИТЕР', '2048']]
 ```
 
-# Иерархия модулей
 
-Нужно для корректного отображения модулей.
+# Модуль GAME
 
-1. informer
-2. auth
-3. stat
-4. vote
-5. panel
-6. chat
-7. radar
-8. vimp
+### Слои отображения игры на полотне (default layer)
+
+|           Type          | Value |
+|:-----------------------:|:-----:|
+| map static data (under) |   1   |
+|     map dynamic data    |   2   |
+|        game model       |   2   |
+|       bullet model      |   2   |
+|  map static data (over) |   3   |
+
+
+# Иерархия элементов (z-index)
+
+|  Элемент | z-index |
+|:--------:|:-------:|
+|   vimp   |    1    |
+|   radar  |    2    |
+|   chat   |    3    |
+|   panel  |    4    |
+|   vote   |    5    |
+|   stat   |    6    |
+|   auth   |    7    |
+| informer |    8    |
 
 
 # GAME CONFIG

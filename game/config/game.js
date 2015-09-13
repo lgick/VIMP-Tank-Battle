@@ -17,7 +17,8 @@ module.exports = {
   },
 
   parts: {
-    constructors: constructors,
+    mapConstructor: 'map',       // название конструктора карт
+    constructors: constructors,  // конструкторы частей игры
     models: models,
     bullets: bullets
   },

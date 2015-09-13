@@ -24,7 +24,10 @@ Tank.prototype.initBody = function (modelData) {
   });
 
   this._body.gunRotation = modelData.gunRotation || 0;
-  this._body.addShape(new p2.Rectangle(48, 36));
+  this._body.addShape(new p2.Box({
+    width: modelData.width,
+    height: modelData.height
+  }));
 };
 
 // обновляет данные
@@ -109,7 +112,10 @@ Tank.prototype.getData = function () {
   var body = this._body;
 
   return [].concat(
-    body.position[0], body.position[1], body.angle, body.gunRotation
+    ~~body.position[0].toFixed(2),
+    ~~body.position[1].toFixed(2),
+    ~~body.angle.toFixed(2),
+    body.gunRotation
   );
 };
 

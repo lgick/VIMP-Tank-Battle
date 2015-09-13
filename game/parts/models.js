@@ -1,6 +1,8 @@
 // tank
 exports.m1 = {
   mass: 4,
+  width: 48,
+  height: 36,
   acceleration: 0,
   maxForward: 20,
   maxBack: 10,
@@ -19,6 +21,8 @@ exports.m1 = {
 // tank2
 exports.m2 = {
   mass: 5,
+  width: 48,
+  height: 36,
   acceleration: 0,
   maxForward: 40,
   maxBack: 10,
@@ -36,6 +40,8 @@ exports.m2 = {
 // soldier
 exports.m3 = {
   mass: 1,
+  width: 4,
+  height: 4,
   maxForward: 10,
   constructor: 'soldier',
   currentBullet: 'b3',
