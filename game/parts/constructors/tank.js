@@ -82,6 +82,9 @@ Tank.prototype.updateData = function (keys) {
   }
 
   if (keys & this._keys.fire) {
+    // TODO this._bulletData должна иметь вид данных годных
+    // для создания пули и для отправки на клиент
+
     //radBullet = +((this._body.gunRotation + this._body.angle) * (Math.PI / 180)).toFixed(2);
 
     //this._bulletData = {

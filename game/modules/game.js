@@ -26,11 +26,16 @@ function Game(Factory, parts, keys, shotTime) {
     gravity:[0, 0]
   });
 
+  // данные карты
   this._map = null;
-  this._users = {};
 
-  // созданные пули в момент времени (время: массив пуль)
+  // данные моделей
+  this._modelData = {};
+
+  // данные пуль
   this._bulletData = {};
+  // созданные пули в момент времени (время: массив из id пуль)
+  this._bulletsAtTime = {};
   // id для пуль
   this._currentBulletID = 0;
   // время жизни пули (текущее, минимальное, максимальное)
@@ -49,9 +54,9 @@ function Game(Factory, parts, keys, shotTime) {
 
   time = this._maxBulletTime;
 
-  // создание пустых данных
+  // создание пустых данных пуль
   while (time >= this._minBulletTime) {
-    this._bulletData[time] = [];
+    this._bulletsAtTime[time] = [];
     time -= 1;
   }
 }
@@ -88,7 +93,7 @@ Game.prototype.createUser = function (gameID, model, name, teamID, data) {
   modelData.position = [data[0], data[1]];
   modelData.angle = data[2];
 
-  user = this._users[gameID] = this._Factory(modelData.constructor, {
+  user = this._modelData[gameID] = this._Factory(modelData.constructor, {
     keys: this._keys,
     modelData: modelData
   });
@@ -110,9 +115,9 @@ Game.prototype.createUser = function (gameID, model, name, teamID, data) {
 // удаляет игрока
 Game.prototype.removeUser = function (gameID) {
   // если игрок существует
-  if (this._users[gameID]) {
-    this._world.removeBody(this._users[gameID].getBody());
-    delete this._users[gameID];
+  if (this._modelData[gameID]) {
+    this._world.removeBody(this._modelData[gameID].getBody());
+    delete this._modelData[gameID];
   }
 };
 
@@ -120,10 +125,10 @@ Game.prototype.removeUser = function (gameID) {
 Game.prototype.removeUsers = function () {
   var gameID;
 
-  for (gameID in this._users) {
-    if (this._users.hasOwnProperty(gameID)) {
-      this._world.removeBody(this._users[gameID].getBody());
-      delete this._users[gameID];
+  for (gameID in this._modelData) {
+    if (this._modelData.hasOwnProperty(gameID)) {
+      this._world.removeBody(this._modelData[gameID].getBody());
+      delete this._modelData[gameID];
     }
   }
 };
@@ -134,7 +139,7 @@ Game.prototype.changeModel = function (gameID, model) {
 
 // меняет команду игрока
 Game.prototype.changeTeamID = function (gameID, teamID) {
-  var user = this._users[gameID];
+  var user = this._modelData[gameID];
 
   user.teamID = teamID;
   user.fullUserData = true;
@@ -142,7 +147,7 @@ Game.prototype.changeTeamID = function (gameID, teamID) {
 
 // меняет имя игрока
 Game.prototype.changeName = function (gameID, name) {
-  var user = this._users[gameID];
+  var user = this._modelData[gameID];
 
   user.name = name;
   user.fullUserData = true;
@@ -150,12 +155,12 @@ Game.prototype.changeName = function (gameID, name) {
 
 // обновляет нажатые клавиши
 Game.prototype.updateKeys = function (gameID, keys) {
-  this._users[gameID].keys = keys;
+  this._modelData[gameID].keys = keys;
 };
 
 // возвращает координаты игрока
 Game.prototype.getUserCoords = function (gameID) {
-  var position = this._users[gameID].getBody().position;
+  var position = this._modelData[gameID].getBody().position;
 
   return [+position[0].toFixed(), +position[1].toFixed()];
 };
@@ -171,9 +176,9 @@ Game.prototype.updateData = function () {
     , user
     , keys;
 
-  for (p in this._users) {
-    if (this._users.hasOwnProperty(p)) {
-      user = this._users[p];
+  for (p in this._modelData) {
+    if (this._modelData.hasOwnProperty(p)) {
+      user = this._modelData[p];
       keys = user.keys;
 
       if (keys !== null) {
@@ -208,9 +213,9 @@ Game.prototype.getGameData = function () {
   // данные старых пуль
   gameData = this.getOldBulletData();
 
-  for (p in this._users) {
-    if (this._users.hasOwnProperty(p)) {
-      user = this._users[p];
+  for (p in this._modelData) {
+    if (this._modelData.hasOwnProperty(p)) {
+      user = this._modelData[p];
       model = user.model;
       bulletData = user.getBulletData();
 
@@ -230,7 +235,7 @@ Game.prototype.getGameData = function () {
         bulletID = this.createBullet(user.gameID, bulletName, bulletData);
 
         gameData[bulletName] = gameData[bulletName] || {};
-        gameData[bulletName][bulletID] = [/* TODO */];
+        gameData[bulletName][bulletID] = bulletData;
 
         user.bulletData = null;
       }
@@ -247,9 +252,9 @@ Game.prototype.getFullUsersData = function () {
     , user
     , gameData = {};
 
-  for (p in this._users) {
-    if (this._users.hasOwnProperty(p)) {
-      user = this._users[p];
+  for (p in this._modelData) {
+    if (this._modelData.hasOwnProperty(p)) {
+      user = this._modelData[p];
       model = user.model;
       gameData[model] = gameData[model] || {};
       gameData[model][p] = user.getFullData([user.teamID, user.name]);
@@ -261,25 +266,10 @@ Game.prototype.getFullUsersData = function () {
 
 // создает новую пулю и возвращает ее ID
 Game.prototype.createBullet = function (gameID, bulletName, bulletData) {
-  var time = this._bulletTime + this._bullets[bulletName].time
-    , bulletBody
-    , bulletShape
+  var bulletSet = this._bullets[bulletName]
+    , time = this._bulletTime + bulletSet.time
+    , bullet
     , bulletID;
-
-  bulletBody = new p2.Body({
-    mass: 0.05,
-    position: bulletData.position,
-    velocity: bulletData.velocity,
-    angle: bulletData.angle
-  });
-
-  bulletBody.damping = bulletBody.angularDamping = 0;
-
-  bulletShape = new p2.Circle(3);
-  bulletShape.collisionGroup = Math.pow(2, 2);
-  bulletShape.collisionMask = Math.pow(2, 3);
-
-  bulletBody.addShape(bulletShape);
 
   this._currentBulletID += 1;
   bulletID = this._currentBulletID.toString(36);
@@ -288,8 +278,17 @@ Game.prototype.createBullet = function (gameID, bulletName, bulletData) {
     time = time - this._maxBulletTime;
   }
 
-  this._world.addBody(bulletBody);
-  this._bulletData[time].push([bulletName, bulletID, bulletBody, gameID]);
+  bullet = this._bulletData[bulletID] = this._Factory(bulletSet.constructor, {
+    set: bulletSet,
+    data: bulletData
+  });
+
+  bullet.bulletName = bulletName;
+  bullet.bulletID = bulletID;
+  bullet.gameID = gameID;
+
+  this._bulletsAtTime[time].push(bulletID);
+  this._world.addBody(bullet.getBody());
 
   return bulletID;
 };
@@ -297,35 +296,33 @@ Game.prototype.createBullet = function (gameID, bulletName, bulletData) {
 // сбрасывает currentBulletID, удаляет и возвращает данные о всех пулях
 Game.prototype.resetBulletData = function () {
   var p
+    , bullet
     , bulletName
     , bulletID
-    , bulletBody
-    , gameID
     , i
     , len
-    , arr = []
+    , arr
     , gameData = {};
 
   this._currentBulletID = 0;
 
-  for (p in this._bulletData) {
-    if (this._bulletData.hasOwnProperty(p)) {
-      arr = this._bulletData[p];
+  for (p in this._bulletsAtTime) {
+    if (this._bulletsAtTime.hasOwnProperty(p)) {
+      arr = this._bulletsAtTime[p];
 
       // очищение пуль
       for (i = 0, len = arr.length; i < len; i += 1) {
-        bulletName = arr[i][0];
-        bulletID = arr[i][1];
-        bulletBody = arr[i][2];
-        gameID = arr[i][3];
+        bullet = this._bulletData[arr[i]];
+        bulletName = bullet.bulletName;
+        bulletID = bullet.bulletID;
 
-        this._world.removeBody(bulletBody);
+        this._world.removeBody(bullet.getBody());
 
         gameData[bulletName] = gameData[bulletName] || {};
         gameData[bulletName][bulletID] = null;
       }
 
-      this._bulletData[p] = [];
+      this._bulletsAtTime[p] = [];
     }
   }
 
@@ -334,15 +331,15 @@ Game.prototype.resetBulletData = function () {
 
 // обновляет время и возвращает данные устаревших пуль
 Game.prototype.getOldBulletData = function () {
-  var oldBulletArr = this._bulletData[this._bulletTime]
+  var oldBulletArr = this._bulletsAtTime[this._bulletTime]
     , i
     , len
+    , bullet
     , bulletName
     , bulletID
-    , bulletBody
     , gameData = {};
 
-  this._bulletData[this._bulletTime] = [];
+  this._bulletsAtTime[this._bulletTime] = [];
 
   this._bulletTime += 1;
 
@@ -351,11 +348,11 @@ Game.prototype.getOldBulletData = function () {
   }
 
   for (i = 0, len = oldBulletArr.length; i < len; i += 1) {
-    bulletName = oldBulletArr[i][0];
-    bulletID = oldBulletArr[i][1];
-    bulletBody = oldBulletArr[i][2];
+    bullet = this._bulletData[oldBulletArr[i]];
+    bulletName = bullet.bulletName;
+    bulletID = bullet.bulletID;
 
-    this._world.removeBody(bulletBody);
+    this._world.removeBody(bullet.getBody());
 
     gameData[bulletName] = gameData[bulletName] || {};
     gameData[bulletName][bulletID] = null;
@@ -366,7 +363,7 @@ Game.prototype.getOldBulletData = function () {
 
 // задает модель пуль игроку
 Game.prototype.setUserBullet = function (gameID, bullet) {
-  var user = this._users[gameID]
+  var user = this._modelData[gameID]
     , bulletList = user.bulletList;
 
   if (bulletList.indexOf(bullet) !== -1) {
@@ -376,7 +373,7 @@ Game.prototype.setUserBullet = function (gameID, bullet) {
 
 // меняет модель пуль игрока
 Game.prototype.turnUserBullet = function (gameID, back) {
-  var user = this._users[gameID]
+  var user = this._modelData[gameID]
     , bulletList = user.bulletList
     , key = bulletList.indexOf(user.currentBullet);
 
