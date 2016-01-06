@@ -4,6 +4,8 @@ function Bomb(data) {
   var bulletSet = data.bulletSet
     , bulletData = data.bulletData;
 
+  this._time = bulletSet.time;
+
   this._body = new p2.Body({
     mass: bulletSet.mass || 20,
     position: [bulletData[0], bulletData[1]],
@@ -22,6 +24,17 @@ function Bomb(data) {
 // возвращает тело модели
 Bomb.prototype.getBody = function () {
   return this._body;
+};
+
+// возвращает данные
+Bomb.prototype.getData = function () {
+  var body = this._body;
+
+  return [].concat(
+    ~~body.position[0].toFixed(2),
+    ~~body.position[1].toFixed(2),
+    this._time
+  );
 };
 
 // обновляет данные

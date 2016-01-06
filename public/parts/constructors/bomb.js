@@ -1,5 +1,7 @@
 define(['createjs'], function (createjs) {
-  var Shape = createjs.Shape
+  var Container = createjs.Container
+    , Shape = createjs.Shape
+    , Text = createjs.Text
     , Bomb
     , p;
 
@@ -7,32 +9,69 @@ define(['createjs'], function (createjs) {
     this.initialize(params);
   };
 
-  p = Bomb.prototype = createjs.extend(Bomb, Shape);
-  Bomb = createjs.promote(Bomb, 'Shape');
+  p = Bomb.prototype = createjs.extend(Bomb, Container);
+  Bomb = createjs.promote(Bomb, 'Container');
 
   // инициализация
   p.initialize = function (params) {
-    this.Shape_constructor();
+    this.Container_constructor();
 
     this.layer = 2;
 
+    this.body = new Shape();
+    this.text = new Text();
+    this.text.color = '#ff3300';
+    this.text.font = '10px Arial';
+    this.text.x = -12;
+    this.text.y = -5;
+
+    this.addChild(this.body);
+    this.addChild(this.text);
+
     this.x = params[0];
     this.y = params[1];
-    this.vX = params[2];
-    this.vY = params[3];
-    this.rotation = params[4];
+    this.text.text = this.time = params[2];
+    this.rotation = 0;
 
-    //this.addEventListener('tick', (function () {
-    //  this.x += this.vX;
-    //  this.y += this.vY;
-    //}).bind(this));
+    this.addEventListener('tick', (function () {
+      this.updateTime();
+    }).bind(this));
 
     this.create();
   };
 
+  // обновляет время динамита
+  p.updateTime = function () {
+    var hours
+      , minutes
+      , seconds;
+
+    if (this.time > 0) {
+      this.time -= 1;
+
+      hours = Math.floor(this.time / 3600);
+      minutes = Math.floor((this.time - (hours * 3600)) / 60);
+      seconds = this.time - (hours * 3600) - (minutes * 60);
+
+      if (hours < 10) {
+        hours = '0' + hours;
+      }
+
+      if (minutes < 10) {
+        minutes = '0' + minutes;
+      }
+
+      if (seconds < 10) {
+        seconds = '0' + seconds;
+      }
+
+      this.text.text = minutes + ':' + seconds;
+    }
+  };
+
   // создает экземпляр
   p.create = function () {
-    var g = this.graphics;
+    var g = this.body.graphics;
 
     g.setStrokeStyle(1);
     g.beginStroke('#333');

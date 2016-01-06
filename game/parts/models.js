@@ -10,7 +10,7 @@ exports.m1 = {
   maxGunAngle: 90,
   gunAngleStep: 30,
   constructor: 'tank',
-  currentBullet: 'b1',
+  currentBullet: 'b3',
   bullets: {
     b1: 1000,
     b2: 3000,

@@ -1,6 +1,6 @@
 // pistol
 exports.b1 = {
-  time: 2,
+  time: 5,
   mass: 20,
   speed: 30,
   power: 3,
@@ -11,7 +11,7 @@ exports.b1 = {
 
 // gun
 exports.b2 = {
-  time: 10,
+  time: 4,
   mass: 20,
   speed: 30,
   power: 3,

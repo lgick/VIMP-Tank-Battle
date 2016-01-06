@@ -207,7 +207,7 @@ Game.prototype.getGameData = function () {
     , gameData
     , bulletData
     , bulletName
-    , bulletID
+    , bullet
   ;
 
   // данные старых пуль
@@ -232,10 +232,10 @@ Game.prototype.getGameData = function () {
       // если есть данные для создания пули
       if (bulletData !== null) {
         bulletName = user.currentBullet;
-        bulletID = this.createBullet(user.gameID, bulletName, bulletData);
+        bullet = this.createBullet(user.gameID, bulletName, bulletData);
 
         gameData[bulletName] = gameData[bulletName] || {};
-        gameData[bulletName][bulletID] = bulletData;
+        gameData[bulletName][bullet.bulletID] = bullet.getData();
 
         user.bulletData = null;
       }
@@ -264,7 +264,7 @@ Game.prototype.getFullUsersData = function () {
   return gameData;
 };
 
-// создает новую пулю и возвращает ее ID
+// создает новую пулю и возвращает ее
 Game.prototype.createBullet = function (gameID, bulletName, bulletData) {
   var bulletSet = this._bullets[bulletName]
     , time = this._bulletTime + bulletSet.time
@@ -290,7 +290,7 @@ Game.prototype.createBullet = function (gameID, bulletName, bulletData) {
   this._bulletsAtTime[time].push(bulletID);
   this._world.addBody(bullet.getBody());
 
-  return bulletID;
+  return bullet;
 };
 
 // сбрасывает currentBulletID, удаляет и возвращает данные о всех пулях

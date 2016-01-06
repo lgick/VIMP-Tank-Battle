@@ -4,6 +4,10 @@ function Bullet(data) {
   var bulletSet = data.bulletSet
     , bulletData = data.bulletData;
 
+  this._vX = bulletData[2];
+  this._vY = bulletData[3];
+  this._angle = bulletData[4];
+
   this._body = new p2.Body({
     mass: bulletSet.mass || 20,
     position: [bulletData[0], bulletData[1]],
@@ -22,6 +26,19 @@ function Bullet(data) {
 // возвращает тело модели
 Bullet.prototype.getBody = function () {
   return this._body;
+};
+
+// возвращает данные
+Bullet.prototype.getData = function () {
+  var body = this._body;
+
+  return [].concat(
+    ~~body.position[0].toFixed(2),
+    ~~body.position[1].toFixed(2),
+    this._vX,
+    this._vY,
+    this._angle
+  );
 };
 
 // обновляет данные
