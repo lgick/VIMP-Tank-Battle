@@ -279,8 +279,8 @@ Game.prototype.createBullet = function (gameID, bulletName, bulletData) {
   }
 
   bullet = this._bulletData[bulletID] = this._Factory(bulletSet.constructor, {
-    set: bulletSet,
-    data: bulletData
+    bulletSet: bulletSet,
+    bulletData: bulletData
   });
 
   bullet.bulletName = bulletName;

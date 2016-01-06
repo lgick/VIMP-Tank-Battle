@@ -82,27 +82,15 @@ Tank.prototype.updateData = function (keys) {
   }
 
   if (keys & this._keys.fire) {
-    // TODO this._bulletData должна иметь вид данных годных
-    // для создания пули и для отправки на клиент
-
-    //radBullet = +((this._body.gunRotation + this._body.angle) * (Math.PI / 180)).toFixed(2);
-
-    //this._bulletData = {
-    //  position: [
-    //    Math.round(Math.cos(radBullet) * 20) + this._body.position[0],
-    //    Math.round(Math.sin(radBullet) * 20) + this._body.position[1]
-    //  ],
-    //  velocity: [
-    //    Math.round(Math.cos(radBullet) * 20) + vX,
-    //    Math.round(Math.sin(radBullet) * 20) + vY,
-    //  ],
-    //  angle: this._body.angle + this._body.gunRotation
-    //};
+    radBullet = +((this._body.gunRotation + this._body.angle) * (Math.PI / 180)).toFixed(2);
+    this._bulletData = [
+      Math.round(Math.cos(radBullet) * 2) + this._body.position[0],
+      Math.round(Math.sin(radBullet) * 2) + this._body.position[1],
+      Math.round(Math.cos(radBullet) * 2) + vX,
+      Math.round(Math.sin(radBullet) * 2) + vY,
+      this._body.angle + this._body.gunRotation
+    ];
   }
-
-  //this._body.position[0] = vX + this._body.position[0];
-  //this._body.position[1] = vY + this._body.position[1];
- //this._body.updateAABB();
 };
 
 // возвращает тело модели

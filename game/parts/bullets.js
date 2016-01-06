@@ -1,6 +1,6 @@
 // pistol
 exports.b1 = {
-  time: 20,
+  time: 2,
   mass: 20,
   speed: 30,
   power: 3,
@@ -22,11 +22,11 @@ exports.b2 = {
 
 // bomb
 exports.b3 = {
-  time: 500,
+  time: 100,
   mass: 20,
   speed: 30,
   power: 3,
-  width: 10,
-  height: 10,
+  width: 32,
+  height: 32,
   constructor: 'bomb'
 };

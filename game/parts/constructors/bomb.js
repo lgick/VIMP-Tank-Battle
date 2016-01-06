@@ -1,45 +1,31 @@
 var p2 = require('p2');
 
-function Bullet(data) {
-}
+function Bomb(data) {
+  var bulletSet = data.bulletSet
+    , bulletData = data.bulletData;
 
-// создает данные
-Bullet.prototype.create = function (data) {
-  var time = this._bulletTime + this._bullets[bulletName].time
-    , bulletBody
-    , bulletShape
-    , bulletID;
-
-  bulletBody = new p2.Body({
-    mass: 0.05,
-    position: bulletData.position,
-    velocity: bulletData.velocity,
-    angle: bulletData.angle
+  this._body = new p2.Body({
+    mass: bulletSet.mass || 20,
+    position: [bulletData[0], bulletData[1]],
+    angle: bulletData[4],
+    velocity: [0, 0],
+    force: [0, 0],
+    angularVelocity: 0
   });
 
-  bulletBody.damping = bulletBody.angularDamping = 0;
+  this._body.addShape(new p2.Circle({
+    width: bulletSet.width,
+    height: bulletSet.height
+  }));
+}
 
-  bulletShape = new p2.Circle(3);
-  bulletShape.collisionGroup = Math.pow(2, 2);
-  bulletShape.collisionMask = Math.pow(2, 3);
-
-  bulletBody.addShape(bulletShape);
-
-  this._currentBulletID += 1;
-  bulletID = this._currentBulletID.toString(36);
-
-  if (time > this._maxBulletTime) {
-    time = time - this._maxBulletTime;
-  }
-
-  this._world.addBody(bulletBody);
-  this._bulletData[time].push([bulletName, bulletID, bulletBody, gameID]);
-
-  return bulletID;
+// возвращает тело модели
+Bomb.prototype.getBody = function () {
+  return this._body;
 };
 
 // обновляет данные
-Bullet.prototype.update = function (data, cb) {
-}
+Bomb.prototype.update = function (data, cb) {
+};
 
-module.exports = Bullet;
+module.exports = Bomb;
