@@ -1,14 +1,27 @@
 {
-  "name": "VIMP",
-  "version": "0.0.1",
-  "homepage": "https://github.com/lgick/VIMP",
+  "name": "vimp",
+  "description": "game framework",
+  "main": "",
   "authors": [
     "lgick <lgick@yandex.ru>"
   ],
-  "description": "game framework",
+  "license": "MIT",
+  "keywords": [
+    "game"
+  ],
+  "homepage": "https://github.com/lgick/VIMP-Tank-Battle",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "public/js/vendor",
+    "test",
+    "tests"
+  ],
   "dependencies": {
-    "requirejs-bower": "latest",
-    "easeljs": "latest",
-    "createjs-preloadjs": "latest"
+    "easeljs": "*",
+    "createjs-preloadjs": "*",
+    "requirejs-bower": "*"
   }
 }

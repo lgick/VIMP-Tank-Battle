@@ -9,6 +9,12 @@ function Tank(data) {
 
   this._bulletData = null;
 
+  this._magnitude = 20;
+  this._currentForward = 0;
+  this._currentBack = 0;
+  this._maxForward = data.maxForward;
+  this._maxBack = data.maxBack;
+
   this.initBody(data.modelData);
 }
 
@@ -34,15 +40,30 @@ Tank.prototype.initBody = function (modelData) {
 Tank.prototype.updateData = function (keys) {
   var position = this._body.position
     , angle = this._body.angle + Math.PI / 2
-    , magnitude = 50
     , rad = +(angle * (Math.PI / 180)).toFixed(10)
-    , vX = Math.round(Math.cos(rad) * magnitude)
-    , vY = Math.round(Math.sin(rad) * magnitude)
+    , vX = Math.cos(rad)
+    , vY = Math.sin(rad)
     , radBullet;
 
   if (keys & this._keys.forward) {
-    this._body.velocity[0] += vX;
-    this._body.velocity[1] += vY;
+    if (this._magnitude < 40) {
+      this._magnitude += 1;
+    }
+  } else {
+    if (this._magnitude > 0) {
+      this._magnitude -= 1;
+    }
+  }
+
+  if (keys & this._keys.back) {
+  }
+
+  if (this._magnitude > 0) {
+    vX = Math.round(vX * this._magnitude);
+    vY = Math.round(vY * this._magnitude);
+
+    this._body.position[0] += vX;
+    this._body.position[1] += vY;
   }
 
   if (keys & this._keys.back) {

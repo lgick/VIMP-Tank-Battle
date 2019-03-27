@@ -11,6 +11,7 @@
 // TODO: блокировка сообщений ws
 
 var express = require('express');
+var favicon = require('serve-favicon')
 var path = require('path');
 var argv = require('minimist')(process.argv.slice(2));
 
@@ -96,9 +97,9 @@ config.set(
 var app = express();
 
 app.set('views', path.join(__dirname, '/views'));
-app.set('view engine', 'jade');
+app.set('view engine', 'pug');
 
-app.use(express.favicon(path.join(__dirname, '/public/img/favicon.ico')));
+app.use(favicon(path.join(__dirname, 'public', '/img/favicon.ico')));
 app.use(express.static(path.join(__dirname, '/public')));
 app.use(express.static(path.join(__dirname, '/lib')));
 

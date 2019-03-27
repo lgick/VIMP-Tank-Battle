@@ -43,6 +43,8 @@ Bullet.prototype.getData = function () {
 
 // обновляет данные
 Bullet.prototype.update = function (data, cb) {
+  this.x += this.vX;
+  this.y += this.vY;
 };
 
 module.exports = Bullet;

@@ -1,5 +1,5 @@
 var WebSocketServer = require('ws').Server;
-var uuid = require('node-uuid');
+var uuid = require('uuid/v1');
 
 var security = require('../lib/security');
 var bantools = require('../lib/bantools');
@@ -30,9 +30,9 @@ var IPs = {};      // { '127.0.0.1': '0ff81720-e2b2-11e3-9614-018be5de670e' }
 module.exports = function (server) {
   var wss = new WebSocketServer({server: server});
 
-  wss.on('connection', function (ws) {
-    var address = ws.upgradeReq.connection.remoteAddress;
-    var origin = ws.upgradeReq.headers.origin;
+  wss.on('connection', function (ws, req) {
+    var address = req.connection.remoteAddress;
+    var origin = req.headers.origin;
     var socketMethods = [];
     var id;
     var gameID;
@@ -68,7 +68,7 @@ module.exports = function (server) {
           }
         };
 
-        id = ws.socket.id = uuid.v1();
+        id = ws.socket.id = uuid();
         ws.socket.socketMethods = [false, false, false, false, false, false];
 
         sessions[id] = ws;
