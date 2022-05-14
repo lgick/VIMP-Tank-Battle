@@ -7,7 +7,7 @@
 # Установка
 
 ```
-git clone https://github.com/lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && bower i && node server.js
+git clone git@github.com:lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && bower i && node server.js
 ```
 
 # Параметры при запуске сервера
