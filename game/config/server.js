@@ -10,12 +10,10 @@ module.exports = {
   game: game,
   invite: {
     transport: {
-      host: 'smtp.yandex.ru',
-      port: 465,
-      secure: true,
+      service: 'gmail',
       auth: {
-        user: 'noreply.vimp',
-        pass: '4rfv5tgb'
+        user: 'noreply.vimp@gmail.com',
+        pass: 'SF@d$$Saf%vvd'
       }
     },
     sender: '{name} <noreply.vimp@yandex.ru>',
