@@ -1,4 +1,4 @@
-![poster](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/poster2.png)
+![poster](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/poster2.png?raw=true)
 
 # VIMP Tank Battle (в работе)
 
@@ -100,7 +100,7 @@ panel: {
 
 Статистика игры.
 
-![stat](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/stat/stat.png)
+![stat](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/stat/stat.png?raw=true)
 
 ## Конфиг для модели (сервер)
 
@@ -247,7 +247,7 @@ statArray = [
 
 По умолчанию при вызове модуля отображается меню.
 
-![vote-menu](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-menu.png)
+![vote-menu](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/vote/vote-menu.png?raw=true)
 
 ```
 menu = [
@@ -292,11 +292,12 @@ menu = [
 * неограниченное количество уровней опроса (кому бан, за что бан, на сколько бан и т.п.) 
 * неограниченное количество возможных значений (появляется навигация в виде ``more`` и ``back``)
 
-![vote-ban1](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban1.png)
+![vote-ban1](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/vote/vote-ban1.png?raw=true)
 
-![vote-ban2](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban2.png)
+![vote-ban2](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/vote/vote-ban2.png?raw=true)
 
-![vote-ban3](https://raw.github.com/lgick/VIMP-Tank-Battle/master/public/img/vote/vote-ban3.png)
+![vote-ban3](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/vote/vote-ban3.png?raw=true)
+
 
 ### Данные поступающие с сервера могут быть двух видов
 
