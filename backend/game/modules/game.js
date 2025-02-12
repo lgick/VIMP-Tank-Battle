@@ -46,7 +46,7 @@ class Game {
     this._bulletTime = this._minBulletTime = this._maxBulletTime = 1;
 
     // вычисление максимального времени жизни пули
-    for (let p in this._bullets) {
+    for (const p in this._bullets) {
       if (this._bullets.hasOwnProperty(p)) {
         time = this._bullets[p].time * 2;
 
@@ -127,7 +127,7 @@ class Game {
 
   // удаляет всех игроков
   removeUsers() {
-    for (let gameID in this._modelData) {
+    for (const gameID in this._modelData) {
       if (this._modelData.hasOwnProperty(gameID)) {
         this._world.removeBody(this._modelData[gameID].getBody());
         delete this._modelData[gameID];
@@ -173,7 +173,7 @@ class Game {
 
   // обновляет данные
   updateData() {
-    for (let p in this._modelData) {
+    for (const p in this._modelData) {
       if (this._modelData.hasOwnProperty(p)) {
         let user = this._modelData[p];
         let keys = user.keys;
@@ -201,7 +201,7 @@ class Game {
     // данные старых пуль
     let gameData = this.getOldBulletData();
 
-    for (let p in this._modelData) {
+    for (const p in this._modelData) {
       if (this._modelData.hasOwnProperty(p)) {
         let user = this._modelData[p];
         let model = user.model;
@@ -237,7 +237,7 @@ class Game {
   getFullUsersData() {
     let gameData = {};
 
-    for (let p in this._modelData) {
+    for (const p in this._modelData) {
       if (this._modelData.hasOwnProperty(p)) {
         let user = this._modelData[p];
         let model = user.model;
@@ -284,7 +284,7 @@ class Game {
 
     this._currentBulletID = 0;
 
-    for (let p in this._bulletsAtTime) {
+    for (const p in this._bulletsAtTime) {
       if (this._bulletsAtTime.hasOwnProperty(p)) {
         let arr = this._bulletsAtTime[p];
 
