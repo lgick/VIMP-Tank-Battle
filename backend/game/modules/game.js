@@ -1,0 +1,370 @@
+import planck from 'planck';
+
+// Singleton Game
+let game;
+
+class Game {
+  constructor(Factory, parts, keys, shotTime) {
+    let time;
+
+    if (game) {
+      return game;
+    }
+
+    game = this;
+
+    this._Factory = Factory;
+    this._Factory.add(parts.constructors);
+
+    this._mapConstructor = parts.mapConstructor;
+    this._models = parts.models;
+    this._bullets = parts.bullets;
+
+    this._keys = keys;
+    this._shotTime = shotTime;
+
+    this._world = new planck.World({
+      gravity: [0, 0],
+    });
+
+    // данные карты
+    this._map = null;
+
+    // данные моделей
+    this._modelData = {};
+
+    // данные пуль
+    this._bulletData = {};
+
+    // созданные пули в момент времени (время: массив из id пуль)
+    this._bulletsAtTime = {};
+
+    // id для пуль
+    this._currentBulletID = 0;
+
+    // время жизни пули (текущее, минимальное, максимальное)
+    this._bulletTime = this._minBulletTime = this._maxBulletTime = 1;
+
+    // вычисление максимального времени жизни пули
+    for (let p in this._bullets) {
+      if (this._bullets.hasOwnProperty(p)) {
+        time = this._bullets[p].time * 2;
+
+        if (time > this._maxBulletTime) {
+          this._maxBulletTime = time;
+        }
+      }
+    }
+
+    time = this._maxBulletTime;
+
+    // создание пустых данных пуль
+    while (time >= this._minBulletTime) {
+      this._bulletsAtTime[time] = [];
+      time -= 1;
+    }
+  }
+
+  // создает карту
+  createMap(mapData) {
+    this.clear();
+    this._map = this._Factory(this._mapConstructor, {
+      mapData: mapData,
+      world: this._world,
+    });
+  }
+
+  // возвращает все данные динамических элементов
+  getFullDynamicMapData() {
+    return this._map.getFullDynamicMapData();
+  }
+
+  // возвращает данные динамических элементов
+  getDynamicMapData() {
+    return this._map.getDynamicMapData();
+  }
+
+  // сбрасывает динамические элементы в дефолтные данные
+  resetDynamicMapData() {
+    this._map.resetDynamic();
+  }
+
+  // создает игрока
+  createUser(gameID, model, name, teamID, data) {
+    let user;
+    let modelData = this._models[model];
+
+    modelData.position = [data[0], data[1]];
+    modelData.angle = data[2];
+
+    user = this._modelData[gameID] = this._Factory(modelData.constructor, {
+      keys: this._keys,
+      modelData: modelData,
+    });
+
+    user.gameID = gameID;
+    user.model = model;
+    user.name = name;
+    user.teamID = teamID;
+    user.fullUserData = true;
+
+    user.bulletData = null;
+    user.keys = null;
+    user.currentBullet = modelData.currentBullet;
+    user.bulletList = Object.keys(modelData.bullets);
+
+    this._world.addBody(user.getBody());
+  }
+
+  // удаляет игрока
+  removeUser(gameID) {
+    // если игрок существует
+    if (this._modelData[gameID]) {
+      this._world.removeBody(this._modelData[gameID].getBody());
+      delete this._modelData[gameID];
+    }
+  }
+
+  // удаляет всех игроков
+  removeUsers() {
+    for (let gameID in this._modelData) {
+      if (this._modelData.hasOwnProperty(gameID)) {
+        this._world.removeBody(this._modelData[gameID].getBody());
+        delete this._modelData[gameID];
+      }
+    }
+  }
+
+  // меняет игровую модель
+  changeModel(gameID, model) {}
+
+  // меняет команду игрока
+  changeTeamID(gameID, teamID) {
+    let user = this._modelData[gameID];
+
+    user.teamID = teamID;
+    user.fullUserData = true;
+  }
+
+  // меняет имя игрока
+  changeName(gameID, name) {
+    let user = this._modelData[gameID];
+
+    user.name = name;
+    user.fullUserData = true;
+  }
+
+  // обновляет нажатые клавиши
+  updateKeys(gameID, keys) {
+    this._modelData[gameID].keys = keys;
+  }
+
+  // возвращает координаты игрока
+  getUserCoords(gameID) {
+    let position = this._modelData[gameID].getBody().position;
+
+    return [+position[0].toFixed(), +position[1].toFixed()];
+  }
+
+  // стирает данные игрового мира
+  clear() {
+    this._world.clear();
+  }
+
+  // обновляет данные
+  updateData() {
+    for (let p in this._modelData) {
+      if (this._modelData.hasOwnProperty(p)) {
+        let user = this._modelData[p];
+        let keys = user.keys;
+
+        if (keys !== null) {
+          if (keys & this._keys.nextBullet) {
+            this.turnUserBullet(user.gameID);
+          }
+
+          if (keys & this._keys.prevBullet) {
+            this.turnUserBullet(user.gameID, true);
+          }
+
+          user.updateData(keys);
+          user.keys = null;
+        }
+      }
+    }
+
+    this._world.step(1 / this._shotTime);
+  }
+
+  // возвращает данные
+  getGameData() {
+    // данные старых пуль
+    let gameData = this.getOldBulletData();
+
+    for (let p in this._modelData) {
+      if (this._modelData.hasOwnProperty(p)) {
+        let user = this._modelData[p];
+        let model = user.model;
+        let bulletData = user.getBulletData();
+
+        gameData[model] = gameData[model] || {};
+
+        // если возврат полных данных
+        if (user.fullUserData === true) {
+          user.fullUserData = false;
+          gameData[model][p] = user.getFullData([user.teamID, user.name]);
+        } else {
+          gameData[model][p] = user.getData();
+        }
+
+        // если есть данные для создания пули
+        if (bulletData !== null) {
+          let bulletName = user.currentBullet;
+          let bullet = this.createBullet(user.gameID, bulletName, bulletData);
+
+          gameData[bulletName] = gameData[bulletName] || {};
+          gameData[bulletName][bullet.bulletID] = bullet.getData();
+
+          user.bulletData = null;
+        }
+      }
+    }
+
+    return gameData;
+  }
+
+  // возвращает полные данные всех игроков
+  getFullUsersData() {
+    let gameData = {};
+
+    for (let p in this._modelData) {
+      if (this._modelData.hasOwnProperty(p)) {
+        let user = this._modelData[p];
+        let model = user.model;
+        gameData[model] = gameData[model] || {};
+        gameData[model][p] = user.getFullData([user.teamID, user.name]);
+      }
+    }
+
+    return gameData;
+  }
+
+  // создает новую пулю и возвращает ее
+  createBullet(gameID, bulletName, bulletData) {
+    let bulletSet = this._bullets[bulletName];
+    let time = this._bulletTime + bulletSet.time;
+    let bullet;
+    let bulletID;
+
+    this._currentBulletID += 1;
+    bulletID = this._currentBulletID.toString(36);
+
+    if (time > this._maxBulletTime) {
+      time = time - this._maxBulletTime;
+    }
+
+    bullet = this._bulletData[bulletID] = this._Factory(bulletSet.constructor, {
+      bulletSet: bulletSet,
+      bulletData: bulletData,
+    });
+
+    bullet.bulletName = bulletName;
+    bullet.bulletID = bulletID;
+    bullet.gameID = gameID;
+
+    this._bulletsAtTime[time].push(bulletID);
+    this._world.addBody(bullet.getBody());
+
+    return bullet;
+  }
+
+  // сбрасывает currentBulletID, удаляет и возвращает данные о всех пулях
+  resetBulletData() {
+    let gameData = {};
+
+    this._currentBulletID = 0;
+
+    for (let p in this._bulletsAtTime) {
+      if (this._bulletsAtTime.hasOwnProperty(p)) {
+        let arr = this._bulletsAtTime[p];
+
+        // очищение пуль
+        for (let i = 0, len = arr.length; i < len; i += 1) {
+          let bullet = this._bulletData[arr[i]];
+          let bulletName = bullet.bulletName;
+          let bulletID = bullet.bulletID;
+
+          this._world.removeBody(bullet.getBody());
+
+          gameData[bulletName] = gameData[bulletName] || {};
+          gameData[bulletName][bulletID] = null;
+        }
+
+        this._bulletsAtTime[p] = [];
+      }
+    }
+
+    return gameData;
+  }
+
+  // обновляет время и возвращает данные устаревших пуль
+  getOldBulletData() {
+    let oldBulletArr = this._bulletsAtTime[this._bulletTime];
+    let gameData = {};
+
+    this._bulletsAtTime[this._bulletTime] = [];
+
+    this._bulletTime += 1;
+
+    if (this._bulletTime > this._maxBulletTime) {
+      this._bulletTime = this._minBulletTime;
+    }
+
+    for (let i = 0, len = oldBulletArr.length; i < len; i += 1) {
+      let bullet = this._bulletData[oldBulletArr[i]];
+      let bulletName = bullet.bulletName;
+      let bulletID = bullet.bulletID;
+
+      this._world.removeBody(bullet.getBody());
+
+      gameData[bulletName] = gameData[bulletName] || {};
+      gameData[bulletName][bulletID] = null;
+    }
+
+    return gameData;
+  }
+
+  // задает модель пуль игроку
+  setUserBullet(gameID, bullet) {
+    let user = this._modelData[gameID];
+    let bulletList = user.bulletList;
+
+    if (bulletList.indexOf(bullet) !== -1) {
+      user.currentBullet = bullet;
+    }
+  }
+
+  // меняет модель пуль игрока
+  turnUserBullet(gameID, back) {
+    let user = this._modelData[gameID];
+    let bulletList = user.bulletList;
+    let key = bulletList.indexOf(user.currentBullet);
+
+    // если назад
+    if (back) {
+      key -= 1;
+    } else {
+      key += 1;
+    }
+
+    if (key < 0) {
+      key = bulletList.length - 1;
+    } else if (key >= bulletList.length) {
+      key = 0;
+    }
+
+    user.currentBullet = bulletList[key];
+  }
+}
+
+export default Game;
