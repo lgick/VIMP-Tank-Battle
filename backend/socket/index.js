@@ -1,10 +1,10 @@
 import { WebSocketServer } from 'ws';
 import { v1 as uuidv1 } from 'uuid';
-import security from '../lib/security';
-import bantools from '../lib/bantools';
-import waiting from '../lib/waiting';
-import validator from '../lib/validator';
-import config from '../lib/config';
+import security from '../lib/security.js';
+import bantools from '../lib/bantools.js';
+import waiting from '../lib/waiting.js';
+import validator from '../lib/validator.js';
+import config from '../lib/config.js';
 
 const portConfig = config.get('server:ports:config');
 const portAuth = config.get('server:ports:auth');

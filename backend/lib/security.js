@@ -1,10 +1,10 @@
-import config from './config';
+import config from './config.js';
 
 const protocol = config.get('server:protocol');
 const domain = config.get('server:domain');
 const port = config.get('server:port');
 
-export const origin = function (origin, cb) {
+const origin = function (origin, cb) {
   let err = null;
 
   if (
@@ -16,4 +16,8 @@ export const origin = function (origin, cb) {
   }
 
   process.nextTick(() => cb(err));
+};
+
+export default {
+  origin,
 };

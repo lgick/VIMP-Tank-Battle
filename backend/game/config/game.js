@@ -1,10 +1,10 @@
-import maps from '../maps';
-import constructors from '../parts/constructors';
-import models from '../parts/models';
-import bullets from '../parts/bullets';
-import banlist from '../deps/banlist';
-import factory from '../../lib/factory';
-import email from '../../lib/email';
+import maps from '../maps/index.js';
+import constructors from '../parts/constructors/index.js';
+import models from '../parts/models.js';
+import bullets from '../parts/bullets.js';
+import banlist from '../deps/banlist.js';
+import factory from '../../lib/factory.js';
+import email from '../../lib/email.js';
 
 export default {
   factory: factory,

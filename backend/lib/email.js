@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import config from './config';
+import config from './config.js';
 
 let sender = config.get('server:invite:sender');
 let subject = config.get('server:invite:subject');
