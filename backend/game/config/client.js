@@ -8,7 +8,6 @@ export default {
       c2: ['map'],
       m1: ['tank', 'tank_radar'],
       m2: ['tank2', 'tank_radar'],
-      m3: ['soldier', 'tank_radar'],
       b1: ['pistol'],
       b2: ['gun'],
       b3: ['bomb'],
@@ -25,10 +24,6 @@ export default {
       tank_radar: {
         path: 'parts/constructors/tank_radar.js',
         canvas: 'radar',
-      },
-      soldier: {
-        path: 'parts/constructors/soldier.js',
-        canvas: 'vimp',
       },
       tank: {
         path: 'parts/constructors/tank.js',
