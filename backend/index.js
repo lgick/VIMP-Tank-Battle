@@ -2,9 +2,9 @@ import express from 'express';
 import favicon from 'serve-favicon';
 import path from 'path';
 import minimist from 'minimist';
-import config from '../lib/config.js';
-import routes from './routes.js';
-import socket from './socket.js';
+import config from './lib/config.js';
+import routes from './routes/index.js';
+import socket from './socket/index.js';
 import http from 'http';
 
 // Парсинг аргументов командной строки

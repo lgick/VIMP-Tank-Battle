@@ -1,9 +1,9 @@
-import config from './config';
+import config from './config.js';
 
 const banlist = config.get('game:banlist');
 
 // проверяет наличие ip в банлисте
-export const check = function (ip, cb) {
+const check = function (ip, cb) {
   const subip = ip.split('.').slice(0, 2).join('.');
   let banInfo;
 
@@ -36,7 +36,13 @@ export const check = function (ip, cb) {
 };
 
 // добавляет в банлист
-export const add = function (ip, params) {};
+const add = function (ip, params) {};
 
 // удаляет из банлиста
-export const remove = function (ip) {};
+const remove = function (ip) {};
+
+export default {
+  check,
+  add,
+  remove,
+};

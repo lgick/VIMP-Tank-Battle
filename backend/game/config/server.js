@@ -1,4 +1,4 @@
-import game from '../modules';
+import game from '../modules/index.js';
 
 export default {
   name: 'VIMP Tank Battle',

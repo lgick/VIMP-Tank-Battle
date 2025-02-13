@@ -13,7 +13,7 @@
   "license": "ISC",
   "author": "lgick",
   "type": "module",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -22,6 +22,7 @@
     "minimist": "^1.2.8",
     "nodemailer": "^6.10.0",
     "planck": "^1.3.0",
+    "pug": "^3.0.3",
     "serve-favicon": "^2.5.0",
     "uuid": "^11.0.5",
     "ws": "^8.18.0"

@@ -1,11 +1,11 @@
-import config from './config';
+import config from './config.js';
 
 let waitingList = [];
 let currentPlayers = [];
 const maxPlayers = config.get('server:maxPlayers');
 
 // проверяет наличие свободные мест
-export const check = (id, cb) => {
+const check = (id, cb) => {
   let res = false;
 
   if (currentPlayers.length < maxPlayers) {
@@ -17,19 +17,19 @@ export const check = (id, cb) => {
 };
 
 // добавляет ожидающего
-export const add = (id, cb) => {
+const add = (id, cb) => {
   waitingList.push(id);
   process.nextTick(() => cb([maxPlayers, waitingList.length]));
 };
 
 // удаляет данных
-export const remove = id => {
+const remove = id => {
   currentPlayers = currentPlayers.filter(playerId => playerId !== id);
   waitingList = waitingList.filter(playerId => playerId !== id);
 };
 
 // возвращает ожидающего и удаляет его из листа
-export const getNext = cb => {
+const getNext = cb => {
   let id = null;
 
   if (currentPlayers.length < maxPlayers) {
@@ -44,11 +44,19 @@ export const getNext = cb => {
 };
 
 // создает объект для оповещения ожидающих
-export const createNotifyObject = cb => {
+const createNotifyObject = cb => {
   const notifyObject = waitingList.reduce((acc, playerId, index) => {
     acc[playerId] = [maxPlayers, index + 1];
     return acc;
   }, {});
 
   process.nextTick(() => cb(notifyObject));
+};
+
+export default {
+  check,
+  add,
+  remove,
+  getNext,
+  createNotifyObject,
 };
