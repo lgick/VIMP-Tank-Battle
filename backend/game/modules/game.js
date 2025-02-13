@@ -25,6 +25,7 @@ class Game {
 
     this._world = new planck.World({
       gravity: [0, 0],
+      allowSleep: true,
     });
 
     // данные карты
@@ -115,14 +116,14 @@ class Game {
     user.currentBullet = modelData.currentBullet;
     user.bulletList = Object.keys(modelData.bullets);
 
-    this._world.addBody(user.getBody());
+    this._world.createBody(user.getBody());
   }
 
   // удаляет игрока
   removeUser(gameID) {
     // если игрок существует
     if (this._modelData[gameID]) {
-      this._world.removeBody(this._modelData[gameID].getBody());
+      this._world.destroyBody(this._modelData[gameID].getBody());
       delete this._modelData[gameID];
     }
   }
@@ -131,7 +132,7 @@ class Game {
   removeUsers() {
     for (const gameID in this._modelData) {
       if (this._modelData.hasOwnProperty(gameID)) {
-        this._world.removeBody(this._modelData[gameID].getBody());
+        this._world.destroyBody(this._modelData[gameID].getBody());
         delete this._modelData[gameID];
       }
     }
@@ -170,7 +171,7 @@ class Game {
 
   // стирает данные игрового мира
   clear() {
-    this._world.clear();
+    this._world.clearForces();
   }
 
   // обновляет данные
@@ -277,7 +278,7 @@ class Game {
     bullet.gameID = gameID;
 
     this._bulletsAtTime[time].push(bulletID);
-    this._world.addBody(bullet.getBody());
+    this._world.createBody(bullet.getBody());
 
     return bullet;
   }
@@ -298,7 +299,7 @@ class Game {
           const bulletName = bullet.bulletName;
           const bulletID = bullet.bulletID;
 
-          this._world.removeBody(bullet.getBody());
+          this._world.destroyBody(bullet.getBody());
 
           gameData[bulletName] = gameData[bulletName] || {};
           gameData[bulletName][bulletID] = null;
@@ -328,7 +329,7 @@ class Game {
       const bulletName = bullet.bulletName;
       const bulletID = bullet.bulletID;
 
-      this._world.removeBody(bullet.getBody());
+      this._world.destroyBody(bullet.getBody());
 
       gameData[bulletName] = gameData[bulletName] || {};
       gameData[bulletName][bulletID] = null;

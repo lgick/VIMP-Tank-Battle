@@ -3,24 +3,12 @@ import planck from 'planck';
 class Map {
   constructor(data) {
     // копирует массив данных
-    function copyArr(arr) {
-      let out = [];
-
-      if (!Array.isArray(arr)) {
-        return arr;
-      }
-
-      for (let i = 0, len = arr.length; i < len; i += 1) {
-        out[i] = arguments.callee(arr[i]);
-      }
-
-      return out;
-    }
+    const deepCopy = arr => (Array.isArray(arr) ? arr.map(deepCopy) : arr);
 
     this._mapData = data.mapData;
     this._world = data.world;
 
-    this._map = copyArr(this._mapData.map);
+    this._map = deepCopy(this._mapData.map);
     this._step = this._mapData.step;
     this._physicsStatic = this._mapData.physicsStatic || [];
     this._physicsDynamic = this._mapData.physicsDynamic || [];
