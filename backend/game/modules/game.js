@@ -69,7 +69,7 @@ class Game {
   createMap(mapData) {
     this.clear();
     this._map = this._Factory(this._mapConstructor, {
-      mapData: mapData,
+      mapData,
       world: this._world,
     });
   }
@@ -91,16 +91,18 @@ class Game {
 
   // создает игрока
   createUser(gameID, model, name, teamID, data) {
-    let user;
-    let modelData = this._models[model];
+    const modelData = this._models[model];
 
     modelData.position = [data[0], data[1]];
     modelData.angle = data[2];
 
-    user = this._modelData[gameID] = this._Factory(modelData.constructor, {
-      keys: this._keys,
-      modelData: modelData,
-    });
+    const user = (this._modelData[gameID] = this._Factory(
+      modelData.constructor,
+      {
+        keys: this._keys,
+        modelData,
+      },
+    ));
 
     user.gameID = gameID;
     user.model = model;
@@ -140,7 +142,7 @@ class Game {
 
   // меняет команду игрока
   changeTeamID(gameID, teamID) {
-    let user = this._modelData[gameID];
+    const user = this._modelData[gameID];
 
     user.teamID = teamID;
     user.fullUserData = true;
@@ -148,7 +150,7 @@ class Game {
 
   // меняет имя игрока
   changeName(gameID, name) {
-    let user = this._modelData[gameID];
+    const user = this._modelData[gameID];
 
     user.name = name;
     user.fullUserData = true;
@@ -161,7 +163,7 @@ class Game {
 
   // возвращает координаты игрока
   getUserCoords(gameID) {
-    let position = this._modelData[gameID].getBody().position;
+    const position = this._modelData[gameID].getBody().position;
 
     return [+position[0].toFixed(), +position[1].toFixed()];
   }
@@ -175,8 +177,8 @@ class Game {
   updateData() {
     for (const p in this._modelData) {
       if (this._modelData.hasOwnProperty(p)) {
-        let user = this._modelData[p];
-        let keys = user.keys;
+        const user = this._modelData[p];
+        const keys = user.keys;
 
         if (keys !== null) {
           if (keys & this._keys.nextBullet) {
@@ -199,13 +201,13 @@ class Game {
   // возвращает данные
   getGameData() {
     // данные старых пуль
-    let gameData = this.getOldBulletData();
+    const gameData = this.getOldBulletData();
 
     for (const p in this._modelData) {
       if (this._modelData.hasOwnProperty(p)) {
-        let user = this._modelData[p];
-        let model = user.model;
-        let bulletData = user.getBulletData();
+        const user = this._modelData[p];
+        const model = user.model;
+        const bulletData = user.getBulletData();
 
         gameData[model] = gameData[model] || {};
 
@@ -219,8 +221,8 @@ class Game {
 
         // если есть данные для создания пули
         if (bulletData !== null) {
-          let bulletName = user.currentBullet;
-          let bullet = this.createBullet(user.gameID, bulletName, bulletData);
+          const bulletName = user.currentBullet;
+          const bullet = this.createBullet(user.gameID, bulletName, bulletData);
 
           gameData[bulletName] = gameData[bulletName] || {};
           gameData[bulletName][bullet.bulletID] = bullet.getData();
@@ -235,12 +237,13 @@ class Game {
 
   // возвращает полные данные всех игроков
   getFullUsersData() {
-    let gameData = {};
+    const gameData = {};
 
     for (const p in this._modelData) {
       if (this._modelData.hasOwnProperty(p)) {
-        let user = this._modelData[p];
-        let model = user.model;
+        const user = this._modelData[p];
+        const model = user.model;
+
         gameData[model] = gameData[model] || {};
         gameData[model][p] = user.getFullData([user.teamID, user.name]);
       }
@@ -251,22 +254,23 @@ class Game {
 
   // создает новую пулю и возвращает ее
   createBullet(gameID, bulletName, bulletData) {
-    let bulletSet = this._bullets[bulletName];
+    const bulletSet = this._bullets[bulletName];
     let time = this._bulletTime + bulletSet.time;
-    let bullet;
-    let bulletID;
 
     this._currentBulletID += 1;
-    bulletID = this._currentBulletID.toString(36);
+    const bulletID = this._currentBulletID.toString(36);
 
     if (time > this._maxBulletTime) {
       time = time - this._maxBulletTime;
     }
 
-    bullet = this._bulletData[bulletID] = this._Factory(bulletSet.constructor, {
-      bulletSet: bulletSet,
-      bulletData: bulletData,
-    });
+    const bullet = (this._bulletData[bulletID] = this._Factory(
+      bulletSet.constructor,
+      {
+        bulletSet,
+        bulletData,
+      },
+    ));
 
     bullet.bulletName = bulletName;
     bullet.bulletID = bulletID;
@@ -280,19 +284,19 @@ class Game {
 
   // сбрасывает currentBulletID, удаляет и возвращает данные о всех пулях
   resetBulletData() {
-    let gameData = {};
+    const gameData = {};
 
     this._currentBulletID = 0;
 
     for (const p in this._bulletsAtTime) {
       if (this._bulletsAtTime.hasOwnProperty(p)) {
-        let arr = this._bulletsAtTime[p];
+        const arr = this._bulletsAtTime[p];
 
         // очищение пуль
         for (let i = 0, len = arr.length; i < len; i += 1) {
-          let bullet = this._bulletData[arr[i]];
-          let bulletName = bullet.bulletName;
-          let bulletID = bullet.bulletID;
+          const bullet = this._bulletData[arr[i]];
+          const bulletName = bullet.bulletName;
+          const bulletID = bullet.bulletID;
 
           this._world.removeBody(bullet.getBody());
 
@@ -309,11 +313,10 @@ class Game {
 
   // обновляет время и возвращает данные устаревших пуль
   getOldBulletData() {
-    let oldBulletArr = this._bulletsAtTime[this._bulletTime];
-    let gameData = {};
+    const oldBulletArr = this._bulletsAtTime[this._bulletTime];
+    const gameData = {};
 
     this._bulletsAtTime[this._bulletTime] = [];
-
     this._bulletTime += 1;
 
     if (this._bulletTime > this._maxBulletTime) {
@@ -321,9 +324,9 @@ class Game {
     }
 
     for (let i = 0, len = oldBulletArr.length; i < len; i += 1) {
-      let bullet = this._bulletData[oldBulletArr[i]];
-      let bulletName = bullet.bulletName;
-      let bulletID = bullet.bulletID;
+      const bullet = this._bulletData[oldBulletArr[i]];
+      const bulletName = bullet.bulletName;
+      const bulletID = bullet.bulletID;
 
       this._world.removeBody(bullet.getBody());
 
@@ -336,8 +339,8 @@ class Game {
 
   // задает модель пуль игроку
   setUserBullet(gameID, bullet) {
-    let user = this._modelData[gameID];
-    let bulletList = user.bulletList;
+    const user = this._modelData[gameID];
+    const bulletList = user.bulletList;
 
     if (bulletList.indexOf(bullet) !== -1) {
       user.currentBullet = bullet;
@@ -346,8 +349,8 @@ class Game {
 
   // меняет модель пуль игрока
   turnUserBullet(gameID, back) {
-    let user = this._modelData[gameID];
-    let bulletList = user.bulletList;
+    const user = this._modelData[gameID];
+    const bulletList = user.bulletList;
     let key = bulletList.indexOf(user.currentBullet);
 
     // если назад
