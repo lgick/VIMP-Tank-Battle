@@ -18,18 +18,20 @@ sender = replaceTpl(sender);
 subject = replaceTpl(subject);
 html = replaceTpl(html);
 
-export const invite = function (email, cb) {
-  const transporter = nodemailer.createTransport(transport);
+export default {
+  invite: (email, cb) => {
+    const transporter = nodemailer.createTransport(transport);
 
-  transporter.sendMail(
-    {
-      from: sender,
-      to: email,
-      subject: subject,
-      html: html,
-    },
-    function (err, info) {
-      cb(err, info);
-    },
-  );
+    transporter.sendMail(
+      {
+        from: sender,
+        to: email,
+        subject: subject,
+        html: html,
+      },
+      function (err, info) {
+        cb(err, info);
+      },
+    );
+  },
 };

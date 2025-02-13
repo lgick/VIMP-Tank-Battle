@@ -7,8 +7,8 @@ import factory from '../../lib/factory.js';
 import email from '../../lib/email.js';
 
 export default {
-  factory: factory,
-  email: email,
+  factory,
+  email,
 
   expressions: {
     name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
@@ -18,14 +18,14 @@ export default {
 
   parts: {
     mapConstructor: 'map', // название конструктора карт
-    constructors: constructors, // конструкторы частей игры
-    models: models,
-    bullets: bullets,
+    constructors, // конструкторы частей игры
+    models,
+    bullets,
   },
 
-  banlist: banlist,
+  banlist,
 
-  maps: maps, // карты
+  maps, // карты
   currentMap: 'arena', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
   mapSetID: 'c1', // дефолтный id конструкторов создания карт

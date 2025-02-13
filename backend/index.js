@@ -1,30 +1,17 @@
 import express from 'express';
 import favicon from 'serve-favicon';
-import path from 'path';
 import minimist from 'minimist';
-import config from './lib/config.js';
-import routes from './routes/index.js';
-import socket from './socket/index.js';
 import http from 'http';
+import config from './lib/config.js';
 
 // Парсинг аргументов командной строки
 const argv = minimist(process.argv.slice(2));
 
 // auth config
-config.set(
-  'auth',
-  await import(path.join(__dirname, '/game/config/auth.js')).then(
-    mod => mod.default,
-  ),
-);
+config.set('auth', (await import('./game/config/auth.js')).default);
 
 // server config
-config.set(
-  'server',
-  await import(path.join(__dirname, '/game/config/server.js')).then(
-    mod => mod.default,
-  ),
-);
+config.set('server', (await import('./game/config/server.js')).default);
 
 // если задан домен
 if (argv.domain) {
@@ -49,12 +36,7 @@ if (argv.players) {
 }
 
 // game config
-config.set(
-  'game',
-  await import(path.join(__dirname, '/game/config/game.js')).then(
-    mod => mod.default,
-  ),
-);
+config.set('game', (await import('./game/config/game.js')).default);
 
 // если задана карта
 if (argv.map) {
@@ -88,12 +70,7 @@ if (argv.mtime) {
 }
 
 // client config
-config.set(
-  'client',
-  await import(path.join(__dirname, '/game/config/client.js')).then(
-    mod => mod.default,
-  ),
-);
+config.set('client', (await import('./game/config/client.js')).default);
 
 // время ожидания vote-модуля
 config.set('client:user:vote:params:time', config.get('game:voteTime'));
@@ -106,11 +83,12 @@ config.set(
 
 // EXPRESS
 const app = express();
-//app.set('views', path.join(__dirname, '/views'));
-//app.set('view engine', 'pug');
-app.use(favicon(path.join(__dirname, 'public', '/img/favicon.ico')));
-app.use(express.static(path.join(__dirname, '/public')));
-app.use(express.static(path.join(__dirname, '/lib')));
+const routes = (await import('./routes/index.js')).default;
+app.set('views', './views');
+app.set('view engine', 'pug');
+app.use(favicon('../frontend/public/img/favicon.ico'));
+app.use(express.static('../frontend/public'));
+app.use(express.static('./lib'));
 routes(app);
 
 // SERVER
@@ -120,4 +98,5 @@ server.listen(config.get('server:port'), () => {
 });
 
 // WS
-const io = socket(server);
+const socket = (await import('./socket/index.js')).default;
+socket(server);
