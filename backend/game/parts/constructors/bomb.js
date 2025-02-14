@@ -2,45 +2,52 @@ import planck from 'planck';
 
 class Bomb {
   constructor(data) {
-    const bulletSet = data.bulletSet;
-    const bulletData = data.bulletData;
-
-    this._time = bulletSet.time;
-
-    this._body = new planck.Body({
-      mass: bulletSet.mass || 20,
-      position: [bulletData[0], bulletData[1]],
-      angle: bulletData[4],
-      velocity: [0, 0],
-      force: [0, 0],
-      angularVelocity: 0,
-    });
-
-    this._body.addShape(
-      new planck.Circle({
-        width: bulletSet.width,
-        height: bulletSet.height,
-      }),
-    );
+    this._bulletSet = data.bulletSet;
+    this._bulletData = data.bulletData;
+    this._time = data.bulletSet.time;
+    this._body = null; // тело пока не создано
   }
 
-  // возвращает тело модели
+  // Метод для создания тела в переданном мире
+  initBody(world) {
+    // Создаём тело через world.createBody
+    this._body = world.createBody({
+      type: 'dynamic',
+      position: { x: this._bulletData[0], y: this._bulletData[1] }, // the body's origin position.
+      angle: this._bulletData[4],
+      // При необходимости можно указать velocity, angularVelocity и т.д.
+    });
+
+    // Добавляем форму к телу (fixture)
+    this._body.createFixture({
+      shape: new planck.CircleShape(
+        new planck.Vec2(this._bulletSet.width / 2, this._bulletSet.height / 2),
+        // radius: 2x?
+      ),
+      density: this._bulletSet.mass || 20,
+    });
+  }
+
+  // Возвращает тело модели
   getBody() {
+    if (!this._body) {
+      throw new Error(
+        'Тело ещё не создано. Необходимо вызвать initBody(world)',
+      );
+    }
     return this._body;
   }
 
-  // возвращает данные
+  // Возвращает данные модели
   getData() {
-    const body = this._body;
-
-    return [].concat(
-      ~~body.position[0].toFixed(2),
-      ~~body.position[1].toFixed(2),
-      this._time,
-    );
+    const pos = this.getBody().getPosition();
+    return [~~pos.x.toFixed(2), ~~pos.y.toFixed(2), this._time];
   }
 
-  // обновляет данные
-  update(data, cb) {}
+  // Обновление данных (реализация зависит от логики игры)
+  update(data, cb) {
+    // Реализация обновления
+  }
 }
+
 export default Bomb;

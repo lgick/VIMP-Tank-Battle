@@ -2,7 +2,7 @@ import planck from 'planck';
 
 class Map {
   constructor(data) {
-    // копирует массив данных
+    // Функция глубокого копирования массива
     const deepCopy = arr => (Array.isArray(arr) ? arr.map(deepCopy) : arr);
 
     this._mapData = data.mapData;
@@ -20,7 +20,7 @@ class Map {
     this.createDynamic();
   }
 
-  // ищет прямоугольные области
+  // Ищет прямоугольные области для статических тел
   searchStaticBlock(y0, x0) {
     let y = y0;
     let x = x0;
@@ -30,7 +30,7 @@ class Map {
     let lenY;
     let emptyTile;
 
-    // поиск ширины блока
+    // Определяем ширину блока
     while (this._physicsStatic.indexOf(this._map[y0][x]) !== -1) {
       this._map[y0][x] = null;
       x += 1;
@@ -39,12 +39,12 @@ class Map {
 
     lenX = x;
 
-    // поиск высоты блока
+    // Определяем высоту блока
     for (y = y0 + 1, lenY = this._map.length; y < lenY; y += 1) {
       emptyTile = false;
       x = x0;
 
-      // поиск наличия пустого блока
+      // Проверка наличия статического элемента в ряду
       while (x < lenX) {
         if (this._physicsStatic.indexOf(this._map[y][x]) !== -1) {
           x += 1;
@@ -59,8 +59,7 @@ class Map {
       } else {
         hCounter += 1;
         x = x0;
-
-        // удаление данных в блоке
+        // Обнуляем обработанные ячейки
         while (x < lenX) {
           this._map[y][x] = null;
           x += 1;
@@ -71,89 +70,82 @@ class Map {
     return [wCounter * this._step, hCounter * this._step];
   }
 
-  // создает статические элементы
+  // Создает статические элементы карты
   createStatic() {
     for (let y = 0, lenY = this._map.length; y < lenY; y += 1) {
       for (let x = 0, lenX = this._map[y].length; x < lenX; x += 1) {
         const tile = this._map[y][x];
 
-        // если есть среди статических тел
+        // Если найден статический элемент
         if (this._physicsStatic.indexOf(tile) !== -1) {
           const sizes = this.searchStaticBlock(y, x);
+          const posX = x * this._step + sizes[0] / 2;
+          const posY = y * this._step + sizes[1] / 2;
 
-          const body = new planck.Body({
-            position: [
-              x * this._step + sizes[0] / 2,
-              y * this._step + sizes[1] / 2,
-            ],
-            type: planck.Body.STATIC,
+          // Создаем статическое тело через world.createBody
+          const body = this._world.createBody({
+            type: 'static',
+            position: { x: posX, y: posY },
           });
 
-          body.addShape(
-            new planck.Box({
-              width: sizes[0],
-              height: sizes[1],
-            }),
-          );
-
-          this._world.addBody(body);
+          // Добавляем fixture в виде прямоугольника.
+          // В конструкторе Box указываются половинные размеры.
+          body.createFixture(new planck.BoxShape(sizes[0] / 2, sizes[1] / 2));
         }
       }
     }
   }
 
-  // создает динамические элементы
+  // Создает динамические элементы карты
   createDynamic() {
     for (let i = 0, len = this._physicsDynamic.length; i < len; i += 1) {
       const data = this._physicsDynamic[i];
 
-      const body = (this._dynamicBodies['d' + i] = new planck.Body({
-        mass: data.mass,
-        position: data.position,
+      const body = this._world.createBody({
+        type: 'dynamic',
+        position: { x: data.position[0], y: data.position[1] },
         angle: data.angle,
-      }));
+      });
 
-      body.defaultPosition = data.position;
+      // Сохраняем исходные данные для возможного сброса
+      body.defaultPosition = data.position.slice();
       body.defaultAngle = data.angle;
 
-      body.addShape(
-        new planck.Box({
-          width: data.width,
-          height: data.height,
-        }),
-      );
+      body.createFixture(new planck.BoxShape(data.width / 2, data.height / 2), {
+        density: data.mass,
+      });
 
-      this._world.addBody(body);
+      this._dynamicBodies['d' + i] = body;
     }
   }
 
-  // удаляет динамические элементы
+  // Удаляет все динамические элементы из мира
   removeDynamic() {
     for (const id in this._dynamicBodies) {
       if (this._dynamicBodies.hasOwnProperty(id)) {
-        this._world.removeBody(this._dynamicBodies[id]);
+        this._world.destroyBody(this._dynamicBodies[id]);
         delete this._dynamicBodies[id];
       }
     }
   }
 
-  // возвращает все данные динамических элементов
+  // Возвращает данные для всех динамических элементов карты
   getFullDynamicMapData() {
     return this.getDynamicMapData();
   }
 
-  // возвращает данные динамических элементов
+  // Возвращает краткие данные динамических элементов
   getDynamicMapData() {
     const data = {};
 
     for (const id in this._dynamicBodies) {
       if (this._dynamicBodies.hasOwnProperty(id)) {
         const body = this._dynamicBodies[id];
-
+        const pos = body.getPosition();
         data[id] = [
-          ~~body.position[0].toFixed(2),
-          ~~body.position[1].toFixed(2),
-          ~~body.angle.toFixed(2),
+          ~~pos.x.toFixed(2),
+          ~~pos.y.toFixed(2),
+          ~~body.getAngle().toFixed(2),
         ];
       }
     }
@@ -161,15 +153,14 @@ class Map {
     return data;
   }
 
-  // сбрасывает динамические элементы в дефолтные данные
+  // Сбрасывает динамические элементы к их исходным данным
   resetDynamic() {
     for (const id in this._dynamicBodies) {
       if (this._dynamicBodies.hasOwnProperty(id)) {
         const body = this._dynamicBodies[id];
-        const position = body.defaultPosition;
-        body.position[0] = position[0];
-        body.position[1] = position[1];
-        body.angle = body.defaultAngle;
+        const pos = body.defaultPosition;
+        body.setPosition({ x: pos[0], y: pos[1] });
+        body.setAngle(body.defaultAngle);
       }
     }
   }
