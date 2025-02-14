@@ -2,52 +2,72 @@ import planck from 'planck';
 
 class Bullet {
   constructor(data) {
-    const bulletSet = data.bulletSet;
-    const bulletData = data.bulletData;
+    // Сохраняем параметры для последующего создания тела
+    this._bulletSet = data.bulletSet;
+    this._bulletData = data.bulletData;
 
-    this._vX = bulletData[2];
-    this._vY = bulletData[3];
-    this._angle = bulletData[4];
+    // Извлекаем необходимые параметры
+    this._vX = data.bulletData[2];
+    this._vY = data.bulletData[3];
+    this._angle = data.bulletData[4];
 
-    this._body = new planck.Body({
-      mass: bulletSet.mass || 20,
-      position: [bulletData[0], bulletData[1]],
-      angle: bulletData[4],
-      velocity: [0, 0],
-      force: [0, 0],
-      angularVelocity: 0,
-    });
-
-    this._body.addShape(
-      new planck.Circle({
-        width: bulletSet.width,
-        height: bulletSet.height,
-      }),
-    );
+    // Тело будет создано позже через initBody
+    this._body = null;
   }
 
-  // возвращает тело модели
+  // Метод для создания тела в переданном мире
+  initBody(world) {
+    this._body = world.createBody({
+      type: 'dynamic',
+      position: { x: this._bulletData[0], y: this._bulletData[1] }, // the body's origin position.
+      angle: this._angle,
+      // Дополнительно можно указать velocity, если это нужно
+    });
+
+    // Устанавливаем линейную скорость, если необходимо
+    this._body.setLinearVelocity(this._vX, this._vY);
+
+    // Добавляем fixture с формой круга.
+    this._body.createFixture({
+      shape: new planck.CircleShape(
+        new planck.Vec2(this._bulletSet.width / 2, this._bulletSet.height / 2),
+        // radius: 2x?
+      ),
+      density: this._bulletSet.mass || 20,
+    });
+  }
+
+  // Возвращает тело модели
   getBody() {
+    if (!this._body) {
+      throw new Error(
+        'Тело ещё не создано. Вызовите initBody(world) для его инициализации.',
+      );
+    }
     return this._body;
   }
 
-  // возвращает данные
+  // Возвращает данные (например, позицию и скорость)
   getData() {
-    const body = this._body;
-
-    return [].concat(
-      ~~body.position[0].toFixed(2),
-      ~~body.position[1].toFixed(2),
+    const pos = this.getBody().getPosition();
+    return [
+      ~~pos.x.toFixed(2),
+      ~~pos.y.toFixed(2),
       this._vX,
       this._vY,
       this._angle,
-    );
+    ];
   }
 
-  // обновляет данные
+  // Обновляет данные
   update(data, cb) {
-    this.x += this.vX;
-    this.y += this.vY;
+    // Обычно обновление производится физическим движком (world.step)
+    // Если нужна дополнительная логика, реализуйте её здесь.
+    // Пример (необязательно):
+    // const body = this.getBody();
+    // const pos = body.getPosition();
+    // body.setPosition(planck.Vec2(pos.x + this._vX, pos.y + this._vY));
   }
 }
+
 export default Bullet;

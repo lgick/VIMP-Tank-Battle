@@ -24,7 +24,7 @@ class Game {
     this._shotTime = shotTime;
 
     this._world = new planck.World({
-      gravity: [0, 0],
+      gravity: { x: 0, y: 0 },
       allowSleep: true,
     });
 
@@ -116,7 +116,7 @@ class Game {
     user.currentBullet = modelData.currentBullet;
     user.bulletList = Object.keys(modelData.bullets);
 
-    this._world.createBody(user.getBody());
+    user.initBody(this._world);
   }
 
   // удаляет игрока
@@ -164,14 +164,24 @@ class Game {
 
   // возвращает координаты игрока
   getUserCoords(gameID) {
-    const position = this._modelData[gameID].getBody().position;
+    const position = this._modelData[gameID].getBody().getPosition();
 
     return [+position[0].toFixed(), +position[1].toFixed()];
   }
 
   // стирает данные игрового мира
   clear() {
+    // Сначала сбрасываем силы
     this._world.clearForces();
+
+    // Затем удаляем все тела
+    let body = this._world.getBodyList();
+
+    while (body) {
+      const nextBody = body.getNext();
+      this._world.destroyBody(body);
+      body = nextBody;
+    }
   }
 
   // обновляет данные
@@ -277,8 +287,9 @@ class Game {
     bullet.bulletID = bulletID;
     bullet.gameID = gameID;
 
+    bullet.initBody(this._world);
+
     this._bulletsAtTime[time].push(bulletID);
-    this._world.createBody(bullet.getBody());
 
     return bullet;
   }
