@@ -86,7 +86,7 @@ const app = express();
 const routes = (await import('./routes/index.js')).default;
 app.set('views', './views');
 app.set('view engine', 'pug');
-app.use(favicon('../frontend/public/img/favicon.ico'));
+app.use(favicon('../frontend/public/favicon.ico'));
 app.use(express.static('../frontend/public'));
 app.use(express.static('./lib'));
 routes(app);
