@@ -16,7 +16,7 @@
   "main": "server/index.js",
   "scripts": {
     "dev": "node server/index.js",
-    "build": "vite build --root client",
+    "build": "vite build client",
     "start": "NODE_ENV=production node server/index.js"
   },
   "dependencies": {
