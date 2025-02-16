@@ -2,7 +2,13 @@ import express from 'express';
 import favicon from 'serve-favicon';
 import minimist from 'minimist';
 import http from 'http';
+import path from 'path';
 import config from './lib/config.js';
+import { fileURLToPath } from 'url';
+
+// __dirname в ES-модулях
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Парсинг аргументов командной строки
 const argv = minimist(process.argv.slice(2));
@@ -84,11 +90,14 @@ config.set(
 // EXPRESS
 const app = express();
 const routes = (await import('./routes/index.js')).default;
-app.set('views', './views');
+
+app.set('views', path.join(__dirname, '/views'));
 app.set('view engine', 'pug');
-app.use(favicon('../frontend/public/favicon.ico'));
-app.use(express.static('../frontend/public'));
-app.use(express.static('./lib'));
+
+app.use(favicon(path.join(__dirname, 'public', '/img/favicon.ico')));
+app.use(express.static(path.join(__dirname, '/public')));
+app.use(express.static(path.join(__dirname, '/dist')));
+app.use(express.static(path.join(__dirname, '/lib')));
 routes(app);
 
 // SERVER
