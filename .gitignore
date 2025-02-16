@@ -5,3 +5,7 @@ node_modules/
 /public/tests/
 /public/js/vendor/
 /client/dist/
+dist
+logs
+*.log
+npm-debug.log*
