@@ -1,7 +1,7 @@
 define(['createjs'], function (createjs) {
-  var Shape = createjs.Shape
-    , Gun
-    , p;
+  var Shape = createjs.Shape,
+    Gun,
+    p;
 
   Gun = function (params) {
     this.initialize(params);
@@ -22,10 +22,13 @@ define(['createjs'], function (createjs) {
     this.vY = params[3];
     this.rotation = params[4];
 
-    this.addEventListener('tick', (function () {
-      this.x += this.vX;
-      this.y += this.vY;
-    }).bind(this));
+    this.addEventListener(
+      'tick',
+      function () {
+        this.x += this.vX;
+        this.y += this.vY;
+      }.bind(this),
+    );
 
     this.create();
   };
@@ -41,8 +44,7 @@ define(['createjs'], function (createjs) {
   };
 
   // обновляет экземпляр
-  p.update = function () {
-  };
+  p.update = function () {};
 
   return Gun;
 });
