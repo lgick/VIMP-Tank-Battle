@@ -1,8 +1,8 @@
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import pugPlugin from 'vite-plugin-pug';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [pugPlugin()],
   server: {
     hmr: {
       middlewareMode: true,
