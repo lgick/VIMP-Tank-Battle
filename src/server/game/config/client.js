@@ -257,11 +257,6 @@ export default {
     },
   },
 
-  // ***** media ***** //
-  media: {
-    manifest: [{ id: 'poster2', src: '/img/poster2.png' }],
-  },
-
   // ***** informer ***** //
   informer: [
     'Дорогой {0}, Вы забанены!<br>' +
