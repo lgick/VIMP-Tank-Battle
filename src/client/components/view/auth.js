@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton AuthView
-  var authView;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function AuthView(model, data) {
+// Singleton AuthView
+
+let authView;
+
+export default class AuthView {
+  constructor(model, data) {
     if (authView) {
       return authView;
     }
@@ -22,11 +25,11 @@ define(['Publisher'], function (Publisher) {
     this.publisher = new Publisher();
 
     // действие с инпутами
-    this._form.onchange = function (e) {
-      var tg = e.target;
+    this._form.onchange = e => {
+      const tg = e.target;
 
       if (tg.tagName === 'INPUT') {
-        authView.publisher.emit('input', {
+        this.publisher.emit('input', {
           name: tg.name,
           value: tg.value,
         });
@@ -34,7 +37,7 @@ define(['Publisher'], function (Publisher) {
     };
 
     // форма заполнена
-    this._enter.onclick = function () {
+    this._enter.onclick = () => {
       authView.publisher.emit('enter');
     };
 
@@ -44,77 +47,55 @@ define(['Publisher'], function (Publisher) {
   }
 
   // показывает форму
-  AuthView.prototype.showAuth = function () {
+  showAuth() {
     this._auth.style.display = 'block';
-  };
+  }
 
   // скрывает форму
-  AuthView.prototype.hideAuth = function (data) {
-    var i, len;
-
+  hideAuth(data) {
     if (data) {
-      for (i = 0, len = data.length; i < len; i += 1) {
-        this._localStorage[data[i].name] = data[i].value;
-      }
+      data.forEach(item => {
+        this._localStorage[item.name] = item.value;
+      });
     }
 
     this._auth.style.display = 'none';
-  };
+  }
 
   // обновляет форму
-  AuthView.prototype.renderData = function (data) {
-    var name = data.name,
-      value = data.value,
-      list = this._form.querySelectorAll('input'),
-      i = 0,
-      len = list.length,
-      input;
+  renderData(data) {
+    const { name, value } = data;
+    const inputs = this._form.querySelectorAll('input');
 
     this._error.innerHTML = '';
 
     // делает активным нужный инпут
-    for (; i < len; i += 1) {
-      input = list[i];
-
-      if (input.type === 'text') {
-        if (input.name === name) {
-          input.value = value;
-        }
+    inputs.forEach(input => {
+      if (input.type === 'text' && input.name === name) {
+        input.value = value;
       }
 
-      if (input.type === 'radio') {
-        if (input.name === name) {
-          if (input.value === value) {
-            input.checked = true;
-          } else {
-            input.checked = false;
-          }
-        }
+      if (input.type === 'radio' && input.name === name) {
+        input.checked = input.value === value ? true : false;
       }
-    }
-  };
+    });
+  }
 
   // отображает ошибки
-  AuthView.prototype.renderError = function (data) {
-    var i = 0,
-      len = data.length,
-      message = '',
-      err,
-      name;
+  renderError(data) {
+    let message = '';
 
-    for (; i < len; i += 1) {
-      name = data[i].name.toUpperCase();
-      err = data[i].error;
+    data.forEach(item => {
+      const name = item.name.toUpperCase();
+      const err = item.error;
 
       if (err) {
-        message += name + ': ' + err + '<br>';
+        message += `${name}: ${err}<br>`;
       } else {
-        message += name + ' is not correctly!<br>';
+        message += `${name} is not correctly!<br>`;
       }
-    }
+    });
 
     this._error.innerHTML = message;
-  };
-
-  return AuthView;
-});
+  }
+}

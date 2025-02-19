@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton PanelView
-  var panelView;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function PanelView(model, data) {
+// Singleton PanelView
+
+let panelView;
+
+export default class PanelView {
+  constructor(model, data) {
     if (panelView) {
       return panelView;
     }
@@ -22,13 +25,11 @@ define(['Publisher'], function (Publisher) {
   }
 
   // обновляет пользовательскую панель
-  PanelView.prototype.update = function (data) {
-    var elem = this._document.getElementById(this._panel[data.name]);
+  update(data) {
+    const elem = this._document.getElementById(this._panel[data.name]);
 
     if (elem) {
       elem.innerHTML = data.value;
     }
-  };
-
-  return PanelView;
-});
+  }
+}

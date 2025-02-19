@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton VoteView
-  var voteView;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function VoteView(model, data) {
+// Singleton VoteView
+
+let voteView;
+
+export default class VoteView {
+  constructor(model, data) {
     if (voteView) {
       return voteView;
     }
@@ -27,23 +30,15 @@ define(['Publisher'], function (Publisher) {
   }
 
   // создает окно голосования
-  VoteView.prototype.createVote = function (data) {
-    var title = data.title
-      , list = data.list
-      , back = data.back
-      , more = data.more
-      , time = data.time
-      , vote = this._document.createElement('div')
-      , p = this._document.createElement('p')
-      , ol = this._document.createElement('ol')
-      , li
-      , navContainer = this._document.createElement('div')
-      , backElem = this._document.createElement('p')
-      , moreElem = this._document.createElement('p')
-      , exitElem = this._document.createElement('p')
-      , i = 0
-      , len = list.length
-      , timerID;
+  createVote(data) {
+    const { title, list, back, more, time } = data;
+    const vote = this._document.createElement('div');
+    const p = this._document.createElement('p');
+    const ol = this._document.createElement('ol');
+    const navContainer = this._document.createElement('div');
+    const backElem = this._document.createElement('p');
+    const moreElem = this._document.createElement('p');
+    const exitElem = this._document.createElement('p');
 
     vote.setAttribute('id', this._voteID);
 
@@ -52,11 +47,11 @@ define(['Publisher'], function (Publisher) {
 
     ol.setAttribute('class', this._listClass);
 
-    for (; i < len; i += 1) {
-      li = this._document.createElement('li');
-      li.innerHTML = list[i];
+    list.forEach(item => {
+      const li = this._document.createElement('li');
+      li.innerHTML = item;
       ol.appendChild(li);
-    }
+    });
 
     vote.appendChild(p);
     vote.appendChild(ol);
@@ -85,18 +80,18 @@ define(['Publisher'], function (Publisher) {
 
     this._document.body.appendChild(vote);
 
-    timerID = this._window.setTimeout((function () {
+    const timerID = this._window.setTimeout(() => {
       vote.parentElement.removeChild(vote);
       this.publisher.emit('timer', null);
       this.publisher.emit('clear');
-    }).bind(this), time);
+    }, time);
 
     this.publisher.emit('timer', timerID);
-  };
+  }
 
   // удаляет окно голосования
-  VoteView.prototype.removeVote = function (timerID) {
-    var vote = this._document.getElementById(this._voteID);
+  removeVote(timerID) {
+    const vote = this._document.getElementById(this._voteID);
 
     if (timerID) {
       this._window.clearTimeout(timerID);
@@ -105,7 +100,5 @@ define(['Publisher'], function (Publisher) {
     if (vote) {
       vote.parentElement.removeChild(vote);
     }
-  };
-
-  return VoteView;
-});
+  }
+}

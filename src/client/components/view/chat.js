@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton ChatView
-  var chatView;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function ChatView(model, data) {
+// Singleton ChatView
+
+let chatView;
+
+export default class ChatView {
+  constructor(model, data) {
     if (chatView) {
       return chatView;
     }
@@ -28,71 +31,63 @@ define(['Publisher'], function (Publisher) {
   }
 
   // открывает командную строку
-  ChatView.prototype.openCmd = function () {
+  openCmd() {
     this._cmd.value = '';
     this._cmd.style.display = 'block';
     this._cmd.focus();
-  };
+  }
 
   // закрывает командную строку
-  ChatView.prototype.closeCmd = function (success) {
+  closeCmd(success) {
     if (success) {
       this.publisher.emit('message', this._cmd.value);
     }
 
     this._cmd.style.display = 'none';
     this._cmd.value = '';
-  };
+  }
 
   // добавляет сообщение в чат-лист
-  ChatView.prototype.createLine = function (data) {
-    var line = this._document.createElement('div')
-      , id = data.id
-      , message = data.message
-      , text = message[0]
-      , name = message[1] || 'System'
-      , type = typeof message[2] === 'number' ? message[2] : ''
-    ;
+  createLine(data) {
+    const line = this._document.createElement('div');
+    const id = data.id;
+    const message = data.message;
+    const text = message[0];
+    const name = message[1] || 'System';
+    const type = typeof message[2] === 'number' ? message[2] : '';
 
-    line.id = 'line_' + id;
-    line.className = 'line' + type;
-    line.setAttribute('data-name', name + ': ');
+    line.id = `line_${id}`;
+    line.className = `line${type}`;
+    line.setAttribute('data-name', `${name}: `);
     line.innerHTML = text;
 
     this._chat.appendChild(line);
-  };
+  }
 
   // удаляет сообщение в чат-листе
-  ChatView.prototype.removeLine = function (id) {
-    var line = this._document.getElementById('line_' + id);
+  removeLine(id) {
+    const line = this._document.getElementById(`line_${id}`);
 
     line.style.opacity = 0;
 
-    this._window.setTimeout(function () {
-      chatView._chat.removeChild(line);
+    this._window.setTimeout(() => {
+      this._chat.removeChild(line);
     }, 2000);
-  };
+  }
 
   // устанавливает таймер
-  ChatView.prototype.createTimer = function (data) {
-    var messageId = data.id
-      , time = data.time
-      , timerId;
-
-    timerId = this._window.setTimeout(function () {
-      chatView.publisher.emit('oldTimer');
+  createTimer(data) {
+    const messageId = data.id;
+    const time = data.time;
+    const timerId = this._window.setTimeout(() => {
+      this.publisher.emit('oldTimer');
     }, time);
 
-    chatView.publisher.emit('newTimer', {
-      messageId: messageId,
-      timerId: timerId
-    });
-  };
+    this.publisher.emit('newTimer', { messageId, timerId });
+  }
 
   // снимает таймер
-  ChatView.prototype.removeTimer = function (timer) {
+  removeTimer(timer) {
     this._window.clearTimeout(timer);
-  };
-
-  return ChatView;
-});
+  }
+}

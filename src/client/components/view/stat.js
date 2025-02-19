@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton StatView
-  var statView;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function StatView(model, data) {
+// Singleton StatView
+
+let statView;
+
+export default class StatView {
+  constructor(model, data) {
     if (statView) {
       return statView;
     }
@@ -25,64 +28,46 @@ define(['Publisher'], function (Publisher) {
   }
 
   // открывает статистику
-  StatView.prototype.open = function () {
+  open() {
     this._stat.style.display = 'block';
-  };
+  }
 
   // закрывает статистику
-  StatView.prototype.close = function () {
+  close() {
     this._stat.style.display = 'none';
-  };
+  }
 
   // обновляет <thead>
-  StatView.prototype.updateTableHead = function (data) {
-    var table = this._document.getElementById(data.tableID)
-      , cells = table.tHead.rows[data.rowNumber].cells
-      , cellsData = data.cellsData
-      , i = 0
-      , len = cells.length
-    ;
+  updateTableHead(data) {
+    const table = this._document.getElementById(data.tableID);
+    const cells = table.tHead.rows[data.rowNumber].cells;
+    const cellsData = data.cellsData;
 
-    for (; i < len; i += 1) {
+    for (let i = 0, len = cells.length; i < len; i += 1) {
       cells[i].innerHTML = cellsData[i];
     }
-  };
+  }
 
   // обновляет <tbody>
-  StatView.prototype.updateTableBody = function (data) {
-    var table = this._document.getElementById(data.tableID)
-      , tbody = table.tBodies[data.bodyNumber]
-      , row = tbody.rows.namedItem('stat_' + data.id)
-      , cellsData = data.cellsData
-      , sortData = data.sortData
-      , cells
-      , cell
-      , i
-      , len
-    ;
+  updateTableBody(data) {
+    const table = this._document.getElementById(data.tableID);
+    const tbody = table.tBodies[data.bodyNumber];
+    let row = tbody.rows.namedItem(`stat_${data.id}`);
+    const { cellsData, sortData } = data;
 
     // сортирует
-    function sorting(rowIndex) {
-      var row = tbody.rows[rowIndex]
-        , prevRow = tbody.rows[rowIndex - 1]
-        , nextRow = tbody.rows[rowIndex + 1]
-        , value
-        , prevValue
-        , nextValue
-        , i
-        , len
-        , number
-        , type
-      ;
+    const sorting = rowIndex => {
+      let row = tbody.rows[rowIndex];
+      let prevRow = tbody.rows[rowIndex - 1];
+      let nextRow = tbody.rows[rowIndex + 1];
 
       // если есть предыдущая строка
       if (prevRow) {
-        for (i = 0, len = sortData.length; i < len; i += 1) {
-          number = sortData[i][0];
-          type = sortData[i][1];
-
-          value = ~~(row.cells[number].innerHTML);
-          prevValue = ~~(prevRow.cells[number].innerHTML);
+        for (let i = 0, len = sortData.length; i < len; i += 1) {
+          const number = sortData[i][0];
+          const type = sortData[i][1];
+          const value = ~~row.cells[number].innerHTML;
+          const prevValue = ~~prevRow.cells[number].innerHTML;
 
           // если type == true, значит сортировка по убыванию
           if (type) {
@@ -97,7 +82,7 @@ define(['Publisher'], function (Publisher) {
               break;
             }
 
-          // иначе сортировка по возрастанию
+            // иначе сортировка по возрастанию
           } else {
             // если предыдущее значение больше текущего
             if (prevValue > value) {
@@ -115,12 +100,11 @@ define(['Publisher'], function (Publisher) {
 
       // если есть следующая строка
       if (nextRow) {
-        for (i = 0, len = sortData.length; i < len; i += 1) {
-          number = sortData[i][0];
-          type = sortData[i][1];
-
-          value = ~~(row.cells[number].innerHTML);
-          nextValue = ~~(nextRow.cells[number].innerHTML);
+        for (let i = 0, len = sortData.length; i < len; i += 1) {
+          const number = sortData[i][0];
+          const type = sortData[i][1];
+          const value = ~~row.cells[number].innerHTML;
+          const nextValue = ~~nextRow.cells[number].innerHTML;
 
           // если type == true, значит сортировка по убыванию
           if (type) {
@@ -135,7 +119,7 @@ define(['Publisher'], function (Publisher) {
               break;
             }
 
-          // иначе сортировка по возрастанию
+            // иначе сортировка по возрастанию
           } else {
             // если следующее значение меньше текущего
             if (nextValue < value) {
@@ -150,17 +134,17 @@ define(['Publisher'], function (Publisher) {
           }
         }
       }
-    }
+    };
 
     // если строка отсутствует
     if (row === null) {
       // если есть данные для создания строки, создать ее
       if (cellsData !== null) {
         row = tbody.insertRow(-1);
-        row.setAttribute('id', 'stat_' + data.id);
+        row.setAttribute('id', `stat_${data.id}`);
 
-        for (i = 0, len = cellsData.length; i < len; i += 1) {
-          cell = row.insertCell(i);
+        for (let i = 0, len = cellsData.length; i < len; i += 1) {
+          const cell = row.insertCell(i);
           cell.innerHTML = cellsData[i];
         }
 
@@ -169,17 +153,17 @@ define(['Publisher'], function (Publisher) {
         }
       }
 
-    // иначе, если строка присутствует
+      // иначе, если строка присутствует
     } else {
       // если данные строки === null, удалить строку
       if (cellsData === null) {
         row.parentNode.removeChild(row);
 
-      // иначе обновить строку
+        // иначе обновить строку
       } else {
-        cells = row.cells;
+        const cells = row.cells;
 
-        for (i = 0, len = cells.length; i < len; i += 1) {
+        for (let i = 0, len = cells.length; i < len; i += 1) {
           cells[i].innerHTML = cellsData[i];
         }
 
@@ -188,7 +172,5 @@ define(['Publisher'], function (Publisher) {
         }
       }
     }
-  };
-
-  return StatView;
-});
+  }
+}
