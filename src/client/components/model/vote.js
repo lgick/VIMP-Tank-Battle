@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton VoteModel
-  var voteModel;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function VoteModel(data) {
+// Singleton VoteModel
+
+let voteModel;
+
+export default class VoteModel {
+  constructor(data) {
     if (voteModel) {
       return voteModel;
     }
@@ -13,44 +16,41 @@ define(['Publisher'], function (Publisher) {
     this._String = this._window.String;
     this._parseInt = this._window.parseInt;
 
-    this._menu = data.menu;          // меню
+    this._menu = data.menu; // меню
 
-    this._currentVote = null;        // текущее голосование
-    this._type = '';                 // тип ('menu', 'vote')
-    this._waitingValues = false;     // ожидания значений
+    this._currentVote = null; // текущее голосование
+    this._type = ''; // тип ('menu', 'vote')
+    this._waitingValues = false; // ожидания значений
 
     this._time = data.time || 20000; // время жизни голосования
-    this._timerID = null;            // id таймера
+    this._timerID = null; // id таймера
 
-    this._voteName = '';             // название голосования
-    this._data = [];                 // данные голосования
+    this._voteName = ''; // название голосования
+    this._data = []; // данные голосования
 
-    this._title = null;              // заголовок голосования
-    this._values = [];               // все значения голосования
+    this._title = null; // заголовок голосования
+    this._values = []; // все значения голосования
 
-    this._back = false;              // флаг back
-    this._more = false;              // флаг more
-    this._currentPage = 0;           // текущая страница вывода значений
-    this._currentValues = [];        // значения текущей страницы
+    this._back = false; // флаг back
+    this._more = false; // флаг more
+    this._currentPage = 0; // текущая страница вывода значений
+    this._currentValues = []; // значения текущей страницы
 
     this.publisher = new Publisher();
   }
 
   // открывает голосование
-  VoteModel.prototype.open = function () {
-    this.publisher.emit('mode', {
-      name: 'vote',
-      status: 'opened'
-    });
-  };
+  open() {
+    this.publisher.emit('mode', { name: 'vote', status: 'opened' });
+  }
 
   // создает голосование
-  VoteModel.prototype.createVote = function (data) {
+  createVote(data) {
     if (this._waitingValues) {
       return;
     }
 
-    var values;
+    let values;
 
     this._type = 'vote';
     this._back = false;
@@ -62,7 +62,7 @@ define(['Publisher'], function (Publisher) {
       this._voteName = data[0];
       this._currentVote = data[1];
 
-    // если данные: ['title', 'value', 'next']
+      // если данные: ['title', 'value', 'next']
     } else if (data.length === 3) {
       this._currentVote = data;
     }
@@ -77,16 +77,13 @@ define(['Publisher'], function (Publisher) {
       this._values = values;
       this.show();
     }
-  };
+  }
 
   // создает меню
-  VoteModel.prototype.createMenu = function () {
+  createMenu() {
     if (this._waitingValues) {
       return;
     }
-
-    var i
-      , len;
 
     this._currentVote = this._menu;
 
@@ -100,26 +97,25 @@ define(['Publisher'], function (Publisher) {
     this._values = [];
     this._voteName = '';
 
-    for (i = 0, len = this._currentVote.length; i < len; i += 1) {
+    for (let i = 0, len = this._currentVote.length; i < len; i += 1) {
       this._values.push(this._currentVote[i][1][0]);
     }
 
     this.show();
-  };
+  }
 
   // обновляет массив значений
-  VoteModel.prototype.updateValues = function (values) {
+  updateValues(values) {
     if (this._waitingValues) {
       this._values = values;
       this._waitingValues = false;
       this.show();
     }
-  };
+  }
 
   // обновляет голосование
-  VoteModel.prototype.update = function (keyCode) {
-    var number
-      , value;
+  update(keyCode) {
+    let number, value;
 
     if (this._waitingValues) {
       return;
@@ -133,21 +129,20 @@ define(['Publisher'], function (Publisher) {
       // exit
       if (number === 0) {
         this.complete();
-      // back
+        // back
       } else if (number === 8) {
         if (this._back) {
           this._currentPage -= 1;
           this.show();
         }
-
-      // more
+        // more
       } else if (number === 9) {
         if (this._more) {
           this._currentPage += 1;
           this.show();
         }
 
-      // иначе, число от 1 до 7
+        // иначе, число от 1 до 7
       } else {
         number = number - 1;
 
@@ -158,7 +153,7 @@ define(['Publisher'], function (Publisher) {
             this.createVote(this._currentVote[number]);
           }
 
-        // иначе, если тип данных для голосования это объект
+          // иначе, если тип данных для голосования это объект
         } else if (this._type === 'vote') {
           // если число есть в массиве значений
           if (this._currentValues[number]) {
@@ -171,7 +166,7 @@ define(['Publisher'], function (Publisher) {
             if (this._currentVote[2]) {
               this.createVote(this._currentVote[2]);
 
-            // иначе, отправляет результат на сервер и завершаем голосование
+              // иначе, отправляет результат на сервер и завершаем голосование
             } else {
               this.publisher.emit('socket', [this._voteName, this._data]);
               this.complete();
@@ -180,32 +175,20 @@ define(['Publisher'], function (Publisher) {
         }
       }
     }
-  };
+  }
 
   // отображает голосование
-  VoteModel.prototype.show = function () {
-    var begin = this._currentPage * 7
-      , max = begin + 7
-      , currentValues = []
-      , i
-      , len;
+  show() {
+    const begin = this._currentPage * 7;
+    const max = begin + 7;
+    let currentValues = [];
 
     this._currentValues = this._values.slice(begin, max);
-
-    if (this._currentPage > 0) {
-      this._back = true;
-    } else {
-      this._back = false;
-    }
-
-    if (this._values.length > max) {
-      this._more = true;
-    } else {
-      this._more = false;
-    }
+    this._back = this._currentPage > 0 ? true : false;
+    this._more = this._values.length > max ? true : false;
 
     if (this._type === 'vote') {
-      for (i = 0, len = this._currentValues.length; i < len; i += 1) {
+      for (let i = 0, len = this._currentValues.length; i < len; i += 1) {
         currentValues.push(this._currentValues[i].split(':')[0]);
       }
     } else {
@@ -219,25 +202,20 @@ define(['Publisher'], function (Publisher) {
       list: currentValues,
       back: this._back,
       more: this._more,
-      time: this._time
+      time: this._time,
     });
-  };
+  }
 
   // завершает голосование
-  VoteModel.prototype.complete = function () {
+  complete() {
     this._data = [];
     this._waitingValues = false;
     this.publisher.emit('clear', this._timerID);
-    this.publisher.emit('mode', {
-      name: 'vote',
-      status: 'closed'
-    });
-  };
+    this.publisher.emit('mode', { name: 'vote', status: 'closed' });
+  }
 
   // добавляет id таймера голосования
-  VoteModel.prototype.assignTimer = function (timerID) {
+  assignTimer(timerID) {
     this._timerID = timerID || null;
-  };
-
-  return VoteModel;
-});
+  }
+}

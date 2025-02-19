@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton StatModel
-  var statModel;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function StatModel(data) {
+// Singleton StatModel
+
+let statModel;
+
+export default class StatModel {
+  constructor(data) {
     if (statModel) {
       return statModel;
     }
@@ -11,43 +14,30 @@ define(['Publisher'], function (Publisher) {
 
     this._heads = data.heads;
     this._bodies = data.bodies;
-
     this._sortList = data.sortList;
-
     this.publisher = new Publisher();
   }
 
   // открывает статистику
-  StatModel.prototype.open = function () {
+  open() {
     this.publisher.emit('open');
-
-    this.publisher.emit('mode', {
-      name: 'stat',
-      status: 'opened'
-    });
-  };
+    this.publisher.emit('mode', { name: 'stat', status: 'opened' });
+  }
 
   // закрывает статистику
-  StatModel.prototype.close = function () {
+  close() {
     this.publisher.emit('close');
-
-    this.publisher.emit('mode', {
-      name: 'stat',
-      status: 'closed'
-    });
-  };
+    this.publisher.emit('mode', { name: 'stat', status: 'closed' });
+  }
 
   // обновляет данные статистики
-  StatModel.prototype.update = function (data) {
-    var tBodiesData = data[0]
-      , tHeadData = data[1]
-      , tableID
-      , i
-      , len;
+  update(data) {
+    const tBodiesData = data[0];
+    const tHeadData = data[1];
 
     // если есть данные для <tbody>
     if (tBodiesData) {
-      for (i = 0, len = tBodiesData.length; i < len; i += 1) {
+      for (let i = 0, len = tBodiesData.length; i < len; i += 1) {
         tableID = this._bodies[tBodiesData[i][1]];
 
         if (tableID) {
@@ -56,7 +46,7 @@ define(['Publisher'], function (Publisher) {
             tableID: tableID,
             cellsData: tBodiesData[i][2],
             sortData: this._sortList[tableID],
-            bodyNumber: tBodiesData[i][3] || 0
+            bodyNumber: tBodiesData[i][3] || 0,
           });
         }
       }
@@ -64,19 +54,17 @@ define(['Publisher'], function (Publisher) {
 
     // если есть данные для <thead>
     if (tHeadData) {
-      for (i = 0, len = tHeadData.length; i < len; i += 1) {
+      for (let i = 0, len = tHeadData.length; i < len; i += 1) {
         tableID = this._heads[tHeadData[i][0]];
 
         if (tableID) {
           this.publisher.emit('tHead', {
             tableID: tableID,
             cellsData: tHeadData[i][1],
-            rowNumber: tHeadData[i][2] || 0
+            rowNumber: tHeadData[i][2] || 0,
           });
         }
       }
     }
-  };
-
-  return StatModel;
-});
+  }
+}

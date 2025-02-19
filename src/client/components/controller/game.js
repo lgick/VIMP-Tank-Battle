@@ -1,4 +1,5 @@
 // Контроллер игры
+
 export default class GameCtrl {
   constructor(model, view) {
     this._model = model;

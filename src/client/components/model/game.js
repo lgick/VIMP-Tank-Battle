@@ -1,6 +1,8 @@
-define(['Publisher', 'Factory'], function (Publisher, Factory) {
-  // Работает с данными игры.
-  function GameModel() {
+import Publisher from '../../../server/lib/publisher.js';
+import Factory from '../../../server/lib/factory.js';
+
+export default class GameModel {
+  constructor() {
     this._data = {};
     this.publisher = new Publisher();
   }
@@ -13,17 +15,17 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
   // constructor - имя конструктора для экземпляра
   // id          - id экземпляра
   // data        - данные для создания экземпляра
-  GameModel.prototype.create = function (constructor, id, data) {
+  create(constructor, id, data) {
     this._data[constructor] = this._data[constructor] || {};
     this._data[constructor][id] = Factory(constructor, data);
     this.publisher.emit('create', this._data[constructor][id]);
-  };
+  }
 
   // Возвращает данные:
   // - экземпляра конструктора
   // - всех экземляров конструктора
   // - все данные
-  GameModel.prototype.read = function (constructor, id) {
+  read(constructor, id) {
     // если нужны данные по конструктору
     if (constructor) {
       // .. и они существуют
@@ -41,16 +43,16 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
     } else {
       return this._data;
     }
-  };
+  }
 
   // Обновляет данные экземпляра
-  GameModel.prototype.update = function (constructor, id, data) {
+  update(constructor, id, data) {
     if (data === null) {
       this.remove(constructor, id);
     } else {
       this._data[constructor][id].update(data);
     }
-  };
+  }
 
   // Удаляет данные:
   // - экземпляра конструктора
@@ -59,10 +61,7 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
   //
   // constructor - имя конструктора для экземпляра (необязательно)
   // id          - id экземпляра (необязательно)
-  GameModel.prototype.remove = function (constructor, id) {
-    var p
-      , data;
-
+  remove(constructor, id) {
     // если данные по конструктору
     if (constructor) {
       // .. и они существуют
@@ -75,13 +74,11 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
             delete this._data[constructor][id];
           }
         } else {
-          data = this._data[constructor];
+          const data = this._data[constructor];
 
-          for (p in data) {
-            if (data.hasOwnProperty(p)) {
-              this.publisher.emit('remove', data[p]);
-            }
-          }
+          Object.keys(data).forEach(key => {
+            this.publisher.emit('remove', data[key]);
+          });
 
           this._data[constructor] = {};
         }
@@ -90,7 +87,5 @@ define(['Publisher', 'Factory'], function (Publisher, Factory) {
       this._data = {};
       this.publisher.emit('clear');
     }
-  };
-
-  return GameModel;
-});
+  }
+}
