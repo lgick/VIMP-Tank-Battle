@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton UserView
-  var userView;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function UserView(model, data) {
+// Singleton UserView
+
+let userView;
+
+export default class UserView {
+  constructor(model, data) {
     if (userView) {
       return userView;
     }
@@ -16,18 +19,18 @@ define(['Publisher'], function (Publisher) {
 
     this.publisher = new Publisher();
 
-    this._window.onkeydown = function (event) {
+    this._window.onkeydown = event => {
       userView.publisher.emit('keyDown', event);
     };
 
-    this._window.onkeyup = function (event) {
+    this._window.onkeyup = event => {
       userView.publisher.emit('keyUp', event);
     };
 
-    this._window.onresize = function () {
+    this._window.onresize = () => {
       userView.publisher.emit('resize', {
         width: userView._window.innerWidth,
-        height: userView._window.innerHeight
+        height: userView._window.innerHeight,
       });
     };
 
@@ -38,35 +41,27 @@ define(['Publisher'], function (Publisher) {
   }
 
   // инициализация
-  UserView.prototype.init = function () {
-    var i = 0
-      , len = this._displayID.length
-      , elem;
+  init() {
+    for (const id of this._displayID) {
+      const elem = this._document.getElementById(id);
 
-    for (; i < len; i += 1) {
-      elem = this._document.getElementById(this._displayID[i]);
-      elem.style.display = 'block';
+      if (elem) {
+        elem.style.display = 'block';
+      }
     }
-  };
+  }
 
   // изменение размеров
-  UserView.prototype.resize = function (sizes) {
-    var id
-      , elem;
+  resize(sizes) {
+    for (const id of Object.keys(sizes)) {
+      const elem = this._document.getElementById(id);
 
-    for (id in sizes) {
-      if (sizes.hasOwnProperty(id)) {
-        elem = this._document.getElementById(id);
-
-        if (elem) {
-          elem.style.width = sizes[id].width + 'px';
-          elem.style.height = sizes[id].height + 'px';
-        }
+      if (elem) {
+        elem.style.width = `${sizes[id].width}px`;
+        elem.style.height = `${sizes[id].height}px`;
       }
     }
 
     this.publisher.emit('redraw', sizes);
-  };
-
-  return UserView;
-});
+  }
+}
