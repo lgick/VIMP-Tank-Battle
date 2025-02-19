@@ -1,10 +1,6 @@
-import createjs from 'createjs';
-
-const { Stage } = createjs;
-
 export default class GameView {
   constructor(model, stage) {
-    this._stage = new Stage(stage);
+    this._stage = new createjs.Stage(stage);
     this._model = model;
 
     // подписка на события модели
