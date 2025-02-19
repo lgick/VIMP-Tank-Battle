@@ -23,7 +23,6 @@ import VoteView from './components/view/vote.js';
 import VoteCtrl from './components/controller/vote.js';
 import Factory from '../server/lib/factory.js';
 
-const window = this;
 const document = window.document;
 const parseInt = window.parseInt;
 const RegExp = window.RegExp;
