@@ -38,12 +38,12 @@ export default class StatModel {
     // если есть данные для <tbody>
     if (tBodiesData) {
       for (let i = 0, len = tBodiesData.length; i < len; i += 1) {
-        tableID = this._bodies[tBodiesData[i][1]];
+        const tableID = this._bodies[tBodiesData[i][1]];
 
         if (tableID) {
           this.publisher.emit('tBody', {
             id: tBodiesData[i][0],
-            tableID: tableID,
+            tableID,
             cellsData: tBodiesData[i][2],
             sortData: this._sortList[tableID],
             bodyNumber: tBodiesData[i][3] || 0,
@@ -55,11 +55,11 @@ export default class StatModel {
     // если есть данные для <thead>
     if (tHeadData) {
       for (let i = 0, len = tHeadData.length; i < len; i += 1) {
-        tableID = this._heads[tHeadData[i][0]];
+        const tableID = this._heads[tHeadData[i][0]];
 
         if (tableID) {
           this.publisher.emit('tHead', {
-            tableID: tableID,
+            tableID,
             cellsData: tHeadData[i][1],
             rowNumber: tHeadData[i][2] || 0,
           });

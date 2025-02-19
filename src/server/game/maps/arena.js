@@ -544,7 +544,7 @@ export default {
 
   physicsStatic: [4, 1, 2, 3],
 
-  physicsDynamic: {},
+  physicsDynamic: [],
 
   respawns: {
     team1: [

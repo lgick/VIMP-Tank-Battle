@@ -40,7 +40,7 @@ export default {
 
   physicsStatic: [1, 4],
 
-  physicsDynamic: {},
+  physicsDynamic: [],
 
   respawns: {
     team1: [[96, 96, 45]],
