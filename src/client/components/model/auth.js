@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton AuthModel
-  var authModel;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function AuthModel() {
+// Singleton AuthModel
+
+let authModel;
+
+export default class AuthModel {
+  constructor() {
     if (authModel) {
       return authModel;
     }
@@ -18,22 +21,19 @@ define(['Publisher'], function (Publisher) {
   }
 
   // добавляет данные
-  AuthModel.prototype.add = function (data) {
-    this._data[data.name] = data.value;
-    this._options[data.name] = data.options;
+  add(data) {
+    const { name, value, options } = data;
+    this._data[name] = value;
+    this._options[name] = options;
 
-    this.publisher.emit('form', {
-      name: data.name,
-      value: data.value
-    });
-  };
+    this.publisher.emit('form', { name, value });
+  }
 
   // обновление данных
   // если value невалиден, возвращается текущий value
-  AuthModel.prototype.update = function (data) {
-    var name = data.name
-      , value = data.value
-      , regExp = this._options[name].regExp;
+  update(data) {
+    const { name, value } = data;
+    const { regExp } = this._options[name];
 
     if (regExp) {
       if (regExp.test(value)) {
@@ -45,31 +45,22 @@ define(['Publisher'], function (Publisher) {
       this._data[name] = value;
     }
 
-    this.publisher.emit('form', {
-      name: name,
-      value: value
-    });
-  };
+    this.publisher.emit('form', { name, value });
+  }
 
   // валидация всех данных
-  AuthModel.prototype.validate = function () {
-    var data = this._data
-      , regExp
-      , p;
+  validate() {
+    Object.keys(this._data).forEach(key => {
+      const { regExp } = this._options[key];
 
-    for (p in data) {
-      if (data.hasOwnProperty(p)) {
-        regExp = this._options[p].regExp;
-
-        if (regExp && !regExp.test(data[p])) {
-          this._errors.push({name: p, value: data[p]});
-        }
+      if (regExp && !regExp.test(this._data[key])) {
+        this._errors.push({ name: key, value: this._data[key] });
       }
-    }
-  };
+    });
+  }
 
   // отправка данных на сервер
-  AuthModel.prototype.send = function () {
+  send() {
     if (this._errors.length) {
       this.publisher.emit('error', this._errors);
       this._errors = [];
@@ -82,35 +73,28 @@ define(['Publisher'], function (Publisher) {
 
       this._sendStatus = true;
     }
-  };
+  }
 
   // разбор ответа сервера
-  AuthModel.prototype.parseRes = function (err) {
-    var arr = []
-      , data = this._data
-      , p
-      , name;
+  parseRes(err) {
+    const arr = [];
 
     // если авторизация успешна
     if (!err) {
-      for (p in data) {
-        if (data.hasOwnProperty(p)) {
-          name = this._options[p].storage;
+      Object.keys(this._data).forEach(key => {
+        const { storage } = this._options[key];
 
-          if (name) {
-            arr.push({name: name, value: data[p]});
-          }
+        if (storage) {
+          arr.push({ name: storage, value: this._data[key] });
         }
-      }
+      });
 
       this.publisher.emit('ok', arr);
-    // иначе
+      // иначе
     } else {
       this.publisher.emit('error', err);
     }
 
     this._sendStatus = false;
-  };
-
-  return AuthModel;
-});
+  }
+}

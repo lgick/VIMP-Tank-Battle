@@ -1,8 +1,11 @@
-define(['Publisher'], function (Publisher) {
-  // Singleton ChatModel
-  var chatModel;
+import Publisher from '../../../server/lib/publisher.js';
 
-  function ChatModel(data) {
+// Singleton ChatModel
+
+let chatModel;
+
+export default class ChatModel {
+  constructor(data) {
     if (chatModel) {
       return chatModel;
     }
@@ -19,57 +22,38 @@ define(['Publisher'], function (Publisher) {
     this._messages = data.messages || {};
     this._messageExp = new this._RegExp(data.messageExp, 'g');
 
-    this._cache = [];   // хранилище сообщений
-    this._list = [];    // активный чат-лист
-    this._counter = 0;  // id для сообщения чат-листа
+    this._cache = []; // хранилище сообщений
+    this._list = []; // активный чат-лист
+    this._counter = 0; // id для сообщения чат-листа
 
     this.publisher = new Publisher();
   }
 
   // открывает cmd
-  ChatModel.prototype.open = function () {
+  open() {
     this.publisher.emit('open');
-
-    this.publisher.emit('mode', {
-      name: 'chat',
-      status: 'opened'
-    });
-  };
+    this.publisher.emit('mode', { name: 'chat', status: 'opened' });
+  }
 
   // закрывает cmd
-  ChatModel.prototype.close = function (success) {
-    if (success) {
-      this.publisher.emit('close', true);
-    } else {
-      this.publisher.emit('close', false);
-    }
-
-    this.publisher.emit('mode', {
-      name: 'chat',
-      status: 'closed'
-    });
-  };
+  close(success) {
+    this.publisher.emit('close', success ? true : false);
+    this.publisher.emit('mode', { name: 'chat', status: 'closed' });
+  }
 
   // отправляет сообщение на сервер
-  ChatModel.prototype.sendMessage = function (message) {
+  sendMessage(message) {
     message = message.replace(this._messageExp, '');
 
     if (message) {
       this.publisher.emit('socket', message);
     }
-  };
+  }
 
   // обновляет чат-лист. Данные могут быть 2-х видов:
   // - в виде строки '<группа шаблонов>:<номер шаблона>:<параметры>'
   // - в виде массива [<текст сообщения>,<имя автора>,<тип для класса>]
-  ChatModel.prototype.updateChat = function (arr) {
-    var message
-      , params
-      , regExp
-      , i
-      , len
-    ;
-
+  updateChat(arr) {
     // если данные - строка
     if (typeof arr === 'string') {
       arr = arr.split(':');
@@ -79,16 +63,15 @@ define(['Publisher'], function (Publisher) {
         return;
       }
 
-      message = this._messages[arr[0]][arr[1]];
-
-      params = arr[2];
+      let message = this._messages[arr[0]][arr[1]];
+      let params = arr[2];
 
       // если есть параметры
       if (params) {
         params = params.split(',');
 
-        for (i = 0, len = params.length; i < len; i += 1) {
-          regExp = new this._RegExp('\\{' + i + '\\}', 'g');
+        for (let i = 0, len = params.length; i < len; i += 1) {
+          const regExp = new this._RegExp('\\{' + i + '\\}', 'g');
           message = message.replace(regExp, params[i]);
         }
       }
@@ -113,32 +96,30 @@ define(['Publisher'], function (Publisher) {
 
     this.publisher.emit('newLine', {
       id: this._counter,
-      message: arr
+      message: arr,
     });
 
     this.publisher.emit('newTimer', {
       id: this._counter,
-      time: this._lineTime
+      time: this._lineTime,
     });
 
     this._counter += 1;
-  };
+  }
 
   // добавляет объект в чат-лист
-  ChatModel.prototype.addToList = function (data) {
+  addToList(data) {
     this._list.push(data);
-  };
+  }
 
   // удаляет объект из чат-листа
-  ChatModel.prototype.removeFromList = function (sync) {
-    var data = this._list.shift();
+  removeFromList(sync) {
+    const data = this._list.shift();
 
     this.publisher.emit('oldLine', data.messageId);
 
     if (sync) {
       this.publisher.emit('oldTimer', data.timerId);
     }
-  };
-
-  return ChatModel;
-});
+  }
+}
