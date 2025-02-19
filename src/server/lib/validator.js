@@ -1,6 +1,6 @@
 import config from './config.js';
 
-export default data => {
+const auth = data => {
   const errors = [];
   const { params } = config.get('auth');
 
@@ -24,4 +24,8 @@ export default data => {
   }
 
   return errors.length ? errors : undefined;
+};
+
+export default {
+  auth,
 };
