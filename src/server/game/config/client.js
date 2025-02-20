@@ -12,39 +12,15 @@ export default {
       b2: ['gun'],
       b3: ['bomb'],
     },
-    modules: {
-      map: {
-        path: 'parts/constructors/map.js',
-        canvas: 'vimp',
-      },
-      map_radar: {
-        path: 'parts/constructors/map_radar.js',
-        canvas: 'radar',
-      },
-      tank_radar: {
-        path: 'parts/constructors/tank_radar.js',
-        canvas: 'radar',
-      },
-      tank: {
-        path: 'parts/constructors/tank.js',
-        canvas: 'vimp',
-      },
-      tank2: {
-        path: 'parts/constructors/tank2.js',
-        canvas: 'vimp',
-      },
-      gun: {
-        path: 'parts/constructors/gun.js',
-        canvas: 'vimp',
-      },
-      pistol: {
-        path: 'parts/constructors/pistol.js',
-        canvas: 'vimp',
-      },
-      bomb: {
-        path: 'parts/constructors/bomb.js',
-        canvas: 'vimp',
-      },
+    entitiesOnCanvas: {
+      map: 'vimp',
+      map_radar: 'radar',
+      tank_radar: 'radar',
+      tank: 'vimp',
+      tank2: 'vimp',
+      gun: 'vimp',
+      pistol: 'vimp',
+      bomb: 'vimp',
     },
   },
 

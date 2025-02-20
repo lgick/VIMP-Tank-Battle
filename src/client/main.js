@@ -22,6 +22,7 @@ import VoteModel from './components/model/vote.js';
 import VoteView from './components/view/vote.js';
 import VoteCtrl from './components/controller/vote.js';
 import Factory from '../server/lib/factory.js';
+import entities from './parts/constructors/index.js';
 
 const document = window.document;
 const parseInt = window.parseInt;
@@ -44,7 +45,7 @@ const modules = {};
 const CTRL = {}; // контроллеры
 const scale = {}; // масштаб
 let gameSets = {}; // наборы конструкторов (id: [наборы])
-let parts = {}; // конструкторы
+let entitiesOnCanvas = {}; // сущности, отображаемые на полотнах
 let currentMapSetID; // текущий ID набора конструкторов для карт
 const coords = { x: 0, y: 0 }; // координаты
 let informList = []; // массив системных сообщений
@@ -54,22 +55,14 @@ const socketMethods = []; // методы для обработки сокет-�
 
 // config data
 socketMethods[0] = async data => {
-  // загрузка дополнительных модулей игры
-  const runParts = async data => {
+  // инициализация сущностей игры
+  const initParts = async data => {
     gameSets = data.gameSets;
-    parts = data.modules;
+    entitiesOnCanvas = data.entitiesOnCanvas;
 
-    const names = Object.keys(parts);
-    const paths = names.map(key => parts[key].path);
-
-    // Параллельная загрузка модулей
-    const modules = await Promise.all(paths.map(path => import(path)));
-    const loadedModules = names.reduce((acc, name, index) => {
-      acc[name] = modules[index];
-      return acc;
-    }, {});
-
-    Factory.add(loadedModules);
+    for (const entity of Object.keys(entitiesOnCanvas)) {
+      Factory.add({ [entity]: entities[entity] });
+    }
   };
 
   // установка пользовательских данных
@@ -93,7 +86,7 @@ socketMethods[0] = async data => {
   };
 
   // Последовательное выполнение шагов
-  await runParts(data.parts);
+  await initParts(data.parts);
   await runCanvases(data.user);
   await runInform(data.informer);
   sending(0);
@@ -157,7 +150,7 @@ socketMethods[3] = data => {
     // если есть конструкторы для удаления
     if (nameArr) {
       nameArr.forEach(name => {
-        CTRL[parts[name].canvas].remove(name);
+        CTRL[entitiesOnCanvas[name]].remove(name);
       });
     }
   };
@@ -174,7 +167,7 @@ socketMethods[3] = data => {
     });
 
     nameArr.forEach(name => {
-      const canvas = parts[name].canvas;
+      const canvas = entitiesOnCanvas[name];
 
       // статические данные карты
       CTRL[canvas].parse(name, mapData);
@@ -225,7 +218,7 @@ socketMethods[4] = data => {
     const nameArr = gameSets[p];
 
     nameArr.forEach(name => {
-      CTRL[parts[name].canvas].parse(name, instances);
+      CTRL[entitiesOnCanvas[name]].parse(name, instances);
     });
   });
 
