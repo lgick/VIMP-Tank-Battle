@@ -39,56 +39,46 @@ ws.binaryType = 'arraybuffer';
 
 const { SpriteSheet, Ticker: ticker } = createjs;
 
-let modulesConfig;
 const modules = {};
 
+let modulesConfig = {};
+let informList = []; // массив системных сообщений
 const CTRL = {}; // контроллеры
 const scale = {}; // масштаб
 let gameSets = {}; // наборы конструкторов (id: [наборы])
 let entitiesOnCanvas = {}; // сущности, отображаемые на полотнах
 let currentMapSetID; // текущий ID набора конструкторов для карт
 const coords = { x: 0, y: 0 }; // координаты
-let informList = []; // массив системных сообщений
 const socketMethods = []; // методы для обработки сокет-данных
 
 // SOCKET МЕТОДЫ
 
 // config data
 socketMethods[0] = async data => {
+  gameSets = data.parts.gameSets;
+  entitiesOnCanvas = data.parts.entitiesOnCanvas;
+
   // инициализация сущностей игры
-  const initParts = async data => {
-    gameSets = data.gameSets;
-    entitiesOnCanvas = data.entitiesOnCanvas;
+  for (const entity of Object.keys(entitiesOnCanvas)) {
+    Factory.add({ [entity]: entities[entity] });
+  }
 
-    for (const entity of Object.keys(entitiesOnCanvas)) {
-      Factory.add({ [entity]: entities[entity] });
-    }
-  };
+  // установка данных модулей
+  modulesConfig = data.modules;
 
-  // установка пользовательских данных
-  const runCanvases = async data => {
-    modulesConfig = data;
+  Object.entries(data.modules.canvasOptions).forEach(([canvas, options]) => {
+    // создание контроллера полотна
+    CTRL[canvas] = makeGameController(canvas);
 
-    Object.entries(data.canvasOptions).forEach(([canvas, options]) => {
-      // создание контроллера полотна
-      CTRL[canvas] = makeGameController(canvas);
+    // пропорции изображения на полотне
+    const [w, h] = (options.scale || '1:1')
+      .split(':')
+      .map(value => parseInt(value, 10));
+    scale[canvas] = w / h;
+  });
 
-      // пропорции изображения на полотне
-      const [w, h] = (options.scale || '1:1')
-        .split(':')
-        .map(value => parseInt(value, 10));
-      scale[canvas] = w / h;
-    });
-  };
+  informList = data.informer;
 
-  const runInform = async data => {
-    informList = data;
-  };
-
-  // Последовательное выполнение шагов
-  await initParts(data.parts);
-  await runCanvases(data.user);
-  await runInform(data.informer);
   sending(0);
 };
 

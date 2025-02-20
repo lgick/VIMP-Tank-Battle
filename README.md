@@ -396,7 +396,7 @@ entitiesOnCanvas: {
 }
 ```
 
-## user
+## modules
 
 ### canvasOptions
 

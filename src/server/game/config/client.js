@@ -24,8 +24,8 @@ export default {
     },
   },
 
-  // ***** user ***** //
-  user: {
+  // ***** modules ***** //
+  modules: {
     canvasOptions: {
       vimp: {
         aspectRatio: '3:2',
