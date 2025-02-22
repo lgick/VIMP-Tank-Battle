@@ -23,7 +23,7 @@ export default class UserModel {
     this._modes = data.keys.modes;
     this._cmds = data.keys.cmds;
 
-    this._ticker = data.ticker;
+    this._ticker = data.Ticker;
 
     this._currentKeySet = this._keySetList[0]; // текущий набор клавиш
     this._currentModes = {}; // статусы режимов
@@ -37,7 +37,9 @@ export default class UserModel {
   // инициализация
   init() {
     // запуск счетчика игры
-    this._ticker.addEventListener('tick', this.sendKeys.bind(this));
+    this._ticker.shared.add(() => {
+      this.sendKeys.bind(this);
+    });
 
     this.publisher.emit('init');
   }

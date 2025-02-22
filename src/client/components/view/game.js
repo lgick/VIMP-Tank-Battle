@@ -1,6 +1,7 @@
 export default class GameView {
-  constructor(model, stage) {
-    this._stage = new createjs.Stage(stage);
+  constructor(model, app) {
+    this._app = app;
+
     this._model = model;
 
     // подписка на события модели
@@ -13,9 +14,9 @@ export default class GameView {
 
   // создает экземпляр на полотне
   add(instance) {
-    this._stage.addChild(instance);
+    this._app.stage.addChild(instance);
 
-    this._stage.sortChildren((a, b) => {
+    this._app.stage.sortChildren((a, b) => {
       if (a.layer < b.layer) {
         return -1;
       }
@@ -31,23 +32,22 @@ export default class GameView {
   // вычисляет координаты для отображения
   // пользователя по центру игры и обновляет полотно
   update(coords, scale) {
-    const width = this._stage.canvas.width;
-    const height = this._stage.canvas.height;
+    const width = this._app.canvas.width;
+    const height = this._app.canvas.height;
     const x = +(width / 2 - coords.x * scale).toFixed();
     const y = +(height / 2 - coords.y * scale).toFixed();
 
-    this._stage.setTransform(x, y, scale, scale);
-
-    this._stage.update();
+    this._app.stage.updateTransform({ x, y, scaleX: scale, scaleY: scale });
+    this._app.render();
   }
 
   // удаляет экземпляр с полотна
   remove(instance) {
-    this._stage.removeChild(instance);
+    this._app.stage.removeChild(instance);
   }
 
   // полностью очищает полотно
   clear() {
-    this._stage.removeAllChildren();
+    this._app.stage.removeChildren();
   }
 }
