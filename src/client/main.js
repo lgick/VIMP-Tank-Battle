@@ -1,5 +1,5 @@
 import './style.css';
-import { Application, Assets, Sprite } from 'pixi.js';
+import { Application, Ticker, Assets, Sprite } from 'pixi.js';
 import AuthModel from './components/model/auth.js';
 import AuthView from './components/view/auth.js';
 import AuthCtrl from './components/controller/auth.js';
@@ -37,8 +37,6 @@ const informer = document.getElementById('informer');
 const ws = new WebSocket(`ws://${location.host}/`);
 ws.binaryType = 'arraybuffer';
 
-const { SpriteSheet, Ticker: ticker } = createjs;
-
 const modules = {};
 
 let modulesConfig = {};
@@ -66,15 +64,25 @@ socketMethods[0] = async data => {
   // установка данных модулей
   modulesConfig = data.modules;
 
-  Object.entries(data.modules.canvasOptions).forEach(([canvas, options]) => {
-    // создание контроллера полотна
-    CTRL[canvas] = makeGameController(canvas);
+  // создание полотен игры
+  Object.entries(data.modules.canvasOptions).forEach(([canvasId, options]) => {
+    const canvas = document.getElementById(canvasId);
+    const app = new Application();
+
+    app.init({
+      canvas: canvas,
+      width: canvas.width,
+      height: canvas.height,
+      backgroundColor: 0x1099bb,
+    });
+
+    CTRL[canvasId] = makeGameController(app);
 
     // пропорции изображения на полотне
     const [w, h] = (options.scale || '1:1')
       .split(':')
       .map(value => parseInt(value, 10));
-    scale[canvas] = w / h;
+    scale[canvasId] = w / h;
   });
 
   informList = data.informer;
@@ -157,13 +165,13 @@ socketMethods[3] = data => {
     });
 
     nameArr.forEach(name => {
-      const canvas = entitiesOnCanvas[name];
+      const canvasId = entitiesOnCanvas[name];
 
       // статические данные карты
-      CTRL[canvas].parse(name, mapData);
+      CTRL[canvasId].parse(name, mapData);
 
       // динамические данные карты
-      CTRL[canvas].parse(name, dynamicData);
+      CTRL[canvasId].parse(name, dynamicData);
     });
 
     currentMapSetID = setID;
@@ -300,7 +308,7 @@ function runModules(data) {
     window,
     sizeOptions: canvasOptions,
     keys,
-    ticker,
+    Ticker,
   });
 
   const userView = new UserView(userModel, {
@@ -409,9 +417,9 @@ function runModules(data) {
 }
 
 // создает экземпляр игры
-function makeGameController(canvasId) {
+function makeGameController(app) {
   const model = new GameModel();
-  const view = new GameView(model, canvasId);
+  const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 
   return controller;
@@ -419,8 +427,8 @@ function makeGameController(canvasId) {
 
 // обновляет полотна
 function updateGameControllers() {
-  Object.keys(CTRL).forEach(name => {
-    CTRL[name].update(coords, scale[name]);
+  Object.keys(CTRL).forEach(canvasId => {
+    CTRL[canvasId].update(coords, scale[canvasId]);
   });
 }
 
