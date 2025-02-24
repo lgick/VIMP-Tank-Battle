@@ -2,7 +2,7 @@ export default {
   setID: 'c2',
 
   spriteSheet: {
-    img: 'img/tiles.png',
+    img: 'tiles.png',
     frames: [
       [480, 64, 32, 32],
       [128, 224, 32, 32],
@@ -27,7 +27,7 @@ export default {
       angle: 30,
       width: 32,
       height: 32,
-      img: 'img/stalin.jpg',
+      img: 'stalin.jpg',
     },
     {
       mass: 3,
@@ -36,7 +36,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/bob.jpg',
+      img: 'bob.jpg',
     },
     {
       mass: 3,
@@ -45,7 +45,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/bob.jpg',
+      img: 'bob.jpg',
     },
     {
       mass: 1,
@@ -54,7 +54,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/b1.png',
+      img: 'b1.png',
     },
     {
       mass: 1,
@@ -63,7 +63,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/b1.png',
+      img: 'b1.png',
     },
     {
       mass: 1,
@@ -72,7 +72,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/b1.png',
+      img: 'b1.png',
     },
     {
       mass: 1,
@@ -81,7 +81,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/b1.png',
+      img: 'b1.png',
     },
     {
       mass: 1,
@@ -90,7 +90,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/b1.png',
+      img: 'b1.png',
     },
     {
       mass: 1,
@@ -99,7 +99,7 @@ export default {
       angle: 0,
       width: 32,
       height: 32,
-      img: 'img/b1.png',
+      img: 'b1.png',
     },
   ],
 

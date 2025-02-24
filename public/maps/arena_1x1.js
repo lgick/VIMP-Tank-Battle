@@ -2,7 +2,7 @@ export default {
   setID: 'c2',
 
   spriteSheet: {
-    img: 'img/tiles.png',
+    img: 'tiles.png',
     frames: [
       [480, 64, 32, 32],
       [128, 224, 32, 32],
