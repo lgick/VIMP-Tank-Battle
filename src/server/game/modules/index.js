@@ -100,7 +100,7 @@ class VIMP {
 
   // стартует карту
   startMapTimer() {
-    this._chat.pushSystem('t:0');
+    this._chat.pushSystem('t:0:' + this._currentMap);
 
     this._mapTimer = setTimeout(() => {
       this.changeMap();
