@@ -1,5 +1,5 @@
 import './style.css';
-import { Application, Ticker, Assets, Sprite } from 'pixi.js';
+import { Application, Ticker } from 'pixi.js';
 import AuthModel from './components/model/auth.js';
 import AuthView from './components/view/auth.js';
 import AuthCtrl from './components/controller/auth.js';
@@ -73,7 +73,7 @@ socketMethods[0] = async data => {
       canvas: canvas,
       width: canvas.width,
       height: canvas.height,
-      backgroundColor: 0x1099bb,
+      backgroundAlpha: 0,
     });
 
     CTRL[canvasId] = makeGameController(app);
@@ -139,7 +139,7 @@ socketMethods[2] = err => {
 
 // map data
 socketMethods[3] = data => {
-  const spriteSheet = new SpriteSheet(data.spriteSheet);
+  const { layers, map, step, setID, spriteSheet } = data;
 
   // удаление данных карт
   const removeMap = setID => {
@@ -154,7 +154,7 @@ socketMethods[3] = data => {
   };
 
   // создание карт
-  const createMap = (setID, mapData) => {
+  const createMap = (setID, staticData) => {
     const nameArr = gameSets[setID];
     const dynamicArr = data.physicsDynamic || [];
     const dynamicData = {};
@@ -168,7 +168,7 @@ socketMethods[3] = data => {
       const canvasId = entitiesOnCanvas[name];
 
       // статические данные карты
-      CTRL[canvasId].parse(name, mapData);
+      CTRL[canvasId].parse(name, staticData);
 
       // динамические данные карты
       CTRL[canvasId].parse(name, dynamicData);
@@ -177,34 +177,26 @@ socketMethods[3] = data => {
     currentMapSetID = setID;
   };
 
-  // готовность данныx для создания карт
-  const readyData = () => {
-    const { layers, map, step, setID } = data;
-    const mapData = Object.entries(layers).reduce((acc, [layerKey, tiles]) => {
-      acc[`s${layerKey}`] = {
+  const staticData = Object.entries(layers).reduce(
+    (acc, [layer, tiles], index) => {
+      acc[`s${index}`] = {
         type: 'static',
         spriteSheet,
         map,
         step,
-        layer: layerKey,
+        layer,
         tiles,
       };
+
       return acc;
-    }, {});
+    },
+    {},
+  );
 
-    removeMap(currentMapSetID);
-    createMap(setID, mapData);
-
-    spriteSheet.removeAllEventListeners();
-    updateGameControllers();
-    sending(2);
-  };
-
-  if (!spriteSheet.complete) {
-    spriteSheet.addEventListener('complete', readyData);
-  } else {
-    readyData();
-  }
+  removeMap(currentMapSetID);
+  createMap(setID, staticData);
+  updateGameControllers();
+  sending(2);
 };
 
 // shot data
