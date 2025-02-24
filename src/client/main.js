@@ -22,7 +22,7 @@ import VoteModel from './components/model/vote.js';
 import VoteView from './components/view/vote.js';
 import VoteCtrl from './components/controller/vote.js';
 import Factory from '../server/lib/factory.js';
-import entities from './parts/constructors/index.js';
+import parts from './parts/index.js';
 
 const document = window.document;
 const parseInt = window.parseInt;
@@ -58,7 +58,7 @@ socketMethods[0] = async data => {
 
   // инициализация сущностей игры
   for (const entity of Object.keys(entitiesOnCanvas)) {
-    Factory.add({ [entity]: entities[entity] });
+    Factory.add({ [entity]: parts[entity] });
   }
 
   // установка данных модулей

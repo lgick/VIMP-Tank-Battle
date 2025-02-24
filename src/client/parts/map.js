@@ -10,7 +10,7 @@ export default class Map extends Container {
 
     // если статические данные
     if (data.type === 'static') {
-      this._sheet = loadAssets(data.spriteSheet.img);
+      this._sheet = loadAssets(`/img/${data.spriteSheet.img}`);
 
       // data состоит из:
       // layer - слой,
@@ -27,7 +27,7 @@ export default class Map extends Container {
     }
     // если динамические данные
     else if (data.type === 'dynamic') {
-      this._sheet = loadAssets(data.img);
+      this._sheet = loadAssets(`/img/${data.img}`);
 
       this._rotation = data.angle;
       this._width = data.width;

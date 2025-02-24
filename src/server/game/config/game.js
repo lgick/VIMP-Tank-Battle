@@ -1,4 +1,4 @@
-import maps from '../maps/index.js';
+import maps from '../../../../public/maps/index.js';
 import constructors from '../parts/constructors/index.js';
 import models from '../parts/models.js';
 import bullets from '../parts/bullets.js';
