@@ -2,18 +2,18 @@ import planck from 'planck';
 
 class Tank {
   constructor(data) {
-    // Сохраняем данные для создания тела
     this._modelData = data.modelData;
     this._keys = data.keys;
-    this._maxGunAngle = data.modelData.maxGunAngle;
-    this._gunAngleStep = data.modelData.gunAngleStep;
+
+    this._maxGunAngle = this._modelData.maxGunAngle;
+    this._gunAngleStep = this._modelData.gunAngleStep;
+    this._maxForward = this._modelData.maxForward;
+    this._maxBack = this._modelData.maxBack;
 
     this._bulletData = null;
     this._magnitude = 20;
     this._currentForward = 0;
     this._currentBack = 0;
-    this._maxForward = data.maxForward;
-    this._maxBack = data.maxBack;
 
     // Тело создадим позже через initBody(world)
     this._body = null;
@@ -28,8 +28,8 @@ class Tank {
       position: { x: modelData.position[0], y: modelData.position[1] },
       angle: modelData.angle, // предполагается, что угол в радианах
       linearVelocity: modelData.velocity
-        ? (modelData.velocity[0], modelData.velocity[1])
-        : (0, 0),
+        ? { x: modelData.velocity[0], y: modelData.velocity[1] }
+        : { x: 0, y: 0 },
       angularVelocity: modelData.angularVelocity || 0,
     });
     // Добавляем пользовательское свойство для поворота пушки
@@ -38,7 +38,7 @@ class Tank {
     // передавая половину ширины и высоты.
     this._body.createFixture({
       shape: new planck.BoxShape(modelData.width / 2, modelData.height / 2),
-      density: this._bulletSet.mass || 20,
+      density: this._modelData.mass || 20,
     });
   }
 
@@ -79,7 +79,10 @@ class Tank {
     // Если нажата клавиша назад – корректируем линейную скорость
     if (keys & this._keys.back) {
       const currentVel = this._body.getLinearVelocity();
-      this._body.setLinearVelocity(currentVel.x - vX, currentVel.y - vY);
+      this._body.setLinearVelocity({
+        x: currentVel.x - vX,
+        y: currentVel.y - vY,
+      });
     }
 
     // Поворот танка влево или вправо (изменяем угол)

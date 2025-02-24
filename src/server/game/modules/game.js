@@ -166,7 +166,7 @@ class Game {
   getUserCoords(gameID) {
     const position = this._modelData[gameID].getBody().getPosition();
 
-    return [+position[0].toFixed(), +position[1].toFixed()];
+    return [+position.x.toFixed(), +position.y.toFixed()];
   }
 
   // стирает данные игрового мира
