@@ -136,23 +136,23 @@ class Tank {
 
   // Возвращает основные данные танка
   getData() {
-    if (!this._body) return null;
     const pos = this._body.getPosition();
     const angleDeg = this._body.getAngle() * (180 / Math.PI);
-    return [
+
+    return [].concat(
       ~~pos.x.toFixed(2),
       ~~pos.y.toFixed(2),
       ~~angleDeg.toFixed(2),
       this._body.gunRotation,
-    ];
+    );
   }
 
   // Возвращает полные данные (например, для синхронизации с клиентом)
   getFullData(dataArr) {
-    if (!this._body) return null;
     const pos = this._body.getPosition();
     const angleDeg = this._body.getAngle() * (180 / Math.PI);
-    return [pos.x, pos.y, angleDeg, this._body.gunRotation, dataArr];
+
+    return [].concat(pos.x, pos.y, angleDeg, this._body.gunRotation, dataArr);
   }
 
   // Возвращает данные для создания пули и сбрасывает их
