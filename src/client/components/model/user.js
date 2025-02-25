@@ -38,7 +38,7 @@ export default class UserModel {
   init() {
     // запуск счетчика игры
     this._ticker.shared.add(() => {
-      this.sendKeys.bind(this);
+      this.sendKeys();
     });
 
     this.publisher.emit('init');
