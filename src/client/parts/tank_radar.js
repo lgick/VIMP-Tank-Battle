@@ -1,61 +1,46 @@
-import * as PIXI from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 
-// Предполагается, что класс Shadow уже импортирован или определён в вашем проекте.
-// Если необходимо, импортируйте его, например:
-// import Shadow from './Shadow';
-
-export default class Radar extends PIXI.Graphics {
-  constructor(params) {
+export default class Radar extends Container {
+  constructor(data) {
     super();
-    this.initialize(params);
-  }
 
-  initialize(params) {
-    // Устанавливаем базовые параметры
     this.layer = 2;
-    this.x = params[0] || 0;
-    this.y = params[1] || 0;
-    this.rotation = params[2] || 0;
 
-    // В PixiJS масштаб задается через объект scale
+    this.body = new Graphics();
+
+    this.x = data[0] || 0;
+    this.y = data[1] || 0;
+    this.rotation = data[2] || 0;
+
+    // масштаб
     this.scale.set(20, 20);
 
-    // Создаем тень (предполагается, что класс Shadow определён)
-    this.shadow = new Shadow('#333', 2, 2, 3);
-
-    // Создаем фигуру согласно типу (params[4])
-    this.create(params[4]);
+    this.create(data[4]);
   }
 
   create(type) {
-    // Определение цветов в зависимости от типа
+    // определение цветов в зависимости от типа
     if (type === 1) {
-      this.colorA = '#fff';
-      this.colorB = '#333';
+      this.colorA = 0x552222;
+      this.colorB = 0xeeeeee;
     } else if (type === 2) {
-      this.colorA = '#eee';
-      this.colorB = '#333';
+      this.colorA = 0x225522;
+      this.colorB = 0xeeeeee;
     } else {
-      this.colorA = '#000';
-      this.colorB = '#333';
+      this.colorA = 0x000000;
+      this.colorB = 0x333333;
     }
 
-    // Преобразуем CSS-цвета в числовой формат для PixiJS
-    const hexColorA = PIXI.utils.string2hex(this.colorA);
-    const hexColorB = PIXI.utils.string2hex(this.colorB);
-
-    // Очищаем предыдущие графические команды
-    this.clear();
-
-    // Рисуем фигуру радара
-    this.lineStyle(1, hexColorB);
-    this.beginFill(hexColorA);
-    this.moveTo(7, 0);
-    this.lineTo(-7, 5);
-    this.lineTo(-5, 0);
-    this.lineTo(-7, -5);
-    this.closePath();
-    this.endFill();
+    this.body
+      .clear()
+      .moveTo(7, 0)
+      .lineTo(-7, 5)
+      .lineTo(-5, 0)
+      .lineTo(-7, -5)
+      .closePath()
+      .fill(this.colorA)
+      .stroke({ width: 1, color: this.colorB });
+    this.addChild(this.body);
   }
 
   update(params) {

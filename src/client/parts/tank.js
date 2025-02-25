@@ -1,88 +1,83 @@
-import * as PIXI from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 
-export default class Tank extends PIXI.Container {
-  constructor(params) {
+export default class Tank extends Container {
+  constructor(data) {
     super();
 
     this.layer = 2;
 
-    // Создаем графические объекты для корпуса и пушки
-    this.body = new PIXI.Graphics();
-    this.gun = new PIXI.Graphics();
-
-    this.addChild(this.body, this.gun);
+    this.body = new Graphics();
+    this.gun = new Graphics();
 
     // Параметры с сервера: [x, y, rotation, gunRotation, type, name]
-    this.x = params[0] || 0;
-    this.y = params[1] || 0;
-    this.rotation = params[2] || 0;
-    this.gun.rotation = params[3] || 0;
-    this.name = params[5];
+    this.x = data[0] || 0;
+    this.y = data[1] || 0;
+    this.rotation = data[2] || 0;
+    this.gun.rotation = data[3] || 0;
+    this.label = data[5];
 
-    // Рисуем танк с учетом типа (params[4])
-    this.create(params[4]);
+    this.create(data[4]);
   }
 
   create(type) {
-    // Определение цветов в зависимости от типа
+    // определение цветов в зависимости от типа
     if (type === 1) {
-      this.colorA = '#eee';
-      this.colorB = '#522';
+      this.colorA = 0xeeeeee;
+      this.colorB = 0x552222;
     } else if (type === 2) {
-      this.colorA = '#eee';
-      this.colorB = '#252';
+      this.colorA = 0xeeeeee;
+      this.colorB = 0x225522;
     } else {
-      this.colorA = '#000';
-      this.colorB = '#333';
+      this.colorA = 0x000000;
+      this.colorB = 0x333333;
     }
 
-    // Для корректной работы beginFill в PIXI, преобразуем строку цвета в число.
-    const fillColorA = PIXI.utils.string2hex(this.colorA);
-    const fillColorB = PIXI.utils.string2hex(this.colorB);
-
     // Рисование корпуса (body)
-    this.body.clear();
-    this.body.lineStyle(1, 0x333333);
-    this.body.beginFill(fillColorA);
-    this.body.moveTo(22, -18);
-    this.body.lineTo(-26, -18);
-    this.body.lineTo(-26, 18);
-    this.body.lineTo(22, 18);
-    this.body.closePath();
+    this.body
+      .clear()
+      .moveTo(22, -18)
+      .lineTo(-26, -18)
+      .lineTo(-26, 18)
+      .lineTo(22, 18)
+      .closePath()
+      .fill(this.colorA)
+      .stroke({ width: 2, color: 0x555555 });
 
-    // Рисование пушки (gun)
-    this.gun.clear();
     // Первый полигон пушки
-    this.gun.lineStyle(1, 0xcccccc);
-    this.gun.beginFill(fillColorB);
-    this.gun.moveTo(16, -5);
-    this.gun.lineTo(5, -12);
-    this.gun.lineTo(-5, -12);
-    this.gun.lineTo(-16, -5);
-    this.gun.lineTo(-16, 5);
-    this.gun.lineTo(-5, 12);
-    this.gun.lineTo(5, 12);
-    this.gun.lineTo(16, 5);
-    this.gun.closePath();
+    this.gun
+      .clear()
+      .moveTo(16, -5)
+      .lineTo(5, -12)
+      .lineTo(-5, -12)
+      .lineTo(-16, -5)
+      .lineTo(-16, 5)
+      .lineTo(-5, 12)
+      .lineTo(5, 12)
+      .lineTo(16, 5)
+      .closePath()
+      .fill(this.colorB)
+      .stroke({ width: 2, color: 0xaaaaaa })
 
-    // Второй полигон пушки
-    this.gun.lineStyle(1, 0xcccccc);
-    this.gun.beginFill(fillColorB);
-    this.gun.moveTo(28, -3);
-    this.gun.lineTo(3, -3);
-    this.gun.lineTo(3, 3);
-    this.gun.lineTo(28, 3);
-    this.gun.closePath();
+      // Второй полигон пушки
+      .moveTo(28, -3)
+      .lineTo(3, -3)
+      .lineTo(3, 3)
+      .lineTo(28, 3)
+      .closePath()
+      .stroke({ width: 2, color: 0xaaaaaa })
+      .fill(this.colorB);
+
+    this.addChild(this.body);
+    this.addChild(this.gun);
   }
 
   update(params) {
-    // Обновляем позицию, вращение корпуса и пушки
     this.x = params[0];
     this.y = params[1];
     this.rotation = params[2];
     this.gun.rotation = params[3];
 
-    // Если передан тип, пересоздаем танк с новыми параметрами
+    // Если передан тип, пересоздаем графику
     if (typeof params[4] === 'number') {
       this.create(params[4]);
     }
