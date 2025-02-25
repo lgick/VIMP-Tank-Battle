@@ -73,6 +73,7 @@ socketMethods[0] = async data => {
       canvas: canvas,
       width: canvas.width,
       height: canvas.height,
+      antialias: true,
       backgroundAlpha: 0,
     });
 
