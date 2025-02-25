@@ -7,8 +7,6 @@ class Tank {
 
     this._maxGunAngle = this._modelData.maxGunAngle;
     this._gunAngleStep = this._modelData.gunAngleStep;
-    this._maxForward = this._modelData.maxForward;
-    this._maxBack = this._modelData.maxBack;
 
     this._bulletData = null;
     this._magnitude = 20;
@@ -22,16 +20,15 @@ class Tank {
   // Инициализация тела модели в переданном мире
   initBody(world) {
     const modelData = this._modelData;
-    // Создаём тело через world.createBody. Задаём тип 'dynamic'
+
     this._body = world.createBody({
       type: 'dynamic',
       position: { x: modelData.position[0], y: modelData.position[1] },
       angle: modelData.angle, // предполагается, что угол в радианах
-      linearVelocity: modelData.velocity
-        ? { x: modelData.velocity[0], y: modelData.velocity[1] }
-        : { x: 0, y: 0 },
-      angularVelocity: modelData.angularVelocity || 0,
+      linearVelocity: { x: 0, y: 0 },
+      angularVelocity: 0,
     });
+
     // Добавляем пользовательское свойство для поворота пушки
     this._body.gunRotation = modelData.gunRotation || 0;
     // Добавляем форму. Для прямоугольника используем planck.Box,
@@ -139,20 +136,29 @@ class Tank {
     const pos = this._body.getPosition();
     const angleDeg = this._body.getAngle() * (180 / Math.PI);
 
-    return [].concat(
+    return [
       ~~pos.x.toFixed(2),
       ~~pos.y.toFixed(2),
       ~~angleDeg.toFixed(2),
       this._body.gunRotation,
-    );
+    ];
   }
 
   // Возвращает полные данные (например, для синхронизации с клиентом)
-  getFullData(dataArr) {
+  getFullData(teamId, userName) {
     const pos = this._body.getPosition();
     const angleDeg = this._body.getAngle() * (180 / Math.PI);
 
-    return [].concat(pos.x, pos.y, angleDeg, this._body.gunRotation, dataArr);
+    return [
+      pos.x,
+      pos.y,
+      angleDeg,
+      this._body.gunRotation,
+      teamId,
+      userName,
+      this._modelData.width,
+      this._modelData.height,
+    ];
   }
 
   // Возвращает данные для создания пули и сбрасывает их

@@ -1,10 +1,9 @@
 export default {
   // tank
   m1: {
-    mass: 4,
+    mass: 20,
     width: 48,
     height: 36,
-    acceleration: 0,
     maxForward: 20,
     maxBack: 10,
     step: 0.5,
@@ -21,10 +20,9 @@ export default {
 
   // tank2
   m2: {
-    mass: 5,
+    mass: 30,
     width: 48,
     height: 36,
-    acceleration: 0,
     maxForward: 40,
     maxBack: 10,
     step: 0.5,
