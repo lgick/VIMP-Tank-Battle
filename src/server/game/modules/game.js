@@ -206,7 +206,11 @@ class Game {
       }
     }
 
-    this._world.step(1 / this._shotTime);
+    const timeStep = 1 / this._shotTime;
+    const velocityIterations = 10;
+    const positionIterations = 8;
+
+    this._world.step(timeStep, velocityIterations, positionIterations);
   }
 
   // возвращает данные
@@ -225,7 +229,7 @@ class Game {
         // если возврат полных данных
         if (user.fullUserData === true) {
           user.fullUserData = false;
-          gameData[model][p] = user.getFullData([user.teamID, user.name]);
+          gameData[model][p] = user.getFullData(user.teamID, user.name);
         } else {
           gameData[model][p] = user.getData();
         }
@@ -256,7 +260,7 @@ class Game {
         const model = user.model;
 
         gameData[model] = gameData[model] || {};
-        gameData[model][p] = user.getFullData([user.teamID, user.name]);
+        gameData[model][p] = user.getFullData(user.teamID, user.name);
       }
     }
 

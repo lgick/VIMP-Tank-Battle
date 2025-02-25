@@ -15,6 +15,8 @@ export default class Tank extends Container {
     this.rotation = data[2] || 0;
     this.gun.rotation = data[3] || 0;
     this.label = data[5];
+    this._width = data[6];
+    this._height = data[7];
 
     this.create(data[4]);
   }
@@ -35,11 +37,7 @@ export default class Tank extends Container {
     // Рисование корпуса (body)
     this.body
       .clear()
-      .moveTo(22, -18)
-      .lineTo(-26, -18)
-      .lineTo(-26, 18)
-      .lineTo(22, 18)
-      .closePath()
+      .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
       .fill(this.colorA)
       .stroke({ width: 2, color: 0x555555 });
 
