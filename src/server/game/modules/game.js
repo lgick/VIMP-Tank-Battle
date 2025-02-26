@@ -206,11 +206,10 @@ class Game {
       }
     }
 
-    const timeStep = 1 / this._shotTime;
     const velocityIterations = 10;
     const positionIterations = 8;
 
-    this._world.step(timeStep, velocityIterations, positionIterations);
+    this._world.step(this._shotTime, velocityIterations, positionIterations);
   }
 
   // возвращает данные
