@@ -4,7 +4,7 @@ export default class Tank extends Container {
   constructor(data) {
     super();
 
-    this.layer = 2;
+    this.zIndex = 2;
 
     this.body = new Graphics();
     this.gun = new Graphics();
@@ -35,11 +35,32 @@ export default class Tank extends Container {
     }
 
     // Рисование корпуса (body)
+    // Координаты танка на карте - центр его body
     this.body
       .clear()
       .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
-      .fill(this.colorA)
-      .stroke({ width: 2, color: 0x555555 });
+      .fill(0x555555)
+      .rect(
+        -(this._width / 2) + 1,
+        -(this._height / 2) + 1,
+        this._width - 2,
+        this._height - 2,
+      )
+      .fill(0x999999)
+      .rect(
+        -(this._width / 2) + 2,
+        -(this._height / 2) + 2,
+        this._width - 4,
+        this._height - 4,
+      )
+      .fill(0xcccccc)
+      .rect(
+        -(this._width / 2) + 3,
+        -(this._height / 2) + 3,
+        this._width - 6,
+        this._height - 6,
+      )
+      .fill(this.colorA);
 
     // Первый полигон пушки
     this.gun

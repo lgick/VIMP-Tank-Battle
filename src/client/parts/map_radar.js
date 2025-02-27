@@ -13,7 +13,7 @@ export default class Map extends PIXI.Container {
     this._spriteSheet = Map.spriteSheet;
     this._step = Map.step;
 
-    this.layer = data.layer || 1;
+    this.zIndex = data.layer || 1;
     this._tiles = data.tiles; // Массив с названиями тайлов, которые нужно отрисовать
 
     this.create();

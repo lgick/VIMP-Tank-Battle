@@ -7,7 +7,7 @@ export default class Bomb extends PIXI.Container {
   }
 
   initialize(params) {
-    this.layer = 2;
+    this.zIndex = 2;
 
     // Создаем графический объект для тела бомбы
     this.body = new PIXI.Graphics();

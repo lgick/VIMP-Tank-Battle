@@ -407,14 +407,12 @@ canvasOptions: {
   vimp: {
     aspectRatio: '3:2',
     screenRatio: 1,
-    scale: 1,
-    defaultSize: 612
+    scale: 1
   },
   radar: {
     aspectRatio: '1:1',
     screenRatio: 0.15,
-    scale: 0.05,
-    defaultSize: null
+    scale: 0.05
   }
 }
 ```
