@@ -61,34 +61,41 @@ socketMethods[0] = async data => {
     Factory.add({ [entity]: parts[entity] });
   }
 
-  // установка данных модулей
   modulesConfig = data.modules;
-
-  // создание полотен игры
-  Object.entries(data.modules.canvasOptions).forEach(([canvasId, options]) => {
-    const canvas = document.getElementById(canvasId);
-    const app = new Application();
-
-    app.init({
-      canvas: canvas,
-      width: canvas.width,
-      height: canvas.height,
-      antialias: true,
-      backgroundAlpha: 0,
-    });
-
-    CTRL[canvasId] = makeGameController(app);
-
-    // пропорции изображения на полотне
-    const [w, h] = (options.scale || '1:1')
-      .split(':')
-      .map(value => parseInt(value, 10));
-    scale[canvasId] = w / h;
-  });
-
   informList = data.informer;
 
-  sending(0);
+  // создание полотен игры
+  const initPromises = Object.entries(data.modules.canvasOptions).map(
+    async ([canvasId, options]) => {
+      const canvas = document.getElementById(canvasId);
+      const app = new Application();
+
+      await app.init({
+        canvas: canvas,
+        width: canvas.width,
+        height: canvas.height,
+        antialias: true,
+        backgroundAlpha: 0,
+      });
+
+      CTRL[canvasId] = makeGameController(app);
+
+      // пропорции изображения на полотне
+      const [w, h] = (options.scale || '1:1')
+        .split(':')
+        .map(value => parseInt(value, 10));
+      scale[canvasId] = w / h;
+    },
+  );
+
+  Promise.all(initPromises)
+    .then(() => {
+      // config ready
+      sending(0);
+    })
+    .catch(err => {
+      console.error('Ошибка инициализации:', err);
+    });
 };
 
 // auth data

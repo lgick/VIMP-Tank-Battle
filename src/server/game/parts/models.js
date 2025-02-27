@@ -1,7 +1,7 @@
 export default {
   // tank
   m1: {
-    mass: 20,
+    density: 0.04,
     width: 48,
     height: 36,
     maxGunAngle: 90,
@@ -17,7 +17,7 @@ export default {
 
   // tank2
   m2: {
-    mass: 30,
+    density: 0.05,
     width: 48,
     height: 36,
     maxGunAngle: 90,

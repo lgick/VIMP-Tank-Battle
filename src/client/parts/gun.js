@@ -7,7 +7,7 @@ export default class Gun extends PIXI.Graphics {
   }
 
   initialize(params) {
-    this.layer = 2;
+    this.zIndex = 2;
 
     // Устанавливаем начальные координаты, скорость и вращение
     this.x = params[0];

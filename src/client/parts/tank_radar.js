@@ -4,7 +4,7 @@ export default class Radar extends Container {
   constructor(data) {
     super();
 
-    this.layer = 2;
+    this.zIndex = 2;
 
     this.body = new Graphics();
 

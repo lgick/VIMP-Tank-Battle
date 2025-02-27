@@ -4,7 +4,7 @@ export default class Tank extends PIXI.Container {
   constructor(params) {
     super();
 
-    this.layer = 2;
+    this.zIndex = 2;
 
     // Создаем графические объекты для корпуса и пушки
     this.body = new PIXI.Graphics();

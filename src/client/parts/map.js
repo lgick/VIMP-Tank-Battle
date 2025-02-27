@@ -22,19 +22,19 @@ export default class Map extends Container {
       this._tiles = data.tiles;
       this._spriteSheet = data.spriteSheet;
       this._step = data.step;
-      this.layer = data.layer || 1;
+      this.zIndex = data.layer || 1;
       this.createStatic();
     }
     // если динамические данные
     else if (data.type === 'dynamic') {
       this._sheet = loadAssets(`/img/${data.img}`);
 
+      this.zIndex = data.layer || 2;
       this._rotation = data.angle;
       this._width = data.width;
       this._height = data.height;
       this._x = data.position[0] - this.width / 2;
       this._y = data.position[1] - this.height / 2;
-      this._layer = data.layer || 2;
       this.createDynamic();
     }
   }
@@ -50,7 +50,6 @@ export default class Map extends Container {
     sprite.width = this._width;
     sprite.height = this._height;
     sprite.rotation = this._rotation;
-    sprite.anchor.set(0.5);
     this.addChild(sprite);
   }
 
@@ -91,7 +90,6 @@ export default class Map extends Container {
             const sprite = new Sprite(texture);
             sprite.x = x * this._step;
             sprite.y = y * this._step;
-            sprite.anchor.set(0.5);
             this.addChild(sprite);
           }
         }

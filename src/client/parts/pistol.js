@@ -8,7 +8,7 @@ export default class Pistol extends PIXI.Graphics {
 
   initialize(params) {
     // Устанавливаем базовые параметры
-    this.layer = 2;
+    this.zIndex = 2;
     this.x = params[0];
     this.y = params[1];
     this.vX = params[2];
