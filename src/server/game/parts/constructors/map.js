@@ -1,4 +1,4 @@
-import planck from 'planck';
+import { BoxShape, Vec2 } from 'planck';
 
 class Map {
   constructor(data) {
@@ -85,12 +85,12 @@ class Map {
           // Создаем статическое тело через world.createBody
           const body = this._world.createBody({
             type: 'static',
-            position: { x: posX, y: posY },
+            position: new Vec2(posX, posY),
           });
 
           // Добавляем fixture в виде прямоугольника.
           // В конструкторе Box указываются половинные размеры.
-          body.createFixture(new planck.BoxShape(sizes[0] / 2, sizes[1] / 2));
+          body.createFixture(new BoxShape(sizes[0] / 2, sizes[1] / 2));
         }
       }
     }
@@ -100,20 +100,31 @@ class Map {
   createDynamic() {
     for (let i = 0, len = this._physicsDynamic.length; i < len; i += 1) {
       const data = this._physicsDynamic[i];
+      const angle = (data.angle * Math.PI) / 180;
+      const posX = data.position[0];
+      const posY = data.position[1];
 
       const body = this._world.createBody({
         type: 'dynamic',
-        position: { x: data.position[0], y: data.position[1] },
-        angle: data.angle,
+        position: new Vec2(posX, posY),
+        angle,
+        linearDamping: 0,
+        angularDamping: 0.01,
+        allowSleep: true,
       });
 
       // Сохраняем исходные данные для возможного сброса
       body.defaultPosition = data.position.slice();
-      body.defaultAngle = data.angle;
+      body.defaultAngle = angle;
 
-      body.createFixture(new planck.BoxShape(data.width / 2, data.height / 2), {
-        density: data.mass,
-      });
+      body.createFixture(
+        new BoxShape(
+          data.width / 2,
+          data.height / 2,
+          new Vec2(data.width / 2, data.height / 2),
+        ),
+        data.dencity,
+      );
 
       this._dynamicBodies['d' + i] = body;
     }
@@ -129,11 +140,6 @@ class Map {
     }
   }
 
-  // Возвращает данные для всех динамических элементов карты
-  getFullDynamicMapData() {
-    return this.getDynamicMapData();
-  }
-
   // Возвращает краткие данные динамических элементов
   getDynamicMapData() {
     const data = {};
@@ -142,11 +148,7 @@ class Map {
       if (this._dynamicBodies.hasOwnProperty(id)) {
         const body = this._dynamicBodies[id];
         const pos = body.getPosition();
-        data[id] = [
-          ~~pos.x.toFixed(2),
-          ~~pos.y.toFixed(2),
-          ~~body.getAngle().toFixed(2),
-        ];
+        data[id] = [pos.x, pos.y, body.getAngle()];
       }
     }
 
@@ -159,7 +161,7 @@ class Map {
       if (this._dynamicBodies.hasOwnProperty(id)) {
         const body = this._dynamicBodies[id];
         const pos = body.defaultPosition;
-        body.setPosition({ x: pos[0], y: pos[1] });
+        body.setPosition(new Vec2(pos[0], pos[1]));
         body.setAngle(body.defaultAngle);
       }
     }

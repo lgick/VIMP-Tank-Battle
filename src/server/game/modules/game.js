@@ -75,11 +75,6 @@ class Game {
     });
   }
 
-  // возвращает все данные динамических элементов
-  getFullDynamicMapData() {
-    return this._map.getFullDynamicMapData();
-  }
-
   // возвращает данные динамических элементов
   getDynamicMapData() {
     return this._map.getDynamicMapData();

@@ -26,7 +26,7 @@ export default {
   banlist,
 
   maps, // карты
-  currentMap: 'arena', // название карты по умолчанию
+  currentMap: 'mini', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
   mapSetID: 'c1', // дефолтный id конструкторов создания карт
 

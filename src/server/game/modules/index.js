@@ -377,7 +377,7 @@ class VIMP {
     this._game.resetDynamicMapData();
 
     const gameData = this._game.resetBulletData();
-    gameData[this._currentMapData.setID] = this._game.getDynamicMapData();
+    // gameData[this._currentMapData.setID] = this._game.getDynamicMapData();
 
     for (const p in this._users) {
       if (this._users.hasOwnProperty(p)) {

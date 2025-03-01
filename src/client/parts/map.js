@@ -8,6 +8,8 @@ export default class Map extends Container {
       return await Assets.load(url);
     }
 
+    this.sprite = null;
+
     // если статические данные
     if (data.type === 'static') {
       this._sheet = loadAssets(`/img/${data.spriteSheet.img}`);
@@ -30,11 +32,11 @@ export default class Map extends Container {
       this._sheet = loadAssets(`/img/${data.img}`);
 
       this.zIndex = data.layer || 2;
-      this._rotation = data.angle;
+      this._rotation = (data.angle * Math.PI) / 180;
       this._width = data.width;
       this._height = data.height;
-      this._x = data.position[0] - this.width / 2;
-      this._y = data.position[1] - this.height / 2;
+      this._x = data.position[0];
+      this._y = data.position[1];
       this.createDynamic();
     }
   }
@@ -43,14 +45,14 @@ export default class Map extends Container {
     const baseTexture = await this._sheet;
     baseTexture.dynamic = true;
 
-    const sprite = new Sprite(baseTexture);
+    this.sprite = new Sprite(baseTexture);
 
-    sprite.x = this._x;
-    sprite.y = this._y;
-    sprite.width = this._width;
-    sprite.height = this._height;
-    sprite.rotation = this._rotation;
-    this.addChild(sprite);
+    this.sprite.x = this._x;
+    this.sprite.y = this._y;
+    this.sprite.width = this._width;
+    this.sprite.height = this._height;
+    this.sprite.rotation = this._rotation;
+    this.addChild(this.sprite);
   }
 
   async createStatic() {
@@ -98,9 +100,10 @@ export default class Map extends Container {
   }
 
   update(data) {
-    // data: [positionX, positionY, rotation]
-    this.x = data[0] - this.width / 2;
-    this.y = data[1] - this.height / 2;
-    this.rotation = data[2];
+    if (this.sprite) {
+      this.sprite.x = data[0];
+      this.sprite.y = data[1];
+      this.sprite.rotation = data[2];
+    }
   }
 }
