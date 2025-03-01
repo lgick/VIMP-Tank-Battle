@@ -4,8 +4,8 @@ export default {
     density: 0.04,
     width: 48,
     height: 36,
-    maxGunAngle: 90,
-    gunAngleStep: 30,
+    maxGunAngle: 45,
+    gunAngleStep: 5,
     constructor: 'tank',
     currentBullet: 'b3',
     bullets: {
@@ -21,7 +21,7 @@ export default {
     width: 48,
     height: 36,
     maxGunAngle: 90,
-    gunAngleStep: 30,
+    gunAngleStep: 2,
     constructor: 'tank',
     currentBullet: 'b2',
     bullets: {
