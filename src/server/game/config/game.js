@@ -1,5 +1,5 @@
 import maps from '../../../../public/maps/index.js';
-import constructors from '../parts/constructors/index.js';
+import constructors from '../parts/index.js';
 import models from './parts/models.js';
 import bullets from './parts/bullets.js';
 import banlist from '../deps/banlist.js';
