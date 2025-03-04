@@ -87,7 +87,6 @@ class Tank {
 
       this._bulletData = {
         position: bombPos,
-        velocity: new Vec2(0, 0), // если скорость не нужна, или можно задать необходимую
         angle: this._body.getAngle(),
       };
     }
