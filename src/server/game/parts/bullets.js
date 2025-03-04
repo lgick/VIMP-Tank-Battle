@@ -2,9 +2,9 @@ export default {
   // pistol
   b1: {
     time: 5,
-    mass: 20,
+    density: 20,
     speed: 30,
-    power: 3,
+    power: 1,
     width: 10,
     height: 10,
     constructor: 'bullet',
@@ -13,7 +13,7 @@ export default {
   // gun
   b2: {
     time: 4,
-    mass: 20,
+    density: 20,
     speed: 30,
     power: 3,
     width: 10,
@@ -23,10 +23,10 @@ export default {
 
   // bomb
   b3: {
-    time: 100,
-    mass: 20,
+    time: 5000,
+    density: 20,
     speed: 30,
-    power: 3,
+    power: 10,
     width: 32,
     height: 32,
     constructor: 'bomb',

@@ -123,7 +123,7 @@ class Map {
           data.height / 2,
           new Vec2(data.width / 2, data.height / 2),
         ),
-        data.dencity,
+        data.density,
       );
 
       this._dynamicBodies['d' + i] = body;

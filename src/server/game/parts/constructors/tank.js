@@ -77,20 +77,18 @@ class Tank {
       }
     }
 
-    // Обработка стрельбы (если требуется)
     if (keys & this._keys.fire) {
-      // Здесь исправьте, если требуется, расчёт угла для пули
-      const bodyAngleDeg = this._body.getAngle() * (180 / Math.PI);
-      const radBullet =
-        (bodyAngleDeg + this._body.gunRotation) * (Math.PI / 180);
-      const pos = this._body.getWorldCenter();
-      const bulletVel = new Vec2(Math.cos(radBullet), Math.sin(radBullet)).mul(
-        2,
+      const extraOffset = 20; // подберите нужное значение
+      const localBombOffset = new Vec2(
+        -this._modelData.width / 2 - extraOffset,
+        0,
       );
+      const bombPos = this._body.getWorldPoint(localBombOffset);
+
       this._bulletData = {
-        position: pos.add(bulletVel),
-        velocity: bulletVel,
-        angle: bodyAngleDeg + this._body.gunRotation,
+        position: bombPos,
+        velocity: new Vec2(0, 0), // если скорость не нужна, или можно задать необходимую
+        angle: this._body.getAngle(),
       };
     }
   }
@@ -127,7 +125,9 @@ class Tank {
   // Возвращает данные для создания пули и сбрасывает их
   getBulletData() {
     const bulletData = this._bulletData;
+
     this._bulletData = null;
+
     return bulletData;
   }
 }

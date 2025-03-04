@@ -1,77 +1,80 @@
-import * as PIXI from 'pixi.js';
+import { BitmapText, Graphics, Ticker, Container } from 'pixi.js';
 
-export default class Bomb extends PIXI.Container {
+export default class Bomb extends Container {
   constructor(params) {
     super();
-    this.initialize(params);
-  }
 
-  initialize(params) {
     this.zIndex = 2;
 
-    // Создаем графический объект для тела бомбы
-    this.body = new PIXI.Graphics();
+    this.body = new Graphics();
 
-    // Создаем текст с указанными стилями
-    this.text = new PIXI.Text('', {
-      fontFamily: 'Arial',
-      fontSize: 10,
-      fill: '#ff3300',
-    });
-    this.text.x = -12;
-    this.text.y = -5;
-
-    // Добавляем объекты в контейнер
-    this.addChild(this.body, this.text);
-
-    // Устанавливаем координаты и начальное время
     this.x = params[0];
     this.y = params[1];
-    this.time = params[2];
-    this.text.text = this.time;
-    this.rotation = 0;
+    this.rotation = params[2];
+    this._width = params[3];
+    this._height = params[4];
+    this._time = params[5] / 10;
 
-    // Используем глобальный PIXI.Ticker для обновления времени
-    // Накопление времени для вызова обновления каждую секунду
+    this.text = new BitmapText({
+      style: {
+        fontSize: 36,
+        fontFamily: 'Arial',
+        fontSize: 10,
+        fill: 0xff1010,
+        align: 'center',
+      },
+      width: this._width - 6,
+    });
+
+    this.text.text = '--:--';
+    this.text.anchor.set(0.5);
+
     this._accumulatedTime = 0;
-    PIXI.Ticker.shared.add(this.updateTime, this);
 
-    this.create();
+    Ticker.shared.add(this.updateTime, this);
+
+    this.body
+      .clear()
+      .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
+      .fill(0xffffff)
+      .rect(
+        -(this._width / 2) + 1,
+        -(this._height / 2) + 1,
+        this._width - 2,
+        this._height - 2,
+      )
+      .fill(0x275c2d);
+
+    this.addChild(this.body, this.text);
   }
 
   updateTime() {
-    if (this.time > 0) {
-      // PIXI.Ticker.shared.elapsedMS возвращает прошедшее время в миллисекундах с прошлого кадра
-      this._accumulatedTime += PIXI.Ticker.shared.elapsedMS;
+    let hours, minutes, seconds;
 
-      if (this._accumulatedTime >= 1000) {
-        this._accumulatedTime -= 1000;
-        this.time--;
+    if (this._time > 0) {
+      this._accumulatedTime += Ticker.shared.elapsedMS;
 
-        let hours = Math.floor(this.time / 3600);
-        let minutes = Math.floor((this.time - hours * 3600) / 60);
-        let seconds = this.time - hours * 3600 - minutes * 60;
+      this._time -= 1;
 
-        if (hours < 10) hours = '0' + hours;
-        if (minutes < 10) minutes = '0' + minutes;
-        if (seconds < 10) seconds = '0' + seconds;
+      hours = Math.floor(this._time / 3600);
+      minutes = Math.floor((this._time - hours * 3600) / 60);
+      seconds = this._time - hours * 3600 - minutes * 60;
 
-        this.text.text = `${minutes}:${seconds}`;
+      if (hours < 10) {
+        hours = '0' + hours;
       }
+
+      if (minutes < 10) {
+        minutes = '0' + minutes;
+      }
+
+      if (seconds < 10) {
+        seconds = '0' + seconds;
+      }
+
+      this.text.text = `${minutes}:${seconds}`;
     }
   }
 
-  create() {
-    this.body.clear();
-    // Задаем стиль линии (цвет #333333)
-    this.body.lineStyle(1, 0x333333);
-    // Заливаем цвет (#275C2D) и рисуем закругленный прямоугольник
-    this.body.beginFill(0x275c2d);
-    this.body.drawRoundedRect(-15, -15, 30, 30, 3);
-    this.body.endFill();
-  }
-
-  update() {
-    // Дополнительная логика обновления при необходимости
-  }
+  update() {}
 }
