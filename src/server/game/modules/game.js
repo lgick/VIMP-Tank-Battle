@@ -278,14 +278,13 @@ class Game {
       {
         bulletSet,
         bulletData,
+        world: this._world,
       },
     ));
 
     bullet.bulletName = bulletName;
     bullet.bulletID = bulletID;
     bullet.gameID = gameID;
-
-    bullet.initBody(this._world);
 
     this._bulletsAtTime[time].push(bulletID);
 

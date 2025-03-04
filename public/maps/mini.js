@@ -21,7 +21,7 @@ export default {
 
   physicsDynamic: [
     {
-      dencity: 0.3,
+      density: 0.3,
       layer: 3,
       position: [220, 40],
       angle: 0,
@@ -30,7 +30,7 @@ export default {
       img: 'bob.jpg',
     },
     {
-      dencity: 5,
+      density: 50,
       layer: 2,
       position: [280, 40],
       angle: 90,
@@ -39,7 +39,7 @@ export default {
       img: 'stalin.jpg',
     },
     {
-      dencity: 0.3,
+      density: 0.3,
       layer: 2,
       position: [330, 40],
       angle: 0,
@@ -48,7 +48,7 @@ export default {
       img: 'bob.jpg',
     },
     {
-      dencity: 0.1,
+      density: 0.1,
       layer: 2,
       position: [140, 100],
       angle: 0,
@@ -57,7 +57,7 @@ export default {
       img: 'b1.png',
     },
     {
-      dencity: 0.1,
+      density: 0.1,
       layer: 2,
       position: [180, 100],
       angle: 0,
@@ -66,7 +66,7 @@ export default {
       img: 'b1.png',
     },
     {
-      dencity: 1,
+      density: 1,
       layer: 2,
       position: [240, 100],
       angle: 0,
@@ -75,7 +75,7 @@ export default {
       img: 'b1.png',
     },
     {
-      dencity: 1,
+      density: 1,
       layer: 2,
       position: [300, 100],
       angle: 0,
@@ -84,7 +84,7 @@ export default {
       img: 'b1.png',
     },
     {
-      dencity: 0.1,
+      density: 0.1,
       layer: 2,
       position: [350, 100],
       angle: 0,
@@ -93,7 +93,7 @@ export default {
       img: 'b1.png',
     },
     {
-      dencity: 0.1,
+      density: 0.1,
       layer: 2,
       position: [400, 100],
       angle: 0,
