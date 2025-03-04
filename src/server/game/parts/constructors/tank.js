@@ -10,7 +10,6 @@ class Tank {
 
     this._bulletData = null;
 
-    // Тело создадим позже через initBody(world)
     this._body = null;
   }
 
@@ -54,23 +53,24 @@ class Tank {
       this._body.applyLinearImpulse(f, p, true);
     }
 
-    // Поворот танка – можно оставить как есть, но, возможно, стоит уменьшить величину импульса
     if (keys & this._keys.left) {
       this._body.setAngle(angleRad - 0.03);
     }
+
     if (keys & this._keys.right) {
       this._body.setAngle(angleRad + 0.03);
     }
 
-    // Управление пушкой остаётся без изменений
     if (keys & this._keys.gCenter) {
       this._body.gunRotation = 0;
     }
+
     if (keys & this._keys.gLeft) {
       if (this._body.gunRotation > -this._maxGunAngle) {
         this._body.gunRotation -= this._gunAngleStep;
       }
     }
+
     if (keys & this._keys.gRight) {
       if (this._body.gunRotation < this._maxGunAngle) {
         this._body.gunRotation += this._gunAngleStep;
@@ -92,6 +92,7 @@ class Tank {
       };
     }
   }
+
   // Возвращает тело модели
   getBody() {
     return this._body;
