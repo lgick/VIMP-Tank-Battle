@@ -72,11 +72,11 @@ if (argv.mtime) {
 config.set('client', (await import('./game/config/client.js')).default);
 
 // время ожидания vote-модуля
-config.set('client:user:vote:params:time', config.get('game:voteTime'));
+config.set('client:modules:vote:params:time', config.get('game:voteTime'));
 
 // регулярное выражение для сообщений
 config.set(
-  'client:user:chat:params:messageExp',
+  'client:modules:chat:params:messageExp',
   config.get('game:expressions:message'),
 );
 

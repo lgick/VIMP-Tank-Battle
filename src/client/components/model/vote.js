@@ -22,7 +22,7 @@ export default class VoteModel {
     this._type = ''; // тип ('menu', 'vote')
     this._waitingValues = false; // ожидания значений
 
-    this._time = data.time || 20000; // время жизни голосования
+    this._time = data.time || 10000; // время жизни голосования
     this._timerID = null; // id таймера
 
     this._voteName = ''; // название голосования
