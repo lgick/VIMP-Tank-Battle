@@ -1,44 +1,40 @@
-import * as PIXI from 'pixi.js';
+import { Graphics, Ticker, Container } from 'pixi.js';
 
-export default class Pistol extends PIXI.Graphics {
+export default class Pistol extends Container {
   constructor(params) {
     super();
-    this.initialize(params);
-  }
 
-  initialize(params) {
     // Устанавливаем базовые параметры
     this.zIndex = 2;
+
+    this.body = new Graphics();
+
+    console.log(params);
     this.x = params[0];
     this.y = params[1];
-    this.vX = params[2];
-    this.vY = params[3];
-    this.rotation = params[4];
+    this.rotation = params[2];
+    this._width = params[3];
+    this._height = params[4];
+    this._time = params[5] / 10;
+    this.vX = params[6].x;
+    this.vY = params[6].y;
 
-    // Используем PIXI.Ticker для обновления позиции каждый кадр
-    PIXI.Ticker.shared.add(this.tick, this);
+    Ticker.shared.add(this.updateTime, this);
 
-    this.create();
+    this.body
+      .clear()
+      .circle(0, 0, this._width / 2)
+      .fill(0xffffff)
+      .circle(0, 0, this._width / 2 - 1)
+      .fill(0x550000);
+
+    this.addChild(this.body);
   }
 
-  tick() {
+  updateTime() {
     this.x += this.vX;
     this.y += this.vY;
   }
 
-  create() {
-    // Очищаем предыдущую графику
-    this.clear();
-    // Устанавливаем стиль линии: толщина 1, цвет белый
-    this.lineStyle(1, PIXI.utils.string2hex('#fff'));
-    // Устанавливаем заливку: цвет '#500'
-    this.beginFill(PIXI.utils.string2hex('#500'));
-    // Рисуем круг радиусом 2
-    this.drawCircle(0, 0, 2);
-    this.endFill();
-  }
-
-  update() {
-    // Дополнительная логика обновления при необходимости
-  }
+  update(x) {}
 }
