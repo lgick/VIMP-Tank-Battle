@@ -86,8 +86,28 @@ class Tank extends BaseUser {
           position: this._body.getWorldPoint(localBombOffset),
           angle: this._body.getAngle(),
         };
-      } else {
-        console.log(this.bulletConstructorName);
+      } else if (this.bulletConstructorName === 'bullet') {
+        // суммарный угол выстрела: угол корпуса + угол поворота пушки
+        const totalAngle = this._body.getAngle() + this._body.gunRotation;
+        // расстояние от центра танка до точки появления пули (настраивается)
+        const bulletOffset = this._modelData.width / 2 + 10;
+        // вычисляем мировые координаты точки появления пули
+        const bulletX =
+          this._body.getPosition().x + Math.cos(totalAngle) * bulletOffset;
+        const bulletY =
+          this._body.getPosition().y + Math.sin(totalAngle) * bulletOffset;
+        // задаем скорость пули (примерная величина, можно корректировать)
+        const bulletSpeed = 100;
+        // вычисляем вектор скорости пули
+        const bulletVelocity = new Vec2(
+          Math.cos(totalAngle) * bulletSpeed,
+          Math.sin(totalAngle) * bulletSpeed,
+        );
+        this._bulletData = {
+          position: new Vec2(bulletX, bulletY),
+          angle: totalAngle,
+          velocity: bulletVelocity,
+        };
       }
     }
 

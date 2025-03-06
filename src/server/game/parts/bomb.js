@@ -1,11 +1,10 @@
-import { BoxShape, Vec2 } from 'planck';
+import { BoxShape } from 'planck';
 
 class Bomb {
   constructor(data) {
     this._bulletSet = data.bulletSet;
     this._bulletData = data.bulletData;
     this._time = data.bulletSet.time;
-    this._body = null;
 
     const width = this._bulletSet.width;
     const height = this._bulletSet.height;

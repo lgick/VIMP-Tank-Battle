@@ -1,43 +1,40 @@
-import * as PIXI from 'pixi.js';
+import { Graphics, Ticker, Container } from 'pixi.js';
 
-export default class Gun extends PIXI.Graphics {
+export default class Gun extends Container {
   constructor(params) {
     super();
-    this.initialize(params);
-  }
 
-  initialize(params) {
+    // Устанавливаем базовые параметры
     this.zIndex = 2;
 
-    // Устанавливаем начальные координаты, скорость и вращение
+    this.body = new Graphics();
+
+    console.log(params);
     this.x = params[0];
     this.y = params[1];
-    this.vX = params[2];
-    this.vY = params[3];
-    this.rotation = params[4];
+    this.rotation = params[2];
+    this._width = params[3];
+    this._height = params[4];
+    this._time = params[5] / 10;
+    this.vX = params[6].x;
+    this.vY = params[6].y;
 
-    // Добавляем обновление позиции в каждый тик
-    PIXI.Ticker.shared.add(this.updatePosition, this);
+    Ticker.shared.add(this.updateTime, this);
 
-    this.create();
+    this.body
+      .clear()
+      .circle(0, 0, this._width / 2)
+      .fill(0x333333)
+      .circle(0, 0, this._width / 2 - 3)
+      .fill(0xff0000);
+
+    this.addChild(this.body);
   }
 
-  // Функция обновления позиции: добавляем скорость к координатам
-  updatePosition() {
+  updateTime() {
     this.x += this.vX;
     this.y += this.vY;
   }
 
-  // Рисуем графический объект (красный круг с обводкой)
-  create() {
-    this.clear();
-    this.lineStyle(1, 0x333333);
-    this.beginFill(0xff0000);
-    this.drawCircle(0, 0, 6);
-    this.endFill();
-  }
-
-  update() {
-    // Дополнительная логика обновления при необходимости
-  }
+  update(x) {}
 }
