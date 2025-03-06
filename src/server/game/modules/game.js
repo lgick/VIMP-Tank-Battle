@@ -20,7 +20,7 @@ class Game {
     this._models = parts.models;
     this._bullets = parts.bullets;
 
-    this._keys = keys;
+    this._keysData = keys;
     this._shotTime = shotTime;
 
     this._world = new planck.World({
@@ -92,26 +92,17 @@ class Game {
     modelData.position = [data[0], data[1]];
     modelData.angle = data[2];
 
-    const user = (this._modelData[gameID] = this._Factory(
-      modelData.constructor,
-      {
-        keys: this._keys,
-        modelData,
-      },
-    ));
-
-    user.gameID = gameID;
-    user.model = model;
-    user.name = name;
-    user.teamID = teamID;
-    user.fullUserData = true;
-
-    user.bulletData = null;
-    user.keys = null;
-    user.currentBullet = modelData.currentBullet;
-    user.bulletList = Object.keys(modelData.bullets);
-
-    user.initBody(this._world);
+    this._modelData[gameID] = this._Factory(modelData.constructor, {
+      keysData: this._keysData,
+      modelData,
+      world: this._world,
+      model,
+      name,
+      teamID,
+      currentBullet: modelData.currentBullet,
+      bulletList: Object.keys(modelData.bullets),
+      bullets: this._bullets,
+    });
   }
 
   // удаляет игрока
@@ -133,28 +124,14 @@ class Game {
     }
   }
 
-  // меняет игровую модель
-  changeModel(gameID, model) {}
-
-  // меняет команду игрока
-  changeTeamID(gameID, teamID) {
-    const user = this._modelData[gameID];
-
-    user.teamID = teamID;
-    user.fullUserData = true;
-  }
-
   // меняет имя игрока
   changeName(gameID, name) {
-    const user = this._modelData[gameID];
-
-    user.name = name;
-    user.fullUserData = true;
+    this._modelData[gameID].changeName(name);
   }
 
   // обновляет нажатые клавиши
   updateKeys(gameID, keys) {
-    this._modelData[gameID].keys = keys;
+    this._modelData[gameID].currentKeys = keys;
   }
 
   // возвращает координаты игрока
@@ -183,21 +160,7 @@ class Game {
   updateData() {
     for (const p in this._modelData) {
       if (this._modelData.hasOwnProperty(p)) {
-        const user = this._modelData[p];
-        const keys = user.keys;
-
-        if (keys !== null) {
-          if (keys & this._keys.nextBullet) {
-            this.turnUserBullet(user.gameID);
-          }
-
-          if (keys & this._keys.prevBullet) {
-            this.turnUserBullet(user.gameID, true);
-          }
-
-          user.updateData(keys);
-          user.keys = null;
-        }
+        this._modelData[p].updateData();
       }
     }
 
@@ -219,14 +182,7 @@ class Game {
         const bulletData = user.getBulletData();
 
         gameData[model] = gameData[model] || {};
-
-        // если возврат полных данных
-        if (user.fullUserData === true) {
-          user.fullUserData = false;
-          gameData[model][p] = user.getFullData(user.teamID, user.name);
-        } else {
-          gameData[model][p] = user.getData();
-        }
+        gameData[model][p] = user.getData();
 
         // если есть данные для создания пули
         if (bulletData !== null) {
@@ -254,7 +210,7 @@ class Game {
         const model = user.model;
 
         gameData[model] = gameData[model] || {};
-        gameData[model][p] = user.getFullData(user.teamID, user.name);
+        gameData[model][p] = user.getFullData();
       }
     }
 
@@ -344,38 +300,6 @@ class Game {
     }
 
     return gameData;
-  }
-
-  // задает модель пуль игроку
-  setUserBullet(gameID, bullet) {
-    const user = this._modelData[gameID];
-    const bulletList = user.bulletList;
-
-    if (bulletList.indexOf(bullet) !== -1) {
-      user.currentBullet = bullet;
-    }
-  }
-
-  // меняет модель пуль игрока
-  turnUserBullet(gameID, back) {
-    const user = this._modelData[gameID];
-    const bulletList = user.bulletList;
-    let key = bulletList.indexOf(user.currentBullet);
-
-    // если назад
-    if (back) {
-      key -= 1;
-    } else {
-      key += 1;
-    }
-
-    if (key < 0) {
-      key = bulletList.length - 1;
-    } else if (key >= bulletList.length) {
-      key = 0;
-    }
-
-    user.currentBullet = bulletList[key];
   }
 }
 

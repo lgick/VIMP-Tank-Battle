@@ -914,16 +914,6 @@ class VIMP {
         this.changeName(gameID, value);
         break;
 
-      // смена модели
-      case '/model':
-        this._game.changeModel(gameID, value);
-        break;
-
-      // смена пуль
-      case '/bullet':
-        this._game.setUserBullet(gameID, value);
-        break;
-
       // новый раунд
       case '/nr':
         this.stopRoundTimer();
@@ -931,6 +921,7 @@ class VIMP {
         break;
 
       // время карты
+      // TODO возвращать актуальное время
       case '/timeleft':
         this._chat.pushSystem(['2:00'], gameID);
         break;
