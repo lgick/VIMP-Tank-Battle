@@ -27,7 +27,7 @@ export default {
       name: 'model',
       value: 'm1',
       options: {
-        regExp: 'm1|m2',
+        regExp: 'm1',
         storage: 'model',
       },
     },

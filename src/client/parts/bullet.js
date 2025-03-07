@@ -1,6 +1,6 @@
 import { Graphics, Ticker, Container } from 'pixi.js';
 
-export default class Gun extends Container {
+export default class Bullet extends Container {
   constructor(params) {
     super();
 
@@ -24,9 +24,9 @@ export default class Gun extends Container {
     this.body
       .clear()
       .circle(0, 0, this._width / 2)
-      .fill(0x333333)
-      .circle(0, 0, this._width / 2 - 3)
-      .fill(0xff0000);
+      .fill(0xffffff)
+      .circle(0, 0, this._width / 2 - 1)
+      .fill(0x550000);
 
     this.addChild(this.body);
   }

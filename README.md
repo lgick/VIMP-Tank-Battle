@@ -369,10 +369,8 @@ gameSets: {
   c1: ['map', 'map_radar'],
   c2: ['map'],
   m1: ['tank', 'tank_radar'],
-  m2: ['tank2', 'tank_radar'],
-  b1: ['pistol'],
-  b2: ['gun'],
-  b3: ['bomb'],
+  b1: ['bullet'],
+  b2: ['bomb'],
 }
 ```
 
@@ -389,9 +387,7 @@ entitiesOnCanvas: {
   map_radar: 'radar',
   tank_radar: 'radar',
   tank: 'vimp',
-  tank2: 'vimp',
-  gun: 'vimp',
-  pistol: 'vimp',
+  bullet: 'vimp',
   bomb: 'vimp',
 }
 ```
@@ -543,9 +539,6 @@ keys: {
       3: [736, 320, 180, 0, 2, 'jek'],
       5: null,
     },
-    m2: {
-      2: [736, 320, 180, 0],
-    },
     b1: {
       e3a: [680, 128, -20, 0, 2, 2],
       fsa: [284, 308, 11, 17, 2, 2],
@@ -565,9 +558,6 @@ keys: {
       1: [64, 320, 0, 0, 1, 'bob'],
       3: [736, 320, 180, 0, 2, 'jek'],
       5: null,
-    },
-    m2: {
-      2: [736, 320, 180, 0],
     },
     b1: {
       e3a: [680, 128, -20, 0, 2, 2],
