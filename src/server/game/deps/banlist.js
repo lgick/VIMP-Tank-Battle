@@ -1,4 +1,3 @@
-// this mongo data
 export default {
   '127.0.0.x': {
     name: 'Bob',

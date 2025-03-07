@@ -790,13 +790,6 @@ class VIMP {
         // иначе если смена статуса
       } else if (type === 'team') {
         this.changeTeam(gameID, value[0]);
-
-        // иначе если пользователь предложил забанить игрока
-      } else if (type === 'ban') {
-        this._chat.pushSystem(
-          `v:6:${value[1]},${this._users[value[0]].name}`,
-          gameID,
-        );
       }
     }
   }
