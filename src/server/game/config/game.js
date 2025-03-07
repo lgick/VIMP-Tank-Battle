@@ -90,7 +90,6 @@ export default {
 
   defaultBullet: {
     m1: 'b1',
-    m2: 'b2',
   },
 
   spectatorKeys: {

@@ -1,5 +1,5 @@
 export default {
-  // pistol
+  // bullet
   b1: {
     time: 10000,
     density: 200,
@@ -10,19 +10,8 @@ export default {
     constructor: 'bullet',
   },
 
-  // gun
-  b2: {
-    time: 4000,
-    density: 300,
-    speed: 30,
-    power: 3,
-    width: 13,
-    height: 13,
-    constructor: 'bullet',
-  },
-
   // bomb
-  b3: {
+  b2: {
     time: 5000,
     density: 20,
     speed: 30,
