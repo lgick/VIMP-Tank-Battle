@@ -64,7 +64,14 @@ export default server => {
         };
 
         id = ws.socket.id = uuidv1();
-        ws.socket.socketMethods = [false, false, false, false, false, false];
+        ws.socket.socketMethods = [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ];
 
         sessions[id] = ws;
 
@@ -77,7 +84,10 @@ export default server => {
     socketMethods[0] = err => {
       if (!err) {
         if (oneConnection && IPs[address]) {
-          sessions[IPs[address]].socket.close(4002, [portInform, [2]]);
+          sessions[IPs[address]].socket.close(4002, [
+            portInform,
+            [2],
+          ]);
         }
 
         IPs[address] = id;
@@ -152,7 +162,10 @@ export default server => {
             ws.socket.send(portLog, [null, ['b1', 'b2', 'b3']]);
           }
         } else if (typeof data === 'object') {
-          ws.socket.send(portLog, ['System (vote)', JSON.stringify(data)]);
+          ws.socket.send(portLog, [
+            'System (vote)',
+            JSON.stringify(data),
+          ]);
         }
       }
     };
