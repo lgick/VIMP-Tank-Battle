@@ -7,8 +7,10 @@ class Tank extends BaseUser {
 
     this._modelData = data.modelData;
 
-    this._maxGunAngle = this._modelData.maxGunAngle;
-    this._gunAngleStep = this._modelData.gunAngleStep;
+    this._maxGunAngle = 1.4; // максимальное значение угла пушки
+    this._gunAngleStep = 0.05; // шаг поворота пушки
+    this._lastGunRotationTime = 0; // время последнего обновления поворота
+    this._gunRotationInterval = 10; // интервал в миллисекундах обновления поворота
 
     this._bulletData = null;
 
@@ -24,8 +26,7 @@ class Tank extends BaseUser {
       allowSleep: false,
     });
 
-    // поворот пушки
-    this._body.gunRotation = this._modelData.gunRotation || 0;
+    this._body.gunRotation = 0;
 
     this._body.createFixture(
       new BoxShape(this._modelData.width / 2, this._modelData.height / 2),
@@ -39,8 +40,8 @@ class Tank extends BaseUser {
     }
 
     if (this.currentKeys & this.keysData.forward) {
-      let f = this._body.getWorldVector(new Vec2(200.0, 0.0));
-      let p = this._body.getWorldPoint(new Vec2(-400.0, 0.0));
+      let f = this._body.getWorldVector(new Vec2(150.0, 0.0));
+      let p = this._body.getWorldPoint(new Vec2(-300.0, 0.0));
       this._body.applyLinearImpulse(f, p, true);
     }
 
@@ -63,14 +64,26 @@ class Tank extends BaseUser {
     }
 
     if (this.currentKeys & this.keysData.gLeft) {
-      if (this._body.gunRotation > -this._maxGunAngle) {
+      const now = Date.now();
+
+      if (
+        now - this._lastGunRotationTime > this._gunRotationInterval &&
+        this._body.gunRotation > -this._maxGunAngle
+      ) {
         this._body.gunRotation -= this._gunAngleStep;
+        this._lastGunRotationTime = now;
       }
     }
 
     if (this.currentKeys & this.keysData.gRight) {
-      if (this._body.gunRotation < this._maxGunAngle) {
+      const now = Date.now();
+
+      if (
+        now - this._lastGunRotationTime > this._gunRotationInterval &&
+        this._body.gunRotation < this._maxGunAngle
+      ) {
         this._body.gunRotation += this._gunAngleStep;
+        this._lastGunRotationTime = now;
       }
     }
 
