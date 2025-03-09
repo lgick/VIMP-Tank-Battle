@@ -27,23 +27,27 @@ git clone git@github.com:lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && 
 
 ## Client ports
 
-    0: config data
-    1: auth data
-    2: auth errors
-    3: map data
-    4: shot data
-    5: inform data
-    6: clear
-    7: console
+| Port |    Name     | Description                                                                                      |
+| :--: | :---------: | ------------------------------------------------------------------------------------------------ |
+|  0   | config data | Присылает клиентский конфиг                                                                      |
+|  1   |  auth data  | После проверки возможности посетить игру присылает данные для авторизации                        |
+|  2   | auth errors | После дополнительной проверки данных на сервере присылает ошибки авторизации                     |
+|  3   |  map data   | Загрузка данных карты                                                                            |
+|  4   |  shot data  | Присылает данные игры, координаты, данные панели, статистики, чата, опроса, данные набора клавиш |
+|  5   | inform data | Данные для сообщения "черного экрана"                                                            |
+|  6   |    clear    | Удаляет все контроллеры                                                                          |
+|  7   |   console   | Данные в console.log()                                                                           |
 
 ## Server ports
 
-    0: config ready
-    1: auth response
-    2: map ready
-    3: keys data
-    4: chat data
-    5: vote data
+| Port |     Name      | Description                                       |
+| :--: | :-----------: | ------------------------------------------------- |
+|  0   | config ready  | Пользователь получил данные конфига, canvas готов |
+|  1   | auth response | Авторизационные данные пользователя               |
+|  2   |   map ready   | Пользователь получил и инициализировал карту      |
+|  3   |   keys data   | Данные нажатых клавиш                             |
+|  4   |   chat data   | Данные чата/командной строки                      |
+|  5   |   vote data   | Данные опроса                                     |
 
 # Модуль PANEL
 
@@ -580,7 +584,7 @@ keys: {
     [
       'Предложить новую карту',
       ['arena', 'arena_2.0', 'berlin'],
-      null
+      null,
     ],
   ],
 
