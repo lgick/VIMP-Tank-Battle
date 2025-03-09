@@ -400,16 +400,34 @@ function runModules(data) {
   userModel.publisher.on('mode', openMode);
 
   // подписка на данные от пользователя для режимов
-  userModel.publisher.on('chat', modules.chat.updateCmd.bind(modules.chat));
-  userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
-  userModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
+  userModel.publisher.on(
+    'chat',
+    modules.chat.updateCmd.bind(modules.chat),
+  );
+  userModel.publisher.on(
+    'stat',
+    modules.stat.close.bind(modules.stat),
+  );
+  userModel.publisher.on(
+    'vote',
+    modules.vote.assignKey.bind(modules.vote),
+  );
 
   // после ресайза элементов происходит перерисовка кадра
   userView.publisher.on('redraw', updateGameControllers);
 
-  chatModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
-  statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
-  voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+  chatModel.publisher.on(
+    'mode',
+    modules.user.switchMode.bind(modules.user),
+  );
+  statModel.publisher.on(
+    'mode',
+    modules.user.switchMode.bind(modules.user),
+  );
+  voteModel.publisher.on(
+    'mode',
+    modules.user.switchMode.bind(modules.user),
+  );
 
   userModel.publisher.on('socket', data => sending(3, data));
   chatModel.publisher.on('socket', data => sending(4, data));

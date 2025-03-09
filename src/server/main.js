@@ -10,7 +10,10 @@ const argv = minimist(process.argv.slice(2));
 config.set('auth', (await import('./game/config/auth.js')).default);
 
 // server config
-config.set('server', (await import('./game/config/server.js')).default);
+config.set(
+  'server',
+  (await import('./game/config/server.js')).default,
+);
 
 // если задан домен
 if (argv.domain) {
@@ -30,7 +33,9 @@ if (argv.players) {
     config.set('server:maxPlayers', argv.players);
     console.info('Limit players in server: ' + argv.players);
   } else {
-    console.info('Limit players in server: ' + config.get('server:maxPlayers'));
+    console.info(
+      'Limit players in server: ' + config.get('server:maxPlayers'),
+    );
   }
 }
 
@@ -69,10 +74,16 @@ if (argv.mtime) {
 }
 
 // client config
-config.set('client', (await import('./game/config/client.js')).default);
+config.set(
+  'client',
+  (await import('./game/config/client.js')).default,
+);
 
 // время ожидания vote-модуля
-config.set('client:modules:vote:params:time', config.get('game:voteTime'));
+config.set(
+  'client:modules:vote:params:time',
+  config.get('game:voteTime'),
+);
 
 // регулярное выражение для сообщений
 config.set(
@@ -84,7 +95,9 @@ config.set(
 const app = express();
 
 const server = app.listen(config.get('server:port'), () => {
-  console.info(`Server is running on port ${config.get('server:port')}`);
+  console.info(
+    `Server is running on port ${config.get('server:port')}`,
+  );
 });
 
 const socket = (await import('./socket/index.js')).default;
