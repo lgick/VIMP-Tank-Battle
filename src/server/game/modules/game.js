@@ -126,7 +126,9 @@ class Game {
 
   // меняет имя игрока
   changeName(gameID, name) {
-    this._modelData[gameID].changeName(name);
+    if (this._modelData[gameID]) {
+      this._modelData[gameID].changeName(name);
+    }
   }
 
   // обновляет нажатые клавиши

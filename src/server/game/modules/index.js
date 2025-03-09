@@ -56,12 +56,12 @@ class VIMP {
     this._users = {}; // игроки
     this._currentMapData = null; // данные текущей карты
 
-    this._stepTimer = null;
     this._roundTimer = null;
     this._shotTimer = null;
     this._mapTimer = null;
 
-    this._time = 0; // текущее время раунда
+    this._startMapTime = 0; // время запуска карты
+    this._startRoundTime = 0; // время запуска раунда
 
     this._allUsersInTeam = {}; // количество игроков в команде
     this._playersList = []; // список играющих (у кого lookOnly === false)
@@ -92,7 +92,6 @@ class VIMP {
   // останавливает игру
   stopGame() {
     console.log('stop all timers');
-    clearInterval(this._stepTimer);
     clearInterval(this._shotTimer);
     clearTimeout(this._roundTimer);
     clearTimeout(this._mapTimer);
@@ -101,6 +100,7 @@ class VIMP {
   // стартует карту
   startMapTimer() {
     this._chat.pushSystem('t:0:' + this._currentMap);
+    this._startMapTime = Date.now();
 
     this._mapTimer = setTimeout(() => {
       this.changeMap();
@@ -115,19 +115,12 @@ class VIMP {
 
   // стартует раунд
   startRoundTimer() {
-    this._time = this._roundTime / 1000 - 3;
-
-    this._stepTimer = setInterval(() => {
-      if (this._time > 0) {
-        this._time -= 1;
-      }
-    }, 1000);
+    this._startRoundTime = Date.now();
 
     this.startRound();
     this._panel.reset();
 
     this._roundTimer = setTimeout(() => {
-      clearInterval(this._stepTimer);
       this.startRoundTimer();
       this._chat.pushSystem('t:1');
     }, this._roundTime);
@@ -150,6 +143,22 @@ class VIMP {
   stopShotTimer() {
     console.log('shot timer stop');
     clearInterval(this._shotTimer);
+  }
+
+  // возвращает оставшееся время раунда (seconds)
+  getRoundTimeLeft() {
+    let timeLeft = this._roundTime - (Date.now() - this._startRoundTime);
+
+    timeLeft = Math.floor(timeLeft / 1000 - 3);
+
+    return timeLeft < 0 ? 0 : timeLeft;
+  }
+
+  // возвращает оставшееся время карты (ms)
+  getMapTimeLeft() {
+    const timeLeft = this._mapTime - (Date.now() - this._startMapTime);
+
+    return timeLeft < 0 ? 0 : timeLeft;
   }
 
   // инициализирует карту
@@ -268,11 +277,11 @@ class VIMP {
       user.keySet = 1;
       this._playersList.push(gameID);
       this._stat.updateUser(gameID, teamID, { status: '' });
-      data[2] = [this._time];
+      data[2] = [this.getRoundTimeLeft()];
     } else {
       user.lookOnly = true;
       user.keySet = 0;
-      data[2] = [this._time].concat(this._panel.getEmpty());
+      data[2] = [this.getRoundTimeLeft()].concat(this._panel.getEmpty());
     }
 
     user.socket.send(this._portShot, data);
@@ -646,7 +655,7 @@ class VIMP {
     this.changeLookID(gameID);
 
     data[1] = [0, 0];
-    data[2] = [this._time];
+    data[2] = [this.getRoundTimeLeft()];
     data[3] = this._stat.getFull();
     data[4] = teamData.message;
 
@@ -902,7 +911,6 @@ class VIMP {
         break;
 
       // смена ника
-      // TODO сохранять в localstorage
       case '/name':
         this.changeName(gameID, value);
         break;
@@ -914,9 +922,24 @@ class VIMP {
         break;
 
       // время карты
-      // TODO возвращать актуальное время
       case '/timeleft':
-        this._chat.pushSystem(['2:00'], gameID);
+        function getTime(ms) {
+          const totalSeconds = Math.floor(ms / 1000);
+          let minutes = Math.floor(totalSeconds / 60);
+          let seconds = totalSeconds % 60;
+
+          if (minutes < 10) {
+            minutes = '0' + minutes;
+          }
+
+          if (seconds < 10) {
+            seconds = '0' + seconds;
+          }
+
+          return `${minutes}:${seconds}`;
+        }
+
+        this._chat.pushSystem([getTime(this.getMapTimeLeft())], gameID);
         break;
 
       // название текущей карты
