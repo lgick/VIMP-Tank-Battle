@@ -275,10 +275,13 @@ socketMethods[5] = data => {
   }
 };
 
-// clear
-socketMethods[6] = () => {
-  Object.values(CTRL).forEach(ctrl => ctrl.remove());
-  updateGameControllers();
+// misc
+socketMethods[6] = data => {
+  const { key, value } = data;
+
+  if (key === 'localstorageNameReplace') {
+    localStorage['userName'] = value;
+  }
 };
 
 // console

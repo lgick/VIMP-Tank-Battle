@@ -29,7 +29,7 @@ export default {
     map: 3,
     shot: 4,
     inform: 5,
-    clear: 6,
+    misc: 6,
     log: 7,
   },
 };

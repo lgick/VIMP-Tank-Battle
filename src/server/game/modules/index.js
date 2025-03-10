@@ -50,7 +50,7 @@ class VIMP {
     this._portMap = ports.map;
     this._portShot = ports.shot;
     this._portInform = ports.inform;
-    this._portClear = ports.clear;
+    this._portMisc = ports.misc;
     this._portLog = ports.log;
 
     this._users = {}; // игроки
@@ -74,7 +74,12 @@ class VIMP {
     this._stat = new Stat(data.stat, this._teams);
     this._chat = new Chat();
     this._vote = new Vote();
-    this._game = new Game(data.factory, data.parts, data.keys, data.shotTime);
+    this._game = new Game(
+      data.factory,
+      data.parts,
+      data.keys,
+      data.shotTime,
+    );
 
     this._email = data.email;
 
@@ -147,7 +152,8 @@ class VIMP {
 
   // возвращает оставшееся время раунда (seconds)
   getRoundTimeLeft() {
-    let timeLeft = this._roundTime - (Date.now() - this._startRoundTime);
+    let timeLeft =
+      this._roundTime - (Date.now() - this._startRoundTime);
 
     timeLeft = Math.floor(timeLeft / 1000 - 3);
 
@@ -156,7 +162,8 @@ class VIMP {
 
   // возвращает оставшееся время карты (ms)
   getMapTimeLeft() {
-    const timeLeft = this._mapTime - (Date.now() - this._startMapTime);
+    const timeLeft =
+      this._mapTime - (Date.now() - this._startMapTime);
 
     return timeLeft < 0 ? 0 : timeLeft;
   }
@@ -281,7 +288,9 @@ class VIMP {
     } else {
       user.lookOnly = true;
       user.keySet = 0;
-      data[2] = [this.getRoundTimeLeft()].concat(this._panel.getEmpty());
+      data[2] = [this.getRoundTimeLeft()].concat(
+        this._panel.getEmpty(),
+      );
     }
 
     user.socket.send(this._portShot, data);
@@ -357,7 +366,15 @@ class VIMP {
 
       if (typeof keySet === 'number') {
         user.keySet = null;
-        return [gameUser, coords, panel, stat, chatUser, voteUser, keySet];
+        return [
+          gameUser,
+          coords,
+          panel,
+          stat,
+          chatUser,
+          voteUser,
+          keySet,
+        ];
       } else {
         return [gameUser, coords, panel, stat, chatUser, voteUser];
       }
@@ -422,7 +439,8 @@ class VIMP {
       if (this._users.hasOwnProperty(p)) {
         if (this._users[p].name === name) {
           if (number > 1) {
-            name = name.slice(0, name.lastIndexOf('#')) + '#' + number;
+            name =
+              name.slice(0, name.lastIndexOf('#')) + '#' + number;
           } else {
             name = name + '#' + number;
           }
@@ -445,6 +463,10 @@ class VIMP {
       this._game.changeName(gameID, name);
       this._stat.updateUser(gameID, user.teamID, { name });
       this._chat.pushSystem('n:1', gameID);
+      user.socket.send(this._portMisc, {
+        key: 'localstorageNameReplace',
+        value: name,
+      });
     } else {
       this._chat.pushSystem('n:0', gameID);
     }
@@ -482,7 +504,10 @@ class VIMP {
         // равно количеству игроков в этой команде (смена невозможна)
         if (respawns[team].length === this._allUsersInTeam[team]) {
           if (currentTeam !== this._spectatorTeam) {
-            this._chat.pushSystem(`s:0:${team},${currentTeam}`, gameID);
+            this._chat.pushSystem(
+              `s:0:${team},${currentTeam}`,
+              gameID,
+            );
           } else {
             this._chat.pushSystem(`s:1:${team}`, gameID);
           }
@@ -939,7 +964,10 @@ class VIMP {
           return `${minutes}:${seconds}`;
         }
 
-        this._chat.pushSystem([getTime(this.getMapTimeLeft())], gameID);
+        this._chat.pushSystem(
+          [getTime(this.getMapTimeLeft())],
+          gameID,
+        );
         break;
 
       // название текущей карты
