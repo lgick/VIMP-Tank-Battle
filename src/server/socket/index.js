@@ -12,7 +12,7 @@ const portAuthErr = config.get('server:ports:authErr');
 const portMap = config.get('server:ports:map');
 const portShot = config.get('server:ports:shot');
 const portInform = config.get('server:ports:inform');
-const portClear = config.get('server:ports:clear');
+const portMisc = config.get('server:ports:misc');
 const portLog = config.get('server:ports:log');
 
 const oneConnection = config.get('server:oneConnection');
