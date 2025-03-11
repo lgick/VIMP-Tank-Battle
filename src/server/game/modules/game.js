@@ -169,7 +169,11 @@ class Game {
     const velocityIterations = 10;
     const positionIterations = 8;
 
-    this._world.step(this._shotTime, velocityIterations, positionIterations);
+    this._world.step(
+      this._shotTime,
+      velocityIterations,
+      positionIterations,
+    );
   }
 
   // возвращает данные
@@ -189,7 +193,11 @@ class Game {
         // если есть данные для создания пули
         if (bulletData !== null) {
           const bulletName = user.currentBullet;
-          const bullet = this.createBullet(user.gameID, bulletName, bulletData);
+          const bullet = this.createBullet(
+            user.gameID,
+            bulletName,
+            bulletData,
+          );
 
           gameData[bulletName] = gameData[bulletName] || {};
           gameData[bulletName][bullet.bulletID] = bullet.getData();

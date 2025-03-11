@@ -537,8 +537,9 @@ keys: {
   // game
   {
     m1: {
-      1: [64, 320, 0, 0, 1, 'bob'],
-      3: [736, 320, 180, 0, 2, 'jek'],
+      // полные данные об игроке
+      // gameID: [x, y, rotation, gunRotation, type, name, width, height],
+      3: [736, 320, 180, 0, 2, 'jek', 48, 36],
       5: null,
     },
     b1: {

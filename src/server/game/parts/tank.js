@@ -29,7 +29,10 @@ class Tank extends BaseUser {
     this._body.gunRotation = 0;
 
     this._body.createFixture(
-      new BoxShape(this._modelData.width / 2, this._modelData.height / 2),
+      new BoxShape(
+        this._modelData.width / 2,
+        this._modelData.height / 2,
+      ),
       this._modelData.density,
     );
   }
@@ -101,14 +104,17 @@ class Tank extends BaseUser {
         };
       } else if (this.bulletConstructorName === 'bullet') {
         // суммарный угол выстрела: угол корпуса + угол поворота пушки
-        const totalAngle = this._body.getAngle() + this._body.gunRotation;
+        const totalAngle =
+          this._body.getAngle() + this._body.gunRotation;
         // расстояние от центра танка до точки появления пули (настраивается)
         const bulletOffset = this._modelData.width / 2 + 10;
         // вычисляем мировые координаты точки появления пули
         const bulletX =
-          this._body.getPosition().x + Math.cos(totalAngle) * bulletOffset;
+          this._body.getPosition().x +
+          Math.cos(totalAngle) * bulletOffset;
         const bulletY =
-          this._body.getPosition().y + Math.sin(totalAngle) * bulletOffset;
+          this._body.getPosition().y +
+          Math.sin(totalAngle) * bulletOffset;
         // задаем скорость пули (примерная величина, можно корректировать)
         const bulletSpeed = 100;
         // вычисляем вектор скорости пули

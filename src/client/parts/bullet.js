@@ -9,7 +9,6 @@ export default class Bullet extends Container {
 
     this.body = new Graphics();
 
-    console.log(params);
     this.x = params[0];
     this.y = params[1];
     this.rotation = params[2];
