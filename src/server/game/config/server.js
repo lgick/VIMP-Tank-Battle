@@ -1,4 +1,4 @@
-import game from '../modules/index.js';
+import VIMP from '../modules/index.js';
 
 export default {
   name: 'VIMP Tank Battle',
@@ -7,7 +7,7 @@ export default {
   port: 3000,
   oneConnection: false,
   maxPlayers: 10,
-  game,
+  VIMP,
   invite: {
     transport: {
       service: 'gmail',
