@@ -76,6 +76,9 @@ socketMethods[0] = async data => {
         height: canvas.height,
         antialias: true,
         backgroundAlpha: 0,
+        accessibilityOptions: {
+          activateOnTab: false,
+        },
       });
 
       CTRL[canvasId] = makeGameController(app);

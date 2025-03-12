@@ -9,7 +9,7 @@ export default class Tank extends Container {
     this.body = new Graphics();
     this.gun = new Graphics();
 
-    // Параметры с сервера: [x, y, rotation, gunRotation, type, name]
+    // Параметры с сервера: [x, y, rotation, gunRotation, type, name, width, height]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this.rotation = data[2] || 0;
@@ -38,7 +38,12 @@ export default class Tank extends Container {
     // Координаты танка на карте - центр его body
     this.body
       .clear()
-      .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
+      .rect(
+        -(this._width / 2),
+        -(this._height / 2),
+        this._width,
+        this._height,
+      )
       .fill(0x555555)
       .rect(
         -(this._width / 2) + 1,

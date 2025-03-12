@@ -17,8 +17,8 @@ const portLog = config.get('server:ports:log');
 
 const oneConnection = config.get('server:oneConnection');
 
-const Game = config.get('server:game');
-const game = new Game(config.get('game'), config.get('server:ports'));
+const VIMP = config.get('server:VIMP');
+const vimp = new VIMP(config.get('game'), config.get('server:ports'));
 
 const auth = config.get('auth');
 const cConf = config.get('client');
@@ -126,7 +126,7 @@ export default server => {
           ws.socket.socketMethods[4] = true;
           ws.socket.socketMethods[5] = true;
 
-          game.createUser(data, ws.socket, createdId => {
+          vimp.createUser(data, ws.socket, createdId => {
             gameID = createdId;
           });
         }
@@ -135,27 +135,27 @@ export default server => {
 
     // 2: map ready
     socketMethods[2] = err => {
-      game.mapReady(err, gameID);
+      vimp.mapReady(err, gameID);
     };
 
     // 3: keys data
     socketMethods[3] = keys => {
       if (keys) {
-        game.updateKeys(gameID, keys);
+        vimp.updateKeys(gameID, keys);
       }
     };
 
     // 4: chat data
     socketMethods[4] = message => {
       if (typeof message === 'string') {
-        game.pushMessage(gameID, message);
+        vimp.pushMessage(gameID, message);
       }
     };
 
     // 5: vote data
     socketMethods[5] = data => {
       if (data) {
-        game.parseVote(gameID, data);
+        vimp.parseVote(gameID, data);
 
         if (typeof data === 'string') {
           if (data === 'users') {
@@ -192,7 +192,7 @@ export default server => {
       }
 
       delete sessions[id];
-      game.removeUser(gameID, success => {
+      vimp.removeUser(gameID, success => {
         if (!success) {
           // можно добавить обработку ошибки, если необходимо
         }
