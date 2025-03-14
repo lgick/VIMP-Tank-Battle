@@ -3,7 +3,8 @@ import { BoxShape, Vec2 } from 'planck';
 class Map {
   constructor(data) {
     // Функция глубокого копирования массива
-    const deepCopy = arr => (Array.isArray(arr) ? arr.map(deepCopy) : arr);
+    const deepCopy = arr =>
+      Array.isArray(arr) ? arr.map(deepCopy) : arr;
 
     this._mapData = data.mapData;
     this._world = data.world;
@@ -90,7 +91,9 @@ class Map {
 
           // Добавляем fixture в виде прямоугольника.
           // В конструкторе Box указываются половинные размеры.
-          body.createFixture(new BoxShape(sizes[0] / 2, sizes[1] / 2));
+          body.createFixture(
+            new BoxShape(sizes[0] / 2, sizes[1] / 2),
+          );
         }
       }
     }
@@ -153,18 +156,6 @@ class Map {
     }
 
     return data;
-  }
-
-  // Сбрасывает динамические элементы к их исходным данным
-  resetDynamic() {
-    for (const id in this._dynamicBodies) {
-      if (this._dynamicBodies.hasOwnProperty(id)) {
-        const body = this._dynamicBodies[id];
-        const pos = body.defaultPosition;
-        body.setPosition(new Vec2(pos[0], pos[1]));
-        body.setAngle(body.defaultAngle);
-      }
-    }
   }
 }
 
