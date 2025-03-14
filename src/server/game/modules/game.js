@@ -80,11 +80,6 @@ class Game {
     return this._map.getDynamicMapData();
   }
 
-  // сбрасывает динамические элементы в дефолтные данные
-  resetDynamicMapData() {
-    this._map.resetDynamic();
-  }
-
   // создает игрока
   createUser(gameID, model, name, teamID, data) {
     const modelData = this._models[model];

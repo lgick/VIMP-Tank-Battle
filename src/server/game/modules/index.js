@@ -389,9 +389,6 @@ class VIMP {
     // удаление всех игроков
     this._game.removeUsers();
 
-    // сбрасывание динамических элементов карты в первоначальный вид
-    this._game.resetDynamicMapData();
-
     const gameData = this._game.resetBulletData();
 
     this._game.createMap(this._currentMapData);
