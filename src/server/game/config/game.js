@@ -78,6 +78,12 @@ export default {
       value: 1000,
       minValue: 0,
     },
+    bombs: {
+      key: 2,
+      method: '-',
+      value: 10,
+      minValue: 0,
+    },
   },
 
   spectatorTeam: 'spectators', // название команды наблюдателя

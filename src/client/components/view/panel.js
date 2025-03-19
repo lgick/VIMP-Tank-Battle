@@ -26,10 +26,17 @@ export default class PanelView {
 
   // обновляет пользовательскую панель
   update(data) {
-    const elem = this._document.getElementById(this._panel[data.name]);
+    const elem = this._document.getElementById(
+      this._panel[data.name],
+    );
 
     if (elem) {
-      elem.innerHTML = data.value;
+      if (data.value === '') {
+        elem.style.display = 'none';
+      } else {
+        elem.innerHTML = data.value;
+        elem.style.display = 'table-cell';
+      }
     }
   }
 }

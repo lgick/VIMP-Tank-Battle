@@ -57,6 +57,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   width: 33%;
+  display: none;
 }
 
 #panel table td#panel-health:before {
@@ -69,6 +70,10 @@ body {
 
 #panel table td#panel-bullets:before {
   content: 'bullets: ';
+}
+
+#panel table td#panel-bombs:before {
+  content: 'bombs: ';
 }
 
 #panel table td#panel-time:before {
