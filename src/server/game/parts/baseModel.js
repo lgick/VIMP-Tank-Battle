@@ -1,4 +1,4 @@
-class BaseUser {
+class BaseModel {
   constructor(data) {
     this._model = data.model;
     this._name = data.name;
@@ -94,4 +94,4 @@ class BaseUser {
   }
 }
 
-export default BaseUser;
+export default BaseModel;

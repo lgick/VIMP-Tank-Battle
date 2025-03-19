@@ -156,17 +156,6 @@ export default server => {
     socketMethods[5] = data => {
       if (data) {
         vimp.parseVote(gameID, data);
-
-        if (typeof data === 'string') {
-          if (data === 'users') {
-            ws.socket.send(portLog, [null, ['b1', 'b2', 'b3']]);
-          }
-        } else if (typeof data === 'object') {
-          ws.socket.send(portLog, [
-            'System (vote)',
-            JSON.stringify(data),
-          ]);
-        }
       }
     };
 
@@ -192,11 +181,7 @@ export default server => {
       }
 
       delete sessions[id];
-      vimp.removeUser(gameID, success => {
-        if (!success) {
-          // можно добавить обработку ошибки, если необходимо
-        }
-      });
+      vimp.removeUser(gameID);
 
       waiting.remove(id);
 

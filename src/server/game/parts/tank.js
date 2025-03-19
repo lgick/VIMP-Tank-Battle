@@ -1,7 +1,7 @@
-import BaseUser from './baseUser.js';
+import BaseModel from './baseModel.js';
 import { BoxShape, Vec2 } from 'planck';
 
-class Tank extends BaseUser {
+class Tank extends BaseModel {
   constructor(data) {
     super(data);
 

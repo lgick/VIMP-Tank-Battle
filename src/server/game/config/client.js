@@ -162,8 +162,9 @@ export default {
         time: 'panel-time',
         health: 'panel-health',
         bullets: 'panel-bullets',
+        bombs: 'panel-bombs',
       },
-      panels: ['time', 'health', 'bullets'],
+      panels: ['time', 'health', 'bullets', 'bombs'],
     },
 
     // stat
