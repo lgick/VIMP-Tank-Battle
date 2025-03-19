@@ -26,7 +26,7 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  right: 13%;
+  right: calc(150px + 2%);
   height: 24px;
   padding-left: 80px;
   z-index: 4;
