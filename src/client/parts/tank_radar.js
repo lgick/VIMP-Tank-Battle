@@ -1,19 +1,22 @@
 import { Container, Graphics } from 'pixi.js';
 
-export default class Radar extends Container {
+export default class TankRadar extends Container {
   constructor(data) {
     super();
 
     this.zIndex = 2;
 
     this.body = new Graphics();
+    this.addChild(this.body);
 
     this.x = data[0] || 0;
     this.y = data[1] || 0;
-    this.rotation = data[2] || 0;
 
     // масштаб
-    this.scale.set(20, 20);
+    this.scale.set(10, 10);
+
+    // радиус круга
+    this.radius = 6;
 
     this.create(data[4]);
   }
@@ -31,25 +34,18 @@ export default class Radar extends Container {
       this.colorB = 0x333333;
     }
 
-    this.body
-      .clear()
-      .moveTo(7, 0)
-      .lineTo(-7, 5)
-      .lineTo(-5, 0)
-      .lineTo(-7, -5)
-      .closePath()
-      .fill(this.colorA)
-      .stroke({ width: 1, color: this.colorB });
-    this.addChild(this.body);
+    this.body.clear();
+    this.body.circle(0, 0, this.radius);
+    this.body.fill(this.colorB);
+    this.body.circle(0, 0, this.radius - 2);
+    this.body.fill(this.colorA);
   }
 
   update(params) {
-    // Обновляем позицию и вращение
     this.x = params[0];
     this.y = params[1];
-    this.rotation = params[2];
 
-    // Если передан тип, пересоздаем графику
+    // если передан тип, пересоздаем графику
     if (typeof params[4] === 'number') {
       this.create(params[4]);
     }

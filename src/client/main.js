@@ -150,7 +150,8 @@ socketMethods[2] = err => {
 
 // map data
 socketMethods[3] = data => {
-  const { layers, map, step, setID, spriteSheet } = data;
+  const { layers, map, step, setID, spriteSheet, physicsStatic } =
+    data;
 
   // удаление данных карт
   const removeMap = setID => {
@@ -197,6 +198,7 @@ socketMethods[3] = data => {
         step,
         layer,
         tiles,
+        physicsStatic,
       };
 
       return acc;

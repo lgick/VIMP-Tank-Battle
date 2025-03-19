@@ -126,7 +126,10 @@ export default class UserModel {
           this._keys = this._keys | key;
 
           // иначе если одна команда (первый тип) и она еще не была активирована
-        } else if (type === 1 && this._keysOneShotData[key] !== true) {
+        } else if (
+          type === 1 &&
+          this._keysOneShotData[key] !== true
+        ) {
           this._keysOneShot = this._keysOneShot | key;
           this._keysOneShotData[key] = true;
         }
@@ -168,34 +171,43 @@ export default class UserModel {
     let width, height;
 
     for (const p of Object.keys(this._sizeOptions)) {
+      const fixSize = this._sizeOptions[p].fixSize;
       const screenRatio = this._sizeOptions[p].screenRatio || 1;
       const aspectRatio = this._sizeOptions[p].aspectRatio;
 
-      // если задано соотношение сторон
-      if (aspectRatio) {
-        const parts = aspectRatio.split(':');
+      // если есть фиксированный размер полотна
+      if (fixSize) {
+        const parts = fixSize.split(':');
 
-        // строку в число
-        const widthRatio = this._parseInt(parts[0], 10);
-        const heightRatio = this._parseInt(parts[1], 10);
-
-        width = this._Math.round(screenWidth * screenRatio);
-        height = (width / widthRatio) * heightRatio;
-
-        // если фактическая высота больше полученной,
-        // то вычисления производятся относительно высоты
-        if (height > screenHeight) {
-          height = this._Math.round(screenHeight * screenRatio);
-          width = (height / heightRatio) * widthRatio;
-        }
+        width = +parts[0];
+        height = +parts[1] ? parts[1] : parts[0];
       } else {
-        width = this._Math.round(screenWidth * screenRatio);
-        height = this._Math.round(screenHeight * screenRatio);
-      }
+        // если задано соотношение сторон
+        if (aspectRatio) {
+          const parts = aspectRatio.split(':');
 
-      // Приводим к числу с целым значением
-      width = +width.toFixed();
-      height = +height.toFixed();
+          // строку в число
+          const widthRatio = this._parseInt(parts[0], 10);
+          const heightRatio = this._parseInt(parts[1], 10);
+
+          width = this._Math.round(screenWidth * screenRatio);
+          height = (width / widthRatio) * heightRatio;
+
+          // если фактическая высота больше полученной,
+          // то вычисления производятся относительно высоты
+          if (height > screenHeight) {
+            height = this._Math.round(screenHeight * screenRatio);
+            width = (height / heightRatio) * widthRatio;
+          }
+        } else {
+          width = this._Math.round(screenWidth * screenRatio);
+          height = this._Math.round(screenHeight * screenRatio);
+        }
+
+        // Приводим к числу с целым значением
+        width = +width.toFixed();
+        height = +height.toFixed();
+      }
 
       sizes[p] = { width, height };
     }

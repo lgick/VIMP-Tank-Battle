@@ -29,9 +29,8 @@ export default {
         scale: '1:1',
       },
       radar: {
-        aspectRatio: '1:1',
-        screenRatio: 0.1,
-        scale: '1:20',
+        fixSize: '150',
+        scale: '1:13',
       },
     },
 

@@ -1,46 +1,51 @@
-import * as PIXI from 'pixi.js';
+import { Container, Graphics } from 'pixi.js';
 
-export default class Map extends PIXI.Container {
+export default class MapRadar extends Container {
   constructor(data) {
     super();
 
-    // В данном случае статические данные (карта, спрайт-лист и шаг) берутся из статических свойств класса.
-    // Перед использованием необходимо установить:
-    // Map.map — двумерный массив карты,
-    // Map.spriteSheet — объект PIXI.Spritesheet с текстурами,
-    // Map.step — размер шага.
-    this._map = Map.map;
-    this._spriteSheet = Map.spriteSheet;
-    this._step = Map.step;
+    // сохраняем необходимые данные для схематичной карты
+    this._map = data.map;
+    this._physicsStatic = data.physicsStatic;
+    this._step = data.step;
+    this.zIndex = 2;
 
-    this.zIndex = data.layer || 1;
-    this._tiles = data.tiles; // Массив с названиями тайлов, которые нужно отрисовать
+    // масштаб
+    this.scale.set(1, 1);
 
-    this.create();
+    // создаем схематичную карту
+    this.createRadarMap();
   }
 
-  create() {
-    for (let y = 0, lenY = this._map.length; y < lenY; y++) {
-      for (let x = 0, lenX = this._map[y].length; x < lenX; x++) {
-        const tile = this._map[y][x];
+  createRadarMap() {
+    // создаем графический объект для рисования
+    const graphics = new Graphics();
 
-        if (this._tiles.indexOf(tile) !== -1) {
-          // Получаем текстуру из spriteSheet по имени тайла.
-          const texture = this._spriteSheet.textures[tile];
-          if (texture) {
-            const sprite = new PIXI.Sprite(texture);
-            sprite.x = x * this._step;
-            sprite.y = y * this._step;
-            // В CreateJS использовался метод gotoAndStop для выбора кадра,
-            // в PixiJS достаточно создать спрайт с нужной текстурой.
-            this.addChild(sprite);
+    if (Array.isArray(this._map)) {
+      for (let y = 0; y < this._map.length; y += 1) {
+        const row = this._map[y];
+        if (Array.isArray(row)) {
+          for (let x = 0; x < row.length; x += 1) {
+            const tileType = row[x];
+
+            // проверяем, является ли текущий тайл препятствием (physicsStatic)
+            if (this._physicsStatic.includes(tileType)) {
+              graphics.rect(
+                x * this._step,
+                y * this._step,
+                this._step / 2,
+                this._step / 2,
+              );
+              graphics.fill(0xffffff);
+            }
           }
         }
       }
     }
+
+    // добавляем графику в контейнер
+    this.addChild(graphics);
   }
 
-  update() {
-    // Дополнительная логика обновления при необходимости
-  }
+  update() {}
 }
