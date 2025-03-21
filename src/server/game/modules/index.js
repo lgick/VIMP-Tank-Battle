@@ -171,6 +171,10 @@ class VIMP {
     for (const p in this._users) {
       if (this._users.hasOwnProperty(p)) {
         let user = this._users[p];
+
+        // обнулить параметр на смену команды
+        user.nextTeam = null;
+
         let teamData = this.checkTeam(user.team);
 
         // если текущая команда не свободна
@@ -212,6 +216,21 @@ class VIMP {
     const user = this._users[gameID];
 
     if (!err) {
+      // если на сервере 1-2 игрока
+      // и хотя бы один из них ожидает
+      // и не является наблюдателем
+      // требуется начать раунд заново
+      if (
+        Object.keys(this._users).length <= 2 &&
+        Object.values(this._users).some(
+          user =>
+            user.isWatching === true &&
+            user.teamID !== this._spectatorID,
+        )
+      ) {
+        this.restartRound();
+      }
+
       // скрывает экран загрузки
       user.socket.send(this._portInform);
       user.mapReady = true;
@@ -284,7 +303,9 @@ class VIMP {
 
     // список пользователей, у которых готова карта и можно давать игровые данные
     const userList = Object.keys(this._users).filter(
-      gameID => this._users[gameID].mapReady === true,
+      gameID =>
+        this._users[gameID].mapReady === true ||
+        this._removedPlayersList.some(item => item.gameID === gameID),
     );
 
     const game = this._game.getGameData();
@@ -409,6 +430,12 @@ class VIMP {
     }
   }
 
+  // принудительно стартует раунд заново
+  restartRound() {
+    clearTimeout(this._roundTimer);
+    this.startRoundTimer();
+  }
+
   // проверяет имя
   checkName(name, number = 1) {
     for (const p in this._users) {
@@ -504,6 +531,12 @@ class VIMP {
         this._teamSizes[team] += 1;
       } else {
         this._teamSizes[team] = 1;
+      }
+
+      // если на сервере 1-2 игрока
+      // требуется начать раунд заново
+      if (Object.keys(this._users).length <= 2) {
+        this.restartRound();
       }
     }
   }
@@ -918,8 +951,7 @@ class VIMP {
 
       // новый раунд
       case '/nr':
-        clearTimeout(this._roundTimer);
-        this.startRoundTimer();
+        this.restartRound();
         break;
 
       // время карты

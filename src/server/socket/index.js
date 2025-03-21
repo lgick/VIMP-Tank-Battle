@@ -181,7 +181,10 @@ export default server => {
       }
 
       delete sessions[id];
-      vimp.removeUser(gameID);
+
+      if (gameID) {
+        vimp.removeUser(gameID);
+      }
 
       waiting.remove(id);
 
