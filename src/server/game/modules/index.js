@@ -680,27 +680,12 @@ class VIMP {
     });
   }
 
-  // удаляет пользователя (или всех пользователей) из модулей
-  removeFromModules(gameID) {
-    // если отсутствует параметр, значит нужно сделать для всех пользователей
-    if (!gameID) {
-      Object.keys(this._users).forEach(gameID =>
-        this.removeFromModules(gameID),
-      );
-      return;
-    }
-
+  // удаляет игрока полностью из игры
+  removeUser(gameID) {
     const user = this._users[gameID];
+    const { team, teamID, model, nextTeam } = user;
 
-    // если gameID === undefined,
-    // значит пользователь вышел, не успев войти в игру
-    if (!user) {
-      return;
-    }
-
-    const { team, nextTeam } = user;
-
-    this._stat.removeUser(gameID, user.teamID);
+    this._stat.removeUser(gameID, teamID);
     this._chat.removeUser(gameID);
     this._vote.removeUser(gameID);
     this._panel.removeUser(gameID);
@@ -716,17 +701,13 @@ class VIMP {
       // добавляем в список удаляемых игроков у пользователей
       this._removedPlayersList.push({
         gameID,
-        model: user.model,
+        model,
       });
     }
 
     // обновляем счетчики команд
     this._teamSizes[nextTeam !== null ? nextTeam : team] -= 1;
-  }
 
-  // удаляет игрока полностью из игры
-  removeUser(gameID) {
-    this.removeFromModules(gameID);
     delete this._users[gameID];
   }
 
