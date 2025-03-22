@@ -35,14 +35,21 @@ class VIMP {
     this._voteTime = data.voteTime; // время голосования
     this._timeBlockedRemap = data.timeBlockedRemap;
 
+    this._users = {}; // игроки
+
     // команды
-    this._teams = data.teams;
-    // список команд массивом
-    this._teamList = Object.keys(this._teams);
+    this._teams = data.teams; // team: teamID; { team1: 1, team2: 2, spectators: 3 }
     // название команды наблюдателя
     this._spectatorTeam = data.spectatorTeam;
     // id команды наблюдателя
     this._spectatorID = this._teams[this._spectatorTeam];
+    // количество игроков в командах
+    this._teamSizes = {}; // { team1: 0, team2: 0, spectators: 0 }
+
+    // список gameID активных игроков на полотне
+    this._activePlayersList = [];
+    // список gameID игроков для удаления с полотна
+    this._removedPlayersList = [];
 
     this._portConfig = ports.config;
     this._portAuth = ports.auth;
@@ -53,7 +60,6 @@ class VIMP {
     this._portMisc = ports.misc;
     this._portLog = ports.log;
 
-    this._users = {}; // игроки
     this._currentMapData = null; // данные текущей карты
 
     this._roundTimer = null;
@@ -62,10 +68,6 @@ class VIMP {
 
     this._startMapTime = 0; // время запуска карты
     this._startRoundTime = 0; // время запуска раунда
-
-    this._teamSizes = {}; // количество игроков в командах
-    this._activePlayersList = []; // список gameID активных игроков на полотне
-    this._removedPlayersList = []; // список gameID игроков для удаления с полотна
 
     this._blockedRemap = false; // флаг блокировки голосования за новую карту
     this._startMapNumber = 0; // номер первой карты в голосовании
@@ -162,7 +164,7 @@ class VIMP {
 
     this.stopGameTimers();
 
-    this._teamSizes = {};
+    this.resetTeamSizes();
     this._stat.reset();
 
     this._game.createMap(this._currentMapData);
@@ -216,6 +218,10 @@ class VIMP {
     const user = this._users[gameID];
 
     if (!err) {
+      // скрывает экран загрузки
+      user.socket.send(this._portInform);
+      user.mapReady = true;
+
       // если на сервере 1-2 игрока
       // и хотя бы один из них ожидает
       // и не является наблюдателем
@@ -229,21 +235,19 @@ class VIMP {
         )
       ) {
         this.restartRound();
+
+        // иначе полная загрузка данных пользователей
+      } else {
+        //// полная загрузка game-данных
+        user.socket.send(this._portShot, [
+          this._game.getFullUsersData(), // game
+          [0, 0], // coords
+          [this.getRoundTimeLeft()], // panel
+          this._stat.getFull(), // stat
+          0, // chat
+          0, // vote
+        ]);
       }
-
-      // скрывает экран загрузки
-      user.socket.send(this._portInform);
-      user.mapReady = true;
-
-      // полная загрузка game-данных
-      user.socket.send(this._portShot, [
-        this._game.getFullUsersData(), // game
-        [0, 0], // coords
-        [this.getRoundTimeLeft()], // panel
-        this._stat.getFull(), // stat
-        0, // chat
-        0, // vote
-      ]);
     }
   }
 
@@ -301,11 +305,9 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData();
 
-    // список пользователей, у которых готова карта и можно давать игровые данные
+    // список пользователей с готовой картой
     const userList = Object.keys(this._users).filter(
-      gameID =>
-        this._users[gameID].mapReady === true ||
-        this._removedPlayersList.some(item => item.gameID === gameID),
+      gameID => this._users[gameID].mapReady === true,
     );
 
     const game = this._game.getGameData();
@@ -382,7 +384,7 @@ class VIMP {
     };
 
     // отправка данных
-    userList.map(gameID =>
+    userList.forEach(gameID =>
       this._users[gameID].socket.send(
         this._portShot,
         getUserData(gameID),
@@ -527,11 +529,7 @@ class VIMP {
 
       user.nextTeam = team;
 
-      if (this._teamSizes[team]) {
-        this._teamSizes[team] += 1;
-      } else {
-        this._teamSizes[team] = 1;
-      }
+      this._teamSizes[team] += 1;
 
       // если на сервере 1-2 игрока
       // требуется начать раунд заново
@@ -579,13 +577,17 @@ class VIMP {
       message = 's:4';
     }
 
-    if (this._teamSizes[team]) {
-      this._teamSizes[team] += 1;
-    } else {
-      this._teamSizes[team] = 1;
-    }
+    this._teamSizes[team] += 1;
 
     return { team, message };
+  }
+
+  // сбрасывает this._teamSizes в нулевые значения
+  resetTeamSizes() {
+    this._teamSizes = Object.keys(this._teams).reduce((acc, key) => {
+      acc[key] = 0;
+      return acc;
+    }, {});
   }
 
   // добавляет в список играющих пользователей
@@ -763,7 +765,10 @@ class VIMP {
     if (typeof data === 'string') {
       // если запрос списка команд
       if (data === 'teams') {
-        this._vote.pushByUser(gameID, [null, this._teamList]);
+        this._vote.pushByUser(gameID, [
+          null,
+          Object.keys(this._teams),
+        ]);
 
         // если запрос всех карт
       } else if (data === 'maps') {
