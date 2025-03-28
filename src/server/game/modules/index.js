@@ -120,7 +120,6 @@ class VIMP {
     this._startRoundTime = Date.now();
 
     this.startRound();
-    this._panel.reset();
 
     this._roundTimer = setTimeout(() => {
       this.startRoundTimer();
@@ -176,6 +175,9 @@ class VIMP {
 
         // обнулить параметр на смену команды
         user.nextTeam = null;
+        // пользователь может ещё не добавлен в модуль game, поэтому наблюдает за игрой
+        // удаление всех игроков из game и их добавление в начале каждого раунда
+        user.isWatching = true;
 
         let teamData = this.checkTeam(user.team);
 
@@ -261,7 +263,7 @@ class VIMP {
     data[0] = gameData || {}; // game
     data[1] = 0; // coords
     data[2] = 0; // panel
-    data[3] = 0; // stat
+    data[3] = this._stat.getFull(); // stat
     data[4] = 0; // chat
     data[5] = 0; // vote
 
@@ -332,7 +334,7 @@ class VIMP {
       let coords, panel, chatUser, voteUser;
 
       // TODO проверить работу activePlayer и Panel
-      // если статус наблюдателя
+      // если игрок наблюдает за игрой
       if (user.isWatching === true) {
         panel = 0;
 
@@ -400,6 +402,8 @@ class VIMP {
     // очищение списка играющих
     this._activePlayersList = [];
 
+    this._panel.reset();
+
     // удаление всех игроков
     this._game.removeUsers();
 
@@ -407,26 +411,27 @@ class VIMP {
 
     this._game.createMap(this._currentMapData);
 
-    for (const p in this._users) {
-      if (this._users.hasOwnProperty(p)) {
-        const user = this._users[p];
-        const gameID = user.gameID;
+    for (const gameID in this._users) {
+      if (this._users.hasOwnProperty(gameID)) {
+        const user = this._users[gameID];
 
-        this.sendFirstShot(gameID, gameData);
+        if (user.mapReady === true) {
+          this.sendFirstShot(gameID, gameData);
 
-        respID[user.team] = respID[user.team] || 0;
-        const data = respawns[user.team];
+          respID[user.team] = respID[user.team] || 0;
+          const data = respawns[user.team];
 
-        // если есть данные для создания модели
-        if (data) {
-          this._game.createUser(
-            gameID,
-            user.model,
-            user.name,
-            user.teamID,
-            data[respID[user.team]],
-          );
-          respID[user.team] += 1;
+          // если есть данные для создания модели
+          if (data) {
+            this._game.createUser(
+              gameID,
+              user.model,
+              user.name,
+              user.teamID,
+              data[respID[user.team]],
+            );
+            respID[user.team] += 1;
+          }
         }
       }
     }
