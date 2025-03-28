@@ -130,7 +130,7 @@ class VIMP {
   // стартует расчет кадров игры
   startShotTimer() {
     this._shotTimer = setInterval(() => {
-      this.createShot();
+      this.sendShot();
     }, this._shotTime);
   }
 
@@ -303,7 +303,7 @@ class VIMP {
   }
 
   // создает кадр игры
-  createShot() {
+  sendShot() {
     // обновление данных и физики
     this._game.updateData();
 
