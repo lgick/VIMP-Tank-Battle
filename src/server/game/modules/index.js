@@ -201,6 +201,7 @@ class VIMP {
 
       user.socket.send(this._portInform, [3]);
       user.mapReady = false;
+      user.currentMap = this._currentMap;
       user.socket.send(this._portMap, this._currentMapData);
     } else {
       for (const p in this._users) {
@@ -209,6 +210,7 @@ class VIMP {
 
           user.socket.send(this._portInform, [3]);
           user.mapReady = false;
+          user.currentMap = this._currentMap;
           user.socket.send(this._portMap, this._currentMapData);
         }
       }
@@ -219,36 +221,42 @@ class VIMP {
   mapReady(err, gameID) {
     const user = this._users[gameID];
 
-    if (!err) {
-      // скрывает экран загрузки
-      user.socket.send(this._portInform);
-      user.mapReady = true;
+    if (!err && user.mapReady === false) {
+      // если карта загруженая пользователем совпадает с картой сервера
+      if (user.currentMap === this._currentMap) {
+        // скрывает экран загрузки
+        user.socket.send(this._portInform);
+        user.mapReady = true;
 
-      // если на сервере 1-2 игрока
-      // и хотя бы один из них ожидает
-      // и не является наблюдателем
-      // требуется начать раунд заново
-      if (
-        Object.keys(this._users).length <= 2 &&
-        Object.values(this._users).some(
-          user =>
-            user.isWatching === true &&
-            user.teamID !== this._spectatorID,
-        )
-      ) {
-        this.restartRound();
+        // если на сервере 1-2 игрока
+        // и хотя бы один из них ожидает
+        // и не является наблюдателем
+        // требуется начать раунд заново
+        if (
+          Object.keys(this._users).length <= 2 &&
+          Object.values(this._users).some(
+            user =>
+              user.isWatching === true &&
+              user.teamID !== this._spectatorID,
+          )
+        ) {
+          this.restartRound();
 
-        // иначе полная загрузка данных пользователей
+          // иначе полная загрузка данных пользователей
+        } else {
+          //// полная загрузка game-данных
+          user.socket.send(this._portShot, [
+            this._game.getFullUsersData(), // game
+            [0, 0], // coords
+            [this.getRoundTimeLeft()], // panel
+            this._stat.getFull(), // stat
+            0, // chat
+            0, // vote
+          ]);
+        }
+        // иначе загрузить актуальную карту
       } else {
-        //// полная загрузка game-данных
-        user.socket.send(this._portShot, [
-          this._game.getFullUsersData(), // game
-          [0, 0], // coords
-          [this.getRoundTimeLeft()], // panel
-          this._stat.getFull(), // stat
-          0, // chat
-          0, // vote
-        ]);
+        this.sendMap(gameID);
       }
     }
   }
@@ -609,11 +617,21 @@ class VIMP {
         this._activePlayersList.splice(i, 1);
       }
     }
+
+    // удаление из watchedGameID других игроков
+    for (const p in this._users) {
+      if (this._users.hasOwnProperty(p)) {
+        if (this._users[p].watchedGameID === gameID) {
+          this._users[p].watchedGameID =
+            this._activePlayersList[0] || null;
+        }
+      }
+    }
   }
 
   // меняет и возвращает gameID наблюдаемого игрока
   getNextActivePlayerForUser(gameID, back) {
-    const currentID = this._users[gameID].watchedGameID;
+    const currentID = this._users[gameID]?.watchedGameID;
     let key = this._activePlayersList.indexOf(currentID);
 
     // если есть наблюдаемый игрок
@@ -629,7 +647,7 @@ class VIMP {
 
       return this._activePlayersList[key];
     } else {
-      return this._activePlayersList[0];
+      return this._activePlayersList[0] || null;
     }
   }
 
@@ -658,6 +676,8 @@ class VIMP {
       socket: socket,
       // флаг загрузки карты
       mapReady: false,
+      // текущая карта игры. Важно, чтоб этот параметр совпадал с актуальной картой сервера
+      currentMap: null,
       // имя пользователя
       name,
       // модель игрока
