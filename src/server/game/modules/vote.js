@@ -44,16 +44,16 @@ class Vote {
     return this._userList[gameID].shift();
   }
 
-  // создает голосование
-  createVote(name, arr, userList) {
-    this._votes[name] = {};
+  // создает голосование со сбором голосов
+  createVote(arr, userList) {
+    this._votes[arr[0][0]] = {};
 
     if (userList) {
       for (let i = 0, len = userList.length; i < len; i += 1) {
-        this.pushByUser(userList[i], [name, arr]);
+        this.pushByUser(userList[i], arr);
       }
     } else {
-      this.push([name, arr]);
+      this.push(arr);
     }
   }
 

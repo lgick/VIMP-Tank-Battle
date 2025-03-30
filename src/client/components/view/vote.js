@@ -39,8 +39,13 @@ export default class VoteView {
     const backElem = this._document.createElement('p');
     const moreElem = this._document.createElement('p');
     const exitElem = this._document.createElement('p');
+    let timerID = null;
 
     vote.setAttribute('id', this._voteID);
+
+    if (data.centerPosition === true) {
+      vote.setAttribute('class', 'center');
+    }
 
     p.setAttribute('class', this._titleClass);
     p.innerHTML = title;
@@ -80,11 +85,13 @@ export default class VoteView {
 
     this._document.body.appendChild(vote);
 
-    const timerID = this._window.setTimeout(() => {
-      vote.parentElement.removeChild(vote);
-      this.publisher.emit('timer', null);
-      this.publisher.emit('clear');
-    }, time);
+    if (time !== null) {
+      timerID = this._window.setTimeout(() => {
+        vote.parentElement.removeChild(vote);
+        this.publisher.emit('timer', null);
+        this.publisher.emit('clear');
+      }, time);
+    }
 
     this.publisher.emit('timer', timerID);
   }

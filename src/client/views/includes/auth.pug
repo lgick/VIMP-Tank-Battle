@@ -4,24 +4,9 @@ div#auth
 
     h2= 'VIMP Tank Battle'
 
-    div#auth-name
+    div#auth-name.auth-field
       span= 'Name:'
       input#auth-name-input(type='text', name='name' maxlength='15', placeholder='Vanya')
-
-    div#auth-team
-      span= 'Team:'
-      br
-      label
-        input(type='radio', name='team', value='team1')
-        = 'team1'
-      br
-      label
-        input(type='radio', name='team', value='team2')
-        = 'team2'
-      br
-      label
-        input(type='radio', name='team', value='spectators')
-        = 'spectators'
 
     div#auth-error
 
