@@ -25,6 +25,9 @@ export default class VoteModel {
     this._time = data.time || 10000; // время жизни голосования
     this._timerID = null; // id таймера
 
+    this._timeOff = false; // флаг отключения времени жизни голосования
+    this._centerPosition = false; // позиционирование окна в центре
+
     this._voteName = ''; // название голосования
     this._data = []; // данные голосования
 
@@ -57,9 +60,13 @@ export default class VoteModel {
     this._more = false;
     this._currentPage = 0;
 
-    // если данные: ['name', ['title', 'value', 'next']]
+    // если данные имеют вид:
+    // [[name:string, timeOff: boolean], [title: string, value: array, next: array || null]]
     if (data.length === 2) {
-      this._voteName = data[0];
+      this._voteName = data[0][0];
+      this._timeOff = data[0][1] ? true : false;
+      this._centerPosition = data[0][2] ? true : false;
+
       this._currentVote = data[1];
 
       // если данные: ['title', 'value', 'next']
@@ -86,6 +93,8 @@ export default class VoteModel {
     }
 
     this._currentVote = this._menu;
+    this._timeOff = false;
+    this._centerPosition = false;
 
     this._type = 'menu';
     this._back = false;
@@ -168,7 +177,10 @@ export default class VoteModel {
 
               // иначе, отправляет результат на сервер и завершаем голосование
             } else {
-              this.publisher.emit('socket', [this._voteName, this._data]);
+              this.publisher.emit('socket', [
+                this._voteName,
+                this._data,
+              ]);
               this.complete();
             }
           }
@@ -188,7 +200,11 @@ export default class VoteModel {
     this._more = this._values.length > max ? true : false;
 
     if (this._type === 'vote') {
-      for (let i = 0, len = this._currentValues.length; i < len; i += 1) {
+      for (
+        let i = 0, len = this._currentValues.length;
+        i < len;
+        i += 1
+      ) {
         currentValues.push(this._currentValues[i].split(':')[0]);
       }
     } else {
@@ -202,7 +218,8 @@ export default class VoteModel {
       list: currentValues,
       back: this._back,
       more: this._more,
-      time: this._time,
+      time: this._timeOff === true ? null : this._time,
+      centerPosition: this._centerPosition,
     });
   }
 

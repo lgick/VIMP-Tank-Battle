@@ -228,20 +228,14 @@ class VIMP {
         user.socket.send(this._portInform);
         user.mapReady = true;
 
-        // если на сервере менее 2-х активных игроков и
-        // новый игрок не является наблюдателем и ожидает игры
-        // требуется начать раунд заново
-        if (
-          this._activePlayersList.length < 2 &&
-          user.teamID !== this._spectatorID &&
-          user.isWatching === true
-        ) {
-          this.restartRound();
+        // загрузка данных пользователей
+        this.sendFirstShot(gameID, this._game.getFullUsersData());
 
-          // иначе полная загрузка данных пользователей
-        } else {
-          this.sendFirstShot(gameID, this._game.getFullUsersData());
-        }
+        // опрос о выборе команды
+        this._vote.pushByUser(gameID, [
+          ['team', true, true],
+          ['Выберите команду', Object.keys(this._teams), null],
+        ]);
         // иначе загрузить актуальную карту
       } else {
         this.sendMap(gameID);
@@ -403,11 +397,16 @@ class VIMP {
             teamID = user.teamID = this._teams[nextTeam];
             user.team = nextTeam;
 
+            // если пользователь стал наблюдателем
+            // нужно добавить его в списки удаляемых
+            // и убрать из списков наблюдаемых
             if (teamID === this._spectatorID) {
               this._removedPlayersList.push({
                 gameID,
                 model: user.model,
               });
+
+              this.removeFromActivePlayers(gameID);
             }
           }
 
@@ -542,9 +541,11 @@ class VIMP {
 
       this._teamSizes[team] += 1;
 
-      // если на сервере 1-2 игрока
+      // если на сервере менее 2-х активных игроков
       // требуется начать раунд заново
-      if (Object.keys(this._users).length <= 2) {
+      if (
+        this._activePlayersList.filter(id => id !== gameID).length < 2
+      ) {
         this.restartRound();
       }
     }
@@ -661,8 +662,6 @@ class VIMP {
 
     const gameID = getGameID();
     const name = this.checkName(params.name);
-    const team = this.checkTeam(params.team).team;
-    const teamID = this._teams[team];
 
     // ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
     this._users[gameID] = {
@@ -679,9 +678,9 @@ class VIMP {
       // модель игрока
       model: params.model,
       // название команды
-      team,
+      team: this._spectatorTeam,
       // ID команды
-      teamID,
+      teamID: this._spectatorID,
       // название команды в следующем раунде
       nextTeam: null,
       // флаг наблюдателя за игрой (true у игроков, которые в текущий момент наблюдают за игрой)
@@ -694,7 +693,7 @@ class VIMP {
 
     this._chat.addUser(gameID);
     this._vote.addUser(gameID);
-    this._stat.addUser(gameID, teamID, { name });
+    this._stat.addUser(gameID, this._spectatorID, { name });
     this._panel.addUser(gameID);
 
     process.nextTick(() => {
@@ -845,7 +844,7 @@ class VIMP {
   }
 
   // отправляет голосование за новую карту
-  changeMap(gameID, map) {
+  changeMap(gameID, mapName) {
     // возвращает список карт для голосования
     const getMapList = () => {
       if (this._mapList.length <= this._mapsInVote) {
@@ -870,10 +869,13 @@ class VIMP {
       this._blockedRemap = true;
 
       // если есть gameID и карта (голосование создает пользователь)
-      if (typeof gameID !== 'undefined' && typeof map === 'string') {
+      if (
+        typeof gameID !== 'undefined' &&
+        typeof mapName === 'string'
+      ) {
         const arr = [
-          this._users[gameID].name + ' предложил карту: ' + map,
-          ['Сменить:' + map, 'Не менять:'],
+          this._users[gameID].name + ' предложил карту: ' + mapName,
+          ['Сменить:' + mapName, 'Не менять:'],
           null,
         ];
 
@@ -889,26 +891,26 @@ class VIMP {
           }
         }
 
-        this._vote.createVote('changeMap', arr, userList);
-        this._vote.addInVote('changeMap', map);
+        this._vote.createVote([['changeMap'], arr], userList);
+        this._vote.addInVote('changeMap', mapName);
         this._chat.pushSystem('v:2', gameID);
 
         // иначе голосование создает игра
       } else {
         const arr = ['Выберете следующую карту', getMapList(), null];
-        this._vote.createVote('changeMap', arr);
+        this._vote.createVote([['changeMap'], arr]);
       }
 
       // собирает результаты голосования и стартует новую игру
       setTimeout(() => {
-        const map = this._vote.getResult('changeMap');
+        const mapName = this._vote.getResult('changeMap');
 
         // если есть результат и карта существует
-        if (map && this._maps[map]) {
-          this._chat.pushSystem('v:4:' + map);
+        if (mapName && this._maps[mapName]) {
+          this._chat.pushSystem('v:4:' + mapName);
 
           setTimeout(() => {
-            this._currentMap = map;
+            this._currentMap = mapName;
             this.createMap();
           }, 2000);
         } else {

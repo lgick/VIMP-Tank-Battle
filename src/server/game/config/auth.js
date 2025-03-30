@@ -16,14 +16,6 @@ export default {
       },
     },
     {
-      name: 'team',
-      value: 'team1',
-      options: {
-        regExp: 'team1|team2|spectators',
-        storage: 'team',
-      },
-    },
-    {
       name: 'model',
       value: 'm1',
       options: {
