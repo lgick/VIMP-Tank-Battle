@@ -233,7 +233,7 @@ class VIMP {
 
         // опрос о выборе команды
         this._vote.pushByUser(gameID, [
-          ['team', true, true],
+          ['team', true],
           ['Выберите команду', Object.keys(this._teams), null],
         ]);
         // иначе загрузить актуальную карту

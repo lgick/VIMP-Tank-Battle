@@ -26,7 +26,6 @@ export default class VoteModel {
     this._timerID = null; // id таймера
 
     this._timeOff = false; // флаг отключения времени жизни голосования
-    this._centerPosition = false; // позиционирование окна в центре
 
     this._voteName = ''; // название голосования
     this._data = []; // данные голосования
@@ -65,7 +64,6 @@ export default class VoteModel {
     if (data.length === 2) {
       this._voteName = data[0][0];
       this._timeOff = data[0][1] ? true : false;
-      this._centerPosition = data[0][2] ? true : false;
 
       this._currentVote = data[1];
 
@@ -94,7 +92,6 @@ export default class VoteModel {
 
     this._currentVote = this._menu;
     this._timeOff = false;
-    this._centerPosition = false;
 
     this._type = 'menu';
     this._back = false;
@@ -219,7 +216,6 @@ export default class VoteModel {
       back: this._back,
       more: this._more,
       time: this._timeOff === true ? null : this._time,
-      centerPosition: this._centerPosition,
     });
   }
 

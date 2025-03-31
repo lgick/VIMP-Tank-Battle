@@ -249,7 +249,7 @@ statArray = [
 ```
 menu = [
   [
-    ['team', false, false],              // settings [voteName, timeOff, centerPosition]
+    ['team', false],                     // settings [voteName, timeOff]
     [
       'Сменить команду, статус',         // 0: title
       ['team1', 'team2', 'spectator'],   // 1: value
@@ -279,7 +279,7 @@ menu = [
 
 ```
 [
-  ['vote name', timeOff, centerPosition],      // [string, boolean || empty, boolean || empty]
+  ['vote name', timeOff],      // [string, boolean || empty]
   [
     'Question',                // 0: string
     ['Value 1', 'Value 2'],    // 1: string[]
