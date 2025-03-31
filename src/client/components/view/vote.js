@@ -43,10 +43,6 @@ export default class VoteView {
 
     vote.setAttribute('id', this._voteID);
 
-    if (data.centerPosition === true) {
-      vote.setAttribute('class', 'center');
-    }
-
     p.setAttribute('class', this._titleClass);
     p.innerHTML = title;
 
