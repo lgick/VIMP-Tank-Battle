@@ -4,7 +4,7 @@ export default class Bomb extends Container {
   constructor(params) {
     super();
 
-    this.zIndex = 2;
+    this.zIndex = 1;
 
     this.body = new Graphics();
 
@@ -17,7 +17,6 @@ export default class Bomb extends Container {
 
     this.text = new BitmapText({
       style: {
-        fontSize: 36,
         fontFamily: 'Arial',
         fontSize: 10,
         fill: 0xff1010,
@@ -35,7 +34,12 @@ export default class Bomb extends Container {
 
     this.body
       .clear()
-      .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
+      .rect(
+        -(this._width / 2),
+        -(this._height / 2),
+        this._width,
+        this._height,
+      )
       .fill(0xffffff)
       .rect(
         -(this._width / 2) + 1,

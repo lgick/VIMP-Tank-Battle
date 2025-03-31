@@ -13,8 +13,8 @@ export default {
   },
 
   layers: {
-    1: [0, 1, 2, 4],
-    3: [3],
+    1: [0, 2, 4],
+    3: [1, 3],
   },
 
   physicsStatic: [1],
@@ -31,7 +31,7 @@ export default {
     },
     {
       density: 50,
-      layer: 2,
+      layer: 3,
       position: [280, 40],
       angle: 90,
       width: 30,
@@ -40,7 +40,7 @@ export default {
     },
     {
       density: 0.3,
-      layer: 2,
+      layer: 3,
       position: [330, 40],
       angle: 0,
       width: 30,
@@ -49,7 +49,7 @@ export default {
     },
     {
       density: 0.1,
-      layer: 2,
+      layer: 3,
       position: [140, 100],
       angle: 0,
       width: 30,
@@ -58,7 +58,7 @@ export default {
     },
     {
       density: 0.1,
-      layer: 2,
+      layer: 3,
       position: [180, 100],
       angle: 0,
       width: 30,
@@ -67,7 +67,7 @@ export default {
     },
     {
       density: 1,
-      layer: 2,
+      layer: 3,
       position: [240, 100],
       angle: 0,
       width: 30,
@@ -76,7 +76,7 @@ export default {
     },
     {
       density: 1,
-      layer: 2,
+      layer: 3,
       position: [300, 100],
       angle: 0,
       width: 30,
@@ -85,7 +85,7 @@ export default {
     },
     {
       density: 0.1,
-      layer: 2,
+      layer: 3,
       position: [350, 100],
       angle: 0,
       width: 30,
@@ -94,7 +94,7 @@ export default {
     },
     {
       density: 0.1,
-      layer: 2,
+      layer: 3,
       position: [400, 100],
       angle: 0,
       width: 30,

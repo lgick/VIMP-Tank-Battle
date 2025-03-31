@@ -15,10 +15,10 @@ class Bomb {
       angle: 0,
     });
 
-    this._body.createFixture(
-      new BoxShape(width / 2, height / 2),
-      this._bulletSet.density,
-    );
+    this._body.createFixture(new BoxShape(width / 2, height / 2), {
+      density: this._bulletSet.density,
+      isSensor: true, // фиксируем как сенсор, чтобы не было физического столкновения
+    });
   }
 
   getBody() {
