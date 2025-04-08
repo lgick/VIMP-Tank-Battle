@@ -28,14 +28,14 @@ class Game {
       allowSleep: true,
     });
 
-    // данные карты
-    this._map = null;
+    // конструктор карт
+    this._map = this._Factory(this._mapConstructor, this._world);
 
-    // данные моделей
-    this._modelData = {};
+    // данные игроков
+    this._playersData = {};
 
     // данные пуль
-    this._bulletData = {};
+    this._bulletsData = {};
 
     // созданные пули в момент времени (время: массив из id пуль)
     this._bulletsAtTime = {};
@@ -47,9 +47,9 @@ class Game {
     this._bulletTime = this._minBulletTime = this._maxBulletTime = 1;
 
     // вычисление максимального времени жизни пули
-    for (const p in this._bullets) {
-      if (this._bullets.hasOwnProperty(p)) {
-        time = this._bullets[p].time * 2;
+    for (const bullet in this._bullets) {
+      if (this._bullets.hasOwnProperty(bullet)) {
+        time = this._bullets[bullet].time * 2;
 
         if (time > this._maxBulletTime) {
           this._maxBulletTime = time;
@@ -68,11 +68,7 @@ class Game {
 
   // создает карту
   createMap(mapData) {
-    this.clear();
-    this._map = this._Factory(this._mapConstructor, {
-      mapData,
-      world: this._world,
-    });
+    this._map.createMap(mapData);
   }
 
   // возвращает данные динамических элементов
@@ -81,13 +77,13 @@ class Game {
   }
 
   // создает игрока
-  createUser(gameID, model, name, teamID, data) {
+  createPlayer(gameID, model, name, teamID, data) {
     const modelData = this._models[model];
 
     modelData.position = [data[0], data[1]];
     modelData.angle = data[2];
 
-    this._modelData[gameID] = this._Factory(modelData.constructor, {
+    this._playersData[gameID] = this._Factory(modelData.constructor, {
       keysData: this._keysData,
       modelData,
       world: this._world,
@@ -101,39 +97,46 @@ class Game {
   }
 
   // удаляет игрока
-  removeUser(gameID) {
+  removePlayer(gameID) {
     // если игрок существует
-    if (this._modelData[gameID]) {
-      this._world.destroyBody(this._modelData[gameID].getBody());
-      delete this._modelData[gameID];
+    if (this._playersData[gameID]) {
+      this._world.destroyBody(this._playersData[gameID].getBody());
+      delete this._playersData[gameID];
     }
   }
 
-  // удаляет всех игроков
-  removeUsers() {
-    for (const gameID in this._modelData) {
-      if (this._modelData.hasOwnProperty(gameID)) {
-        this._world.destroyBody(this._modelData[gameID].getBody());
-        delete this._modelData[gameID];
+  // удаляет всех игроков и возвращает список удаленных моделей
+  removePlayers() {
+    const modelNameSet = new Set();
+
+    for (const gameID in this._playersData) {
+      if (this._playersData.hasOwnProperty(gameID)) {
+        const player = this._playersData[gameID];
+
+        modelNameSet.add(player.model);
+        this._world.destroyBody(player.getBody());
+        delete this._playersData[gameID];
       }
     }
+
+    return [...modelNameSet];
   }
 
   // меняет имя игрока
   changeName(gameID, name) {
-    if (this._modelData[gameID]) {
-      this._modelData[gameID].changeName(name);
+    if (this._playersData[gameID]) {
+      this._playersData[gameID].changeName(name);
     }
   }
 
   // обновляет нажатые клавиши
   updateKeys(gameID, keys) {
-    this._modelData[gameID].currentKeys = keys;
+    this._playersData[gameID].currentKeys = keys;
   }
 
   // возвращает координаты игрока
-  getUserCoords(gameID) {
-    const position = this._modelData[gameID].getBody().getPosition();
+  getPlayerCoords(gameID) {
+    const position = this._playersData[gameID].getBody().getPosition();
 
     return [+position.x.toFixed(), +position.y.toFixed()];
   }
@@ -155,20 +158,16 @@ class Game {
 
   // обновляет данные
   updateData() {
-    for (const p in this._modelData) {
-      if (this._modelData.hasOwnProperty(p)) {
-        this._modelData[p].updateData();
+    for (const gameID in this._playersData) {
+      if (this._playersData.hasOwnProperty(gameID)) {
+        this._playersData[gameID].updateData();
       }
     }
 
     const velocityIterations = 10;
     const positionIterations = 8;
 
-    this._world.step(
-      this._shotTime,
-      velocityIterations,
-      positionIterations,
-    );
+    this._world.step(this._shotTime, velocityIterations, positionIterations);
   }
 
   // возвращает данные
@@ -176,20 +175,20 @@ class Game {
     // данные старых пуль
     const gameData = this.getOldBulletData();
 
-    for (const p in this._modelData) {
-      if (this._modelData.hasOwnProperty(p)) {
-        const user = this._modelData[p];
-        const model = user.model;
-        const bulletData = user.getBulletData();
+    for (const gameID in this._playersData) {
+      if (this._playersData.hasOwnProperty(gameID)) {
+        const player = this._playersData[gameID];
+        const model = player.model;
+        const bulletData = player.getBulletData();
 
         gameData[model] = gameData[model] || {};
-        gameData[model][p] = user.getData();
+        gameData[model][gameID] = player.getData();
 
         // если есть данные для создания пули
         if (bulletData !== null) {
-          const bulletName = user.currentBullet;
+          const bulletName = player.currentBullet;
           const bullet = this.createBullet(
-            user.gameID,
+            player.gameID,
             bulletName,
             bulletData,
           );
@@ -197,7 +196,7 @@ class Game {
           gameData[bulletName] = gameData[bulletName] || {};
           gameData[bulletName][bullet.bulletID] = bullet.getData();
 
-          user.bulletData = null;
+          player.bulletData = null;
         }
       }
     }
@@ -206,16 +205,16 @@ class Game {
   }
 
   // возвращает полные данные всех игроков
-  getFullUsersData() {
+  getFullPlayersData() {
     const gameData = {};
 
-    for (const p in this._modelData) {
-      if (this._modelData.hasOwnProperty(p)) {
-        const user = this._modelData[p];
-        const model = user.model;
+    for (const gameID in this._playersData) {
+      if (this._playersData.hasOwnProperty(gameID)) {
+        const player = this._playersData[gameID];
+        const model = player.model;
 
         gameData[model] = gameData[model] || {};
-        gameData[model][p] = user.getFullData();
+        gameData[model][gameID] = player.getFullData();
       }
     }
 
@@ -234,7 +233,7 @@ class Game {
       time = time - this._maxBulletTime;
     }
 
-    const bullet = (this._bulletData[bulletID] = this._Factory(
+    const bullet = (this._bulletsData[bulletID] = this._Factory(
       bulletSet.constructor,
       {
         bulletSet,
@@ -252,33 +251,34 @@ class Game {
     return bullet;
   }
 
-  // сбрасывает currentBulletID, удаляет и возвращает данные о всех пулях
-  resetBulletData() {
-    const gameData = {};
+  // удаляет данные игроков и пуль и возвращает список удалённых имён
+  removePlayersAndBullets() {
+    return [...this.removePlayers(), ...this.removeBullets()];
+  }
+
+  // сбрасывает currentBulletID, удаляет все пули и возвращает список удаленных имён
+  removeBullets() {
+    const bulletNameSet = new Set();
 
     this._currentBulletID = 0;
 
-    for (const p in this._bulletsAtTime) {
-      if (this._bulletsAtTime.hasOwnProperty(p)) {
-        const arr = this._bulletsAtTime[p];
+    for (const time in this._bulletsAtTime) {
+      if (this._bulletsAtTime.hasOwnProperty(time)) {
+        const arr = this._bulletsAtTime[time];
 
         // очищение пуль
         for (let i = 0, len = arr.length; i < len; i += 1) {
-          const bullet = this._bulletData[arr[i]];
-          const bulletName = bullet.bulletName;
-          const bulletID = bullet.bulletID;
+          const bullet = this._bulletsData[arr[i]];
 
+          bulletNameSet.add(bullet.bulletName);
           this._world.destroyBody(bullet.getBody());
-
-          gameData[bulletName] = gameData[bulletName] || {};
-          gameData[bulletName][bulletID] = null;
         }
 
-        this._bulletsAtTime[p] = [];
+        this._bulletsAtTime[time] = [];
       }
     }
 
-    return gameData;
+    return [...bulletNameSet];
   }
 
   // обновляет время и возвращает данные устаревших пуль
@@ -294,7 +294,7 @@ class Game {
     }
 
     for (let i = 0, len = oldBulletArr.length; i < len; i += 1) {
-      const bullet = this._bulletData[oldBulletArr[i]];
+      const bullet = this._bulletsData[oldBulletArr[i]];
       const bulletName = bullet.bulletName;
       const bulletID = bullet.bulletID;
 

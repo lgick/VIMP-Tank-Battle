@@ -14,6 +14,19 @@ class Vote {
     this._votes = {}; // данные голосований
   }
 
+  // сбрасывает данные
+  reset() {
+    this._list = [];
+
+    for (const gameID in this._userList) {
+      if (this._userList.hasOwnProperty(gameID)) {
+        this._userList[gameID] = [];
+      }
+    }
+
+    this._votes = {};
+  }
+
   // добавляет пользователя
   addUser(gameID) {
     this._userList[gameID] = [];
@@ -59,10 +72,14 @@ class Vote {
 
   // добавляет голос в голосование
   addInVote(name, value) {
-    if (this._votes[name][value]) {
-      this._votes[name][value] += 1;
-    } else {
-      this._votes[name][value] = 1;
+    const vote = this._votes[name];
+
+    if (vote) {
+      if (vote[value]) {
+        vote[value] += 1;
+      } else {
+        vote[value] = 1;
+      }
     }
   }
 
@@ -72,6 +89,10 @@ class Vote {
     let votes = 0;
     let result;
 
+    if (!results) {
+      return;
+    }
+
     for (const p in results) {
       if (results.hasOwnProperty(p)) {
         if (results[p] > votes) {
@@ -80,6 +101,8 @@ class Vote {
         }
       }
     }
+
+    delete this._votes[name];
 
     return result;
   }

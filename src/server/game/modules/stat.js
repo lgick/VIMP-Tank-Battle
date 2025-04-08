@@ -79,7 +79,11 @@ class Stat {
 
   // добавляет пользователя
   addUser(gameID, teamID, data) {
-    this._body[teamID][gameID] = [gameID, teamID, this.getDefaultBody()];
+    this._body[teamID][gameID] = [
+      gameID,
+      teamID,
+      this.getDefaultBody(),
+    ];
 
     if (typeof data === 'object') {
       this.updateUser(gameID, teamID, data);
