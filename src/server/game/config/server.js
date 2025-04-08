@@ -30,6 +30,7 @@ export default {
     shot: 4,
     inform: 5,
     misc: 6,
-    log: 7,
+    clear: 7,
+    log: 8,
   },
 };

@@ -27,6 +27,11 @@ import parts from './parts/index.js';
 const document = window.document;
 const parseInt = window.parseInt;
 const RegExp = window.RegExp;
+const Object = window.Object;
+const Array = window.Array;
+const Promise = window.Promise;
+const innerWidth = window.innerWidth;
+const innerHeight = window.innerHeight;
 const location = window.location;
 const localStorage = window.localStorage;
 const JSON = window.JSON;
@@ -150,19 +155,15 @@ socketMethods[2] = err => {
 
 // map data
 socketMethods[3] = data => {
-  const { layers, map, step, setID, spriteSheet, physicsStatic } =
-    data;
+  const { layers, map, step, setID, spriteSheet, physicsStatic } = data;
 
   // удаление данных карт
   const removeMap = setID => {
-    const nameArr = gameSets[setID];
+    const nameArr = gameSets[setID] || [];
 
-    // если есть конструкторы для удаления
-    if (nameArr) {
-      nameArr.forEach(name => {
-        CTRL[entitiesOnCanvas[name]].remove(name);
-      });
-    }
+    nameArr.forEach(name => {
+      CTRL[entitiesOnCanvas[name]].remove(name);
+    });
   };
 
   // создание карт
@@ -289,8 +290,30 @@ socketMethods[6] = data => {
   }
 };
 
+// clear
+socketMethods[7] = function (setIDList) {
+  // если есть список setID (учитывается в том числе пустой список)
+  if (Array.isArray(setIDList)) {
+    for (let i = 0, len = setIDList.length; i < len; i += 1) {
+      const nameArr = gameSets[setIDList[i]] || [];
+
+      nameArr.forEach(name => {
+        CTRL[entitiesOnCanvas[name]].remove(name);
+      });
+    }
+  } else {
+    for (const p in CTRL) {
+      if (CTRL.hasOwnProperty(p)) {
+        CTRL[p].remove();
+      }
+    }
+  }
+
+  updateGameControllers();
+};
+
 // console
-socketMethods[7] = data => {
+socketMethods[8] = data => {
   console.log(data);
 };
 
@@ -328,8 +351,8 @@ function runModules(data) {
 
   // инициализация
   modules.user.init({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: innerWidth,
+    height: innerHeight,
   });
 
   //==========================================//
@@ -408,34 +431,16 @@ function runModules(data) {
   userModel.publisher.on('mode', openMode);
 
   // подписка на данные от пользователя для режимов
-  userModel.publisher.on(
-    'chat',
-    modules.chat.updateCmd.bind(modules.chat),
-  );
-  userModel.publisher.on(
-    'stat',
-    modules.stat.close.bind(modules.stat),
-  );
-  userModel.publisher.on(
-    'vote',
-    modules.vote.assignKey.bind(modules.vote),
-  );
+  userModel.publisher.on('chat', modules.chat.updateCmd.bind(modules.chat));
+  userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
+  userModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
 
   // после ресайза элементов происходит перерисовка кадра
   userView.publisher.on('redraw', updateGameControllers);
 
-  chatModel.publisher.on(
-    'mode',
-    modules.user.switchMode.bind(modules.user),
-  );
-  statModel.publisher.on(
-    'mode',
-    modules.user.switchMode.bind(modules.user),
-  );
-  voteModel.publisher.on(
-    'mode',
-    modules.user.switchMode.bind(modules.user),
-  );
+  chatModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+  statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+  voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
 
   userModel.publisher.on('socket', data => sending(3, data));
   chatModel.publisher.on('socket', data => sending(4, data));
