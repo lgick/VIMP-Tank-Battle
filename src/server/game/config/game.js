@@ -2,7 +2,6 @@ import maps from '../../../../public/maps/index.js';
 import constructors from '../parts/index.js';
 import models from '../../../../public/parts/models.js';
 import bullets from '../../../../public/parts/bullets.js';
-import banlist from '../deps/banlist.js';
 import factory from '../../lib/factory.js';
 
 export default {
@@ -19,8 +18,6 @@ export default {
     models,
     bullets,
   },
-
-  banlist,
 
   maps, // карты
   currentMap: 'mini', // название карты по умолчанию

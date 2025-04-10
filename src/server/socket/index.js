@@ -1,7 +1,6 @@
 import { WebSocketServer } from 'ws';
 import { v1 as uuidv1 } from 'uuid';
 import security from '../lib/security.js';
-import bantools from '../lib/bantools.js';
 import waiting from '../lib/waiting.js';
 import validator from '../lib/validator.js';
 import config from '../lib/config.js';
@@ -65,14 +64,7 @@ export default server => {
         };
 
         id = ws.socket.id = uuidv1();
-        ws.socket.socketMethods = [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ];
+        ws.socket.socketMethods = [false, false, false, false, false, false];
 
         sessions[id] = ws;
 
@@ -85,27 +77,18 @@ export default server => {
     socketMethods[0] = err => {
       if (!err) {
         if (oneConnection && IPs[address]) {
-          sessions[IPs[address]].socket.close(4002, [
-            portInform,
-            [2],
-          ]);
+          sessions[IPs[address]].socket.close(4002, [portInform, [1]]);
         }
 
         IPs[address] = id;
 
-        bantools.check(address, ban => {
-          if (ban) {
-            ws.socket.close(4003, [portInform, [0, ban]]);
+        waiting.check(id, empty => {
+          if (empty) {
+            ws.socket.socketMethods[1] = true;
+            ws.socket.send(portAuth, auth);
           } else {
-            waiting.check(id, empty => {
-              if (empty) {
-                ws.socket.socketMethods[1] = true;
-                ws.socket.send(portAuth, auth);
-              } else {
-                waiting.add(id, data => {
-                  ws.socket.send(portInform, [1, data]);
-                });
-              }
+            waiting.add(id, data => {
+              ws.socket.send(portInform, [0, data]);
             });
           }
         });
@@ -175,7 +158,6 @@ export default server => {
       // Коды закрытия:
       // 4001 - origin conflict
       // 4002 - oneConnection
-      // 4003 - ban
 
       if (code !== 4002) {
         delete IPs[address];
@@ -205,7 +187,7 @@ export default server => {
             Object.prototype.hasOwnProperty.call(notifyObject, p) &&
             sessions[p]
           ) {
-            sessions[p].socket.send(portInform, [1, notifyObject[p]]);
+            sessions[p].socket.send(portInform, [0, notifyObject[p]]);
           }
         }
       });

@@ -193,7 +193,7 @@ class VIMP {
     if (gameID) {
       let user = this._users[gameID];
 
-      user.socket.send(this._portInform, [3]);
+      user.socket.send(this._portInform, [2]);
       user.mapReady = false;
       user.currentMap = this._currentMap;
       user.socket.send(this._portMap, this._currentMapData);
@@ -202,7 +202,7 @@ class VIMP {
         if (this._users.hasOwnProperty(p)) {
           let user = this._users[p];
 
-          user.socket.send(this._portInform, [3]);
+          user.socket.send(this._portInform, [2]);
           user.mapReady = false;
           user.currentMap = this._currentMap;
           user.socket.send(this._portMap, this._currentMapData);
