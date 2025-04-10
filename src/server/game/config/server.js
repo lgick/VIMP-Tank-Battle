@@ -8,20 +8,6 @@ export default {
   oneConnection: false,
   maxPlayers: 10,
   VIMP,
-  invite: {
-    transport: {
-      service: 'gmail',
-      auth: {
-        user: 'noreply.vimp@gmail.com',
-        pass: 'SF@d$$Saf%vvd',
-      },
-    },
-    sender: '{name} <noreply.vimp@yandex.ru>',
-    subject: '{name} - game server',
-    html:
-      'Приглашение посетить игровой сервер: ' +
-      '<a href="{protocol}//{domain}:{port}">{name}</a> !',
-  },
   ports: {
     config: 0,
     auth: 1,

@@ -26,7 +26,6 @@ class VIMP {
     this._expressions = {
       name: new RegExp(data.expressions.name),
       message: new RegExp(data.expressions.message, 'g'),
-      email: new RegExp(data.expressions.email, 'i'),
     };
 
     this._mapTime = data.mapTime; // продолжительность карты
@@ -78,8 +77,6 @@ class VIMP {
     this._chat = new Chat();
     this._vote = new Vote();
     this._game = new Game(data.factory, data.parts, data.keys, data.shotTime);
-
-    this._email = data.email;
 
     this.createMap();
   }
@@ -897,21 +894,6 @@ class VIMP {
     const value = arr.join(' ');
 
     switch (cmd) {
-      // приглашение друга
-      case '/invite':
-        if (this._expressions.email.test(value)) {
-          this._email.invite(value, err => {
-            if (err) {
-              this._chat.pushSystem('i:2', gameID);
-            } else {
-              this._chat.pushSystem('i:1', gameID);
-            }
-          });
-        } else {
-          this._chat.pushSystem('i:0', gameID);
-        }
-        break;
-
       // смена ника
       case '/name':
         this.changeName(gameID, value);

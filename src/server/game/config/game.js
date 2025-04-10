@@ -4,16 +4,13 @@ import models from '../../../../public/parts/models.js';
 import bullets from '../../../../public/parts/bullets.js';
 import banlist from '../deps/banlist.js';
 import factory from '../../lib/factory.js';
-import email from '../../lib/email.js';
 
 export default {
   factory,
-  email,
 
   expressions: {
     name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
     message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-',
-    email: '.+@.+\\..+',
   },
 
   parts: {
