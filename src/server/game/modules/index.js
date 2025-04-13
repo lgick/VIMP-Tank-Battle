@@ -65,6 +65,8 @@ class VIMP {
     this._roundTimer = null;
     this._shotTimer = null;
     this._mapTimer = null;
+    this._changeMapTimer = null;
+    this._blockedRemapTimer = null;
 
     this._startMapTime = 0; // время запуска карты
     this._startRoundTime = 0; // время запуска раунда
@@ -100,10 +102,12 @@ class VIMP {
 
   // стартует карту
   startMapTimer() {
-    this._chat.pushSystem('t:0:' + this._currentMap);
     this._startMapTime = Date.now();
 
     this._mapTimer = setTimeout(() => {
+      clearTimeout(this._changeMapTimer);
+      clearTimeout(this._blockedRemapTimer);
+      this._blockedRemap = false;
       this.changeMap();
     }, this._mapTime);
   }
@@ -330,7 +334,6 @@ class VIMP {
 
     const setIDList = this._game.removePlayersAndBullets();
 
-    this._game.clear();
     this._game.createMap(this._currentMapData);
 
     for (const gameID in this._users) {
@@ -854,7 +857,7 @@ class VIMP {
       }
 
       // собирает результаты голосования и стартует новую игру
-      setTimeout(() => {
+      this._changeMapTimer = setTimeout(() => {
         const mapName = this._vote.getResult('changeMap');
 
         if (mapName === null) {
@@ -870,11 +873,18 @@ class VIMP {
             this.createMap();
           }, 2000);
         } else {
+          // если голосование создаёт игра, требуется обновить время карты
+          if (typeof gameID === 'undefined') {
+            clearTimeout(this._mapTimer);
+            this.startMapTimer();
+          }
+
           this._chat.pushSystem('v:5');
+          this._chat.pushSystem('t:0:' + this._currentMap);
         }
 
         // снимает блокировку смены карты
-        setTimeout(() => {
+        this._blockedRemapTimer = setTimeout(() => {
           this._blockedRemap = false;
         }, this._timeBlockedRemap);
       }, this._voteTime);
