@@ -25,6 +25,7 @@ export default class StatView {
     this._mPublic.on('close', 'close', this);
     this._mPublic.on('tHead', 'updateTableHead', this);
     this._mPublic.on('tBody', 'updateTableBody', this);
+    this._mPublic.on('clearBodies', 'clearBodies', this);
   }
 
   // открывает статистику
@@ -35,6 +36,18 @@ export default class StatView {
   // закрывает статистику
   close() {
     this._stat.style.display = 'none';
+  }
+
+  // очищает таблицы <tbody>
+  clearBodies(bodiesList) {
+    for (let i = 0, len = bodiesList.length; i < len; i += 1) {
+      const table = this._document.getElementById(bodiesList[i]);
+      const tBodies = table.tBodies;
+
+      for (let i2 = 0, len2 = tBodies.length; i2 < len2; i2 += 1) {
+        tBodies[i2].innerHTML = '';
+      }
+    }
   }
 
   // обновляет <thead>

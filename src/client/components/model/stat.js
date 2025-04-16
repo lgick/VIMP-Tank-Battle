@@ -34,6 +34,13 @@ export default class StatModel {
   update(data) {
     const tBodiesData = data[0];
     const tHeadData = data[1];
+    const fullStatFlag = data[2];
+
+    // если обновление полное, требуется очистить таблицы <tbody>
+    // очищать <thead> не требуется, в tHeadData есть актуальные данные
+    if (fullStatFlag === true) {
+      this.publisher.emit('clearBodies', Object.values(this._bodies));
+    }
 
     // если есть данные для <tbody>
     if (tBodiesData) {
