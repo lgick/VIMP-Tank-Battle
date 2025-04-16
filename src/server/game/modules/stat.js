@@ -252,6 +252,9 @@ class Stat {
       stat = 0;
     }
 
+    // true указывает, что обновление статистики полное
+    stat[2] = true;
+
     return stat;
   }
 }
