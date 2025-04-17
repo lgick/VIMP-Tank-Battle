@@ -339,6 +339,13 @@ class VIMP {
     for (const gameID in this._users) {
       if (this._users.hasOwnProperty(gameID)) {
         const user = this._users[gameID];
+
+        if (user.mapReady === false) {
+          continue;
+        }
+
+        user.socket.send(this._portClear, setIDList);
+
         const firstShotData = [
           {}, // game
           0, // coords
@@ -347,12 +354,6 @@ class VIMP {
           0, // chat
           0, // vote
         ];
-
-        if (user.mapReady === false) {
-          continue;
-        }
-
-        user.socket.send(this._portClear, setIDList);
 
         const nextTeam = user.nextTeam;
         let teamID = user.teamID;
