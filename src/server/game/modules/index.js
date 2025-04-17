@@ -29,10 +29,12 @@ class VIMP {
     };
 
     this._mapTime = data.mapTime; // продолжительность карты
-    this._shotTime = data.shotTime; // время обновления кадра игры
     this._roundTime = data.roundTime; // продолжительность раунда
     this._voteTime = data.voteTime; // время голосования
     this._timeBlockedRemap = data.timeBlockedRemap;
+
+    this._shotTime = data.shotTime; // время обновления кадра игры
+    this._lastShotTime = Date.now();
 
     this._users = {}; // игроки
 
@@ -78,7 +80,12 @@ class VIMP {
     this._stat = new Stat(data.stat, this._teams);
     this._chat = new Chat();
     this._vote = new Vote();
-    this._game = new Game(data.factory, data.parts, data.keys, data.shotTime);
+    this._game = new Game(
+      data.factory,
+      data.parts,
+      data.keys,
+      this._shotTime / 1000,
+    );
 
     this.createMap();
   }
@@ -126,8 +133,14 @@ class VIMP {
 
   // стартует расчет кадров игры
   startShotTimer() {
+    this._lastShotTime = Date.now();
+
     this._shotTimer = setInterval(() => {
-      this.sendShot();
+      const now = Date.now();
+      const dt = (now - this._lastShotTime) / 1000;
+      this._lastShotTime = now;
+
+      this.sendShot(dt);
     }, this._shotTime);
   }
 
@@ -247,9 +260,9 @@ class VIMP {
   }
 
   // создает кадр игры
-  sendShot() {
+  sendShot(dt) {
     // обновление данных и физики
-    this._game.updateData();
+    this._game.updateData(dt);
 
     // список пользователей с готовой картой
     const userList = Object.keys(this._users).filter(

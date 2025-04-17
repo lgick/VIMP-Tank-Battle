@@ -21,7 +21,12 @@ class Game {
     this._bullets = parts.bullets;
 
     this._keysData = keys;
-    this._shotTime = shotTime;
+
+    // Интервал фиксированного шага физики (в секундах)
+    this._timeStep = shotTime || 1 / 60;
+    this._velocityIterations = 10;
+    this._positionIterations = 8;
+    this._accumulator = 0;
 
     this._world = new planck.World({
       gravity: { x: 0, y: 0 },
@@ -156,18 +161,28 @@ class Game {
     }
   }
 
-  // обновляет данные
-  updateData() {
+  // обновляет данные физики
+  updateData(dt) {
+    // накапливаем прошедшее время
+    this._accumulator += dt;
+
+    // делаем столько фиксированных шагов, сколько нужно
+    while (this._accumulator >= this._timeStep) {
+      this._world.step(
+        this._timeStep,
+        this._velocityIterations,
+        this._positionIterations,
+      );
+
+      this._accumulator -= this._timeStep;
+    }
+
+    // обновляем модели игроков
     for (const gameID in this._playersData) {
       if (this._playersData.hasOwnProperty(gameID)) {
         this._playersData[gameID].updateData();
       }
     }
-
-    const velocityIterations = 10;
-    const positionIterations = 8;
-
-    this._world.step(this._shotTime, velocityIterations, positionIterations);
   }
 
   // возвращает данные
