@@ -7,21 +7,21 @@ class Tank extends BaseModel {
 
     this._modelData = data.modelData;
 
-    this._forwardForce = 120000; // Сила, применяемая при ускорении вперед
-    this._reverseForce = 700000; // Сила, применяемая при ускорении назад/торможении
     this._turnTorque = 1000000; // Крутящий момент, применяемый для поворота
-    this._maxForwardSpeed = 110; // Целевая макс. скорость вперед (м/с или юнитов/с)
+    this._maxForwardSpeed = 118; // Целевая макс. скорость вперед (м/с или юнитов/с)
     this._maxReverseSpeed = -75; // Целевая макс. скорость назад (м/с или юнитов/с)
+
+    // Как сильно танк "стремится" к целевой скорости (больше = резче)
+    this._velocityCorrectionFactor = 30.0; // НАСТРАИВАЕМЫЙ ПАРАМЕТР! Начните с 10-20
 
     // Затухание (Damping) контролирует, как быстро танк замедляется естественно
     // или прекращает поворачиваться.
-    // Большие значения = большее затухание (замедляется быстрее).
-    this._linearDamping = 2.0; // Сопротивление линейному движению (как сопротивление воздуха/трение)
+    this._linearDamping = 1.5; // Оставляем небольшое затухание для плавности
     this._angularDamping = 4.0; // Сопротивление вращению
 
     // Сила бокового сцепления
     // Больше значение = меньше занос/скольжение
-    this._lateralGrip = 3.0;
+    this._lateralGrip = 5.0; // Немного увеличил для компенсации возможного заноса при резком ускорении
 
     // параметры орудия
     this._maxGunAngle = 1.4;
@@ -39,7 +39,7 @@ class Tank extends BaseModel {
       ),
       angle: this._modelData.angle * (Math.PI / 180),
       angularDamping: this._angularDamping,
-      linearDamping: this._linearDamping,
+      linearDamping: this._linearDamping, // Используем обновленное значение
       allowSleep: false,
     });
 
@@ -49,7 +49,7 @@ class Tank extends BaseModel {
       new BoxShape(this._modelData.width / 2, this._modelData.height / 2),
       {
         density: 0.3, // плотность (масса = плотность * площадь)
-        friction: 0.01, // небольшое трение может ощущаться естественнее
+        friction: 0.01, // Оставляем низким
         restitution: 0.0, // без упругости (отскока)
       },
     );
@@ -80,44 +80,45 @@ class Tank extends BaseModel {
     const forwardVec = body.getWorldVector(new Vec2(1, 0));
     const currentForwardSpeed = Vec2.dot(currentVelocity, forwardVec);
 
-    // --- НОВАЯ ЛОГИКА: Применение силы против бокового скольжения ---
+    // --- Применение силы против бокового скольжения (ОСТАВЛЯЕМ!) ---
     const lateralVel = this.getLateralVelocity(body);
-    // Чем выше _lateralGrip, тем сильнее гасится боковая скорость
     const sidewaysForceMagnitude =
-      -lateralVel * this._lateralGrip * body.getMass(); // Умножаем на массу для консистентности силы
+      -lateralVel * this._lateralGrip * body.getMass();
     const sidewaysForceVec = body.getWorldVector(
       new Vec2(0, sidewaysForceMagnitude),
-    ); // Сила действует перпендикулярно направлению танка
+    );
     body.applyForceToCenter(sidewaysForceVec, true);
     // -------------------------------------------------------------
 
-    // 1. Применяем силу Вперед/Назад (логика без изменений)
-    let forceMagnitude = 0;
-    if (forward && currentForwardSpeed < this._maxForwardSpeed) {
-      forceMagnitude = this._forwardForce;
+    // 1. --- ГИБРИДНОЕ УПРАВЛЕНИЕ СКОРОСТЬЮ ---
+    let targetSpeed = 0;
+    // Определяем целевую скорость на основе ввода
+    if (forward) {
+      targetSpeed = this._maxForwardSpeed;
     } else if (back) {
-      if (
-        currentForwardSpeed > 0 ||
-        currentForwardSpeed > this._maxReverseSpeed
-      ) {
-        forceMagnitude = -this._reverseForce;
-      }
+      targetSpeed = this._maxReverseSpeed;
     }
-    // В updateData, ДО блока if (forceMagnitude !== 0)
-    console.log(
-      `DEBUG Speed Check -> Current: ${currentForwardSpeed.toFixed(2)}, Max Limit: ${this._maxForwardSpeed}`,
+    // Если ни вперед ни назад, targetSpeed = 0, сила будет тормозить танк к остановке
+
+    const targetVelocity = forwardVec.mul(targetSpeed); // Желаемый вектор скорости
+    const velocityDifference = targetVelocity.sub(currentVelocity); // Разница между желаемой и текущей
+
+    // Применяем силу, чтобы скорректировать скорость к целевой
+    // Не умножаем на dt, так как applyForce работает по времени
+    const correctionForce = velocityDifference.mul(
+      this._velocityCorrectionFactor * body.getMass(),
     );
-    if (forceMagnitude !== 0) {
-      const appliedForce = forwardVec.mul(forceMagnitude);
-      body.applyForceToCenter(appliedForce, true);
-    }
+    body.applyForceToCenter(correctionForce, true);
+    // -----------------------------------------
+
+    // Убираем лог, так как он больше не нужен для отладки этого конкретного случая
+    // console.log(`DEBUG Speed Check -> Current: ${currentForwardSpeed.toFixed(2)}, Max Limit: ${this._maxForwardSpeed}`);
 
     // 2. Применяем крутящий момент для поворота (логика без изменений)
     let torque = 0;
     const baseTurnFactor = 0.5;
     const turnFactor =
       Math.abs(currentForwardSpeed) < 0.1 ? baseTurnFactor : 1.0;
-    // console.log(`Current Fwd Speed: ${currentForwardSpeed.toFixed(2)}, Turn Factor: ${turnFactor.toFixed(2)}`); // Лог можно оставить или убрать
     const turnDirection = currentForwardSpeed < -0.1 ? -1 : 1;
     if (left) {
       torque = -this._turnTorque * turnFactor * turnDirection;
