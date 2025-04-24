@@ -4,7 +4,7 @@ export default class Tank extends Container {
   constructor(data) {
     super();
 
-    this.zIndex = 2;
+    this.zIndex = 3;
 
     this.body = new Graphics();
     this.gun = new Graphics();
@@ -38,12 +38,7 @@ export default class Tank extends Container {
     // Координаты танка на карте - центр его body
     this.body
       .clear()
-      .rect(
-        -(this._width / 2),
-        -(this._height / 2),
-        this._width,
-        this._height,
-      )
+      .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
       .fill(0x555555)
       .rect(
         -(this._width / 2) + 1,

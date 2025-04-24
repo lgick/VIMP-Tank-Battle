@@ -163,6 +163,13 @@ class Game {
 
   // обновляет данные физики
   updateData(dt) {
+    // обновляем модели игроков
+    for (const gameID in this._playersData) {
+      if (this._playersData.hasOwnProperty(gameID)) {
+        this._playersData[gameID].updateData(dt);
+      }
+    }
+
     // накапливаем прошедшее время
     this._accumulator += dt;
 
@@ -175,13 +182,6 @@ class Game {
       );
 
       this._accumulator -= this._timeStep;
-    }
-
-    // обновляем модели игроков
-    for (const gameID in this._playersData) {
-      if (this._playersData.hasOwnProperty(gameID)) {
-        this._playersData[gameID].updateData();
-      }
     }
   }
 
