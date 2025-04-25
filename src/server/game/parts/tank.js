@@ -1,3 +1,5 @@
+// --- START OF FILE tank.js ---
+
 import BaseModel from './baseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck'; // Импортируем Rot для вращений
 
@@ -7,23 +9,19 @@ class Tank extends BaseModel {
 
     this._modelData = data.modelData;
 
-    this._turnTorque = 1000000; // Крутящий момент, применяемый для поворота
-    this._maxForwardSpeed = 118; // Целевая макс. скорость вперед (м/с или юнитов/с)
-    this._maxReverseSpeed = -75; // Целевая макс. скорость назад (м/с или юнитов/с)
+    // --- Параметры Кинематического Движения ---
+    this._speed = 0; // Текущая *расчетная* скорость (не из физики)
+    this._maxSpeed = 240; // Желаемая максимальная скорость вперед (ед/с)
+    this._maxReverseSpeed = -100; // Желаемая максимальная скорость назад (ед/с)
+    this._accel = 1000; // Ускорение при газе (ед/с²) - Увеличено
+    this._brakeDecel = 1500; // Торможение/"газ назад" (ед/с²) - Увеличено
+    this._coastDecel = 800; // Естественное замедление (ед/с²) - Увеличено
 
-    // Как сильно танк "стремится" к целевой скорости (больше = резче)
-    this._velocityCorrectionFactor = 30.0; // НАСТРАИВАЕМЫЙ ПАРАМЕТР! Начните с 10-20
+    // --- Параметры Физического Поворота ---
+    this._turnTorque = 1000000; // Крутящий момент для поворота
+    this._angularDamping = 5.0; // Сопротивление вращению (можно подстроить)
 
-    // Затухание (Damping) контролирует, как быстро танк замедляется естественно
-    // или прекращает поворачиваться.
-    this._linearDamping = 1.5; // Оставляем небольшое затухание для плавности
-    this._angularDamping = 4.0; // Сопротивление вращению
-
-    // Сила бокового сцепления
-    // Больше значение = меньше занос/скольжение
-    this._lateralGrip = 5.0; // Немного увеличил для компенсации возможного заноса при резком ускорении
-
-    // параметры орудия
+    // --- Параметры орудия ---
     this._maxGunAngle = 1.4;
     this._gunAngleStep = 0.05;
     this._lastGunRotationTime = 0;
@@ -38,8 +36,8 @@ class Tank extends BaseModel {
         this._modelData.position[1],
       ),
       angle: this._modelData.angle * (Math.PI / 180),
-      angularDamping: this._angularDamping,
-      linearDamping: this._linearDamping, // Используем обновленное значение
+      angularDamping: this._angularDamping, // Оставляем для поворотов
+      linearDamping: 0.0, // ОБНУЛЯЕМ! Линейное затухание мешает setLinearVelocity
       allowSleep: false,
     });
 
@@ -48,9 +46,9 @@ class Tank extends BaseModel {
     const fixture = this._body.createFixture(
       new BoxShape(this._modelData.width / 2, this._modelData.height / 2),
       {
-        density: 0.3, // плотность (масса = плотность * площадь)
-        friction: 0.01, // Оставляем низким
-        restitution: 0.0, // без упругости (отскока)
+        density: 0.3, // Плотность все еще влияет на столкновения и немного на повороты
+        friction: 0.01,
+        restitution: 0.0,
       },
     );
 
@@ -63,11 +61,8 @@ class Tank extends BaseModel {
     return x * (1 - a) + y * a;
   }
 
-  // получение боковой скорости
-  getLateralVelocity(body) {
-    const currentRightNormal = body.getWorldVector(new Vec2(0, 1)); // Вектор вправо отн. танка
-    return Vec2.dot(currentRightNormal, body.getLinearVelocity()); // Проекция скорости на правый вектор
-  }
+  // получение боковой скорости - больше не нужно для основной логики
+  // getLateralVelocity(body) { ... }
 
   updateData(dt) {
     const forward = Boolean(this.currentKeys & this.keysData.forward);
@@ -76,50 +71,54 @@ class Tank extends BaseModel {
     const right = Boolean(this.currentKeys & this.keysData.right);
 
     const body = this._body;
-    const currentVelocity = body.getLinearVelocity();
-    const forwardVec = body.getWorldVector(new Vec2(1, 0));
-    const currentForwardSpeed = Vec2.dot(currentVelocity, forwardVec);
 
-    // --- Применение силы против бокового скольжения (ОСТАВЛЯЕМ!) ---
-    const lateralVel = this.getLateralVelocity(body);
-    const sidewaysForceMagnitude =
-      -lateralVel * this._lateralGrip * body.getMass();
-    const sidewaysForceVec = body.getWorldVector(
-      new Vec2(0, sidewaysForceMagnitude),
-    );
-    body.applyForceToCenter(sidewaysForceVec, true);
-    // -------------------------------------------------------------
-
-    // 1. --- ГИБРИДНОЕ УПРАВЛЕНИЕ СКОРОСТЬЮ ---
-    let targetSpeed = 0;
-    // Определяем целевую скорость на основе ввода
+    // 1. --- КИНЕМАТИЧЕСКИЙ РАСЧЕТ СКОРОСТИ ---
+    // Ускорение / Торможение / Замедление
     if (forward) {
-      targetSpeed = this._maxForwardSpeed;
+      this._speed += this._accel * dt;
     } else if (back) {
-      targetSpeed = this._maxReverseSpeed;
+      // Используем _brakeDecel и для торможения при движении вперед, и для ускорения назад
+      this._speed -= this._brakeDecel * dt;
+    } else {
+      // Естественное замедление (coasting)
+      if (this._speed > 0.1) {
+        // Небольшой порог для избежания дрожания около нуля
+        this._speed = Math.max(0, this._speed - this._coastDecel * dt);
+      } else if (this._speed < -0.1) {
+        this._speed = Math.min(0, this._speed + this._coastDecel * dt);
+      } else {
+        this._speed = 0; // Остановка если скорость очень мала
+      }
     }
-    // Если ни вперед ни назад, targetSpeed = 0, сила будет тормозить танк к остановке
 
-    const targetVelocity = forwardVec.mul(targetSpeed); // Желаемый вектор скорости
-    const velocityDifference = targetVelocity.sub(currentVelocity); // Разница между желаемой и текущей
-
-    // Применяем силу, чтобы скорректировать скорость к целевой
-    // Не умножаем на dt, так как applyForce работает по времени
-    const correctionForce = velocityDifference.mul(
-      this._velocityCorrectionFactor * body.getMass(),
+    // Ограничение скорости
+    this._speed = Math.max(
+      this._maxReverseSpeed,
+      Math.min(this._maxSpeed, this._speed),
     );
-    body.applyForceToCenter(correctionForce, true);
+
+    // Применение рассчитанной скорости к телу
+    const angle = body.getAngle();
+    const vx = Math.cos(angle) * this._speed;
+    const vy = Math.sin(angle) * this._speed;
+    body.setLinearVelocity(new Vec2(vx, vy)); // <-- Прямое задание скорости!
     // -----------------------------------------
+    //
+    //
+    //
 
-    // Убираем лог, так как он больше не нужен для отладки этого конкретного случая
-    // console.log(`DEBUG Speed Check -> Current: ${currentForwardSpeed.toFixed(2)}, Max Limit: ${this._maxForwardSpeed}`);
-
-    // 2. Применяем крутящий момент для поворота (логика без изменений)
+    // 2. --- ФИЗИЧЕСКОЕ УПРАВЛЕНИЕ ПОВОРОТОМ ---
     let torque = 0;
-    const baseTurnFactor = 0.5;
+    const currentForwardSpeed = this._speed; // Используем нашу расчетную скорость для turnFactor
+    const baseTurnFactor = 0.5; // Можно оставить или сделать 1.0 для поворота на месте
     const turnFactor =
       Math.abs(currentForwardSpeed) < 0.1 ? baseTurnFactor : 1.0;
-    const turnDirection = currentForwardSpeed < -0.1 ? -1 : 1;
+    const turnDirection = currentForwardSpeed < -0.1 ? -1 : 1; // Инверсия руля при движении назад
+
+    console.log(
+      `DEBUG Speed Check -> Current: ${currentForwardSpeed.toFixed(2)}, Max Limit: ${this._maxSpeed}`,
+    );
+
     if (left) {
       torque = -this._turnTorque * turnFactor * turnDirection;
     }
@@ -127,11 +126,12 @@ class Tank extends BaseModel {
       torque = this._turnTorque * turnFactor * turnDirection;
     }
     if (torque !== 0) {
-      body.applyTorque(torque, true);
+      body.applyTorque(torque, true); // Применяем крутящий момент
     }
+    // -----------------------------------------
 
-    // --- Остальной код (орудие, пули, getData и т.д.) без изменений ---
-    // ... (весь код ниже остается прежним) ...
+    // --- Логика Орудия (без изменений) ---
+    // ... (код поворота башни, стрельбы и т.д. остается здесь) ...
     if (this.currentKeys & this.keysData.gCenter) {
       this._centeringGun = true;
     }
@@ -190,7 +190,7 @@ class Tank extends BaseModel {
           new Rot(totalAngle),
           new Vec2(1, 0),
         );
-        const muzzleVelocity = 100;
+        const muzzleVelocity = 100; // Можно увеличить для более быстрых пуль
         const gunTipVelocity =
           this._body.getLinearVelocityFromWorldPoint(spawnPos);
         const finalBulletVelocity = Vec2.add(
@@ -213,6 +213,7 @@ class Tank extends BaseModel {
     this.currentKeys = null;
   }
 
+  // --- Остальные методы (getBody, getData и т.д.) без изменений ---
   getBody() {
     return this._body;
   }
