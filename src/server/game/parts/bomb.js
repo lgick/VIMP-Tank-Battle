@@ -16,7 +16,7 @@ class Bomb {
     });
 
     this._body.createFixture(new BoxShape(width / 2, height / 2), {
-      density: this._bulletSet.density,
+      density: 20,
       isSensor: true, // фиксируем как сенсор, чтобы не было физического столкновения
     });
   }

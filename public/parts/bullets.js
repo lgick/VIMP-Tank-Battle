@@ -2,7 +2,6 @@ export default {
   // bullet
   b1: {
     time: 10000,
-    density: 200,
     speed: 30,
     power: 1,
     width: 5,
@@ -13,7 +12,6 @@ export default {
   // bomb
   b2: {
     time: 5000,
-    density: 20,
     speed: 30,
     power: 10,
     width: 32,

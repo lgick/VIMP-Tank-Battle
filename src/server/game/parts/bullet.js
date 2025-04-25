@@ -23,10 +23,9 @@ class Bullet {
     // линейная скорость
     this._body.setLinearVelocity(this._bulletData.velocity);
 
-    this._body.createFixture(
-      new CircleShape(width / 2),
-      this._bulletSet.density,
-    );
+    this._body.createFixture(new CircleShape(width / 2), {
+      density: 200,
+    });
   }
 
   // Возвращает тело модели
