@@ -1,7 +1,5 @@
-// --- START OF FILE tank.js ---
-
 import BaseModel from './baseModel.js';
-import { BoxShape, Vec2, Rot } from 'planck'; // Импортируем Rot для вращений
+import { BoxShape, Vec2, Rot } from 'planck';
 
 class Tank extends BaseModel {
   constructor(data) {
@@ -9,19 +7,23 @@ class Tank extends BaseModel {
 
     this._modelData = data.modelData;
 
-    // --- Параметры Кинематического Движения ---
-    this._speed = 0; // Текущая *расчетная* скорость (не из физики)
-    this._maxSpeed = 240; // Желаемая максимальная скорость вперед (ед/с)
-    this._maxReverseSpeed = -100; // Желаемая максимальная скорость назад (ед/с)
-    this._accel = 1000; // Ускорение при газе (ед/с²) - Увеличено
-    this._brakeDecel = 1500; // Торможение/"газ назад" (ед/с²) - Увеличено
-    this._coastDecel = 800; // Естественное замедление (ед/с²) - Увеличено
+    this._forwardForce = 320000; // сила, применяемая при ускорении вперед
+    this._reverseForce = 700000; // сила, применяемая при ускорении назад/торможении
+    this._turnTorque = 1000000; // крутящий момент, применяемый для поворота
+    this._maxForwardSpeed = 240; // целевая макс. скорость вперед (м/с или юнитов/с)
+    this._maxReverseSpeed = -100; // целевая макс. скорость назад (м/с или юнитов/с)
 
-    // --- Параметры Физического Поворота ---
-    this._turnTorque = 1000000; // Крутящий момент для поворота
-    this._angularDamping = 5.0; // Сопротивление вращению (можно подстроить)
+    // затухание (Damping) контролирует, как быстро танк замедляется естественно
+    // или прекращает поворачиваться.
+    // большие значения = большее затухание (замедляется быстрее).
+    this._linearDamping = 2.0; // сопротивление линейному движению (как сопротивление воздуха/трение)
+    this._angularDamping = 2.0; // сопротивление вращению
 
-    // --- Параметры орудия ---
+    // сила бокового сцепления
+    // больше значение = меньше занос/скольжение
+    this._lateralGrip = 2.0;
+
+    // параметры орудия
     this._maxGunAngle = 1.4;
     this._gunAngleStep = 0.05;
     this._lastGunRotationTime = 0;
@@ -36,19 +38,19 @@ class Tank extends BaseModel {
         this._modelData.position[1],
       ),
       angle: this._modelData.angle * (Math.PI / 180),
-      angularDamping: this._angularDamping, // Оставляем для поворотов
-      linearDamping: 0.0, // ОБНУЛЯЕМ! Линейное затухание мешает setLinearVelocity
+      angularDamping: this._angularDamping,
+      linearDamping: this._linearDamping,
       allowSleep: false,
     });
 
     this._body.gunRotation = 0;
 
-    const fixture = this._body.createFixture(
+    this._body.createFixture(
       new BoxShape(this._modelData.width / 2, this._modelData.height / 2),
       {
-        density: 0.3, // Плотность все еще влияет на столкновения и немного на повороты
-        friction: 0.01,
-        restitution: 0.0,
+        density: 0.3, // плотность (масса = плотность * площадь)
+        friction: 0.01, // небольшое трение может ощущаться естественнее
+        restitution: 0.0, // без упругости (отскока)
       },
     );
 
@@ -61,8 +63,11 @@ class Tank extends BaseModel {
     return x * (1 - a) + y * a;
   }
 
-  // получение боковой скорости - больше не нужно для основной логики
-  // getLateralVelocity(body) { ... }
+  // получение боковой скорости
+  getLateralVelocity(body) {
+    const currentRightNormal = body.getWorldVector(new Vec2(0, 1)); // вектор вправо отн. танка
+    return Vec2.dot(currentRightNormal, body.getLinearVelocity()); // проекция скорости на правый вектор
+  }
 
   updateData(dt) {
     const forward = Boolean(this.currentKeys & this.keysData.forward);
@@ -71,70 +76,67 @@ class Tank extends BaseModel {
     const right = Boolean(this.currentKeys & this.keysData.right);
 
     const body = this._body;
+    const currentVelocity = body.getLinearVelocity();
+    const forwardVec = body.getWorldVector(new Vec2(1, 0));
+    const currentForwardSpeed = Vec2.dot(currentVelocity, forwardVec);
 
-    // 1. --- КИНЕМАТИЧЕСКИЙ РАСЧЕТ СКОРОСТИ ---
-    // Ускорение / Торможение / Замедление
-    if (forward) {
-      this._speed += this._accel * dt;
+    // применение силы против бокового скольжения
+    const lateralVel = this.getLateralVelocity(body);
+    // чем выше _lateralGrip, тем сильнее гасится боковая скорость
+    const sidewaysForceMagnitude =
+      -lateralVel * this._lateralGrip * body.getMass(); // умножаем на массу для консистентности силы
+    const sidewaysForceVec = body.getWorldVector(
+      new Vec2(0, sidewaysForceMagnitude),
+    ); // сила действует перпендикулярно направлению танка
+    body.applyForceToCenter(sidewaysForceVec, true);
+    // -------------------------------------------------------------
+
+    // сила Вперед/Назад
+    let forceMagnitude = 0;
+    if (forward && currentForwardSpeed < this._maxForwardSpeed) {
+      forceMagnitude = this._forwardForce;
     } else if (back) {
-      // Используем _brakeDecel и для торможения при движении вперед, и для ускорения назад
-      this._speed -= this._brakeDecel * dt;
-    } else {
-      // Естественное замедление (coasting)
-      if (this._speed > 0.1) {
-        // Небольшой порог для избежания дрожания около нуля
-        this._speed = Math.max(0, this._speed - this._coastDecel * dt);
-      } else if (this._speed < -0.1) {
-        this._speed = Math.min(0, this._speed + this._coastDecel * dt);
-      } else {
-        this._speed = 0; // Остановка если скорость очень мала
+      if (
+        currentForwardSpeed > 0 ||
+        currentForwardSpeed > this._maxReverseSpeed
+      ) {
+        forceMagnitude = -this._reverseForce;
       }
     }
 
-    // Ограничение скорости
-    this._speed = Math.max(
-      this._maxReverseSpeed,
-      Math.min(this._maxSpeed, this._speed),
-    );
+    //console.log(
+    //  `DEBUG Speed Check -> Current: ${currentForwardSpeed.toFixed(2)}, Max Limit: ${this._maxForwardSpeed}`,
+    //);
 
-    // Применение рассчитанной скорости к телу
-    const angle = body.getAngle();
-    const vx = Math.cos(angle) * this._speed;
-    const vy = Math.sin(angle) * this._speed;
-    body.setLinearVelocity(new Vec2(vx, vy)); // <-- Прямое задание скорости!
-    // -----------------------------------------
-    //
-    //
-    //
+    if (forceMagnitude !== 0) {
+      const appliedForce = forwardVec.mul(forceMagnitude);
+      body.applyForceToCenter(appliedForce, true);
+    }
 
-    // 2. --- ФИЗИЧЕСКОЕ УПРАВЛЕНИЕ ПОВОРОТОМ ---
+    // крутящий момент для поворота
     let torque = 0;
-    const currentForwardSpeed = this._speed; // Используем нашу расчетную скорость для turnFactor
-    const baseTurnFactor = 0.5; // Можно оставить или сделать 1.0 для поворота на месте
+    const baseTurnFactor = 0.5;
     const turnFactor =
       Math.abs(currentForwardSpeed) < 0.1 ? baseTurnFactor : 1.0;
-    const turnDirection = currentForwardSpeed < -0.1 ? -1 : 1; // Инверсия руля при движении назад
 
-    console.log(
-      `DEBUG Speed Check -> Current: ${currentForwardSpeed.toFixed(2)}, Max Limit: ${this._maxSpeed}`,
-    );
+    const turnDirection = currentForwardSpeed < -0.1 ? -1 : 1;
 
     if (left) {
       torque = -this._turnTorque * turnFactor * turnDirection;
     }
+
     if (right) {
       torque = this._turnTorque * turnFactor * turnDirection;
     }
-    if (torque !== 0) {
-      body.applyTorque(torque, true); // Применяем крутящий момент
-    }
-    // -----------------------------------------
 
-    // --- Логика Орудия (без изменений) ---
-    // ... (код поворота башни, стрельбы и т.д. остается здесь) ...
+    if (torque !== 0) {
+      body.applyTorque(torque, true);
+    }
+
     if (this.currentKeys & this.keysData.gCenter) {
       this._centeringGun = true;
     }
+
     if (this._centeringGun) {
       this._body.gunRotation = this.lerp(
         this._body.gunRotation,
@@ -146,7 +148,9 @@ class Tank extends BaseModel {
         this._centeringGun = false;
       }
     }
+
     const now = Date.now();
+
     if (this.currentKeys & this.keysData.gLeft) {
       if (
         now - this._lastGunRotationTime > this._gunRotationInterval &&
@@ -157,6 +161,7 @@ class Tank extends BaseModel {
         this._centeringGun = false;
       }
     }
+
     if (this.currentKeys & this.keysData.gRight) {
       if (
         now - this._lastGunRotationTime > this._gunRotationInterval &&
@@ -167,6 +172,7 @@ class Tank extends BaseModel {
         this._centeringGun = false;
       }
     }
+
     if (this.currentKeys & this.keysData.fire) {
       if (this.bulletConstructorName === 'bomb') {
         const extraOffset = 20;
@@ -190,7 +196,7 @@ class Tank extends BaseModel {
           new Rot(totalAngle),
           new Vec2(1, 0),
         );
-        const muzzleVelocity = 100; // Можно увеличить для более быстрых пуль
+        const muzzleVelocity = 100;
         const gunTipVelocity =
           this._body.getLinearVelocityFromWorldPoint(spawnPos);
         const finalBulletVelocity = Vec2.add(
@@ -204,19 +210,22 @@ class Tank extends BaseModel {
         };
       }
     }
+
     if (this.currentKeys & this.keysData.nextBullet) {
       this.turnUserBullet();
     }
+
     if (this.currentKeys & this.keysData.prevBullet) {
       this.turnUserBullet(true);
     }
+
     this.currentKeys = null;
   }
 
-  // --- Остальные методы (getBody, getData и т.д.) без изменений ---
   getBody() {
     return this._body;
   }
+
   getData() {
     if (this.fullUserData === true) {
       this.fullUserData = false;
@@ -226,6 +235,7 @@ class Tank extends BaseModel {
     const angle = this._body.getAngle();
     return [pos.x, pos.y, angle, this._body.gunRotation];
   }
+
   getFullData() {
     const pos = this._body.getPosition();
     const angle = this._body.getAngle();
@@ -240,6 +250,7 @@ class Tank extends BaseModel {
       this._modelData.height,
     ];
   }
+
   getBulletData() {
     const bulletData = this._bulletData;
     this._bulletData = null;
