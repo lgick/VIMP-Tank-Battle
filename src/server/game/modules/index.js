@@ -457,13 +457,14 @@ class VIMP {
   // меняет ник игрока
   changeName(gameID, name) {
     const user = this._users[gameID];
+    const oldName = user.name;
 
     if (this._expressions.name.test(name)) {
       name = this.checkName(name);
       user.name = name;
       this._game.changeName(gameID, name);
       this._stat.updateUser(gameID, user.teamID, { name });
-      this._chat.pushSystem('n:1', gameID);
+      this._chat.pushSystem(`n:1:${oldName},${name}`);
       user.socket.send(this._portMisc, {
         key: 'localstorageNameReplace',
         value: name,
