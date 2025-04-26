@@ -9,14 +9,18 @@ export default class Tank extends Container {
     this.body = new Graphics();
     this.gun = new Graphics();
 
-    // Параметры с сервера: [x, y, rotation, gunRotation, type, name, width, height]
+    // параметры с сервера: [x, y, rotation, gunRotation, type, name, size]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this.rotation = data[2] || 0;
     this.gun.rotation = data[3] || 0;
     this.label = data[5];
-    this._width = data[6];
-    this._height = data[7];
+
+    this._size = data[6];
+
+    // соотношение сторон танка: 4(width):3(height)
+    this._width = this._size * 4;
+    this._height = this._size * 3;
 
     this.create(data[4]);
   }
@@ -34,8 +38,8 @@ export default class Tank extends Container {
       this.colorB = 0x333333;
     }
 
-    // Рисование корпуса (body)
-    // Координаты танка на карте - центр его body
+    // рисование корпуса (body)
+    // координаты танка на карте - центр его body
     this.body
       .clear()
       .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
@@ -62,30 +66,34 @@ export default class Tank extends Container {
       )
       .fill(this.colorA);
 
-    // Первый полигон пушки
+    // рисование пушки
+    // рассчитываем ЕДИНЫЙ коэффициент масштабирования.
+
+    // первый полигон пушки (основание)
     this.gun
       .clear()
-      .moveTo(16, -5)
-      .lineTo(5, -12)
-      .lineTo(-5, -12)
-      .lineTo(-16, -5)
-      .lineTo(-16, 5)
-      .lineTo(-5, 12)
-      .lineTo(5, 12)
-      .lineTo(16, 5)
+      .moveTo(1.33 * this._size, -0.42 * this._size)
+      .lineTo(0.42 * this._size, -1 * this._size)
+      .lineTo(-0.42 * this._size, -1 * this._size)
+      .lineTo(-1.33 * this._size, -0.42 * this._size)
+      .lineTo(-1.33 * this._size, 0.42 * this._size)
+      .lineTo(-0.42 * this._size, 1 * this._size)
+      .lineTo(0.42 * this._size, 1 * this._size)
+      .lineTo(1.33 * this._size, 0.42 * this._size)
       .closePath()
       .fill(this.colorB)
-      .stroke({ width: 2, color: 0xaaaaaa })
+      .stroke({ width: 0.17 * this._size, color: 0xaaaaaa })
 
-      // Второй полигон пушки
-      .moveTo(28, -3)
-      .lineTo(3, -3)
-      .lineTo(3, 3)
-      .lineTo(28, 3)
+      // второй полигон пушки (ствол)
+      .moveTo(2.33 * this._size, -0.25 * this._size)
+      .lineTo(0.25 * this._size, -0.25 * this._size)
+      .lineTo(0.25 * this._size, 0.25 * this._size)
+      .lineTo(2.33 * this._size, 0.25 * this._size)
       .closePath()
-      .stroke({ width: 2, color: 0xaaaaaa })
+      .stroke({ width: 0.17 * this._size, color: 0xaaaaaa })
       .fill(this.colorB);
 
+    // добавляем дочерние элементы
     this.addChild(this.body);
     this.addChild(this.gun);
   }
@@ -96,7 +104,7 @@ export default class Tank extends Container {
     this.rotation = params[2];
     this.gun.rotation = params[3];
 
-    // Если передан тип, пересоздаем графику
+    // если передан тип, пересоздаем графику
     if (typeof params[4] === 'number') {
       this.create(params[4]);
     }
