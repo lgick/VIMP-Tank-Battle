@@ -1,8 +1,7 @@
 export default {
   // tank
   m1: {
-    width: 48,
-    height: 36,
+    size: 10, // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
     constructor: 'tank',
     currentBullet: 'b1',
     bullets: {
