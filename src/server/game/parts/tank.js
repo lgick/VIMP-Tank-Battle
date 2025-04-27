@@ -2,6 +2,9 @@ import BaseModel from './baseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck';
 
 class Tank extends BaseModel {
+  // максимальный шаг в 1/30 секунды
+  _MAX_DT = 1 / 30;
+
   // порог скорости для фактора поворота
   _TURN_SPEED_THRESHOLD = 20;
 
@@ -38,9 +41,9 @@ class Tank extends BaseModel {
 
     // параметры орудия
     this._maxGunAngle = 1.4;
-    this._gunAngleStep = 0.05;
-    this._lastGunRotationTime = 0;
-    this._gunRotationInterval = 10;
+    this._gunAngleStep = 0.02;
+    this._gunRotationTimer = 0; // таймер для накопления dt (в мс)
+    this._gunRotationInterval = 10; // интервал в миллисекундах
 
     this._bulletData = null;
 
@@ -95,7 +98,12 @@ class Tank extends BaseModel {
     const prevBullet = Boolean(this.currentKeys & this.keysData.prevBullet);
 
     const body = this._body;
-    const now = Date.now();
+
+    // ограничение максимального dt, оно может сильно скакать
+    dt = Math.min(dt, this._MAX_DT);
+
+    // накапливаем время dt для таймера башни
+    this._gunRotationTimer += dt * 1000;
 
     // сначала обновляем поворот башни (если нажаты клавиши)
     // это гарантирует, что gunRotation актуален перед расчетом выстрела
@@ -120,23 +128,23 @@ class Tank extends BaseModel {
     // поворот башни
     if (gLeft) {
       if (
-        now - this._lastGunRotationTime > this._gunRotationInterval &&
+        this._gunRotationTimer >= this._gunRotationInterval &&
         this._body.gunRotation > -this._maxGunAngle
       ) {
         this._body.gunRotation -= this._gunAngleStep;
-        this._lastGunRotationTime = now;
-        this._centeringGun = false; // Отменяем центровку при ручном повороте
+        this._gunRotationTimer -= this._gunRotationInterval;
+        this._centeringGun = false;
       }
     }
 
     if (gRight) {
       if (
-        now - this._lastGunRotationTime > this._gunRotationInterval &&
+        this._gunRotationTimer >= this._gunRotationInterval &&
         this._body.gunRotation < this._maxGunAngle
       ) {
         this._body.gunRotation += this._gunAngleStep;
-        this._lastGunRotationTime = now;
-        this._centeringGun = false; // Отменяем центровку при ручном повороте
+        this._gunRotationTimer -= this._gunRotationInterval;
+        this._centeringGun = false;
       }
     }
 
