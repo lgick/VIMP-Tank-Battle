@@ -22,8 +22,8 @@ class Game {
 
     this._keysData = keys;
 
-    // Интервал фиксированного шага физики (в секундах)
-    this._timeStep = shotTime || 1 / 60;
+    // интервал фиксированного шага физики (в секундах, например 1 / 120)
+    this._timeStep = shotTime;
     this._velocityIterations = 10;
     this._positionIterations = 8;
     this._accumulator = 0;
