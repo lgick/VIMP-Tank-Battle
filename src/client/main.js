@@ -491,7 +491,7 @@ ws.onclose = e => {
     const msg = unpacking(e.reason);
     socketMethods[msg[0]](msg[1]);
   } else {
-    socketMethods[5]([4]);
+    socketMethods[5]([3]);
   }
 
   console.log('disconnect');
