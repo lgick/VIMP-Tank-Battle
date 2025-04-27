@@ -2,6 +2,17 @@ import BaseModel from './baseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck';
 
 class Tank extends BaseModel {
+  // порог скорости для фактора поворота
+  _TURN_SPEED_THRESHOLD = 20;
+
+  // фактор поворота при низкой скорости
+  _BASE_TURN_FACTOR_RATIO = 0.5;
+
+  // множитель эффективности поворота при движении назад
+  // (меньше 1 = менее резкий поворот назад)
+  // например, 0.5 - 0.8
+  _REVERSE_TURN_MULTIPLIER = 0.7;
+
   constructor(data) {
     super(data);
 
@@ -24,11 +35,6 @@ class Tank extends BaseModel {
     // сила бокового сцепления
     // больше значение = меньше занос/скольжение
     this._lateralGrip = 2.0;
-
-    // множитель эффективности поворота при движении назад
-    // (меньше 1 = менее резкий поворот назад)
-    // например, 0.5 - 0.8
-    this._reverseTurnMultiplier = 0.5;
 
     // параметры орудия
     this._maxGunAngle = 1.4;
@@ -185,8 +191,7 @@ class Tank extends BaseModel {
 
     // сила против бокового скольжения
     const lateralVel = this.getLateralVelocity(body);
-    const sidewaysForceMagnitude =
-      -lateralVel * this._lateralGrip * body.getMass();
+    const sidewaysForceMagnitude = -lateralVel * this._lateralGrip * this._mass;
     const sidewaysForceVec = body.getWorldVector(
       new Vec2(0, sidewaysForceMagnitude),
     );
@@ -220,22 +225,20 @@ class Tank extends BaseModel {
 
     // крутящий момент для поворота
     let torque = 0;
-    const baseTurnFactorRatio = 0.5; // минимальный фактор поворота при низкой скорости
-    const speedThreshold = 0.1; // порог скорости для минимального фактора
-    let turnFactor;
+    let turnFactor = 1.0;
 
     // если скорость очень мала, используем базовый фактор
-    if (Math.abs(currentForwardSpeed) < speedThreshold) {
-      turnFactor = baseTurnFactorRatio;
-      // если нажата "назад" и скорость не нулевая, используем множитель для реверса
-    } else if (back) {
-      turnFactor = this._reverseTurnMultiplier; // применяем понижающий коэффициент
-      // иначе (движение вперед со скоростью > порога) используем полный фактор
-    } else {
-      turnFactor = 1.0;
+    if (Math.abs(currentForwardSpeed) < this._TURN_SPEED_THRESHOLD) {
+      turnFactor = this._BASE_TURN_FACTOR_RATIO;
     }
 
-    // используем currentForwardSpeed, полученный из currentVelocity
+    // если движение назад
+    // дополнительно умножаем фактор на _REVERSE_TURN_MULTIPLIER
+    if (back) {
+      turnFactor *= this._REVERSE_TURN_MULTIPLIER;
+    }
+
+    // определяем направление руля по клавише "назад"
     const turnDirection = back ? -1 : 1;
 
     // масштабируем базовый фактор инерцией
