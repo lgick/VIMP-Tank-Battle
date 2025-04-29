@@ -4,16 +4,16 @@ export default {
   // ***** parts ***** //
   parts: {
     gameSets: {
-      c1: ['map', 'map_radar'],
+      c1: ['map', 'mapRadar'],
       c2: ['map'],
-      m1: ['tank', 'tank_radar'],
+      m1: ['tank', 'tankRadar'],
       b1: ['gun'],
       b2: ['bomb'],
     },
     entitiesOnCanvas: {
       map: 'vimp',
-      map_radar: 'radar',
-      tank_radar: 'radar',
+      mapRadar: 'radar',
+      tankRadar: 'radar',
       tank: 'vimp',
       gun: 'vimp',
       bomb: 'vimp',
