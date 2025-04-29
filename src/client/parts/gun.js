@@ -1,6 +1,6 @@
 import { Graphics, Ticker, Container } from 'pixi.js';
 
-export default class Bullet extends Container {
+export default class Gun extends Container {
   constructor(params) {
     super();
 
@@ -15,8 +15,8 @@ export default class Bullet extends Container {
     this._width = params[3];
     this._height = params[4];
     this._time = params[5] / 10;
-    this.vX = params[6].x;
-    this.vY = params[6].y;
+    this.vX = params[6][0];
+    this.vY = params[6][1];
 
     Ticker.shared.add(this.updateTime, this);
 

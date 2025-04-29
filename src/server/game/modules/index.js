@@ -19,7 +19,6 @@ class VIMP {
     this._mapList = Object.keys(this._maps); // список карт массивом
     this._mapsInVote = data.mapsInVote; // карт в голосовании
     this._mapSetID = data.mapSetID; // дефолтный id конструктора карт
-    this._defaultBullet = data.defaultBullet; // дефолтные значения пуль моделей
     this._currentMap = data.currentMap; // название текущей карты
     this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
 
@@ -345,7 +344,7 @@ class VIMP {
 
     this._panel.reset();
 
-    const setIDList = this._game.removePlayersAndBullets();
+    const setIDList = this._game.removePlayersAndShots();
 
     this._game.createMap(this._currentMapData);
 

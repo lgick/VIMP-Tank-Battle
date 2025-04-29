@@ -10,7 +10,7 @@ export default class GameModel {
   // Создает экземпляры вида:
   // this._data['Tank']['01']   - игрок c id '01'
   // this._data['Map']['1']     - данные карты на 1 слое
-  // this._data['Bullet']['f2'] - пуля с id 'f2'
+  // this._data['Gun']['f2'] - пуля с id 'f2'
   //
   // constructor - имя конструктора для экземпляра
   // id          - id экземпляра

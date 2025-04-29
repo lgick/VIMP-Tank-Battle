@@ -18,7 +18,7 @@ class Game {
 
     this._mapConstructor = parts.mapConstructor;
     this._models = parts.models;
-    this._bullets = parts.bullets;
+    this._weapons = parts.weapons;
 
     this._keysData = keys;
 
@@ -40,33 +40,33 @@ class Game {
     this._playersData = {};
 
     // данные пуль
-    this._bulletsData = {};
+    this._shotsData = {};
 
     // созданные пули в момент времени (время: массив из id пуль)
-    this._bulletsAtTime = {};
+    this._shotsAtTime = {};
 
     // id для пуль
-    this._currentBulletID = 0;
+    this._currentShotID = 0;
 
     // время жизни пули (текущее, минимальное, максимальное)
-    this._bulletTime = this._minBulletTime = this._maxBulletTime = 1;
+    this._shotTime = this._minShotTime = this._maxShotTime = 1;
 
     // вычисление максимального времени жизни пули
-    for (const bullet in this._bullets) {
-      if (this._bullets.hasOwnProperty(bullet)) {
-        time = this._bullets[bullet].time * 2;
+    for (const weapon in this._weapons) {
+      if (this._weapons.hasOwnProperty(weapon)) {
+        time = this._weapons[weapon].time * 2;
 
-        if (time > this._maxBulletTime) {
-          this._maxBulletTime = time;
+        if (time > this._maxShotTime) {
+          this._maxShotTime = time;
         }
       }
     }
 
-    time = this._maxBulletTime;
+    time = this._maxShotTime;
 
     // создание пустых данных пуль
-    while (time >= this._minBulletTime) {
-      this._bulletsAtTime[time] = [];
+    while (time >= this._minShotTime) {
+      this._shotsAtTime[time] = [];
       time -= 1;
     }
   }
@@ -95,9 +95,9 @@ class Game {
       model,
       name,
       teamID,
-      currentBullet: modelData.currentBullet,
-      bulletList: Object.keys(modelData.bullets),
-      bullets: this._bullets,
+      currentWeapon: modelData.currentWeapon,
+      availableWeaponList: Object.keys(modelData.bullets),
+      weapons: this._weapons,
     });
   }
 
@@ -188,30 +188,26 @@ class Game {
   // возвращает данные
   getGameData() {
     // данные старых пуль
-    const gameData = this.getOldBulletData();
+    const gameData = this.getOldShotData();
 
     for (const gameID in this._playersData) {
       if (this._playersData.hasOwnProperty(gameID)) {
         const player = this._playersData[gameID];
         const model = player.model;
-        const bulletData = player.getBulletData();
+        const shotData = player.getShotData();
 
         gameData[model] = gameData[model] || {};
         gameData[model][gameID] = player.getData();
 
         // если есть данные для создания пули
-        if (bulletData !== null) {
-          const bulletName = player.currentBullet;
-          const bullet = this.createBullet(
-            player.gameID,
-            bulletName,
-            bulletData,
-          );
+        if (shotData !== null) {
+          const weaponName = player.currentWeapon;
+          const shot = this.createShot(player.gameID, weaponName, shotData);
 
-          gameData[bulletName] = gameData[bulletName] || {};
-          gameData[bulletName][bullet.bulletID] = bullet.getData();
+          gameData[weaponName] = gameData[weaponName] || {};
+          gameData[weaponName][shot.shotID] = shot.getData();
 
-          player.bulletData = null;
+          player.shotData = null;
         }
       }
     }
@@ -237,86 +233,86 @@ class Game {
   }
 
   // создает новую пулю и возвращает ее
-  createBullet(gameID, bulletName, bulletData) {
-    const bulletSet = this._bullets[bulletName];
-    let time = this._bulletTime + bulletSet.time;
+  createShot(gameID, weaponName, shotData) {
+    const weaponData = this._weapons[weaponName];
+    let time = this._shotTime + weaponData.time;
 
-    this._currentBulletID += 1;
-    const bulletID = this._currentBulletID.toString(36);
+    this._currentShotID += 1;
+    const shotID = this._currentShotID.toString(36);
 
-    if (time > this._maxBulletTime) {
-      time = time - this._maxBulletTime;
+    if (time > this._maxShotTime) {
+      time = time - this._maxShotTime;
     }
 
-    const bullet = (this._bulletsData[bulletID] = this._Factory(
-      bulletSet.constructor,
+    const shot = (this._shotsData[shotID] = this._Factory(
+      weaponData.constructor,
       {
-        bulletSet,
-        bulletData,
+        weaponData,
+        shotData,
         world: this._world,
       },
     ));
 
-    bullet.bulletName = bulletName;
-    bullet.bulletID = bulletID;
-    bullet.gameID = gameID;
+    shot.weaponName = weaponName;
+    shot.shotID = shotID;
+    shot.gameID = gameID;
 
-    this._bulletsAtTime[time].push(bulletID);
+    this._shotsAtTime[time].push(shotID);
 
-    return bullet;
+    return shot;
   }
 
   // удаляет данные игроков и пуль и возвращает список удалённых имён
-  removePlayersAndBullets() {
-    return [...this.removePlayers(), ...this.removeBullets()];
+  removePlayersAndShots() {
+    return [...this.removePlayers(), ...this.removeShots()];
   }
 
-  // сбрасывает currentBulletID, удаляет все пули и возвращает список удаленных имён
-  removeBullets() {
-    const bulletNameSet = new Set();
+  // сбрасывает currentShotID, удаляет все пули и возвращает список удаленных имён
+  removeShots() {
+    const shotNameSet = new Set();
 
-    this._currentBulletID = 0;
+    this._currentShotID = 0;
 
-    for (const time in this._bulletsAtTime) {
-      if (this._bulletsAtTime.hasOwnProperty(time)) {
-        const arr = this._bulletsAtTime[time];
+    for (const time in this._shotsAtTime) {
+      if (this._shotsAtTime.hasOwnProperty(time)) {
+        const arr = this._shotsAtTime[time];
 
         // очищение пуль
         for (let i = 0, len = arr.length; i < len; i += 1) {
-          const bullet = this._bulletsData[arr[i]];
+          const shot = this._shotsData[arr[i]];
 
-          bulletNameSet.add(bullet.bulletName);
-          this._world.destroyBody(bullet.getBody());
+          shotNameSet.add(shot.shotName);
+          this._world.destroyBody(shot.getBody());
         }
 
-        this._bulletsAtTime[time] = [];
+        this._shotsAtTime[time] = [];
       }
     }
 
-    return [...bulletNameSet];
+    return [...shotNameSet];
   }
 
   // обновляет время и возвращает данные устаревших пуль
-  getOldBulletData() {
-    const oldBulletArr = this._bulletsAtTime[this._bulletTime];
+  getOldShotData() {
+    const oldShotArr = this._shotsAtTime[this._shotTime];
     const gameData = {};
 
-    this._bulletsAtTime[this._bulletTime] = [];
-    this._bulletTime += 1;
+    this._shotsAtTime[this._shotTime] = [];
+    this._shotTime += 1;
 
-    if (this._bulletTime > this._maxBulletTime) {
-      this._bulletTime = this._minBulletTime;
+    if (this._shotTime > this._maxShotTime) {
+      this._shotTime = this._minShotTime;
     }
 
-    for (let i = 0, len = oldBulletArr.length; i < len; i += 1) {
-      const bullet = this._bulletsData[oldBulletArr[i]];
-      const bulletName = bullet.bulletName;
-      const bulletID = bullet.bulletID;
+    for (let i = 0, len = oldShotArr.length; i < len; i += 1) {
+      const shot = this._shotsData[oldShotArr[i]];
+      const shotName = shot.shotName;
+      const shotID = shot.shotID;
 
-      this._world.destroyBody(bullet.getBody());
+      this._world.destroyBody(shot.getBody());
 
-      gameData[bulletName] = gameData[bulletName] || {};
-      gameData[bulletName][bulletID] = null;
+      gameData[shotName] = gameData[shotName] || {};
+      gameData[shotName][shotID] = null;
     }
 
     return gameData;

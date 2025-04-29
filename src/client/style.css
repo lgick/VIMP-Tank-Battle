@@ -68,12 +68,12 @@ body {
   content: '%';
 }
 
-#panel table td#panel-bullets:before {
-  content: 'bullets: ';
+#panel table td#panel-gun:before {
+  content: 'gun: ';
 }
 
-#panel table td#panel-bombs:before {
-  content: 'bombs: ';
+#panel table td#panel-bomb:before {
+  content: 'bomb: ';
 }
 
 #panel table td#panel-time:before {
