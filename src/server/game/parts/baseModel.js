@@ -3,13 +3,13 @@ class BaseModel {
     this._model = data.model;
     this._name = data.name;
     this._teamID = data.teamID;
-    this._currentBullet = data.currentBullet;
-    this._bullets = data.bullets;
-    this._bulletList = data.bulletList;
+    this._currentWeapon = data.currentWeapon;
+    this._weapons = data.weapons;
+    this._availableWeaponList = data.availableWeaponList;
     this._keysData = data.keysData;
 
-    this._bulletConstructorName =
-      this._bullets[this._currentBullet].constructor || null;
+    this._weaponConstructorName =
+      this._weapons[this._currentWeapon].constructor || null;
     this._fullUserData = true;
     this._currentKeys = null;
   }
@@ -58,17 +58,17 @@ class BaseModel {
     return this._model;
   }
 
-  get currentBullet() {
-    return this._currentBullet;
+  get currentWeapon() {
+    return this._currentWeapon;
   }
 
-  get bulletConstructorName() {
-    return this._bulletConstructorName;
+  get weaponConstructorName() {
+    return this._weaponConstructorName;
   }
 
-  // меняет модель пуль игрока
-  turnUserBullet(back) {
-    let key = this._bulletList.indexOf(this._currentBullet);
+  // меняет оружие игрока
+  turnUserWeapon(back) {
+    let key = this._availableWeaponList.indexOf(this._currentWeapon);
 
     if (back) {
       key -= 1;
@@ -77,14 +77,14 @@ class BaseModel {
     }
 
     if (key < 0) {
-      key = this._bulletList.length - 1;
-    } else if (key >= this._bulletList.length) {
+      key = this._availableWeaponList.length - 1;
+    } else if (key >= this._availableWeaponList.length) {
       key = 0;
     }
 
-    this._currentBullet = this._bulletList[key];
-    this._bulletConstructorName =
-      this._bullets[this._currentBullet].constructor;
+    this._currentWeapon = this._availableWeaponList[key];
+    this._weaponConstructorName =
+      this._weapons[this._currentWeapon].constructor;
   }
 
   // меняет имя игрока

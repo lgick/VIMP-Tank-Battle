@@ -68,7 +68,7 @@ panel: {
     value: 100,
     minValue: 0
   },
-  bullets: {
+  gun: {
     key: 1,
     method: '-',
     value: 1000,
@@ -89,9 +89,9 @@ panel: {
   elems: {
     time: 'panel-time',
     health: 'panel-health',
-    bullets: 'panel-bullets'
+    gun: 'panel-gun'
   },
-  panels: ['time', 'health', 'bullets']
+  panels: ['time', 'health', 'gun']
 }
 ```
 
@@ -330,7 +330,7 @@ menu = [
 | map static data (under) |   1   |
 |    map dynamic data     |   2   |
 |       game model        |   2   |
-|      bullet model       |   2   |
+|      weapon model       |   2   |
 | map static data (over)  |   3   |
 
 # Иерархия элементов (z-index)
@@ -357,7 +357,7 @@ gameSets: {
   c1: ['map', 'map_radar'],
   c2: ['map'],
   m1: ['tank', 'tank_radar'],
-  b1: ['bullet'],
+  b1: ['gun'],
   b2: ['bomb'],
 }
 ```
@@ -375,7 +375,7 @@ entitiesOnCanvas: {
   map_radar: 'radar',
   tank_radar: 'radar',
   tank: 'vimp',
-  bullet: 'vimp',
+  gun: 'vimp',
   bomb: 'vimp',
 }
 ```

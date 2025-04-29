@@ -45,7 +45,7 @@ class Tank extends BaseModel {
     this._gunRotationTimer = 0; // таймер для накопления dt (в мс)
     this._gunRotationInterval = 10; // интервал в миллисекундах
 
-    this._bulletData = null;
+    this._shotData = null;
 
     this._body = data.world.createBody({
       type: 'dynamic',
@@ -94,8 +94,8 @@ class Tank extends BaseModel {
     const gLeft = Boolean(this.currentKeys & this.keysData.gLeft);
     const gRight = Boolean(this.currentKeys & this.keysData.gRight);
     const gCenter = Boolean(this.currentKeys & this.keysData.gCenter);
-    const nextBullet = Boolean(this.currentKeys & this.keysData.nextBullet);
-    const prevBullet = Boolean(this.currentKeys & this.keysData.prevBullet);
+    const nextWeapon = Boolean(this.currentKeys & this.keysData.nextWeapon);
+    const prevWeapon = Boolean(this.currentKeys & this.keysData.prevWeapon);
 
     const body = this._body;
 
@@ -151,20 +151,20 @@ class Tank extends BaseModel {
     // рассчитываем параметры пули (если огонь)
     // используем состояние танка *до* применения новых сил/момента за этот кадр
     if (fire) {
-      this._bulletData = null; // сбрасываем на всякий случай
+      this._shotData = null; // сбрасываем на всякий случай
       const currentAngle = body.getAngle();
       const currentGunRotation = this._body.gunRotation;
       const currentPosition = body.getPosition();
 
-      if (this.bulletConstructorName === 'bomb') {
+      if (this.weaponConstructorName === 'bomb') {
         const extraOffset = 20;
         const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
 
-        this._bulletData = {
+        this._shotData = {
           position: body.getWorldPoint(localBombOffset), // можно использовать текущее тело
           angle: currentAngle,
         };
-      } else if (this.bulletConstructorName === 'bullet') {
+      } else if (this.weaponConstructorName === 'gun') {
         const totalAngle = currentAngle + currentGunRotation;
         const bulletOffsetDistance = this._width / 2 + 10;
         const relPos = Rot.mulVec2(
@@ -184,7 +184,7 @@ class Tank extends BaseModel {
           bulletDirection.mul(muzzleVelocity),
         );
 
-        this._bulletData = {
+        this._shotData = {
           position: spawnPos,
           angle: totalAngle,
           velocity: finalBulletVelocity,
@@ -265,12 +265,12 @@ class Tank extends BaseModel {
     }
 
     // смена оружия
-    if (nextBullet) {
-      this.turnUserBullet();
+    if (nextWeapon) {
+      this.turnUserWeapon();
     }
 
-    if (prevBullet) {
-      this.turnUserBullet(true);
+    if (prevWeapon) {
+      this.turnUserWeapon(true);
     }
 
     // обнуление клавиш в конце
@@ -286,29 +286,36 @@ class Tank extends BaseModel {
       this.fullUserData = false;
       return this.getFullData();
     }
+
     const pos = this._body.getPosition();
     const angle = this._body.getAngle();
-    return [pos.x, pos.y, angle, this._body.gunRotation];
+    return [
+      Math.round(pos.x),
+      Math.round(pos.y),
+      +angle.toFixed(2),
+      +this._body.gunRotation.toFixed(2),
+    ];
   }
 
   getFullData() {
     const pos = this._body.getPosition();
     const angle = this._body.getAngle();
+
     return [
-      pos.x,
-      pos.y,
-      angle,
-      this._body.gunRotation,
+      Math.round(pos.x),
+      Math.round(pos.y),
+      +angle.toFixed(2),
+      +this._body.gunRotation.toFixed(2),
       this.teamID,
       this.name,
       this._modelData.size,
     ];
   }
 
-  getBulletData() {
-    const bulletData = this._bulletData;
-    this._bulletData = null;
-    return bulletData;
+  getShotData() {
+    const shotData = this._shotData;
+    this._shotData = null;
+    return shotData;
   }
 }
 

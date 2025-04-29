@@ -7,7 +7,7 @@ export default {
       c1: ['map', 'map_radar'],
       c2: ['map'],
       m1: ['tank', 'tank_radar'],
-      b1: ['bullet'],
+      b1: ['gun'],
       b2: ['bomb'],
     },
     entitiesOnCanvas: {
@@ -15,7 +15,7 @@ export default {
       map_radar: 'radar',
       tank_radar: 'radar',
       tank: 'vimp',
-      bullet: 'vimp',
+      gun: 'vimp',
       bomb: 'vimp',
     },
   },
@@ -87,12 +87,12 @@ export default {
             key: 1 << 7,
             type: 1,
           },
-          // next bullet (n)
+          // next weapon (n)
           78: {
             key: 1 << 8,
             type: 1,
           },
-          // prev bullet (p)
+          // prev weapon (p)
           80: {
             key: 1 << 9,
             type: 1,
@@ -154,10 +154,10 @@ export default {
       elems: {
         time: 'panel-time',
         health: 'panel-health',
-        bullets: 'panel-bullets',
-        bombs: 'panel-bombs',
+        gun: 'panel-gun',
+        bomb: 'panel-bomb',
       },
-      panels: ['time', 'health', 'bullets', 'bombs'],
+      panels: ['time', 'health', 'gun', 'bomb'],
     },
 
     // stat

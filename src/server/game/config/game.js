@@ -1,7 +1,7 @@
 import maps from '../../../../public/maps/index.js';
 import constructors from '../parts/index.js';
 import models from '../../../../public/parts/models.js';
-import bullets from '../../../../public/parts/bullets.js';
+import weapons from '../../../../public/parts/weapons.js';
 import factory from '../../lib/factory.js';
 
 export default {
@@ -16,7 +16,7 @@ export default {
     mapConstructor: 'map', // название конструктора карт
     constructors, // конструкторы частей игры
     models,
-    bullets,
+    weapons,
   },
 
   maps, // карты
@@ -66,13 +66,13 @@ export default {
       value: 100,
       minValue: 0,
     },
-    bullets: {
+    gun: {
       key: 1,
       method: '-',
       value: 1000,
       minValue: 0,
     },
-    bombs: {
+    bomb: {
       key: 2,
       method: '-',
       value: 10,
@@ -86,10 +86,6 @@ export default {
     team1: 1,
     team2: 2,
     spectators: 3,
-  },
-
-  defaultBullet: {
-    m1: 'b1',
   },
 
   spectatorKeys: {
@@ -106,7 +102,7 @@ export default {
     gLeft: 1 << 5,
     gRight: 1 << 6,
     fire: 1 << 7,
-    nextBullet: 1 << 8,
-    prevBullet: 1 << 9,
+    nextWeapon: 1 << 8,
+    prevWeapon: 1 << 9,
   },
 };

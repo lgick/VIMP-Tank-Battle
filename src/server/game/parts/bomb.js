@@ -2,16 +2,15 @@ import { BoxShape } from 'planck';
 
 class Bomb {
   constructor(data) {
-    this._bulletSet = data.bulletSet;
-    this._bulletData = data.bulletData;
-    this._time = data.bulletSet.time;
+    this._weaponData = data.weaponData;
+    this._shotData = data.shotData;
 
-    const width = this._bulletSet.width;
-    const height = this._bulletSet.height;
+    const width = this._weaponData.width;
+    const height = this._weaponData.height;
 
     this._body = data.world.createBody({
       type: 'static',
-      position: this._bulletData.position,
+      position: this._shotData.position,
       angle: 0,
     });
 
@@ -27,9 +26,16 @@ class Bomb {
 
   getData() {
     const pos = this._body.getPosition();
-    const { width, height, time } = this._bulletSet;
+    const { width, height, time } = this._weaponData;
 
-    return [pos.x, pos.y, this._body.getAngle(), width, height, time];
+    return [
+      Math.round(pos.x),
+      Math.round(pos.y),
+      this._body.getAngle(),
+      width,
+      height,
+      time,
+    ];
   }
 
   update(data, cb) {}
