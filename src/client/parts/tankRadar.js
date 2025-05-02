@@ -9,6 +9,7 @@ export default class TankRadar extends Container {
     this.body = new Graphics();
     this.addChild(this.body);
 
+    // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
 
@@ -18,15 +19,17 @@ export default class TankRadar extends Container {
     // радиус круга
     this.radius = 6;
 
-    this.create(data[4]);
+    this._teamID = data[8];
+
+    this.create();
   }
 
-  create(type) {
+  create() {
     // определение цветов в зависимости от типа
-    if (type === 1) {
+    if (this._teamID === 1) {
       this.colorA = 0x552222;
       this.colorB = 0xeeeeee;
-    } else if (type === 2) {
+    } else if (this._teamID === 2) {
       this.colorA = 0x225522;
       this.colorB = 0xeeeeee;
     } else {
@@ -44,10 +47,5 @@ export default class TankRadar extends Container {
   update(params) {
     this.x = params[0];
     this.y = params[1];
-
-    // если передан тип, пересоздаем графику
-    if (typeof params[4] === 'number') {
-      this.create(params[4]);
-    }
   }
 }

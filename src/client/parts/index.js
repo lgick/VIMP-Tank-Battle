@@ -4,5 +4,6 @@ import tankRadar from './tankRadar.js';
 import tank from './tank.js';
 import gun from './gun.js';
 import bomb from './bomb.js';
+import smoke from './smoke.js';
 
-export default { map, mapRadar, tankRadar, tank, gun, bomb };
+export default { map, mapRadar, tankRadar, tank, gun, bomb, smoke };

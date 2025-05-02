@@ -110,7 +110,7 @@ class Game {
     }
   }
 
-  // удаляет всех игроков и возвращает список удаленных моделей
+  // удаляет всех игроков и возвращает список удаленных моделей (игроков, дыма)
   removePlayers() {
     const modelNameSet = new Set();
 
@@ -194,20 +194,18 @@ class Game {
       if (this._playersData.hasOwnProperty(gameID)) {
         const player = this._playersData[gameID];
         const model = player.model;
-        const shotData = player.getShotData();
+        const { playerData, shotData } = player.getData();
 
         gameData[model] = gameData[model] || {};
-        gameData[model][gameID] = player.getData();
+        gameData[model][gameID] = playerData;
 
         // если есть данные для создания пули
         if (shotData !== null) {
           const weaponName = player.currentWeapon;
-          const shot = this.createShot(player.gameID, weaponName, shotData);
+          const shot = this.createShot(gameID, weaponName, shotData);
 
           gameData[weaponName] = gameData[weaponName] || {};
           gameData[weaponName][shot.shotID] = shot.getData();
-
-          player.shotData = null;
         }
       }
     }
@@ -269,7 +267,7 @@ class Game {
 
   // сбрасывает currentShotID, удаляет все пули и возвращает список удаленных имён
   removeShots() {
-    const shotNameSet = new Set();
+    const weaponNameSet = new Set();
 
     this._currentShotID = 0;
 
@@ -281,7 +279,7 @@ class Game {
         for (let i = 0, len = arr.length; i < len; i += 1) {
           const shot = this._shotsData[arr[i]];
 
-          shotNameSet.add(shot.shotName);
+          weaponNameSet.add(shot.weaponName);
           this._world.destroyBody(shot.getBody());
         }
 
@@ -289,7 +287,7 @@ class Game {
       }
     }
 
-    return [...shotNameSet];
+    return [...weaponNameSet];
   }
 
   // обновляет время и возвращает данные устаревших пуль
@@ -306,13 +304,13 @@ class Game {
 
     for (let i = 0, len = oldShotArr.length; i < len; i += 1) {
       const shot = this._shotsData[oldShotArr[i]];
-      const shotName = shot.shotName;
+      const weaponName = shot.weaponName;
       const shotID = shot.shotID;
 
       this._world.destroyBody(shot.getBody());
 
-      gameData[shotName] = gameData[shotName] || {};
-      gameData[shotName][shotID] = null;
+      gameData[weaponName] = gameData[weaponName] || {};
+      gameData[weaponName][shotID] = null;
     }
 
     return gameData;

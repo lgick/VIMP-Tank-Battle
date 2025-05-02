@@ -1,7 +1,5 @@
 import maps from '../../../../public/maps/index.js';
 import constructors from '../parts/index.js';
-import models from '../../../../public/parts/models.js';
-import weapons from '../../../../public/parts/weapons.js';
 import factory from '../../lib/factory.js';
 
 export default {
@@ -15,8 +13,35 @@ export default {
   parts: {
     mapConstructor: 'map', // название конструктора карт
     constructors, // конструкторы частей игры
-    models,
-    weapons,
+    models: {
+      // tank
+      m1: {
+        size: 10, // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
+        constructor: 'tank',
+        currentWeapon: 'w1',
+        bullets: {
+          w1: 1000,
+          w2: 3000,
+        },
+      },
+    },
+    weapons: {
+      // gun
+      w1: {
+        time: 10000,
+        width: 5,
+        height: 5,
+        constructor: 'gun',
+      },
+
+      // bomb
+      w2: {
+        time: 5000,
+        width: 32,
+        height: 32,
+        constructor: 'bomb',
+      },
+    },
   },
 
   maps, // карты
