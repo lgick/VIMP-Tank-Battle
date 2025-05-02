@@ -72,6 +72,8 @@ class Tank extends BaseModel {
 
     this._centeringGun = false;
     this._gunCenterSpeed = 5.0;
+
+    this._condition = 2; // состояние танка
   }
 
   // линейная интерполяция между x и y, коэффициент a ∈ [0,1]
@@ -282,40 +284,47 @@ class Tank extends BaseModel {
   }
 
   getData() {
+    const data = {};
+
     if (this.fullUserData === true) {
       this.fullUserData = false;
-      return this.getFullData();
+      data.playerData = this.getFullData();
+    } else {
+      const pos = this._body.getPosition();
+      const vel = this._body.getLinearVelocity();
+
+      data.playerData = [
+        Math.round(pos.x),
+        Math.round(pos.y),
+        +this._body.getAngle().toFixed(2),
+        +this._body.gunRotation.toFixed(2),
+        +vel.x.toFixed(1),
+        +vel.y.toFixed(1),
+        this._condition,
+      ];
     }
 
-    const pos = this._body.getPosition();
-    const angle = this._body.getAngle();
-    return [
-      Math.round(pos.x),
-      Math.round(pos.y),
-      +angle.toFixed(2),
-      +this._body.gunRotation.toFixed(2),
-    ];
+    data.shotData = this._shotData;
+    this._shotData = null;
+
+    return data;
   }
 
   getFullData() {
     const pos = this._body.getPosition();
-    const angle = this._body.getAngle();
+    const vel = this._body.getLinearVelocity();
 
     return [
-      Math.round(pos.x),
-      Math.round(pos.y),
-      +angle.toFixed(2),
-      +this._body.gunRotation.toFixed(2),
-      this.teamID,
-      this.name,
-      this._modelData.size,
+      Math.round(pos.x), // координаты x
+      Math.round(pos.y), // координаты y
+      +this._body.getAngle().toFixed(2), // угол корпуса танка (радианы)
+      +this._body.gunRotation.toFixed(2), // угол поворота башни (радианы)
+      +vel.x.toFixed(1), // скорость по x (мировая)
+      +vel.y.toFixed(1), // скорость по y (мировая)
+      this._condition, // состояние танка
+      this._modelData.size, // размер танка
+      this.teamID, // id танка
     ];
-  }
-
-  getShotData() {
-    const shotData = this._shotData;
-    this._shotData = null;
-    return shotData;
   }
 }
 

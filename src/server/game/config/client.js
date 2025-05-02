@@ -6,9 +6,9 @@ export default {
     gameSets: {
       c1: ['map', 'mapRadar'],
       c2: ['map'],
-      m1: ['tank', 'tankRadar'],
-      b1: ['gun'],
-      b2: ['bomb'],
+      m1: ['tank', 'tankRadar', 'smoke'],
+      w1: ['gun'],
+      w2: ['bomb'],
     },
     entitiesOnCanvas: {
       map: 'vimp',
@@ -17,6 +17,7 @@ export default {
       tank: 'vimp',
       gun: 'vimp',
       bomb: 'vimp',
+      smoke: 'vimp',
     },
   },
 
