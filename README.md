@@ -68,7 +68,7 @@ panel: {
     value: 100,
     minValue: 0
   },
-  gun: {
+  bullet: {
     key: 1,
     method: '-',
     value: 1000,
@@ -89,9 +89,10 @@ panel: {
   elems: {
     time: 'panel-time',
     health: 'panel-health',
-    gun: 'panel-gun'
+    bullet: 'panel-bullet',
+    bomb: 'panel-bomb',
   },
-  panels: ['time', 'health', 'gun']
+  panels: ['time', 'health', 'bullet', 'bomb'],
 }
 ```
 
@@ -357,7 +358,7 @@ gameSets: {
   c1: ['map', 'mapRadar'],
   c2: ['map'],
   m1: ['tank', 'tankRadar'],
-  w1: ['gun'],
+  w1: ['bullet'],
   w2: ['bomb'],
 }
 ```
@@ -375,7 +376,7 @@ entitiesOnCanvas: {
   mapRadar: 'radar',
   tankRadar: 'radar',
   tank: 'vimp',
-  gun: 'vimp',
+  bullet: 'vimp',
   bomb: 'vimp',
 }
 ```

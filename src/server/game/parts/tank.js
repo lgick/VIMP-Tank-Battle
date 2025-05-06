@@ -166,7 +166,7 @@ class Tank extends BaseModel {
           position: body.getWorldPoint(localBombOffset), // можно использовать текущее тело
           angle: currentAngle,
         };
-      } else if (this.weaponConstructorName === 'gun') {
+      } else if (this.weaponConstructorName === 'bullet') {
         const totalAngle = currentAngle + currentGunRotation;
         const bulletOffsetDistance = this._width / 2 + 10;
         const relPos = Rot.mulVec2(

@@ -68,8 +68,8 @@ body {
   content: '%';
 }
 
-#panel table td#panel-gun:before {
-  content: 'gun: ';
+#panel table td#panel-bullet:before {
+  content: 'bullet: ';
 }
 
 #panel table td#panel-bomb:before {
