@@ -26,12 +26,12 @@ export default {
       },
     },
     weapons: {
-      // gun
+      // bullet
       w1: {
         time: 10000,
         width: 5,
         height: 5,
-        constructor: 'gun',
+        constructor: 'bullet',
       },
 
       // bomb
@@ -91,7 +91,7 @@ export default {
       value: 100,
       minValue: 0,
     },
-    gun: {
+    bullet: {
       key: 1,
       method: '-',
       value: 1000,

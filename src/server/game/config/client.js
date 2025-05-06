@@ -3,19 +3,21 @@
 export default {
   // ***** parts ***** //
   parts: {
+    // распределение данных в заданные классы
     gameSets: {
       c1: ['map', 'mapRadar'],
       c2: ['map'],
       m1: ['tank', 'tankRadar', 'smoke'],
-      w1: ['gun'],
+      w1: ['bullet'],
       w2: ['bomb'],
     },
+    // отображение классов на полотнах
     entitiesOnCanvas: {
       map: 'vimp',
       mapRadar: 'radar',
       tankRadar: 'radar',
       tank: 'vimp',
-      gun: 'vimp',
+      bullet: 'vimp',
       bomb: 'vimp',
       smoke: 'vimp',
     },
@@ -155,10 +157,10 @@ export default {
       elems: {
         time: 'panel-time',
         health: 'panel-health',
-        gun: 'panel-gun',
+        bullet: 'panel-bullet',
         bomb: 'panel-bomb',
       },
-      panels: ['time', 'health', 'gun', 'bomb'],
+      panels: ['time', 'health', 'bullet', 'bomb'],
     },
 
     // stat

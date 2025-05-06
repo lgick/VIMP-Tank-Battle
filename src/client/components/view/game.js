@@ -9,7 +9,6 @@ export default class GameView {
 
     this._mPublic.on('create', 'add', this);
     this._mPublic.on('remove', 'remove', this);
-    this._mPublic.on('clear', 'clear', this);
   }
 
   // создает экземпляр на полотне
@@ -43,11 +42,6 @@ export default class GameView {
 
   // удаляет экземпляр с полотна
   remove(instance) {
-    this._app.stage.removeChild(instance);
-  }
-
-  // полностью очищает полотно
-  clear() {
-    this._app.stage.removeChildren();
+    instance.destroy();
   }
 }

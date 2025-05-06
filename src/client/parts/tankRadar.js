@@ -48,4 +48,15 @@ export default class TankRadar extends Container {
     this.x = params[0];
     this.y = params[1];
   }
+
+  destroy(options) {
+    super.destroy({
+      children: true,
+      texture: false,
+      baseTexture: false,
+      ...options,
+    });
+
+    this.body = null;
+  }
 }

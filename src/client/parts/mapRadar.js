@@ -13,17 +13,22 @@ export default class MapRadar extends Container {
     // масштаб
     this.scale.set(1, 1);
 
+    this.radarGraphics = new Graphics();
+    this.addChild(this.radarGraphics);
+
     // создаем схематичную карту
     this.createRadarMap();
   }
 
   createRadarMap() {
-    // создаем графический объект для рисования
-    const graphics = new Graphics();
+    const graphics = this.radarGraphics;
+
+    graphics.clear();
 
     if (Array.isArray(this._map)) {
       for (let y = 0; y < this._map.length; y += 1) {
         const row = this._map[y];
+
         if (Array.isArray(row)) {
           for (let x = 0; x < row.length; x += 1) {
             const tileType = row[x];
@@ -36,16 +41,27 @@ export default class MapRadar extends Container {
                 this._step / 2,
                 this._step / 2,
               );
-              graphics.fill(0xffffff);
             }
           }
         }
       }
     }
 
-    // добавляем графику в контейнер
-    this.addChild(graphics);
+    graphics.fill(0xffffff);
   }
 
   update() {}
+
+  destroy(options) {
+    super.destroy({
+      children: true,
+      texture: false,
+      baseTexture: false,
+      ...options,
+    });
+
+    this.radarGraphics = null;
+    this._map = null;
+    this._physicsStatic = null;
+  }
 }

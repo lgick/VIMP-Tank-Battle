@@ -1,6 +1,6 @@
 import { CircleShape } from 'planck';
 
-class Gun {
+class Bullet {
   constructor(data) {
     this._weaponData = data.weaponData;
     this._shotData = data.shotData;
@@ -52,4 +52,4 @@ class Gun {
   update(data, cb) {}
 }
 
-export default Gun;
+export default Bullet;
