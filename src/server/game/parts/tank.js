@@ -73,7 +73,7 @@ class Tank extends BaseModel {
     this._centeringGun = false;
     this._gunCenterSpeed = 5.0;
 
-    this._condition = 2; // состояние танка
+    this._condition = 3; // состояние танка
   }
 
   // линейная интерполяция между x и y, коэффициент a ∈ [0,1]

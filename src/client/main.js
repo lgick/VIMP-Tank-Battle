@@ -30,8 +30,6 @@ const RegExp = window.RegExp;
 const Object = window.Object;
 const Array = window.Array;
 const Promise = window.Promise;
-const innerWidth = window.innerWidth;
-const innerHeight = window.innerHeight;
 const location = window.location;
 const localStorage = window.localStorage;
 const JSON = window.JSON;
@@ -351,8 +349,8 @@ function runModules(data) {
 
   // инициализация
   modules.user.init({
-    width: innerWidth,
-    height: innerHeight,
+    width: window.innerWidth,
+    height: window.innerHeight,
   });
 
   //==========================================//
