@@ -74,7 +74,6 @@ export default class Smoke extends Container {
     this.addChild(this.particleContainer);
 
     this.timeSinceLastSpawn = 0;
-    this.isActive = true;
 
     this._tickListener = ticker => this._updateParticles(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
@@ -96,7 +95,9 @@ export default class Smoke extends Container {
    * @private
    */
   _updateParticles(deltaMS) {
-    if (!this.isActive || deltaMS <= 0) return;
+    if (deltaMS <= 0) {
+      return;
+    }
 
     const deltaTime = deltaMS / 1000.0; // Время в секундах
 
@@ -267,15 +268,6 @@ export default class Smoke extends Container {
     this.particles.push(particle);
   }
 
-  stop() {
-    this.isActive = false;
-  }
-
-  start() {
-    this.isActive = true;
-    this.timeSinceLastSpawn = 0; // Сброс таймера спавна при рестарте
-  }
-
   _stopTimer() {
     if (this._tickListener) {
       Ticker.shared.remove(this._tickListener);
@@ -284,8 +276,6 @@ export default class Smoke extends Container {
   }
 
   destroy(options) {
-    this.isActive = false;
-
     this._stopTimer();
 
     this.particleContainer.destroy({
@@ -293,6 +283,7 @@ export default class Smoke extends Container {
       texture: false, // У Graphics нет текстур по умолчанию
       baseTexture: false,
     });
+
     this.particles = [];
 
     super.destroy({

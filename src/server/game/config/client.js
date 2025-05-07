@@ -7,7 +7,7 @@ export default {
     gameSets: {
       c1: ['map', 'mapRadar'],
       c2: ['map'],
-      m1: ['tank', 'tankRadar', 'smoke'],
+      m1: ['tank', 'tankRadar', 'smoke', 'tracks'],
       w1: ['bullet'],
       w2: ['bomb'],
     },
@@ -20,6 +20,7 @@ export default {
       bullet: 'vimp',
       bomb: 'vimp',
       smoke: 'vimp',
+      tracks: 'vimp',
     },
   },
 
