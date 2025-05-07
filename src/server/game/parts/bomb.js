@@ -5,8 +5,7 @@ class Bomb {
     this._weaponData = data.weaponData;
     this._shotData = data.shotData;
 
-    const width = this._weaponData.width;
-    const height = this._weaponData.height;
+    const size = this._weaponData.size;
 
     this._body = data.world.createBody({
       type: 'static',
@@ -14,7 +13,7 @@ class Bomb {
       angle: 0,
     });
 
-    this._body.createFixture(new BoxShape(width / 2, height / 2), {
+    this._body.createFixture(new BoxShape(size / 2, size / 2), {
       density: 20,
       isSensor: true, // фиксируем как сенсор, чтобы не было физического столкновения
     });
@@ -26,14 +25,13 @@ class Bomb {
 
   getData() {
     const pos = this._body.getPosition();
-    const { width, height, time } = this._weaponData;
+    const { size, time } = this._weaponData;
 
     return [
       Math.round(pos.x),
       Math.round(pos.y),
       this._body.getAngle(),
-      width,
-      height,
+      size,
       time,
     ];
   }

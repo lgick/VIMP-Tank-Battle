@@ -88,24 +88,19 @@ export default class Smoke extends Container {
     this.condition = data[6];
   }
 
-  /**
-   * Внутренний метод, ВЫЗЫВАЕМЫЙ ТИКЕРОМ PixiJS.
-   * Обрабатывает логику спавна и обновления частиц.
-   * @param {number} deltaMS - Время в миллисекундах, переданное тикером.
-   * @private
-   */
   _updateParticles(deltaMS) {
     if (deltaMS <= 0) {
       return;
     }
 
-    const deltaTime = deltaMS / 1000.0; // Время в секундах
+    const deltaTime = deltaMS / 1000.0; // время в секундах
 
     // спавн новых частиц
     this.timeSinceLastSpawn += deltaMS;
 
     // определяем количество потоков
     let numStreams = 1;
+
     if (this.condition === 1) {
       numStreams = 2;
     } else if (this.condition === 0) {
@@ -118,7 +113,7 @@ export default class Smoke extends Container {
 
     let spawnedThisFrame = 0;
 
-    // если пора спавнить, спавним частицы для КАЖДОГО потока
+    // если пора спавнить, спавним частицы для каждого потока
     while (this.timeSinceLastSpawn >= spawnInterval) {
       for (let i = 0; i < numStreams; i++) {
         this.spawnParticle(i, numStreams);
@@ -131,6 +126,7 @@ export default class Smoke extends Container {
     // обновление существующих частиц
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const particle = this.particles[i];
+
       particle.age += deltaMS;
 
       if (particle.age >= particle.lifetime) {
@@ -280,7 +276,7 @@ export default class Smoke extends Container {
 
     this.particleContainer.destroy({
       children: true,
-      texture: false, // У Graphics нет текстур по умолчанию
+      texture: false,
       baseTexture: false,
     });
 

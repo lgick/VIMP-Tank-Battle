@@ -10,7 +10,7 @@ class Bullet {
     this._vY = data.shotData[3];
     this._angle = data.shotData[4];
 
-    const width = this._weaponData.width;
+    const size = this._weaponData.size;
 
     this._body = data.world.createBody({
       type: 'dynamic',
@@ -22,7 +22,7 @@ class Bullet {
     // линейная скорость
     this._body.setLinearVelocity(this._shotData.velocity);
 
-    this._body.createFixture(new CircleShape(width / 2), {
+    this._body.createFixture(new CircleShape(size / 2), {
       density: 200,
     });
   }
@@ -35,15 +35,14 @@ class Bullet {
   // Возвращает данные (например, позицию и скорость)
   getData() {
     const pos = this._body.getPosition();
-    const { width, height, time } = this._weaponData;
+    const { size, time } = this._weaponData;
     const { x: vX, y: vY } = this._shotData.velocity;
 
     return [
       Math.round(pos.x),
       Math.round(pos.y),
       this._body.getAngle(),
-      width,
-      height,
+      size,
       time,
       [Math.round(vX), Math.round(vY)],
     ];
