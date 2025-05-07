@@ -11,15 +11,14 @@ export default class Bomb extends Container {
     this.x = params[0];
     this.y = params[1];
     this.rotation = params[2];
-    this._width = params[3];
-    this._height = params[4];
-    this._totalDurationMS = params[5];
+    this._size = params[3]; // соотношение сторон 1:1
+    this._totalDurationMS = params[4];
 
     this.text = new Text({
       text: '--:--',
       style: {
         fontFamily: 'Arial',
-        fontSize: 10,
+        fontSize: this._size / 3.2,
         fill: 0xff1010,
         align: 'center',
       },
@@ -43,14 +42,14 @@ export default class Bomb extends Container {
     this.body
       .clear()
       // внешний контур (белый)
-      .rect(-(this._width / 2), -(this._height / 2), this._width, this._height)
+      .rect(-(this._size / 2), -(this._size / 2), this._size, this._size)
       .fill(0xffffff)
       // внутренняя часть (зеленая)
       .rect(
-        -(this._width / 2) + 1,
-        -(this._height / 2) + 1,
-        this._width - 2,
-        this._height - 2,
+        -(this._size / 2) + 1,
+        -(this._size / 2) + 1,
+        this._size - 2,
+        this._size - 2,
       )
       .fill(0x275c2d);
   }

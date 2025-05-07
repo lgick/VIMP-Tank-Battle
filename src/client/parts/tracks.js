@@ -80,7 +80,7 @@ export default class TankTracks extends Container {
     // минимальное время (ms), которое должно пройти между созданием двух последовательных "пачек" следов
     // чем меньше значение, тем больше кол-во следов
     // (создаст больше объектов TrackMark, может повлиять на производительность)
-    this.trackMarkCooldown = 4;
+    this.trackMarkCooldown = 2;
 
     // задержка в ms между созданием последовательных "пачек" следов
     this.lastTrackMarkTime = 0;
@@ -89,10 +89,10 @@ export default class TankTracks extends Container {
     // скорость измеряется в пикселях за время deltaMS последнего тика
     // при уменьшении значения, следы будут появляться чаще при малейшем маневрировании скоростью
     // (легкий разгон, небольшое торможение)
-    this.minAbsAccelerationForMark = this._size * 0.7;
+    this.minAbsAccelerationForMark = 4;
 
     // минимальная текущая угловая скорость для следов при повороте
-    // рекомендуемые значения от 0.02 до 0.08
+    // рекомендуемые значения от 0.02 до 0.06
     // при уменьшении: даже медленные или плавные повороты (при условии достаточной линейной скорости)
     // будут оставлять следы
     this.minAngularSpeedForMark = 0.02;
@@ -101,18 +101,18 @@ export default class TankTracks extends Container {
     // рекомендуемые значения: 0.01 - 1
     // при уменьшении: танк будет оставлять следы даже при небольших изменениях в скорости поворота
     // при увеличении: следы будут появляться только при очень резком начале или очень резком прекращении вращения
-    this.minRotationAccelerationForMark = 1;
+    this.minRotationAccelerationForMark = 0.4;
 
     // минимальная линейная скорость, чтобы поворот оставлял след
-    // рекомендемые значения: min: 0, max: this._size * 0.5
+    // рекомендемые значения: min: 0, max: 2
     // при уменьшении: танк будет оставлять следы от поворотов даже при вращении на месте
     // при увеличении: танк должен заметно двигаться вперед или назад, чтобы его повороты оставляли следы
-    this.minSpeedForRotationMarks = this._size * 0.2;
+    this.minSpeedForRotationMarks = 1.4;
 
     // визуальные параметры следов
 
     // ширина одного сегмента следа
-    this.trackWidth = this._size * 0.6;
+    this.trackWidth = this._size * 0.4;
 
     // длина одного сегмента следа
     this.trackLength = this._size * 0.5;
@@ -120,13 +120,16 @@ export default class TankTracks extends Container {
     const tankHeight = this._size * 3;
 
     // расстояние от центральной линии танка до центра каждого из двух следов
-    this.trackOffset = (tankHeight / 2) * 0.8;
+    this.trackOffset = (tankHeight / 2) * 0.7;
+
+    // смещение назад точки появления следов от центра танка
+    this.backwardOffset = tankHeight * 0.4;
 
     // цвет заливки сегментов следа
     this.trackColor = 0x1a1a12;
 
     // начальная прозрачность следа (от 0 до 1), когда он только появляется
-    this.trackInitialAlpha = 0.3;
+    this.trackInitialAlpha = 0.4;
 
     this._tickListener = ticker => this._internalUpdate(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
@@ -207,12 +210,18 @@ export default class TankTracks extends Container {
 
   createTrackMarksAtPreviousPosition() {
     for (let i = -1; i <= 1; i += 2) {
-      const offsetX =
+      const sideOffsetX =
         Math.cos(this._prevRotation + Math.PI / 2) * this.trackOffset * i;
-      const offsetY =
+      const sideOffsetY =
         Math.sin(this._prevRotation + Math.PI / 2) * this.trackOffset * i;
-      const markX = this._prevX + offsetX;
-      const markY = this._prevY + offsetY;
+
+      const backwardComponentX =
+        -Math.cos(this._prevRotation) * this.backwardOffset;
+      const backwardComponentY =
+        -Math.sin(this._prevRotation) * this.backwardOffset;
+
+      const markX = this._prevX + sideOffsetX + backwardComponentX;
+      const markY = this._prevY + sideOffsetY + backwardComponentY;
 
       new TrackMark(
         markX,

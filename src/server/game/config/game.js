@@ -29,16 +29,14 @@ export default {
       // bullet
       w1: {
         time: 10000,
-        width: 5,
-        height: 5,
+        size: 4, // соотношение сторон 1:1
         constructor: 'bullet',
       },
 
       // bomb
       w2: {
         time: 5000,
-        width: 32,
-        height: 32,
+        size: 32, // соотношение сторон 1:1
         constructor: 'bomb',
       },
     },

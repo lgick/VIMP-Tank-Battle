@@ -11,13 +11,12 @@ export default class Bullet extends Container {
     this.x = params[0];
     this.y = params[1];
     this.rotation = params[2];
-    this._width = params[3];
-    this._height = params[4];
-    this._maxLifetime = params[5];
-    this.vX = params[6][0];
-    this.vY = params[6][1];
+    this._size = params[3];
+    this._maxLifetime = params[4];
+    this.vX = params[5][0];
+    this.vY = params[5][1];
 
-    this._radius = this._width / 2;
+    this._radius = this._size / 2;
     this._currentLifetime = 0; // счетчик времени жизни
 
     this._tickListener = ticker => this._updateMovement(ticker.deltaMS);
