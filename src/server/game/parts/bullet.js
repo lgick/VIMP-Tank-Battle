@@ -25,6 +25,11 @@ class Bullet {
     this._body.createFixture(new CircleShape(size / 2), {
       density: 200,
     });
+
+    this._body.setUserData({
+      type: 'bullet',
+      ...data.userData,
+    });
   }
 
   // Возвращает тело модели
