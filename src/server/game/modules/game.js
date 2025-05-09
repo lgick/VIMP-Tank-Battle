@@ -4,9 +4,7 @@ import planck from 'planck';
 let game;
 
 class Game {
-  constructor(Factory, parts, keys, shotTime) {
-    let time;
-
+  constructor(Factory, parts, keys, timeStep) {
     if (game) {
       return game;
     }
@@ -23,7 +21,7 @@ class Game {
     this._keysData = keys;
 
     // интервал фиксированного шага физики (в секундах, например 1 / 120)
-    this._timeStep = shotTime;
+    this._timeStep = timeStep;
     this._velocityIterations = 10;
     this._positionIterations = 8;
     this._accumulator = 0;
@@ -39,36 +37,52 @@ class Game {
     // данные игроков
     this._playersData = {};
 
-    // данные пуль
+    // общий список активных пуль { shotID: shotObject }
     this._shotsData = {};
 
-    // созданные пули в момент времени (время: массив из id пуль)
+    // созданные пули в момент времени (кольцевой буфер)
+    // { stepTick: [shotID1, shotID2] }
     this._shotsAtTime = {};
 
     // id для пуль
     this._currentShotID = 0;
 
-    // время жизни пули (текущее, минимальное, максимальное)
-    this._shotTime = this._minShotTime = this._maxShotTime = 1;
+    // инициализация времени жизни пуль и кольцевого буфера
+    let maxLifetimeMs = 0;
 
-    // вычисление максимального времени жизни пули
-    for (const weapon in this._weapons) {
-      if (this._weapons.hasOwnProperty(weapon)) {
-        time = this._weapons[weapon].time * 2;
+    for (const weaponName in this._weapons) {
+      if (this._weapons.hasOwnProperty(weaponName)) {
+        const weapon = this._weapons[weaponName];
+        const time = weapon.time; // время жизни в ms
 
-        if (time > this._maxShotTime) {
-          this._maxShotTime = time;
+        if (time > maxLifetimeMs) {
+          maxLifetimeMs = time;
         }
       }
     }
 
-    time = this._maxShotTime;
+    // если пули часто уничтожаются досрочно, большой запас не так критичен,
+    // уменьшение буфера до x1.5
+    const maxLifetimeWithBufferSeconds = (maxLifetimeMs / 1000.0) * 1.5;
 
-    // создание пустых данных пуль
-    while (time >= this._minShotTime) {
-      this._shotsAtTime[time] = [];
-      time -= 1;
+    // максимальное количество шагов в кольцевом буфере
+    this._maxShotTimeInSteps = Math.ceil(
+      maxLifetimeWithBufferSeconds / this._timeStep,
+    );
+
+    if (this._maxShotTimeInSteps < 1) {
+      this._maxShotTimeInSteps = 1; // минимум 1 шаг
     }
+
+    // текущий тик для кольцевого буфера, от 0 до _maxShotTimeInSteps-1
+    this._currentStepTick = 0;
+
+    for (let i = 0; i < this._maxShotTimeInSteps; i++) {
+      this._shotsAtTime[i] = [];
+    }
+
+    // хранение данных об удаленных пулях между updateData и getGameData
+    this._lastExpiredOrCollidedShotsData = {};
   }
 
   // создает карту
@@ -94,6 +108,7 @@ class Game {
       world: this._world,
       model,
       name,
+      gameID,
       teamID,
       currentWeapon: modelData.currentWeapon,
       availableWeaponList: Object.keys(modelData.bullets),
@@ -148,10 +163,10 @@ class Game {
 
   // стирает данные игрового мира
   clear() {
-    // Сначала сбрасываем силы
+    // сброс сил
     this._world.clearForces();
 
-    // Затем удаляем все тела
+    // процесс удаления всех тел
     let body = this._world.getBodyList();
 
     while (body) {
@@ -159,6 +174,11 @@ class Game {
       this._world.destroyBody(body);
       body = nextBody;
     }
+
+    this._playersData = {};
+    this.removeShots();
+    this._lastExpiredOrCollidedShotsData = {};
+    this._accumulator = 0;
   }
 
   // обновляет данные физики
@@ -175,6 +195,10 @@ class Game {
 
     // делаем столько фиксированных шагов, сколько нужно
     while (this._accumulator >= this._timeStep) {
+      // пули, чье время жизни истекло на этом шаге
+      const expiredByTimeData = this.processShotsExpiredByTime();
+      this.mergeShotOutcomeData(expiredByTimeData);
+
       this._world.step(
         this._timeStep,
         this._velocityIterations,
@@ -185,10 +209,56 @@ class Game {
     }
   }
 
+  // вспомогательный метод для слияния данных об исходе пуль
+  mergeShotOutcomeData(newData) {
+    for (const weaponName in newData) {
+      if (newData.hasOwnProperty(weaponName)) {
+        this._lastExpiredOrCollidedShotsData[weaponName] =
+          this._lastExpiredOrCollidedShotsData[weaponName] || {};
+
+        for (const shotID in newData[weaponName]) {
+          if (newData[weaponName].hasOwnProperty(shotID)) {
+            this._lastExpiredOrCollidedShotsData[weaponName][shotID] =
+              newData[weaponName][shotID];
+          }
+        }
+      }
+    }
+  }
+
+  // обрабатывает пули, чье время жизни истекло
+  processShotsExpiredByTime() {
+    const shotsInCurrentTick = this._shotsAtTime[this._currentStepTick];
+    const outcomeData = {};
+
+    for (let i = 0, len = shotsInCurrentTick.length; i < len; i += 1) {
+      const shotID = shotsInCurrentTick[i];
+      const shot = this._shotsData[shotID];
+
+      // если пуля все еще существует (не была уничтожена досрочно)
+      if (shot) {
+        const weaponName = shot.weaponName;
+
+        this._world.destroyBody(shot.getBody());
+        delete this._shotsData[shotID];
+
+        outcomeData[weaponName] = outcomeData[weaponName] || {};
+        outcomeData[weaponName][shotID] = null; // помечаем как удаленную по времени
+      }
+    }
+
+    this._shotsAtTime[this._currentStepTick] = []; // очищаем текущий слот
+    this._currentStepTick =
+      (this._currentStepTick + 1) % this._maxShotTimeInSteps; // переходим к следующему слоту
+
+    return outcomeData;
+  }
+
   // возвращает данные
   getGameData() {
-    // данные старых пуль
-    const gameData = this.getOldShotData();
+    const gameData = { ...this._lastExpiredOrCollidedShotsData };
+
+    this._lastExpiredOrCollidedShotsData = {};
 
     for (const gameID in this._playersData) {
       if (this._playersData.hasOwnProperty(gameID)) {
@@ -233,29 +303,49 @@ class Game {
   // создает новую пулю и возвращает ее
   createShot(gameID, weaponName, shotData) {
     const weaponData = this._weapons[weaponName];
-    let time = this._shotTime + weaponData.time;
+    const lifetimeMs = weaponData.time;
+    const lifetimeSeconds = lifetimeMs / 1000.0;
+    let lifetimeInSteps = Math.ceil(lifetimeSeconds / this._timeStep);
+
+    if (lifetimeInSteps < 1) {
+      lifetimeInSteps = 1;
+    }
+
+    // ограничиваем максимальным временем буфера, если необходимо
+    // (_maxShotTimeInSteps уже учитывает запас, но для безопасности)
+    if (lifetimeInSteps >= this._maxShotTimeInSteps) {
+      lifetimeInSteps = this._maxShotTimeInSteps - 1; // -1 чтобы точно попасть в буфер, т.к. он от 0 до M-1
+
+      if (lifetimeInSteps < 0) {
+        lifetimeInSteps = 0; // на случай если _maxShotTimeInSteps = 1
+      }
+    }
 
     this._currentShotID += 1;
     const shotID = this._currentShotID.toString(36);
 
-    if (time > this._maxShotTime) {
-      time = time - this._maxShotTime;
-    }
+    // слот, в который будет помещена пуля для удаления
+    const removalTick =
+      (this._currentStepTick + lifetimeInSteps) % this._maxShotTimeInSteps;
 
-    const shot = (this._shotsData[shotID] = this._Factory(
-      weaponData.constructor,
-      {
-        weaponData,
-        shotData,
-        world: this._world,
+    const shot = this._Factory(weaponData.constructor, {
+      weaponData,
+      shotData,
+      userData: {
+        weaponName,
+        shotID,
+        ownerGameID: gameID,
       },
-    ));
+      world: this._world,
+    });
+
+    this._shotsData[shotID] = shot;
 
     shot.weaponName = weaponName;
     shot.shotID = shotID;
     shot.gameID = gameID;
 
-    this._shotsAtTime[time].push(shotID);
+    this._shotsAtTime[removalTick].push(shotID);
 
     return shot;
   }
@@ -271,49 +361,26 @@ class Game {
 
     this._currentShotID = 0;
 
-    for (const time in this._shotsAtTime) {
-      if (this._shotsAtTime.hasOwnProperty(time)) {
-        const arr = this._shotsAtTime[time];
+    for (const shotID in this._shotsData) {
+      // итерируем по актуальным пулям
+      if (this._shotsData.hasOwnProperty(shotID)) {
+        const shot = this._shotsData[shotID];
 
-        // очищение пуль
-        for (let i = 0, len = arr.length; i < len; i += 1) {
-          const shot = this._shotsData[arr[i]];
-
-          weaponNameSet.add(shot.weaponName);
-          this._world.destroyBody(shot.getBody());
-        }
-
-        this._shotsAtTime[time] = [];
+        weaponNameSet.add(shot.weaponName);
+        this._world.destroyBody(shot.getBody());
       }
     }
 
+    this._shotsData = {};
+
+    // очистка кольцевого буфера
+    for (let i = 0; i < this._maxShotTimeInSteps; i += 1) {
+      this._shotsAtTime[i] = [];
+    }
+
+    this._currentStepTick = 0;
+
     return [...weaponNameSet];
-  }
-
-  // обновляет время и возвращает данные устаревших пуль
-  getOldShotData() {
-    const oldShotArr = this._shotsAtTime[this._shotTime];
-    const gameData = {};
-
-    this._shotsAtTime[this._shotTime] = [];
-    this._shotTime += 1;
-
-    if (this._shotTime > this._maxShotTime) {
-      this._shotTime = this._minShotTime;
-    }
-
-    for (let i = 0, len = oldShotArr.length; i < len; i += 1) {
-      const shot = this._shotsData[oldShotArr[i]];
-      const weaponName = shot.weaponName;
-      const shotID = shot.shotID;
-
-      this._world.destroyBody(shot.getBody());
-
-      gameData[weaponName] = gameData[weaponName] || {};
-      gameData[weaponName][shotID] = null;
-    }
-
-    return gameData;
   }
 }
 
