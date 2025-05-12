@@ -19,7 +19,8 @@ export default {
         size: 10, // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
         constructor: 'tank',
         currentWeapon: 'w1',
-        bullets: {
+        // боезапас модели танка
+        ammo: {
           w1: 1000,
           w2: 3000,
         },
