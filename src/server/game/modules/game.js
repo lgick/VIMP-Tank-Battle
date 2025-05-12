@@ -111,7 +111,7 @@ class Game {
       gameID,
       teamID,
       currentWeapon: modelData.currentWeapon,
-      availableWeaponList: Object.keys(modelData.bullets),
+      availableWeaponList: Object.keys(modelData.ammo),
       weapons: this._weapons,
     });
   }
