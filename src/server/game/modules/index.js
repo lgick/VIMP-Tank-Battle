@@ -32,7 +32,7 @@ class VIMP {
     this._voteTime = data.voteTime; // время голосования
     this._timeBlockedRemap = data.timeBlockedRemap;
 
-    this._shotTime = data.shotTime; // время обновления кадра игры
+    this._timeStep = data.timeStep; // время обновления кадра игры
     this._lastShotTime = Date.now();
 
     this._users = {}; // игроки
@@ -64,7 +64,7 @@ class VIMP {
     this._currentMapData = null; // данные текущей карты
 
     this._roundTimer = null;
-    this._shotTimer = null;
+    this._stepTimer = null;
     this._mapTimer = null;
     this._changeMapTimer = null;
     this._blockedRemapTimer = null;
@@ -83,7 +83,7 @@ class VIMP {
       data.factory,
       data.parts,
       data.keys,
-      this._shotTime / 1000,
+      this._timeStep / 1000,
     );
 
     this.createMap();
@@ -99,7 +99,7 @@ class VIMP {
   // останавливает таймеры игры
   stopGameTimers() {
     // останавливает расчет кадров игры
-    clearInterval(this._shotTimer);
+    clearInterval(this._stepTimer);
     // останавливает раунд
     clearTimeout(this._roundTimer);
     // останавливает карту
@@ -134,13 +134,13 @@ class VIMP {
   startShotTimer() {
     this._lastShotTime = Date.now();
 
-    this._shotTimer = setInterval(() => {
+    this._stepTimer = setInterval(() => {
       const now = Date.now();
       const dt = (now - this._lastShotTime) / 1000;
       this._lastShotTime = now;
 
       this.sendShot(dt);
-    }, this._shotTime);
+    }, this._timeStep);
   }
 
   // возвращает оставшееся время раунда (seconds)
