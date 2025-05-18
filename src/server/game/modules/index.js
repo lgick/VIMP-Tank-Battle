@@ -51,15 +51,12 @@ class VIMP {
     // список gameID игроков для удаления с полотна
     this._removedPlayersList = [];
 
-    this._portConfig = ports.config;
-    this._portAuth = ports.auth;
-    this._portAuthErr = ports.authErr;
-    this._portMap = ports.map;
-    this._portShot = ports.shot;
-    this._portInform = ports.inform;
-    this._portMisc = ports.misc;
-    this._portClear = ports.clear;
-    this._portLog = ports.log;
+    this._PORT_MAP_DATA = ports.MAP_DATA;
+    this._PORT_SHOT_DATA = ports.SHOT_DATA;
+    this._PORT_INFORM_DATA = ports.INFORM_DATA;
+    this._PORT_MISC = ports.MISC;
+    this._PORT_CLEAR = ports.CLEAR;
+    this._PORT_CONSOLE = ports.CONSOLE;
 
     this._currentMapData = null; // данные текущей карты
 
@@ -186,7 +183,7 @@ class VIMP {
       if (this._users.hasOwnProperty(gameID)) {
         const user = this._users[gameID];
 
-        user.socket.send(this._portClear);
+        user.socket.send(this._PORT_CLEAR);
 
         // перемещение пользователя в наблюдатели
         this._stat.moveUser(gameID, user.teamID, this._spectatorID);
@@ -209,19 +206,19 @@ class VIMP {
     if (gameID) {
       let user = this._users[gameID];
 
-      user.socket.send(this._portInform, [2]);
+      user.socket.send(this._PORT_INFORM_DATA, [2]);
       user.mapReady = false;
       user.currentMap = this._currentMap;
-      user.socket.send(this._portMap, this._currentMapData);
+      user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
     } else {
       for (const p in this._users) {
         if (this._users.hasOwnProperty(p)) {
           let user = this._users[p];
 
-          user.socket.send(this._portInform, [2]);
+          user.socket.send(this._PORT_INFORM_DATA, [2]);
           user.mapReady = false;
           user.currentMap = this._currentMap;
-          user.socket.send(this._portMap, this._currentMapData);
+          user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
         }
       }
     }
@@ -235,11 +232,11 @@ class VIMP {
       // если карта загруженая пользователем совпадает с картой сервера
       if (user.currentMap === this._currentMap) {
         // скрывает экран загрузки
-        user.socket.send(this._portInform);
+        user.socket.send(this._PORT_INFORM_DATA);
         user.mapReady = true;
 
         // отправка первого shot
-        user.socket.send(this._portShot, [
+        user.socket.send(this._PORT_SHOT_DATA, [
           this._game.getFullPlayersData(), // game
           0, // coords
           [this.getRoundTimeLeft()], // panel: для наблюдателя только время раунда
@@ -329,7 +326,10 @@ class VIMP {
 
     // отправка данных
     userList.forEach(gameID =>
-      this._users[gameID].socket.send(this._portShot, getUserData(gameID)),
+      this._users[gameID].socket.send(
+        this._PORT_SHOT_DATA,
+        getUserData(gameID),
+      ),
     );
   }
 
@@ -356,7 +356,7 @@ class VIMP {
           continue;
         }
 
-        user.socket.send(this._portClear, setIDList);
+        user.socket.send(this._PORT_CLEAR, setIDList);
 
         const firstShotData = [
           {}, // game
@@ -408,7 +408,7 @@ class VIMP {
         }
 
         // отправка первого кадра
-        user.socket.send(this._portShot, firstShotData);
+        user.socket.send(this._PORT_SHOT_DATA, firstShotData);
 
         respID[user.team] = respID[user.team] || 0;
         const data = respawns[user.team];
@@ -464,7 +464,7 @@ class VIMP {
       this._game.changeName(gameID, name);
       this._stat.updateUser(gameID, user.teamID, { name });
       this._chat.pushSystem(`n:1:${oldName},${name}`);
-      user.socket.send(this._portMisc, {
+      user.socket.send(this._PORT_MISC, {
         key: 'localstorageNameReplace',
         value: name,
       });
