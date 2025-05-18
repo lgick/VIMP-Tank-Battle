@@ -5,20 +5,26 @@ import waiting from '../lib/waiting.js';
 import validator from '../lib/validator.js';
 import config from '../lib/config.js';
 
-const portConfig = config.get('server:ports:config');
-const portAuth = config.get('server:ports:auth');
-const portAuthErr = config.get('server:ports:authErr');
-const portMap = config.get('server:ports:map');
-const portShot = config.get('server:ports:shot');
-const portInform = config.get('server:ports:inform');
-const portMisc = config.get('server:ports:misc');
-const portClear = config.get('server:ports:clear');
-const portLog = config.get('server:ports:log');
+// PTC (port to client)
+const PTC_CONFIG_DATA = config.get('server:WSPortToClient:CONFIG_DATA');
+const PTC_AUTH_DATA = config.get('server:WSPortToClient:AUTH_DATA');
+const PTC_AUTH_ERRORS = config.get('server:WSPortToClient:AUTH_ERRORS');
+const PTC_INFORM_DATA = config.get('server:WSPortToClient:INFORM_DATA');
+const PTC_PONG = config.get('server:WSPortToClient:PONG');
+
+// PFC (port from client)
+const PFC_CONFIG_READY = config.get('server:WSPortFromClient:CONFIG_READY');
+const PFC_AUTH_RESPONSE = config.get('server:WSPortFromClient:AUTH_RESPONSE');
+const PFC_MAP_READY = config.get('server:WSPortFromClient:MAP_READY');
+const PFC_KEYS_DATA = config.get('server:WSPortFromClient:KEYS_DATA');
+const PFC_CHAT_DATA = config.get('server:WSPortFromClient:CHAT_DATA');
+const PFC_VOTE_DATA = config.get('server:WSPortFromClient:VOTE_DATA');
+const PFC_PING = config.get('server:WSPortFromClient:PING');
 
 const oneConnection = config.get('server:oneConnection');
 
 const VIMP = config.get('server:VIMP');
-const vimp = new VIMP(config.get('game'), config.get('server:ports'));
+const vimp = new VIMP(config.get('game'), config.get('server:WSPortToClient'));
 
 const auth = config.get('auth');
 const cConf = config.get('client');
@@ -64,51 +70,60 @@ export default server => {
         };
 
         id = ws.socket.id = uuidv1();
-        ws.socket.socketMethods = [false, false, false, false, false, false];
+        ws.socket.socketMethods = [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+        ];
 
         sessions[id] = ws;
 
-        ws.socket.socketMethods[0] = true;
-        ws.socket.send(portConfig, cConf);
+        ws.socket.socketMethods[PFC_CONFIG_READY] = true;
+        ws.socket.socketMethods[PFC_PING] = true;
+        ws.socket.send(PTC_CONFIG_DATA, cConf);
       }
     });
 
     // 0: config ready
-    socketMethods[0] = err => {
+    socketMethods[PFC_CONFIG_READY] = err => {
       if (!err) {
         if (oneConnection && IPs[address]) {
-          sessions[IPs[address]].socket.close(4002, [portInform, [1]]);
+          sessions[IPs[address]].socket.close(4002, [PTC_INFORM_DATA, [1]]);
         }
 
         IPs[address] = id;
 
         waiting.check(id, empty => {
           if (empty) {
-            ws.socket.socketMethods[1] = true;
-            ws.socket.send(portAuth, auth);
+            ws.socket.socketMethods[PFC_AUTH_RESPONSE] = true;
+            ws.socket.send(PTC_AUTH_DATA, auth);
           } else {
             waiting.add(id, data => {
-              ws.socket.send(portInform, [0, data]);
+              ws.socket.send(PTC_INFORM_DATA, [0, data]);
             });
           }
         });
       }
-      ws.socket.socketMethods[0] = false;
+      ws.socket.socketMethods[PFC_CONFIG_READY] = false;
     };
 
     // 1: auth response
-    socketMethods[1] = data => {
+    socketMethods[PFC_AUTH_RESPONSE] = data => {
       if (data && typeof data === 'object') {
         const err = validator.auth(data);
 
-        ws.socket.send(portAuthErr, err);
+        ws.socket.send(PTC_AUTH_ERRORS, err);
 
         if (!err) {
-          ws.socket.socketMethods[1] = false;
-          ws.socket.socketMethods[2] = true;
-          ws.socket.socketMethods[3] = true;
-          ws.socket.socketMethods[4] = true;
-          ws.socket.socketMethods[5] = true;
+          ws.socket.socketMethods[PFC_AUTH_RESPONSE] = false;
+          ws.socket.socketMethods[PFC_MAP_READY] = true;
+          ws.socket.socketMethods[PFC_KEYS_DATA] = true;
+          ws.socket.socketMethods[PFC_CHAT_DATA] = true;
+          ws.socket.socketMethods[PFC_VOTE_DATA] = true;
 
           vimp.createUser(data, ws.socket, createdId => {
             gameID = createdId;
@@ -118,35 +133,48 @@ export default server => {
     };
 
     // 2: map ready
-    socketMethods[2] = err => {
+    socketMethods[PFC_MAP_READY] = err => {
       vimp.mapReady(err, gameID);
     };
 
     // 3: keys data
-    socketMethods[3] = keys => {
+    socketMethods[PFC_KEYS_DATA] = keys => {
       if (keys) {
         vimp.updateKeys(gameID, keys);
       }
     };
 
     // 4: chat data
-    socketMethods[4] = message => {
+    socketMethods[PFC_CHAT_DATA] = message => {
       if (typeof message === 'string') {
         vimp.pushMessage(gameID, message);
       }
     };
 
     // 5: vote data
-    socketMethods[5] = data => {
+    socketMethods[PFC_VOTE_DATA] = data => {
       if (data) {
         vimp.parseVote(gameID, data);
       }
     };
 
+    // 6: ping
+    socketMethods[PFC_PING] = pingData => {
+      // pingData здесь - это { timestamp: clientSendTime }
+      // немедленная отправка pong обратно с этим же timestamp
+      ws.socket.send(PTC_PONG, { originalTimestamp: pingData.timestamp });
+
+      console.log(
+        `Server: Responded to Ping from client ${id} with originalTimestamp ${pingData.timestamp}`,
+      );
+    };
+
     ws.on('message', data => {
       const msg = ws.socket.unpack(data);
+
       if (msg) {
         const socketMethod = socketMethods[msg[0]];
+
         if (ws.socket.socketMethods[msg[0]]) {
           socketMethod(msg[1]);
         }
@@ -175,9 +203,9 @@ export default server => {
 
       waiting.getNext(nextId => {
         if (nextId && sessions[nextId]) {
-          sessions[nextId].socket.socketMethods[1] = true;
-          sessions[nextId].socket.send(portAuth, auth);
-          sessions[nextId].socket.send(portInform);
+          sessions[nextId].socket.socketMethods[PFC_AUTH_RESPONSE] = true;
+          sessions[nextId].socket.send(PTC_AUTH_DATA, auth);
+          sessions[nextId].socket.send(PTC_INFORM_DATA);
         }
       });
 
@@ -187,7 +215,7 @@ export default server => {
             Object.prototype.hasOwnProperty.call(notifyObject, p) &&
             sessions[p]
           ) {
-            sessions[p].socket.send(portInform, [0, notifyObject[p]]);
+            sessions[p].socket.send(PTC_INFORM_DATA, [0, notifyObject[p]]);
           }
         }
       });

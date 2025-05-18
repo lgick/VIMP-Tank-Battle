@@ -34,6 +34,34 @@ const location = window.location;
 const localStorage = window.localStorage;
 const JSON = window.JSON;
 const WebSocket = window.WebSocket;
+const performance = window.performance;
+
+let rtt = 100; // начальное значение RTT (round trip time) в мс
+let outstandingPingTimestamp = 0;
+const PING_INTERVAL_MS = 3000; // интервал отправки пинга
+let pingTimeoutId = null;
+const RTT_ALPHA = 0.1; // коэффициент для экспоненциального скользящего среднего
+
+// PTS (port to server)
+const PTS_CONFIG_READY = 0;
+const PTS_AUTH_RESPONSE = 1;
+const PTS_MAP_READY = 2;
+const PTS_KEYS_DATA = 3;
+const PTS_CHAT_DATA = 4;
+const PTS_VOTE_DATA = 5;
+const PTS_PING = 6;
+
+// PFS (port from server)
+const PFS_CONFIG_DATA = 0;
+const PFS_AUTH_DATA = 1;
+const PFS_AUTH_ERRORS = 2;
+const PFS_MAP_DATA = 3;
+const PFS_SHOT_DATA = 4;
+const PFS_INFORM_DATA = 5;
+const PFS_MISC = 6;
+const PFS_CLEAR = 7;
+const PFS_CONSOLE = 8;
+const PFS_PONG = 9;
 
 const informer = document.getElementById('informer');
 
@@ -55,7 +83,7 @@ const socketMethods = []; // методы для обработки сокет-�
 // SOCKET МЕТОДЫ
 
 // config data
-socketMethods[0] = async data => {
+socketMethods[PFS_CONFIG_DATA] = async data => {
   gameSets = data.parts.gameSets;
   entitiesOnCanvas = data.parts.entitiesOnCanvas;
 
@@ -96,16 +124,17 @@ socketMethods[0] = async data => {
 
   Promise.all(initPromises)
     .then(() => {
-      // config ready
-      sending(0);
+      sending(PTS_CONFIG_READY); // config ready
+      scheduleNextPing(); // run ping
     })
+
     .catch(err => {
       console.error('Ошибка инициализации:', err);
     });
 };
 
 // auth data
-socketMethods[1] = data => {
+socketMethods[PFS_AUTH_DATA] = data => {
   if (typeof data !== 'object' || data === null) {
     console.log('authorization error');
     return;
@@ -137,13 +166,13 @@ socketMethods[1] = data => {
   const authView = new AuthView(authModel, viewData);
   modules.auth = new AuthCtrl(authModel, authView);
 
-  authModel.publisher.on('socket', data => sending(1, data));
+  authModel.publisher.on('socket', data => sending(PTS_AUTH_RESPONSE, data));
 
   modules.auth.init(params);
 };
 
 // auth errors
-socketMethods[2] = err => {
+socketMethods[PFS_AUTH_ERRORS] = err => {
   modules.auth.parseRes(err);
 
   if (!err) {
@@ -152,7 +181,7 @@ socketMethods[2] = err => {
 };
 
 // map data
-socketMethods[3] = data => {
+socketMethods[PFS_MAP_DATA] = data => {
   const { layers, map, step, setID, spriteSheet, physicsStatic } = data;
 
   // удаление данных карт
@@ -208,11 +237,11 @@ socketMethods[3] = data => {
   removeMap(currentMapSetID);
   createMap(setID, staticData);
   updateGameControllers();
-  sending(2);
+  sending(PTS_MAP_READY);
 };
 
 // shot data
-socketMethods[4] = data => {
+socketMethods[PFS_SHOT_DATA] = data => {
   const [game, crds, panel, stat, chat, vote, keySet] = data;
 
   // данные игры
@@ -259,7 +288,7 @@ socketMethods[4] = data => {
 };
 
 // inform data
-socketMethods[5] = data => {
+socketMethods[PFS_INFORM_DATA] = data => {
   if (data) {
     const [messageKey, dataArr] = data;
     let message = informList[messageKey];
@@ -280,7 +309,7 @@ socketMethods[5] = data => {
 };
 
 // misc
-socketMethods[6] = data => {
+socketMethods[PFS_MISC] = data => {
   const { key, value } = data;
 
   if (key === 'localstorageNameReplace') {
@@ -289,7 +318,7 @@ socketMethods[6] = data => {
 };
 
 // clear
-socketMethods[7] = function (setIDList) {
+socketMethods[PFS_CLEAR] = function (setIDList) {
   // если есть список setID (учитывается в том числе пустой список)
   if (Array.isArray(setIDList)) {
     for (let i = 0, len = setIDList.length; i < len; i += 1) {
@@ -311,8 +340,30 @@ socketMethods[7] = function (setIDList) {
 };
 
 // console
-socketMethods[8] = data => {
+socketMethods[PFS_CONSOLE] = data => {
   console.log(data);
+};
+
+// pong
+socketMethods[PFS_PONG] = pongPayload => {
+  if (
+    pongPayload.originalTimestamp === outstandingPingTimestamp &&
+    outstandingPingTimestamp !== 0
+  ) {
+    const now = performance.now();
+    const newRttSample = now - outstandingPingTimestamp;
+
+    rtt = rtt * (1 - RTT_ALPHA) + newRttSample * RTT_ALPHA;
+
+    console.log(
+      `RTT sample: ${newRttSample.toFixed(0)}ms, Smoothed RTT: ${rtt.toFixed(0)}ms`,
+    );
+
+    outstandingPingTimestamp = 0;
+    scheduleNextPing();
+  } else if (pongPayload.originalTimestamp !== outstandingPingTimestamp) {
+    console.warn('Main: Received pong for an old or unexpected ping.');
+  }
 };
 
 // ФУНКЦИИ
@@ -440,9 +491,9 @@ function runModules(data) {
   statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
   voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
 
-  userModel.publisher.on('socket', data => sending(3, data));
-  chatModel.publisher.on('socket', data => sending(4, data));
-  voteModel.publisher.on('socket', data => sending(5, data));
+  userModel.publisher.on('socket', data => sending(PTS_KEYS_DATA, data));
+  chatModel.publisher.on('socket', data => sending(PTS_CHAT_DATA, data));
+  voteModel.publisher.on('socket', data => sending(PTS_VOTE_DATA, data));
 }
 
 // создает экземпляр игры
@@ -459,6 +510,23 @@ function updateGameControllers() {
   Object.keys(CTRL).forEach(canvasId => {
     CTRL[canvasId].update(coords, scale[canvasId]);
   });
+}
+
+function scheduleNextPing() {
+  if (pingTimeoutId) {
+    clearTimeout(pingTimeoutId);
+  }
+
+  pingTimeoutId = setTimeout(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      if (outstandingPingTimestamp !== 0) {
+        console.warn('Main: Outstanding ping, new ping might overwrite.');
+      }
+
+      outstandingPingTimestamp = performance.now();
+      sending(PTS_PING, { timestamp: outstandingPingTimestamp });
+    }
+  }, PING_INTERVAL_MS);
 }
 
 // открывает режим
