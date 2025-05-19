@@ -1,4 +1,4 @@
-import Publisher from '../../../server/lib/publisher.js';
+import Publisher from '../../../lib/publisher.js';
 
 // Singleton VoteModel
 
@@ -174,10 +174,7 @@ export default class VoteModel {
 
               // иначе, отправляет результат на сервер и завершаем голосование
             } else {
-              this.publisher.emit('socket', [
-                this._voteName,
-                this._data,
-              ]);
+              this.publisher.emit('socket', [this._voteName, this._data]);
               this.complete();
             }
           }
@@ -197,11 +194,7 @@ export default class VoteModel {
     this._more = this._values.length > max ? true : false;
 
     if (this._type === 'vote') {
-      for (
-        let i = 0, len = this._currentValues.length;
-        i < len;
-        i += 1
-      ) {
+      for (let i = 0, len = this._currentValues.length; i < len; i += 1) {
         currentValues.push(this._currentValues[i].split(':')[0]);
       }
     } else {
