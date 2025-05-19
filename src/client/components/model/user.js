@@ -1,4 +1,4 @@
-import Publisher from '../../../server/lib/publisher.js';
+import Publisher from '../../../lib/publisher.js';
 
 // Singleton UserModel
 
@@ -126,10 +126,7 @@ export default class UserModel {
           this._keys = this._keys | key;
 
           // иначе если одна команда (первый тип) и она еще не была активирована
-        } else if (
-          type === 1 &&
-          this._keysOneShotData[key] !== true
-        ) {
+        } else if (type === 1 && this._keysOneShotData[key] !== true) {
           this._keysOneShot = this._keysOneShot | key;
           this._keysOneShotData[key] = true;
         }

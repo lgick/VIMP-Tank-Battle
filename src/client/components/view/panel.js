@@ -1,4 +1,4 @@
-import Publisher from '../../../server/lib/publisher.js';
+import Publisher from '../../../lib/publisher.js';
 
 // Singleton PanelView
 
@@ -26,9 +26,7 @@ export default class PanelView {
 
   // обновляет пользовательскую панель
   update(data) {
-    const elem = this._document.getElementById(
-      this._panel[data.name],
-    );
+    const elem = this._document.getElementById(this._panel[data.name]);
 
     if (elem) {
       if (data.value === '') {

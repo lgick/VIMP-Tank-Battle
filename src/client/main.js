@@ -21,7 +21,8 @@ import StatCtrl from './components/controller/stat.js';
 import VoteModel from './components/model/vote.js';
 import VoteView from './components/view/vote.js';
 import VoteCtrl from './components/controller/vote.js';
-import Factory from '../server/lib/factory.js';
+import Factory from '../lib/factory.js';
+import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
 const document = window.document;
@@ -42,26 +43,26 @@ const PING_INTERVAL_MS = 3000; // интервал отправки пинга
 let pingTimeoutId = null;
 const RTT_ALPHA = 0.1; // коэффициент для экспоненциального скользящего среднего
 
-// PTS (port to server)
-const PTS_CONFIG_READY = 0;
-const PTS_AUTH_RESPONSE = 1;
-const PTS_MAP_READY = 2;
-const PTS_KEYS_DATA = 3;
-const PTS_CHAT_DATA = 4;
-const PTS_VOTE_DATA = 5;
-const PTS_PING = 6;
+// PC (client ports)
+const PC_CONFIG_DATA = wsports.client.CONFIG_DATA;
+const PC_AUTH_DATA = wsports.client.AUTH_DATA;
+const PC_AUTH_ERRORS = wsports.client.AUTH_ERRORS;
+const PC_MAP_DATA = wsports.client.MAP_DATA;
+const PC_SHOT_DATA = wsports.client.SHOT_DATA;
+const PC_INFORM_DATA = wsports.client.INFORM_DATA;
+const PC_MISC = wsports.client.MISC;
+const PC_CLEAR = wsports.client.CLEAR;
+const PC_CONSOLE = wsports.client.CONSOLE;
+const PC_PONG = wsports.client.PONG;
 
-// PFS (port from server)
-const PFS_CONFIG_DATA = 0;
-const PFS_AUTH_DATA = 1;
-const PFS_AUTH_ERRORS = 2;
-const PFS_MAP_DATA = 3;
-const PFS_SHOT_DATA = 4;
-const PFS_INFORM_DATA = 5;
-const PFS_MISC = 6;
-const PFS_CLEAR = 7;
-const PFS_CONSOLE = 8;
-const PFS_PONG = 9;
+// PS (server ports)
+const PS_CONFIG_READY = wsports.server.CONFIG_READY;
+const PS_AUTH_RESPONSE = wsports.server.AUTH_RESPONSE;
+const PS_MAP_READY = wsports.server.MAP_READY;
+const PS_KEYS_DATA = wsports.server.KEYS_DATA;
+const PS_CHAT_DATA = wsports.server.CHAT_DATA;
+const PS_VOTE_DATA = wsports.server.VOTE_DATA;
+const PS_PING = wsports.server.PING;
 
 const informer = document.getElementById('informer');
 
@@ -83,7 +84,7 @@ const socketMethods = []; // методы для обработки сокет-�
 // SOCKET МЕТОДЫ
 
 // config data
-socketMethods[PFS_CONFIG_DATA] = async data => {
+socketMethods[PC_CONFIG_DATA] = async data => {
   gameSets = data.parts.gameSets;
   entitiesOnCanvas = data.parts.entitiesOnCanvas;
 
@@ -124,7 +125,7 @@ socketMethods[PFS_CONFIG_DATA] = async data => {
 
   Promise.all(initPromises)
     .then(() => {
-      sending(PTS_CONFIG_READY); // config ready
+      sending(PS_CONFIG_READY); // config ready
       scheduleNextPing(); // run ping
     })
 
@@ -134,7 +135,7 @@ socketMethods[PFS_CONFIG_DATA] = async data => {
 };
 
 // auth data
-socketMethods[PFS_AUTH_DATA] = data => {
+socketMethods[PC_AUTH_DATA] = data => {
   if (typeof data !== 'object' || data === null) {
     console.log('authorization error');
     return;
@@ -166,13 +167,13 @@ socketMethods[PFS_AUTH_DATA] = data => {
   const authView = new AuthView(authModel, viewData);
   modules.auth = new AuthCtrl(authModel, authView);
 
-  authModel.publisher.on('socket', data => sending(PTS_AUTH_RESPONSE, data));
+  authModel.publisher.on('socket', data => sending(PS_AUTH_RESPONSE, data));
 
   modules.auth.init(params);
 };
 
 // auth errors
-socketMethods[PFS_AUTH_ERRORS] = err => {
+socketMethods[PC_AUTH_ERRORS] = err => {
   modules.auth.parseRes(err);
 
   if (!err) {
@@ -181,7 +182,7 @@ socketMethods[PFS_AUTH_ERRORS] = err => {
 };
 
 // map data
-socketMethods[PFS_MAP_DATA] = data => {
+socketMethods[PC_MAP_DATA] = data => {
   const { layers, map, step, setID, spriteSheet, physicsStatic } = data;
 
   // удаление данных карт
@@ -237,11 +238,11 @@ socketMethods[PFS_MAP_DATA] = data => {
   removeMap(currentMapSetID);
   createMap(setID, staticData);
   updateGameControllers();
-  sending(PTS_MAP_READY);
+  sending(PS_MAP_READY);
 };
 
 // shot data
-socketMethods[PFS_SHOT_DATA] = data => {
+socketMethods[PC_SHOT_DATA] = data => {
   const [game, crds, panel, stat, chat, vote, keySet] = data;
 
   // данные игры
@@ -288,7 +289,7 @@ socketMethods[PFS_SHOT_DATA] = data => {
 };
 
 // inform data
-socketMethods[PFS_INFORM_DATA] = data => {
+socketMethods[PC_INFORM_DATA] = data => {
   if (data) {
     const [messageKey, dataArr] = data;
     let message = informList[messageKey];
@@ -309,7 +310,7 @@ socketMethods[PFS_INFORM_DATA] = data => {
 };
 
 // misc
-socketMethods[PFS_MISC] = data => {
+socketMethods[PC_MISC] = data => {
   const { key, value } = data;
 
   if (key === 'localstorageNameReplace') {
@@ -318,7 +319,7 @@ socketMethods[PFS_MISC] = data => {
 };
 
 // clear
-socketMethods[PFS_CLEAR] = function (setIDList) {
+socketMethods[PC_CLEAR] = function (setIDList) {
   // если есть список setID (учитывается в том числе пустой список)
   if (Array.isArray(setIDList)) {
     for (let i = 0, len = setIDList.length; i < len; i += 1) {
@@ -340,12 +341,12 @@ socketMethods[PFS_CLEAR] = function (setIDList) {
 };
 
 // console
-socketMethods[PFS_CONSOLE] = data => {
+socketMethods[PC_CONSOLE] = data => {
   console.log(data);
 };
 
 // pong
-socketMethods[PFS_PONG] = pongPayload => {
+socketMethods[PC_PONG] = pongPayload => {
   if (
     pongPayload.originalTimestamp === outstandingPingTimestamp &&
     outstandingPingTimestamp !== 0
@@ -491,9 +492,9 @@ function runModules(data) {
   statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
   voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
 
-  userModel.publisher.on('socket', data => sending(PTS_KEYS_DATA, data));
-  chatModel.publisher.on('socket', data => sending(PTS_CHAT_DATA, data));
-  voteModel.publisher.on('socket', data => sending(PTS_VOTE_DATA, data));
+  userModel.publisher.on('socket', data => sending(PS_KEYS_DATA, data));
+  chatModel.publisher.on('socket', data => sending(PS_CHAT_DATA, data));
+  voteModel.publisher.on('socket', data => sending(PS_VOTE_DATA, data));
 }
 
 // создает экземпляр игры
@@ -524,7 +525,7 @@ function scheduleNextPing() {
       }
 
       outstandingPingTimestamp = performance.now();
-      sending(PTS_PING, { timestamp: outstandingPingTimestamp });
+      sending(PS_PING, { timestamp: outstandingPingTimestamp });
     }
   }, PING_INTERVAL_MS);
 }

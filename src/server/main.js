@@ -1,19 +1,19 @@
 import express from 'express';
 import minimist from 'minimist';
-import config from './lib/config.js';
+import config from '../lib/config.js';
 import ViteExpress from 'vite-express';
 
 // Парсинг аргументов командной строки
 const argv = minimist(process.argv.slice(2));
 
 // auth config
-config.set('auth', (await import('./game/config/auth.js')).default);
+config.set('auth', (await import('../config/auth.js')).default);
 
 // server config
-config.set(
-  'server',
-  (await import('./game/config/server.js')).default,
-);
+config.set('server', (await import('../config/server.js')).default);
+
+// wsports config
+config.set('wsports', (await import('../config/wsports.js')).default);
 
 // если задан домен
 if (argv.domain) {
@@ -33,14 +33,12 @@ if (argv.players) {
     config.set('server:maxPlayers', argv.players);
     console.info('Limit players in server: ' + argv.players);
   } else {
-    console.info(
-      'Limit players in server: ' + config.get('server:maxPlayers'),
-    );
+    console.info('Limit players in server: ' + config.get('server:maxPlayers'));
   }
 }
 
 // game config
-config.set('game', (await import('./game/config/game.js')).default);
+config.set('game', (await import('../config/game.js')).default);
 
 // если задана карта
 if (argv.map) {
@@ -74,16 +72,10 @@ if (argv.mtime) {
 }
 
 // client config
-config.set(
-  'client',
-  (await import('./game/config/client.js')).default,
-);
+config.set('client', (await import('../config/client.js')).default);
 
 // время ожидания vote-модуля
-config.set(
-  'client:modules:vote:params:time',
-  config.get('game:voteTime'),
-);
+config.set('client:modules:vote:params:time', config.get('game:voteTime'));
 
 // регулярное выражение для сообщений
 config.set(
@@ -95,9 +87,7 @@ config.set(
 const app = express();
 
 const server = app.listen(config.get('server:port'), () => {
-  console.info(
-    `Server is running on port ${config.get('server:port')}`,
-  );
+  console.info(`Server is running on port ${config.get('server:port')}`);
 });
 
 const socket = (await import('./socket/index.js')).default;

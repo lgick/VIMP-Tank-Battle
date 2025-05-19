@@ -1,4 +1,4 @@
-import Publisher from '../../../server/lib/publisher.js';
+import Publisher from '../../../lib/publisher.js';
 
 // Singleton ChatModel
 

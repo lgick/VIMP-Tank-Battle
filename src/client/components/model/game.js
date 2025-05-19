@@ -1,5 +1,5 @@
-import Publisher from '../../../server/lib/publisher.js';
-import Factory from '../../../server/lib/factory.js';
+import Publisher from '../../../lib/publisher.js';
+import Factory from '../../../lib/factory.js';
 
 export default class GameModel {
   constructor() {

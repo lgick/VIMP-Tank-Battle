@@ -1,6 +1,6 @@
-import maps from '../../../../public/maps/index.js';
-import constructors from '../parts/index.js';
-import factory from '../../lib/factory.js';
+import maps from '../../public/maps/index.js';
+import constructors from '../server/parts/index.js';
+import factory from '../lib/factory.js';
 
 export default {
   factory,
