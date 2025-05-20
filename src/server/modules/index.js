@@ -815,6 +815,11 @@ class VIMP {
     }
   }
 
+  // обновляет rtt (round trip time)
+  updateRTT(gameID, rtt) {
+    console.log(`${gameID}:${rtt}`);
+  }
+
   // отправляет голосование за новую карту
   changeMap(gameID, mapName) {
     // возвращает список карт для голосования
