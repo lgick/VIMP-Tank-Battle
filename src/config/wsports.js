@@ -1,4 +1,5 @@
 export default {
+  // порты получения данных на клиенте
   client: {
     CONFIG_DATA: 0,
     AUTH_DATA: 1,
@@ -9,8 +10,9 @@ export default {
     MISC: 6,
     CLEAR: 7,
     CONSOLE: 8,
-    PONG: 9,
+    PING: 9,
   },
+  // порты получения данных на сервере
   server: {
     CONFIG_READY: 0,
     AUTH_RESPONSE: 1,
@@ -18,6 +20,6 @@ export default {
     KEYS_DATA: 3,
     CHAT_DATA: 4,
     VOTE_DATA: 5,
-    PING: 6,
+    PONG: 6,
   },
 };

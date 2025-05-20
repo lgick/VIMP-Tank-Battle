@@ -10,7 +10,7 @@ const PC_CONFIG_DATA = config.get('wsports:client:CONFIG_DATA');
 const PC_AUTH_DATA = config.get('wsports:client:AUTH_DATA');
 const PC_AUTH_ERRORS = config.get('wsports:client:AUTH_ERRORS');
 const PC_INFORM_DATA = config.get('wsports:client:INFORM_DATA');
-const PC_PONG = config.get('wsports:client:PONG');
+const PC_PING = config.get('wsports:client:PING');
 
 // PS (server ports)
 const PS_CONFIG_READY = config.get('wsports:server:CONFIG_READY');
@@ -19,7 +19,7 @@ const PS_MAP_READY = config.get('wsports:server:MAP_READY');
 const PS_KEYS_DATA = config.get('wsports:server:KEYS_DATA');
 const PS_CHAT_DATA = config.get('wsports:server:CHAT_DATA');
 const PS_VOTE_DATA = config.get('wsports:server:VOTE_DATA');
-const PS_PING = config.get('wsports:server:PING');
+const PS_PONG = config.get('wsports:server:PONG');
 
 const oneConnection = config.get('server:oneConnection');
 
@@ -41,6 +41,31 @@ export default server => {
     const socketMethods = [];
     let id;
     let gameID;
+
+    let rtt = 100; // начальное значение для клиента
+    const PING_INTERVAL_MS = 3000; // интервал обновления пинга
+    const RTT_ALPHA = 0.1; // сглаживание RTT
+    let pingIDCounter = 0;
+    const outstandingServerPings = new Map(); // { pingID: time }
+    let pingTimerID = null;
+
+    function scheduleNextPing() {
+      clearTimeout(pingTimerID);
+
+      pingTimerID = setTimeout(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          pingIDCounter += 1;
+
+          const time = performance.now();
+
+          outstandingServerPings.set(pingIDCounter, time);
+          ws.socket.send(PC_PING, pingIDCounter);
+        }
+
+        // следующий вызов этой функции
+        scheduleNextPing();
+      }, PING_INTERVAL_MS);
+    }
 
     security.origin(origin, err => {
       if (err) {
@@ -83,7 +108,6 @@ export default server => {
         sessions[id] = ws;
 
         ws.socket.socketMethods[PS_CONFIG_READY] = true;
-        ws.socket.socketMethods[PS_PING] = true;
         ws.socket.send(PC_CONFIG_DATA, cConf);
       }
     });
@@ -124,10 +148,13 @@ export default server => {
           ws.socket.socketMethods[PS_KEYS_DATA] = true;
           ws.socket.socketMethods[PS_CHAT_DATA] = true;
           ws.socket.socketMethods[PS_VOTE_DATA] = true;
+          ws.socket.socketMethods[PS_PONG] = true;
 
           vimp.createUser(data, ws.socket, createdId => {
             gameID = createdId;
           });
+
+          scheduleNextPing(); // run ping
         }
       }
     };
@@ -158,15 +185,17 @@ export default server => {
       }
     };
 
-    // 6: ping
-    socketMethods[PS_PING] = pingData => {
-      // pingData здесь - это { timestamp: clientSendTime }
-      // немедленная отправка pong обратно с этим же timestamp
-      ws.socket.send(PC_PONG, { originalTimestamp: pingData.timestamp });
+    // 6: pong
+    socketMethods[PS_PONG] = pingID => {
+      const time = outstandingServerPings.get(pingID);
 
-      console.log(
-        `Server: Responded to Ping from client ${id} with originalTimestamp ${pingData.timestamp}`,
-      );
+      if (time) {
+        const newRttSample = performance.now() - time;
+
+        rtt = rtt * (1 - RTT_ALPHA) + newRttSample * RTT_ALPHA;
+        vimp.updateRTT(gameID, rtt);
+        outstandingServerPings.delete(pingID);
+      }
     };
 
     ws.on('message', data => {
@@ -198,6 +227,9 @@ export default server => {
       }
 
       waiting.remove(id);
+
+      clearTimeout(pingTimerID);
+      outstandingServerPings.clear();
 
       console.log('close');
 

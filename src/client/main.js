@@ -35,13 +35,6 @@ const location = window.location;
 const localStorage = window.localStorage;
 const JSON = window.JSON;
 const WebSocket = window.WebSocket;
-const performance = window.performance;
-
-let rtt = 100; // начальное значение RTT (round trip time) в мс
-let outstandingPingTimestamp = 0;
-const PING_INTERVAL_MS = 3000; // интервал отправки пинга
-let pingTimeoutId = null;
-const RTT_ALPHA = 0.1; // коэффициент для экспоненциального скользящего среднего
 
 // PC (client ports)
 const PC_CONFIG_DATA = wsports.client.CONFIG_DATA;
@@ -53,7 +46,7 @@ const PC_INFORM_DATA = wsports.client.INFORM_DATA;
 const PC_MISC = wsports.client.MISC;
 const PC_CLEAR = wsports.client.CLEAR;
 const PC_CONSOLE = wsports.client.CONSOLE;
-const PC_PONG = wsports.client.PONG;
+const PC_PING = wsports.client.PING;
 
 // PS (server ports)
 const PS_CONFIG_READY = wsports.server.CONFIG_READY;
@@ -62,7 +55,7 @@ const PS_MAP_READY = wsports.server.MAP_READY;
 const PS_KEYS_DATA = wsports.server.KEYS_DATA;
 const PS_CHAT_DATA = wsports.server.CHAT_DATA;
 const PS_VOTE_DATA = wsports.server.VOTE_DATA;
-const PS_PING = wsports.server.PING;
+const PS_PONG = wsports.server.PONG;
 
 const informer = document.getElementById('informer');
 
@@ -126,7 +119,6 @@ socketMethods[PC_CONFIG_DATA] = async data => {
   Promise.all(initPromises)
     .then(() => {
       sending(PS_CONFIG_READY); // config ready
-      scheduleNextPing(); // run ping
     })
 
     .catch(err => {
@@ -345,26 +337,9 @@ socketMethods[PC_CONSOLE] = data => {
   console.log(data);
 };
 
-// pong
-socketMethods[PC_PONG] = pongPayload => {
-  if (
-    pongPayload.originalTimestamp === outstandingPingTimestamp &&
-    outstandingPingTimestamp !== 0
-  ) {
-    const now = performance.now();
-    const newRttSample = now - outstandingPingTimestamp;
-
-    rtt = rtt * (1 - RTT_ALPHA) + newRttSample * RTT_ALPHA;
-
-    console.log(
-      `RTT sample: ${newRttSample.toFixed(0)}ms, Smoothed RTT: ${rtt.toFixed(0)}ms`,
-    );
-
-    outstandingPingTimestamp = 0;
-    scheduleNextPing();
-  } else if (pongPayload.originalTimestamp !== outstandingPingTimestamp) {
-    console.warn('Main: Received pong for an old or unexpected ping.');
-  }
+// ping
+socketMethods[PC_PING] = data => {
+  sending(PS_PONG, data);
 };
 
 // ФУНКЦИИ
@@ -511,23 +486,6 @@ function updateGameControllers() {
   Object.keys(CTRL).forEach(canvasId => {
     CTRL[canvasId].update(coords, scale[canvasId]);
   });
-}
-
-function scheduleNextPing() {
-  if (pingTimeoutId) {
-    clearTimeout(pingTimeoutId);
-  }
-
-  pingTimeoutId = setTimeout(() => {
-    if (ws.readyState === WebSocket.OPEN) {
-      if (outstandingPingTimestamp !== 0) {
-        console.warn('Main: Outstanding ping, new ping might overwrite.');
-      }
-
-      outstandingPingTimestamp = performance.now();
-      sending(PS_PING, { timestamp: outstandingPingTimestamp });
-    }
-  }, PING_INTERVAL_MS);
 }
 
 // открывает режим
