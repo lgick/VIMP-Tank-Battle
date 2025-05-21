@@ -36,26 +36,26 @@ const localStorage = window.localStorage;
 const JSON = window.JSON;
 const WebSocket = window.WebSocket;
 
-// PC (client ports)
-const PC_CONFIG_DATA = wsports.client.CONFIG_DATA;
-const PC_AUTH_DATA = wsports.client.AUTH_DATA;
-const PC_AUTH_ERRORS = wsports.client.AUTH_ERRORS;
-const PC_MAP_DATA = wsports.client.MAP_DATA;
-const PC_SHOT_DATA = wsports.client.SHOT_DATA;
-const PC_INFORM_DATA = wsports.client.INFORM_DATA;
-const PC_MISC = wsports.client.MISC;
-const PC_CLEAR = wsports.client.CLEAR;
-const PC_CONSOLE = wsports.client.CONSOLE;
-const PC_PING = wsports.client.PING;
+// PS (server ports): порты получения данные от сервера
+const PS_CONFIG_DATA = wsports.server.CONFIG_DATA;
+const PS_AUTH_DATA = wsports.server.AUTH_DATA;
+const PS_AUTH_ERRORS = wsports.server.AUTH_ERRORS;
+const PS_MAP_DATA = wsports.server.MAP_DATA;
+const PS_SHOT_DATA = wsports.server.SHOT_DATA;
+const PS_INFORM_DATA = wsports.server.INFORM_DATA;
+const PS_MISC = wsports.server.MISC;
+const PS_CLEAR = wsports.server.CLEAR;
+const PS_CONSOLE = wsports.server.CONSOLE;
+const PS_PING = wsports.server.PING;
 
-// PS (server ports)
-const PS_CONFIG_READY = wsports.server.CONFIG_READY;
-const PS_AUTH_RESPONSE = wsports.server.AUTH_RESPONSE;
-const PS_MAP_READY = wsports.server.MAP_READY;
-const PS_KEYS_DATA = wsports.server.KEYS_DATA;
-const PS_CHAT_DATA = wsports.server.CHAT_DATA;
-const PS_VOTE_DATA = wsports.server.VOTE_DATA;
-const PS_PONG = wsports.server.PONG;
+// PC (client ports): порты получения данных от клиента
+const PC_CONFIG_READY = wsports.client.CONFIG_READY;
+const PC_AUTH_RESPONSE = wsports.client.AUTH_RESPONSE;
+const PC_MAP_READY = wsports.client.MAP_READY;
+const PC_KEYS_DATA = wsports.client.KEYS_DATA;
+const PC_CHAT_DATA = wsports.client.CHAT_DATA;
+const PC_VOTE_DATA = wsports.client.VOTE_DATA;
+const PC_PONG = wsports.client.PONG;
 
 const informer = document.getElementById('informer');
 
@@ -77,7 +77,7 @@ const socketMethods = []; // методы для обработки сокет-�
 // SOCKET МЕТОДЫ
 
 // config data
-socketMethods[PC_CONFIG_DATA] = async data => {
+socketMethods[PS_CONFIG_DATA] = async data => {
   gameSets = data.parts.gameSets;
   entitiesOnCanvas = data.parts.entitiesOnCanvas;
 
@@ -118,7 +118,7 @@ socketMethods[PC_CONFIG_DATA] = async data => {
 
   Promise.all(initPromises)
     .then(() => {
-      sending(PS_CONFIG_READY); // config ready
+      sending(PC_CONFIG_READY); // config ready
     })
 
     .catch(err => {
@@ -127,7 +127,7 @@ socketMethods[PC_CONFIG_DATA] = async data => {
 };
 
 // auth data
-socketMethods[PC_AUTH_DATA] = data => {
+socketMethods[PS_AUTH_DATA] = data => {
   if (typeof data !== 'object' || data === null) {
     console.log('authorization error');
     return;
@@ -159,13 +159,13 @@ socketMethods[PC_AUTH_DATA] = data => {
   const authView = new AuthView(authModel, viewData);
   modules.auth = new AuthCtrl(authModel, authView);
 
-  authModel.publisher.on('socket', data => sending(PS_AUTH_RESPONSE, data));
+  authModel.publisher.on('socket', data => sending(PC_AUTH_RESPONSE, data));
 
   modules.auth.init(params);
 };
 
 // auth errors
-socketMethods[PC_AUTH_ERRORS] = err => {
+socketMethods[PS_AUTH_ERRORS] = err => {
   modules.auth.parseRes(err);
 
   if (!err) {
@@ -174,7 +174,7 @@ socketMethods[PC_AUTH_ERRORS] = err => {
 };
 
 // map data
-socketMethods[PC_MAP_DATA] = data => {
+socketMethods[PS_MAP_DATA] = data => {
   const { layers, map, step, setID, spriteSheet, physicsStatic } = data;
 
   // удаление данных карт
@@ -230,11 +230,11 @@ socketMethods[PC_MAP_DATA] = data => {
   removeMap(currentMapSetID);
   createMap(setID, staticData);
   updateGameControllers();
-  sending(PS_MAP_READY);
+  sending(PC_MAP_READY);
 };
 
 // shot data
-socketMethods[PC_SHOT_DATA] = data => {
+socketMethods[PS_SHOT_DATA] = data => {
   const [game, crds, panel, stat, chat, vote, keySet] = data;
 
   // данные игры
@@ -281,7 +281,7 @@ socketMethods[PC_SHOT_DATA] = data => {
 };
 
 // inform data
-socketMethods[PC_INFORM_DATA] = data => {
+socketMethods[PS_INFORM_DATA] = data => {
   if (data) {
     const [messageKey, dataArr] = data;
     let message = informList[messageKey];
@@ -302,7 +302,7 @@ socketMethods[PC_INFORM_DATA] = data => {
 };
 
 // misc
-socketMethods[PC_MISC] = data => {
+socketMethods[PS_MISC] = data => {
   const { key, value } = data;
 
   if (key === 'localstorageNameReplace') {
@@ -311,7 +311,7 @@ socketMethods[PC_MISC] = data => {
 };
 
 // clear
-socketMethods[PC_CLEAR] = function (setIDList) {
+socketMethods[PS_CLEAR] = function (setIDList) {
   // если есть список setID (учитывается в том числе пустой список)
   if (Array.isArray(setIDList)) {
     for (let i = 0, len = setIDList.length; i < len; i += 1) {
@@ -333,13 +333,13 @@ socketMethods[PC_CLEAR] = function (setIDList) {
 };
 
 // console
-socketMethods[PC_CONSOLE] = data => {
+socketMethods[PS_CONSOLE] = data => {
   console.log(data);
 };
 
 // ping
-socketMethods[PC_PING] = data => {
-  sending(PS_PONG, data);
+socketMethods[PS_PING] = data => {
+  sending(PC_PONG, data);
 };
 
 // ФУНКЦИИ
@@ -467,9 +467,9 @@ function runModules(data) {
   statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
   voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
 
-  userModel.publisher.on('socket', data => sending(PS_KEYS_DATA, data));
-  chatModel.publisher.on('socket', data => sending(PS_CHAT_DATA, data));
-  voteModel.publisher.on('socket', data => sending(PS_VOTE_DATA, data));
+  userModel.publisher.on('socket', data => sending(PC_KEYS_DATA, data));
+  chatModel.publisher.on('socket', data => sending(PC_CHAT_DATA, data));
+  voteModel.publisher.on('socket', data => sending(PC_VOTE_DATA, data));
 }
 
 // создает экземпляр игры

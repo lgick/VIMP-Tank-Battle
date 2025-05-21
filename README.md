@@ -25,7 +25,7 @@ git clone git@github.com:lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && 
 
 # WebSocket ports (message-IDs)
 
-## Client ports
+## Server: порты получение данных от сервера
 
 | Port |    Name     | Description                                                                                      |
 | :--: | :---------: | ------------------------------------------------------------------------------------------------ |
@@ -38,9 +38,9 @@ git clone git@github.com:lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && 
 |  6   |    misc     | Присылает разнообразные данные, не имеющие определенного формата                                 |
 |  7   |    clear    | Удаляет данные игры                                                                              |
 |  8   |   console   | Данные в console.log()                                                                           |
-|  9   |    pong     | RTT (round trip time)                                                                            |
+|  9   |    ping     | RTT (round trip time)                                                                            |
 
-## Server ports
+## Client: порты получения данные от клиента
 
 | Port |     Name      | Description                                       |
 | :--: | :-----------: | ------------------------------------------------- |
@@ -50,7 +50,7 @@ git clone git@github.com:lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && 
 |  3   |   keys data   | Данные нажатых клавиш                             |
 |  4   |   chat data   | Данные чата/командной строки                      |
 |  5   |   vote data   | Данные опроса                                     |
-|  6   |     ping      | RTT (round trip time)                             |
+|  6   |     pong      | RTT (round trip time)                             |
 
 # Модуль PANEL
 
