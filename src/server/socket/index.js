@@ -5,26 +5,28 @@ import waiting from '../../lib/waiting.js';
 import validator from '../../lib/validator.js';
 import config from '../../lib/config.js';
 
-// PC (client ports)
-const PC_CONFIG_DATA = config.get('wsports:client:CONFIG_DATA');
-const PC_AUTH_DATA = config.get('wsports:client:AUTH_DATA');
-const PC_AUTH_ERRORS = config.get('wsports:client:AUTH_ERRORS');
-const PC_INFORM_DATA = config.get('wsports:client:INFORM_DATA');
-const PC_PING = config.get('wsports:client:PING');
+// PS (server ports): порты получения данные от сервера
+const PS_CONFIG_DATA = config.get('wsports:server:CONFIG_DATA');
+const PS_AUTH_DATA = config.get('wsports:server:AUTH_DATA');
+const PS_AUTH_ERRORS = config.get('wsports:server:AUTH_ERRORS');
+const PS_INFORM_DATA = config.get('wsports:server:INFORM_DATA');
+const PS_PING = config.get('wsports:server:PING');
 
-// PS (server ports)
-const PS_CONFIG_READY = config.get('wsports:server:CONFIG_READY');
-const PS_AUTH_RESPONSE = config.get('wsports:server:AUTH_RESPONSE');
-const PS_MAP_READY = config.get('wsports:server:MAP_READY');
-const PS_KEYS_DATA = config.get('wsports:server:KEYS_DATA');
-const PS_CHAT_DATA = config.get('wsports:server:CHAT_DATA');
-const PS_VOTE_DATA = config.get('wsports:server:VOTE_DATA');
-const PS_PONG = config.get('wsports:server:PONG');
+// PC (client ports): порты получения данных от клиента
+const PC_CONFIG_READY = config.get('wsports:client:CONFIG_READY');
+const PC_AUTH_RESPONSE = config.get('wsports:client:AUTH_RESPONSE');
+const PC_MAP_READY = config.get('wsports:client:MAP_READY');
+const PC_KEYS_DATA = config.get('wsports:client:KEYS_DATA');
+const PC_CHAT_DATA = config.get('wsports:client:CHAT_DATA');
+const PC_VOTE_DATA = config.get('wsports:client:VOTE_DATA');
+const PC_PONG = config.get('wsports:client:PONG');
 
 const oneConnection = config.get('server:oneConnection');
+const PING_INTERVAL_MS = config.get('server:roundTripTime:pingInterval'); // интервал обновления пинга
+const RTT_ALPHA = config.get('server:roundTripTime:alpha'); // сглаживание RTT
 
 const VIMP = config.get('server:VIMP');
-const vimp = new VIMP(config.get('game'), config.get('wsports:client'));
+const vimp = new VIMP(config.get('game'), config.get('wsports:server'));
 
 const auth = config.get('auth');
 const cConf = config.get('client');
@@ -42,24 +44,21 @@ export default server => {
     let id;
     let gameID;
 
-    let rtt = 100; // начальное значение для клиента
-    const PING_INTERVAL_MS = 3000; // интервал обновления пинга
-    const RTT_ALPHA = 0.1; // сглаживание RTT
-    let pingIDCounter = 0;
     const outstandingServerPings = new Map(); // { pingID: time }
+    let pingIDCounter = 0;
     let pingTimerID = null;
 
     function scheduleNextPing() {
       clearTimeout(pingTimerID);
 
       pingTimerID = setTimeout(() => {
-        if (ws.readyState === WebSocket.OPEN) {
+        if (ws.readyState === ws.OPEN) {
           pingIDCounter += 1;
 
           const time = performance.now();
 
           outstandingServerPings.set(pingIDCounter, time);
-          ws.socket.send(PC_PING, pingIDCounter);
+          ws.socket.send(PS_PING, pingIDCounter);
         }
 
         // следующий вызов этой функции
@@ -94,6 +93,8 @@ export default server => {
           },
         };
 
+        ws.socket.rtt = 100; // начальное значение rtt
+
         id = ws.socket.id = uuidv1();
         ws.socket.socketMethods = [
           false,
@@ -107,48 +108,48 @@ export default server => {
 
         sessions[id] = ws;
 
-        ws.socket.socketMethods[PS_CONFIG_READY] = true;
-        ws.socket.send(PC_CONFIG_DATA, cConf);
+        ws.socket.socketMethods[PC_CONFIG_READY] = true;
+        ws.socket.send(PS_CONFIG_DATA, cConf);
       }
     });
 
     // 0: config ready
-    socketMethods[PS_CONFIG_READY] = err => {
+    socketMethods[PC_CONFIG_READY] = err => {
       if (!err) {
         if (oneConnection && IPs[address]) {
-          sessions[IPs[address]].socket.close(4002, [PC_INFORM_DATA, [1]]);
+          sessions[IPs[address]].socket.close(4002, [PS_INFORM_DATA, [1]]);
         }
 
         IPs[address] = id;
 
         waiting.check(id, empty => {
           if (empty) {
-            ws.socket.socketMethods[PS_AUTH_RESPONSE] = true;
-            ws.socket.send(PC_AUTH_DATA, auth);
+            ws.socket.socketMethods[PC_AUTH_RESPONSE] = true;
+            ws.socket.send(PS_AUTH_DATA, auth);
           } else {
             waiting.add(id, data => {
-              ws.socket.send(PC_INFORM_DATA, [0, data]);
+              ws.socket.send(PS_INFORM_DATA, [0, data]);
             });
           }
         });
       }
-      ws.socket.socketMethods[PS_CONFIG_READY] = false;
+      ws.socket.socketMethods[PC_CONFIG_READY] = false;
     };
 
     // 1: auth response
-    socketMethods[PS_AUTH_RESPONSE] = data => {
+    socketMethods[PC_AUTH_RESPONSE] = data => {
       if (data && typeof data === 'object') {
         const err = validator.auth(data);
 
-        ws.socket.send(PC_AUTH_ERRORS, err);
+        ws.socket.send(PS_AUTH_ERRORS, err);
 
         if (!err) {
-          ws.socket.socketMethods[PS_AUTH_RESPONSE] = false;
-          ws.socket.socketMethods[PS_MAP_READY] = true;
-          ws.socket.socketMethods[PS_KEYS_DATA] = true;
-          ws.socket.socketMethods[PS_CHAT_DATA] = true;
-          ws.socket.socketMethods[PS_VOTE_DATA] = true;
-          ws.socket.socketMethods[PS_PONG] = true;
+          ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
+          ws.socket.socketMethods[PC_MAP_READY] = true;
+          ws.socket.socketMethods[PC_KEYS_DATA] = true;
+          ws.socket.socketMethods[PC_CHAT_DATA] = true;
+          ws.socket.socketMethods[PC_VOTE_DATA] = true;
+          ws.socket.socketMethods[PC_PONG] = true;
 
           vimp.createUser(data, ws.socket, createdId => {
             gameID = createdId;
@@ -160,40 +161,40 @@ export default server => {
     };
 
     // 2: map ready
-    socketMethods[PS_MAP_READY] = err => {
+    socketMethods[PC_MAP_READY] = err => {
       vimp.mapReady(err, gameID);
     };
 
     // 3: keys data
-    socketMethods[PS_KEYS_DATA] = keys => {
+    socketMethods[PC_KEYS_DATA] = keys => {
       if (keys) {
         vimp.updateKeys(gameID, keys);
       }
     };
 
     // 4: chat data
-    socketMethods[PS_CHAT_DATA] = message => {
+    socketMethods[PC_CHAT_DATA] = message => {
       if (typeof message === 'string') {
         vimp.pushMessage(gameID, message);
       }
     };
 
     // 5: vote data
-    socketMethods[PS_VOTE_DATA] = data => {
+    socketMethods[PC_VOTE_DATA] = data => {
       if (data) {
         vimp.parseVote(gameID, data);
       }
     };
 
     // 6: pong
-    socketMethods[PS_PONG] = pingID => {
+    socketMethods[PC_PONG] = pingID => {
       const time = outstandingServerPings.get(pingID);
 
       if (time) {
         const newRttSample = performance.now() - time;
+        const rtt = ws.socket.rtt;
 
-        rtt = rtt * (1 - RTT_ALPHA) + newRttSample * RTT_ALPHA;
-        vimp.updateRTT(gameID, rtt);
+        ws.socket.rtt = rtt * (1 - RTT_ALPHA) + newRttSample * RTT_ALPHA;
         outstandingServerPings.delete(pingID);
       }
     };
@@ -230,14 +231,15 @@ export default server => {
 
       clearTimeout(pingTimerID);
       outstandingServerPings.clear();
+      pingIDCounter = 0;
 
       console.log('close');
 
       waiting.getNext(nextId => {
         if (nextId && sessions[nextId]) {
-          sessions[nextId].socket.socketMethods[PS_AUTH_RESPONSE] = true;
-          sessions[nextId].socket.send(PC_AUTH_DATA, auth);
-          sessions[nextId].socket.send(PC_INFORM_DATA);
+          sessions[nextId].socket.socketMethods[PC_AUTH_RESPONSE] = true;
+          sessions[nextId].socket.send(PS_AUTH_DATA, auth);
+          sessions[nextId].socket.send(PS_INFORM_DATA);
         }
       });
 
@@ -247,7 +249,7 @@ export default server => {
             Object.prototype.hasOwnProperty.call(notifyObject, p) &&
             sessions[p]
           ) {
-            sessions[p].socket.send(PC_INFORM_DATA, [0, notifyObject[p]]);
+            sessions[p].socket.send(PS_INFORM_DATA, [0, notifyObject[p]]);
           }
         }
       });

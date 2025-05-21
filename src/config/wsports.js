@@ -1,6 +1,6 @@
 export default {
-  // порты получения данных на клиенте
-  client: {
+  // порты получения данные от сервера
+  server: {
     CONFIG_DATA: 0,
     AUTH_DATA: 1,
     AUTH_ERRORS: 2,
@@ -12,8 +12,8 @@ export default {
     CONSOLE: 8,
     PING: 9,
   },
-  // порты получения данных на сервере
-  server: {
+  // порты получения данных от клиента
+  client: {
     CONFIG_READY: 0,
     AUTH_RESPONSE: 1,
     MAP_READY: 2,
