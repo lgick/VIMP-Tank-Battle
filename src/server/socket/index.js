@@ -10,7 +10,6 @@ const PS_CONFIG_DATA = config.get('wsports:server:CONFIG_DATA');
 const PS_AUTH_DATA = config.get('wsports:server:AUTH_DATA');
 const PS_AUTH_ERRORS = config.get('wsports:server:AUTH_ERRORS');
 const PS_INFORM_DATA = config.get('wsports:server:INFORM_DATA');
-const PS_PING = config.get('wsports:server:PING');
 
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = config.get('wsports:client:CONFIG_READY');
@@ -19,11 +18,8 @@ const PC_MAP_READY = config.get('wsports:client:MAP_READY');
 const PC_KEYS_DATA = config.get('wsports:client:KEYS_DATA');
 const PC_CHAT_DATA = config.get('wsports:client:CHAT_DATA');
 const PC_VOTE_DATA = config.get('wsports:client:VOTE_DATA');
-const PC_PONG = config.get('wsports:client:PONG');
 
 const oneConnection = config.get('server:oneConnection');
-const PING_INTERVAL_MS = config.get('server:roundTripTime:pingInterval'); // интервал обновления пинга
-const RTT_ALPHA = config.get('server:roundTripTime:alpha'); // сглаживание RTT
 
 const VIMP = config.get('server:VIMP');
 const vimp = new VIMP(config.get('game'), config.get('wsports:server'));
@@ -43,28 +39,6 @@ export default server => {
     const socketMethods = [];
     let id;
     let gameID;
-
-    const outstandingServerPings = new Map(); // { pingID: time }
-    let pingIDCounter = 0;
-    let pingTimerID = null;
-
-    function scheduleNextPing() {
-      clearTimeout(pingTimerID);
-
-      pingTimerID = setTimeout(() => {
-        if (ws.readyState === ws.OPEN) {
-          pingIDCounter += 1;
-
-          const time = performance.now();
-
-          outstandingServerPings.set(pingIDCounter, time);
-          ws.socket.send(PS_PING, pingIDCounter);
-        }
-
-        // следующий вызов этой функции
-        scheduleNextPing();
-      }, PING_INTERVAL_MS);
-    }
 
     security.origin(origin, err => {
       if (err) {
@@ -92,8 +66,6 @@ export default server => {
             ws.close(code, JSON.stringify(data));
           },
         };
-
-        ws.socket.rtt = 100; // начальное значение rtt
 
         id = ws.socket.id = uuidv1();
         ws.socket.socketMethods = [
@@ -149,13 +121,10 @@ export default server => {
           ws.socket.socketMethods[PC_KEYS_DATA] = true;
           ws.socket.socketMethods[PC_CHAT_DATA] = true;
           ws.socket.socketMethods[PC_VOTE_DATA] = true;
-          ws.socket.socketMethods[PC_PONG] = true;
 
           vimp.createUser(data, ws.socket, createdId => {
             gameID = createdId;
           });
-
-          scheduleNextPing(); // run ping
         }
       }
     };
@@ -183,19 +152,6 @@ export default server => {
     socketMethods[PC_VOTE_DATA] = data => {
       if (data) {
         vimp.parseVote(gameID, data);
-      }
-    };
-
-    // 6: pong
-    socketMethods[PC_PONG] = pingID => {
-      const time = outstandingServerPings.get(pingID);
-
-      if (time) {
-        const newRttSample = performance.now() - time;
-        const rtt = ws.socket.rtt;
-
-        ws.socket.rtt = rtt * (1 - RTT_ALPHA) + newRttSample * RTT_ALPHA;
-        outstandingServerPings.delete(pingID);
       }
     };
 
@@ -228,10 +184,6 @@ export default server => {
       }
 
       waiting.remove(id);
-
-      clearTimeout(pingTimerID);
-      outstandingServerPings.clear();
-      pingIDCounter = 0;
 
       console.log('close');
 
