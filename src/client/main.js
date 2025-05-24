@@ -46,7 +46,6 @@ const PS_INFORM_DATA = wsports.server.INFORM_DATA;
 const PS_MISC = wsports.server.MISC;
 const PS_CLEAR = wsports.server.CLEAR;
 const PS_CONSOLE = wsports.server.CONSOLE;
-const PS_PING = wsports.server.PING;
 
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = wsports.client.CONFIG_READY;
@@ -55,7 +54,6 @@ const PC_MAP_READY = wsports.client.MAP_READY;
 const PC_KEYS_DATA = wsports.client.KEYS_DATA;
 const PC_CHAT_DATA = wsports.client.CHAT_DATA;
 const PC_VOTE_DATA = wsports.client.VOTE_DATA;
-const PC_PONG = wsports.client.PONG;
 
 const informer = document.getElementById('informer');
 
@@ -335,11 +333,6 @@ socketMethods[PS_CLEAR] = function (setIDList) {
 // console
 socketMethods[PS_CONSOLE] = data => {
   console.log(data);
-};
-
-// ping
-socketMethods[PS_PING] = data => {
-  sending(PC_PONG, data);
 };
 
 // ФУНКЦИИ

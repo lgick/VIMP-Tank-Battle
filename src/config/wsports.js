@@ -10,7 +10,6 @@ export default {
     MISC: 6,
     CLEAR: 7,
     CONSOLE: 8,
-    PING: 9,
   },
   // порты получения данных от клиента
   client: {
@@ -20,6 +19,5 @@ export default {
     KEYS_DATA: 3,
     CHAT_DATA: 4,
     VOTE_DATA: 5,
-    PONG: 6,
   },
 };
