@@ -18,10 +18,11 @@ git clone git@github.com:lgick/VIMP-Tank-Battle.git tank && cd tank && npm i && 
 - `players` - лимит игроков на сервере (по умолчанию `10`)
 - `rtime` - время раунда (по умолчанию `60000`)
 - `mtime` - время карты (по умолчанию `180000`)
+- `friendlyfire` - флаг включения огня по своей команде (по умолчанию: отключен)
 
 Пример запуска:
 
-`node server.js --players=20 --domain=192.33.44.55 --port=3000 --map=mini --rtime=50000 --mtime=150000`
+`node server.js --friendlyfire --players=20 --domain=192.33.44.55 --port=3000 --map=mini --rtime=50000 --mtime=150000`
 
 # WebSocket ports (message-IDs)
 
