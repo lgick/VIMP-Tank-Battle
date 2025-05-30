@@ -11,8 +11,13 @@ export default {
   },
 
   parts: {
-    mapConstructor: 'map', // название конструктора карт
     constructors, // конструкторы частей игры
+
+    mapConstructor: 'map', // название конструктора карт
+    hitscanService: 'hitscanService', // сервис вычисления стрельбы hitscan оружия
+
+    friendlyFire: false, // огонь по своей команде
+
     models: {
       // tank
       m1: {
@@ -29,9 +34,18 @@ export default {
     weapons: {
       // bullet
       w1: {
-        time: 10000,
-        size: 4, // соотношение сторон 1:1
-        constructor: 'bullet',
+        type: 'hitscan',
+        damage: 10, // урон от одного попадания
+        range: 1500, // максимальная дальность выстрела (в игровых юнитах)
+        fireRate: 100, // кулдаун между выстрелами в мс (10 выстрелов в секунду)
+        spread: 0.05, // разброс в радианах (0 для идеальной точности)
+        clientEffect: {
+          // информация для клиента, как визуализировать выстрел
+          type: 'tracer', // например, нарисовать трассер
+          tracerDuration: 80, // как долго виден трассер
+          muzzleFlash: 'small flash', // тип вспышки у дула
+          impactEffect: 'small impact', // тип эффекта попадания
+        },
       },
 
       // bomb
@@ -47,8 +61,6 @@ export default {
   currentMap: 'empty', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
   mapSetID: 'c1', // дефолтный id конструкторов создания карт
-
-  friendlyFire: false, // огонь по своей команде
 
   timeStep: 1000 / 120, // время обновления кадра ~120 Гц
   roundTime: 60000, // время раунда (60)

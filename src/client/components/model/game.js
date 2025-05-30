@@ -4,10 +4,11 @@ import Factory from '../../../lib/factory.js';
 export default class GameModel {
   constructor() {
     this._data = {};
+    this._effectList = [];
     this.publisher = new Publisher();
   }
 
-  // Создает экземпляры вида:
+  // создает экземпляры вида:
   // this._data['Tank']['01']   - игрок c id '01'
   // this._data['Map']['1']     - данные карты на 1 слое
   // this._data['Bullet']['f2'] - пуля с id 'f2'
@@ -21,7 +22,25 @@ export default class GameModel {
     this.publisher.emit('create', this._data[constructor][id]);
   }
 
-  // Возвращает данные:
+  // создает экземпляр эффекта (например анимация выстрела или дыма)
+  // сохраняет экземпляр в списке на выполнение
+  createEffect(constructor, data) {
+    const item = Factory(constructor, data);
+    this.publisher.emit('create', item);
+    this._effectList.push(item);
+  }
+
+  // запускает накопившиеся эффекты
+  // (после добавления их на полотно) и очищает список
+  startEffects() {
+    for (let i = 0, len = this._effectList.length; i < len; i += 1) {
+      this._effectList[i].start();
+    }
+
+    this._effectList = [];
+  }
+
+  // возвращает данные:
   // - экземпляра конструктора
   // - всех экземляров конструктора
   // - все данные
@@ -45,7 +64,7 @@ export default class GameModel {
     }
   }
 
-  // Обновляет данные экземпляра
+  // обновляет данные экземпляра
   update(constructor, id, data) {
     if (data === null) {
       this.remove(constructor, id);
@@ -54,7 +73,7 @@ export default class GameModel {
     }
   }
 
-  // Удаляет данные:
+  // удаляет данные:
   // - экземпляра конструктора
   // - всех экземляров конструктора (пустой конструктор)
   // - все данные (чистое полотно)
