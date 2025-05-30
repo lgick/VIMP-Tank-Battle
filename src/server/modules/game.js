@@ -14,7 +14,6 @@ class Game {
     this._Factory = Factory;
     this._Factory.add(parts.constructors);
 
-    this._mapConstructor = parts.mapConstructor;
     this._models = parts.models;
     this._weapons = parts.weapons;
 
@@ -32,7 +31,14 @@ class Game {
     });
 
     // конструктор карт
-    this._map = this._Factory(this._mapConstructor, this._world);
+    this._map = this._Factory(parts.mapConstructor, this._world);
+
+    // сервис вычисления hitscan выстрелов
+    this._hitscanService = this._Factory(parts.hitscanService, {
+      world: this._world,
+      weapons: this._weapons,
+      friendlyFire: parts.friendlyFire,
+    });
 
     // данные игроков
     this._playersData = {};

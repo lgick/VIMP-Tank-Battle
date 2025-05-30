@@ -8,7 +8,7 @@ export default {
       c1: ['map', 'mapRadar'],
       c2: ['map'],
       m1: ['tank', 'tankRadar', 'smoke', 'tracks'],
-      w1: ['bullet'],
+      w1: ['shotEffect'],
       w2: ['bomb'],
     },
     // отображение классов на полотнах
