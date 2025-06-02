@@ -54,13 +54,13 @@ class HitscanService {
         }
 
         // фильтр по типам сущностей, которые нужно игнорировать
-        if (
-          this._friendlyFire === false &&
-          userData &&
-          filters.ignoreEntityTypes.includes(userData.type)
-        ) {
-          return -1.0;
-        }
+        //if (
+        //  this._friendlyFire === false &&
+        //  userData &&
+        //  filters.ignoreEntityTypes.includes(userData.type)
+        //) {
+        //  return -1.0;
+        //}
 
         // фильтр по команде (если включен и данные есть)
         if (

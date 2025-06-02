@@ -1,4 +1,5 @@
 import { Graphics, Ticker, Container } from 'pixi.js';
+import ImpactEffect from './ImpactEffect.js';
 
 // функция для линейной интерполяции
 function lerp(a, b, t) {
@@ -28,6 +29,9 @@ export default class ShotEffect extends Container {
       maxDuration: 250, // Максимальная длительность анимации в мс
       // Коэффициент для скорости укорачивания хвоста (progress^N). 1 = линейно, 2 = квадратично (быстрее к концу)
       trailShrinkPower: 1.5,
+      impact: {
+        enabled: true,
+      },
     };
 
     this.graphics = new Graphics();
@@ -75,6 +79,10 @@ export default class ShotEffect extends Container {
 
   // стартует анимацию и после выполнения уничтожает эффект
   run() {
+    // Важно: ShotEffect должен быть добавлен на сцену (к какому-либо parent)
+    // до вызова run(), чтобы this.parent был определен для ImpactEffect.
+    // Если this.parent не определен, ImpactEffect не сможет быть добавлен автоматически.
+    // В этом случае он может быть добавлен вручную после создания или логика должна быть сложнее.
     this._tickListener = ticker => this._update(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
     this._update(0); // первый вызов для отрисовки
@@ -151,20 +159,49 @@ export default class ShotEffect extends Container {
       }
     } else {
       this.isComplete = true;
-      this._destroyEffect();
+
+      if (this.config.impact && this.config.impact.enabled) {
+        this._createImpactEffect();
+      }
+
+      this._destroyEffectInternal();
     }
   }
 
-  _destroyEffect() {
+  _createImpactEffect() {
+    const parentContainer = this.parent;
+
+    if (parentContainer) {
+      const impactConfig = this.config.impact || {};
+      const impact = new ImpactEffect(
+        this.endPositionX,
+        this.endPositionY,
+        impactConfig,
+      );
+
+      parentContainer.addChild(impact); // Добавляем ImpactEffect к тому же родителю
+
+      if (parentContainer.sortableChildren) {
+        // Если родитель поддерживает сортировку
+        parentContainer.sortChildren();
+      }
+
+      impact.run();
+    }
+  }
+
+  _destroyEffectInternal() {
     if (this._tickListener) {
       Ticker.shared.remove(this._tickListener);
       this._tickListener = null;
     }
 
+    this.graphics.clear();
+
     if (this.parent) {
       this.parent.removeChild(this);
     }
 
-    this.destroy({ children: true });
+    super.destroy({ children: true, texture: true, baseTexture: true });
   }
 }
