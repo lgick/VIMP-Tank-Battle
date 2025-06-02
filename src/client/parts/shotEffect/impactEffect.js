@@ -10,25 +10,25 @@ function randomRange(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-export class ImpactEffect extends Container {
-  constructor(x, y, parentContainer, config = {}) {
+export default class ImpactEffect extends Container {
+  constructor(x, y, config = {}) {
+    // Убираем parentContainer из конструктора
     super();
-    this.x = x; // Позиция эффекта будет позицией этого контейнера
+    this.x = x;
     this.y = y;
-    this.parentContainer = parentContainer; // Контейнер, куда будет добавлен эффект
 
     this.defaultConfig = {
-      particleCount: randomRange(5, 9), // Количество частиц/лучей
-      particleMinSize: 1.5, // Минимальный размер/толщина луча
-      particleMaxSize: 3.5, // Максимальный размер/толщина луча
-      expansionMinSpeed: 50, // Минимальная скорость разлета частиц/расширения лучей (пикс/сек)
-      expansionMaxSpeed: 120, // Максимальная скорость разлета (пикс/сек)
-      duration: 280, // Общая длительность эффекта в мс
-      color: 0xfff59d, // Цвет вспышки/частиц
+      particleCount: randomRange(5, 9), // количество частиц/лучей
+      particleMinSize: 1.5, // минимальный размер/толщина луча
+      particleMaxSize: 3.5, // максимальный размер/толщина луча
+      expansionMinSpeed: 50, // минимальная скорость разлета частиц/расширения лучей (пикс/сек)
+      expansionMaxSpeed: 120, // максимальная скорость разлета (пикс/сек)
+      duration: 280, // общая длительность эффекта в мс
+      color: 0xfff59d, // цвет вспышки/частиц
       alphaStart: 0.9,
       alphaEnd: 0,
       shape: 'lines', // 'lines', 'circles'
-      lineWidthToLengthRatio: 0.2, // Для 'lines', соотношение толщины к длине (длина будет speed * ratio)
+      lineWidthToLengthRatio: 0.2, // для 'lines', соотношение толщины к длине (длина будет speed * ratio)
     };
 
     this.config = { ...this.defaultConfig, ...config };
@@ -39,7 +39,7 @@ export class ImpactEffect extends Container {
 
     this.elapsedTime = 0;
     this.isComplete = false;
-    this.zIndex = 3; // Поверх трассеров
+    this.zIndex = 3;
 
     this._createParticles();
   }
@@ -51,37 +51,31 @@ export class ImpactEffect extends Container {
         randomRange(
           this.config.expansionMinSpeed,
           this.config.expansionMaxSpeed,
-        ) / 1000; // в пикс/мс
+        ) / 1000;
       const size = randomRange(
         this.config.particleMinSize,
         this.config.particleMaxSize,
       );
 
       this.particles.push({
-        angle: angle,
-        speed: speed, // скорость расширения от центра
+        angle,
+        speed, // скорость расширения от центра
         currentRadius: 0, // текущее расстояние от центра
-        size: size, // используется как толщина для линий или радиус для кругов
-        // можно добавить индивидуальный lifetime decay если нужно
+        size, // используется как толщина для линий или радиус для кругов
       });
     }
   }
 
   run() {
-    if (this.parentContainer) {
-      this.parentContainer.addChild(this);
-      // Сортировка по zIndex, если используется общий контейнер для эффектов
-      if (this.parentContainer.sortableChildren) {
-        this.parentContainer.sortChildren();
-      }
-    } else {
-      console.warn(
-        'ImpactEffect: parentContainer не указан, эффект не будет добавлен на сцену.',
-      );
-      this.isComplete = true;
-      this._destroyEffectInternal(); // Используем внутренний метод, чтобы не конфликтовать с PIXI
-      return;
-    }
+    // Мы ожидаем, что ImpactEffect будет добавлен на сцену перед вызовом run()
+    // или его добавит ShotEffect. Если его нужно добавить независимо:
+    // if (targetContainer && !this.parent) {
+    //   targetContainer.addChild(this);
+    // }
+
+    // Если эффект не был добавлен на сцену родителем (например, ShotEffect), он не запустится.
+    // Это теперь ответственность вызывающего кода (ShotEffect) добавить ImpactEffect на сцену.
+
     this._tickListener = ticker => this._update(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
     this._update(0);
@@ -96,8 +90,8 @@ export class ImpactEffect extends Container {
     this.graphics.clear();
 
     if (progress < 1) {
-      // Общая альфа для всего эффекта, затухает со временем
-      // Можно сделать затухание более резким к концу, например, progress * progress
+      // общая альфа для всего эффекта, затухает со временем
+      // можно сделать затухание более резким к концу, например, progress * progress
       const currentGlobalAlpha = lerp(
         this.config.alphaStart,
         this.config.alphaEnd,
@@ -105,10 +99,10 @@ export class ImpactEffect extends Container {
       );
 
       for (const particle of this.particles) {
-        // Частицы "разлетаются" от центра
+        // частицы "разлетаются" от центра
         particle.currentRadius += particle.speed * deltaMS;
 
-        // Размер/толщина может также уменьшаться со временем
+        // размер/толщина может также уменьшаться со временем
         const currentSize = lerp(particle.size, particle.size * 0.3, progress);
 
         if (this.config.shape === 'circles') {
@@ -126,7 +120,7 @@ export class ImpactEffect extends Container {
           const x2 = Math.cos(particle.angle) * particle.currentRadius;
           const y2 = Math.sin(particle.angle) * particle.currentRadius;
 
-          // Чтобы линия не была слишком тонкой в конце
+          // чтобы линия не была слишком тонкой в конце
           const lineWidth = Math.max(
             currentSize * (1 - progress * 0.8),
             this.config.particleMinSize * 0.5,
@@ -148,7 +142,6 @@ export class ImpactEffect extends Container {
     }
   }
 
-  // Переименовываем, чтобы не конфликтовать с методом destroy() из PIXI.Container
   _destroyEffectInternal() {
     if (this._tickListener) {
       Ticker.shared.remove(this._tickListener);
@@ -158,7 +151,6 @@ export class ImpactEffect extends Container {
     if (this.parent) {
       this.parent.removeChild(this);
     }
-    // Вызываем оригинальный destroy из PIXI.Container
     super.destroy({ children: true, texture: true, baseTexture: true });
   }
 }
