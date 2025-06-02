@@ -5,7 +5,7 @@ function lerp(a, b, t) {
   return a * (1 - t) + b * t;
 }
 
-export default class shotEffect extends Container {
+export default class ShotEffect extends Container {
   // Можно и просто Graphics, если не нужны доп. контейнеры
   constructor(data) {
     super();

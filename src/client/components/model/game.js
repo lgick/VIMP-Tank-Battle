@@ -1,4 +1,4 @@
-import Publisher from '../../../lib/publisher.js';
+import Publisher from '../../../lib/Publisher.js';
 import Factory from '../../../lib/factory.js';
 
 export default class GameModel {
