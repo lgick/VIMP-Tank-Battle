@@ -30,11 +30,10 @@ export default class GameModel {
     this._effectList.push(item);
   }
 
-  // запускает накопившиеся эффекты
-  // (после добавления их на полотно) и очищает список
-  startEffects() {
+  // запускает накопившиеся эффекты и очищает список
+  runEffects() {
     for (let i = 0, len = this._effectList.length; i < len; i += 1) {
-      this._effectList[i].start();
+      this._effectList[i].run();
     }
 
     this._effectList = [];

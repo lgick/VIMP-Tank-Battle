@@ -70,6 +70,7 @@ class Tank extends BaseModel {
     this._body.setUserData({
       type: 'player',
       gameID: data.gameID,
+      teamID: this.teamID,
     });
 
     this._mass = this._body.getMass(); // масса тела
@@ -110,6 +111,8 @@ class Tank extends BaseModel {
     const prevWeapon = Boolean(this.currentKeys & this.keysData.prevWeapon);
 
     const body = this._body;
+
+    this._shotData = null; // сброс данных стрельбы
 
     // ограничение максимального dt, оно может сильно скакать
     dt = Math.min(dt, this._MAX_DT);
@@ -163,44 +166,31 @@ class Tank extends BaseModel {
     // рассчитываем параметры пули (если огонь)
     // используем состояние танка *до* применения новых сил/момента за этот кадр
     if (fire) {
-      this._shotData = null; // сбрасываем на всякий случай
-      const currentAngle = body.getAngle();
-      const currentGunRotation = this._body.gunRotation;
-      const currentPosition = body.getPosition();
+      const weaponConfig = this.weapons[this.currentWeapon];
 
-      if (this.weaponConstructorName === 'bomb') {
-        const extraOffset = 20;
-        const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
+      // TODO реализовать метод canUseWeapon для проверки на кулдаун/патроты
+      //if (this.canUseWeapon(this.currentWeapon)) {
 
-        this._shotData = {
-          position: body.getWorldPoint(localBombOffset), // можно использовать текущее тело
-          angle: currentAngle,
-        };
-      } else if (this.weaponConstructorName === 'bullet') {
-        const totalAngle = currentAngle + currentGunRotation;
-        const bulletOffsetDistance = this._width / 2 + 10;
-        const relPos = Rot.mulVec2(
-          new Rot(totalAngle),
-          new Vec2(bulletOffsetDistance, 0),
-        );
-        const spawnPos = Vec2.add(currentPosition, relPos);
-        const bulletDirection = Rot.mulVec2(
-          new Rot(totalAngle),
-          new Vec2(1, 0),
-        );
-        const muzzleVelocity = 250; // скорость пули для наглядности
-        // считываем скорость в точке спавна *сейчас*
-        const gunTipVelocity = body.getLinearVelocityFromWorldPoint(spawnPos);
-        const finalBulletVelocity = Vec2.add(
-          gunTipVelocity,
-          bulletDirection.mul(muzzleVelocity),
-        );
+      // если проверка на кулдаун/патроны пройдена
+      if (true) {
+        const currentAngle = body.getAngle();
+        // factory weapon
+        if (this.weaponConstructorType === 'factory') {
+          const extraOffset = 20;
+          const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
 
-        this._shotData = {
-          position: spawnPos,
-          angle: totalAngle,
-          velocity: finalBulletVelocity,
-        };
+          this._shotData = {
+            position: body.getWorldPoint(localBombOffset), // можно использовать текущее тело
+            angle: currentAngle,
+          };
+          // hitscan weapon
+        } else if (this.weaponConstructorType === 'hitscan') {
+          this._shotData = {
+            shooterBody: body, // тело самого стрелка
+            startPoint: this.getMuzzlePosition(this.currentWeapon), // vec2
+            direction: this.getFireDirection(this.currentWeapon), // нормализованный Vec2
+          };
+        }
       }
     }
 
@@ -287,6 +277,37 @@ class Tank extends BaseModel {
 
     // обнуление клавиш в конце
     this.currentKeys = null;
+  }
+
+  getMuzzlePosition(weaponName) {
+    const body = this.getBody();
+    const totalAngle = body.getAngle() + (body.gunRotation || 0);
+    const muzzleLocalOffsetX = this._width * 0.55;
+    const muzzleLocalOffsetY = 0;
+    const relPos = Rot.mulVec2(
+      new Rot(totalAngle),
+      new Vec2(muzzleLocalOffsetX, muzzleLocalOffsetY),
+    );
+
+    return Vec2.add(body.getPosition(), relPos);
+  }
+
+  getFireDirection(weaponName) {
+    const body = this.getBody();
+    const totalAngle = body.getAngle() + (body.gunRotation || 0);
+    let directionVec = Rot.mulVec2(new Rot(totalAngle), new Vec2(1, 0)); // Изначально Vec2
+
+    const weaponConfig = this.weapons[weaponName];
+
+    if (weaponConfig && weaponConfig.spread > 0) {
+      const spreadVal = (Math.random() - 0.5) * 2 * weaponConfig.spread;
+      // Rot.mulVec2 также возвращает новый Vec2
+      directionVec = Rot.mulVec2(new Rot(spreadVal), directionVec);
+    }
+
+    directionVec.normalize(); // убедимся, что он нормализован
+
+    return directionVec; // planck.Vec2
   }
 
   getBody() {
