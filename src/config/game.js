@@ -13,8 +13,8 @@ export default {
   parts: {
     constructors, // конструкторы частей игры
 
-    mapConstructor: 'map', // название конструктора карт
-    hitscanService: 'hitscanService', // сервис вычисления стрельбы hitscan оружия
+    mapConstructor: 'Map', // название конструктора карт
+    hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan оружия
 
     friendlyFire: false, // огонь по своей команде
 
@@ -22,7 +22,7 @@ export default {
       // tank
       m1: {
         size: 10, // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
-        constructor: 'tank',
+        constructor: 'Tank',
         currentWeapon: 'w1',
         // боезапас модели танка
         ammo: {
@@ -51,7 +51,7 @@ export default {
       // bomb
       w2: {
         type: 'factory',
-        constructor: 'bomb',
+        constructor: 'Bomb',
         time: 5000,
         size: 32, // соотношение сторон 1:1
       },

@@ -1,4 +1,4 @@
-import BaseModel from './baseModel.js';
+import BaseModel from './BaseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck';
 
 class Tank extends BaseModel {

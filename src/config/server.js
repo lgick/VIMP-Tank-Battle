@@ -1,4 +1,4 @@
-import VIMP from '../server/modules/index.js';
+import VIMP from '../server/modules/VIMP.js';
 
 export default {
   name: 'VIMP Tank Battle',

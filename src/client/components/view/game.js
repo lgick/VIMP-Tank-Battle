@@ -1,4 +1,4 @@
-import Publisher from '../../../lib/publisher.js';
+import Publisher from '../../../lib/Publisher.js';
 
 export default class GameView {
   constructor(model, app) {

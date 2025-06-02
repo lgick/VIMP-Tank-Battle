@@ -1,19 +1,19 @@
-import map from './map.js';
-import mapRadar from './mapRadar.js';
-import tankRadar from './tankRadar.js';
-import tank from './tank.js';
-import bomb from './bomb.js';
-import smoke from './smoke.js';
-import tracks from './tracks.js';
-import shotEffect from './shotEffect.js';
+import Map from './Map.js';
+import MapRadar from './MapRadar.js';
+import TankRadar from './TankRadar.js';
+import Tank from './Tank.js';
+import Bomb from './Bomb.js';
+import Smoke from './Smoke.js';
+import Tracks from './Tracks/index.js';
+import ShotEffect from './ShotEffect/index.js';
 
 export default {
-  map,
-  mapRadar,
-  tankRadar,
-  tank,
-  bomb,
-  smoke,
-  tracks,
-  shotEffect,
+  Map,
+  MapRadar,
+  TankRadar,
+  Tank,
+  Bomb,
+  Smoke,
+  Tracks,
+  ShotEffect,
 };

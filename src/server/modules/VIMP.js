@@ -1,8 +1,8 @@
-import Panel from './panel.js';
-import Stat from './stat.js';
+import Panel from './Panel.js';
+import Stat from './Stat.js';
 import Chat from './chat.js';
-import Vote from './vote.js';
-import Game from './game.js';
+import Vote from './Vote.js';
+import Game from './Game.js';
 
 // Singleton
 let vimp;
