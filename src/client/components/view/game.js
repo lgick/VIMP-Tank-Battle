@@ -1,8 +1,12 @@
+import Publisher from '../../../lib/publisher.js';
+
 export default class GameView {
   constructor(model, app) {
     this._app = app;
 
     this._model = model;
+
+    this.publisher = new Publisher();
 
     // подписка на события модели
     this._mPublic = this._model.publisher;
@@ -38,6 +42,8 @@ export default class GameView {
 
     this._app.stage.updateTransform({ x, y, scaleX: scale, scaleY: scale });
     this._app.render();
+
+    this.publisher.emit('renderEnd');
   }
 
   // удаляет экземпляр с полотна

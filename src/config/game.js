@@ -50,9 +50,10 @@ export default {
 
       // bomb
       w2: {
+        type: 'factory',
+        constructor: 'bomb',
         time: 5000,
         size: 32, // соотношение сторон 1:1
-        constructor: 'bomb',
       },
     },
   },

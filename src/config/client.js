@@ -17,7 +17,7 @@ export default {
       mapRadar: 'radar',
       tankRadar: 'radar',
       tank: 'vimp',
-      bullet: 'vimp',
+      shotEffect: 'vimp',
       bomb: 'vimp',
       smoke: 'vimp',
       tracks: 'vimp',

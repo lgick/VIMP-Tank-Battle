@@ -36,7 +36,11 @@ class Game {
     // сервис вычисления hitscan выстрелов
     this._hitscanService = this._Factory(parts.hitscanService, {
       world: this._world,
-      weapons: this._weapons,
+      weapons: Object.fromEntries(
+        Object.entries(this._weapons).filter(([weaponKey, weaponData]) => {
+          return weaponData.type === 'hitscan';
+        }),
+      ),
       friendlyFire: parts.friendlyFire,
     });
 
@@ -278,10 +282,27 @@ class Game {
         // если есть данные для создания пули
         if (shotData !== null) {
           const weaponName = player.currentWeapon;
-          const shot = this.createShot(gameID, weaponName, shotData);
 
-          gameData[weaponName] = gameData[weaponName] || {};
-          gameData[weaponName][shot.shotID] = shot.getData();
+          if (this._weapons[weaponName].type === 'hitscan') {
+            const hitscanParams = {
+              shooterBody: shotData.shooterBody,
+              shooterGameID: gameID,
+              shooterTeamID: player.teamID,
+              weaponName: weaponName,
+              startPoint: shotData.startPoint,
+              direction: shotData.direction,
+            };
+
+            const data = this._hitscanService.processShot(hitscanParams);
+
+            gameData[weaponName] = gameData[weaponName] || [];
+            gameData[weaponName].push(data);
+          } else {
+            const shot = this.createWeaponAction(gameID, weaponName, shotData);
+
+            gameData[weaponName] = gameData[weaponName] || {};
+            gameData[weaponName][shot.shotID] = shot.getData();
+          }
         }
       }
     }
@@ -306,8 +327,8 @@ class Game {
     return gameData;
   }
 
-  // создает новую пулю и возвращает ее
-  createShot(gameID, weaponName, shotData) {
+  // создает действие с оружием и возвращает данные о нём
+  createWeaponAction(gameID, weaponName, shotData) {
     const weaponData = this._weapons[weaponName];
     const lifetimeMs = weaponData.time;
     const lifetimeSeconds = lifetimeMs / 1000.0;

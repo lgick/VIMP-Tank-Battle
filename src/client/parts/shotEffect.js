@@ -10,6 +10,8 @@ export default class shotEffect extends Container {
   constructor(data) {
     super();
 
+    this.zIndex = 2;
+
     this.startPositionX = data[0];
     this.startPositionY = data[1];
     this.endPositionX = data[2];
@@ -17,17 +19,15 @@ export default class shotEffect extends Container {
 
     this.config = {
       color: 0xffff99, // цвет трассера
-      thickness: 1.5, // толщина линии
-      duration: 80, // время жизни трассера в мс
-      alphaStart: 0.9, // начальная прозрачность
-      alphaEnd: 0, // конечная прозрачность
-      // множитель длины "хвоста" трассера (если он не просто линия)
-      trailLength:
-        Math.hypot(
-          endPositionX - startPositionX,
-          endPositionY - startPositionY,
-        ) * 0.1, // длина "хвоста" 10% от общей
-      // ... другие параметры, если нужны (например, текстура)
+      thickness: 3, // толщина линии
+      alphaStart: 0.95, // начальная прозрачность
+      alphaEnd: 1, // конечная прозрачность
+      trailLength: 40, // Фиксированная максимальная длина видимой части трассера в пикселях
+      tracerSpeed: 3000, // Желаемая скорость "головы" трассера в пикселях в секунду
+      minDuration: 40, // Минимальная длительность анимации в мс
+      maxDuration: 250, // Максимальная длительность анимации в мс
+      // Коэффициент для скорости укорачивания хвоста (progress^N). 1 = линейно, 2 = квадратично (быстрее к концу)
+      trailShrinkPower: 1.5,
     };
 
     this.graphics = new Graphics();
@@ -35,10 +35,46 @@ export default class shotEffect extends Container {
 
     this.elapsedTime = 0;
     this.isComplete = false;
+
+    // Предварительные расчеты для направления и дистанции
+    this.dx = this.endPositionX - this.startPositionX;
+    this.dy = this.endPositionY - this.startPositionY;
+    this.totalDist = Math.hypot(this.dx, this.dy);
+
+    if (this.totalDist > 0.001) {
+      // Избегаем деления на ноль для очень коротких отрезков
+      this.nx = this.dx / this.totalDist; // Нормализованный вектор направления X
+      this.ny = this.dy / this.totalDist; // Нормализованный вектор направления Y
+    } else {
+      // Если выстрел "в себя" или дистанция нулевая
+      this.nx = 0;
+      this.ny = 0;
+      this.totalDist = 0; // Убедимся, что это ноль
+    }
+
+    // Рассчитываем длительность анимации на основе расстояния и скорости
+    if (this.totalDist > 0.001) {
+      // tracerSpeed в пикселях/секунду, длительность в мс
+      this.animationDuration =
+        (this.totalDist / this.config.tracerSpeed) * 1000;
+    } else {
+      // Для выстрела "в точку" или очень короткого используем minDuration
+      this.animationDuration = this.config.minDuration;
+    }
+
+    // Ограничиваем длительность сверху и снизу
+    this.animationDuration = Math.max(
+      this.config.minDuration,
+      this.animationDuration,
+    );
+    this.animationDuration = Math.min(
+      this.config.maxDuration,
+      this.animationDuration,
+    );
   }
 
   // стартует анимацию и после выполнения уничтожает эффект
-  start() {
+  run() {
     this._tickListener = ticker => this._update(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
     this._update(0); // первый вызов для отрисовки
@@ -48,7 +84,8 @@ export default class shotEffect extends Container {
     if (this.isComplete) return;
 
     this.elapsedTime += deltaMS;
-    let progress = Math.min(this.elapsedTime / this.config.duration, 1);
+    // progress теперь рассчитывается относительно динамической animationDuration
+    let progress = Math.min(this.elapsedTime / this.animationDuration, 1);
 
     this.graphics.clear();
 
@@ -56,68 +93,62 @@ export default class shotEffect extends Container {
       const currentAlpha = lerp(
         this.config.alphaStart,
         this.config.alphaEnd,
-        progress,
+        progress, // Альфа по-прежнему зависит от общего прогресса анимации
       );
 
-      // Вариант 1: Простая линия, угасающая по всей длине
-      // this.graphics.moveTo(this.startPositionX, this.startPositionY);
-      // this.graphics.lineTo(this.endPositionX, this.endPositionY);
-      // this.graphics.stroke({ width: this.config.thickness, color: this.config.color, alpha: currentAlpha });
-
-      // Вариант 2: "Летящий" отрезок (голова трассера)
       // Голова трассера движется от startPosition к endPosition
       const headX = lerp(this.startPositionX, this.endPositionX, progress);
       const headY = lerp(this.startPositionY, this.endPositionY, progress);
 
-      // Хвост трассера следует за головой. Длина хвоста постоянна или уменьшается.
-      // Для простоты, сделаем так, что "начало" видимого отрезка тоже движется,
-      // создавая эффект короткого летящего луча.
-      const tailProgress = Math.min(
-        this.elapsedTime /
-          (this.config.duration *
-            (1 +
-              this.config.trailLength /
-                Math.hypot(
-                  this.endPositionX - this.startPositionX,
-                  this.endPositionY - this.startPositionY,
-                ) || 1)),
-        1,
+      // Хвост трассера: его длина уменьшается со временем.
+      // Math.pow(progress, N) позволяет контролировать скорость "сжатия" хвоста.
+      const shrinkProgress = Math.pow(progress, this.config.trailShrinkPower);
+      const currentMaxTrailLength = lerp(
+        this.config.trailLength, // Начальная макс. длина хвоста
+        0, // Конечная длина хвоста (ноль)
+        shrinkProgress, // Прогресс сжатия хвоста
       );
-      //const tailProgress = Math.max(0, progress - (this.config.trailLength / Math.hypot(this.endPositionX - this.startPositionX, this.endPositionY - this.startPositionY || 1)));
 
       let tailX, tailY;
-      // Если мы хотим, чтобы хвост всегда был фиксированной длины ОТНОСИТЕЛЬНО НАПРАВЛЕНИЯ ДВИЖЕНИЯ
-      // и исчезал вместе с головой, то нужно вычислять его от головы назад
-      const dx = this.endPositionX - this.startPositionX;
-      const dy = this.endPositionY - this.startPositionY;
-      const totalDist = Math.hypot(dx, dy);
-      if (totalDist > 0) {
-        const nx = dx / totalDist; // Нормализованный вектор направления
-        const ny = dy / totalDist;
-        // Голова "пролетела" progress * totalDist
-        // Хвост должен быть позади головы на this.config.trailLength
-        // Точка начала хвоста:
-        const currentTrailLength = lerp(
-          this.config.trailLength,
-          0,
-          progress * progress,
-        ); // Хвост укорачивается
-        tailX = headX - nx * currentTrailLength;
-        tailY = headY - ny * currentTrailLength;
+
+      if (this.totalDist === 0) {
+        // Если выстрел в точку, рисуем просто точку (или очень короткую линию, если currentMaxTrailLength > 0)
+        tailX = headX - this.nx * Math.min(1, currentMaxTrailLength); // Для очень коротких
+        tailY = headY - this.ny * Math.min(1, currentMaxTrailLength);
       } else {
-        // Если start и end совпадают (например, выстрел в упор)
-        tailX = headX;
-        tailY = headY;
+        // Расстояние, которое прошла голова от начальной точки
+        const distCoveredByHead = this.totalDist * progress;
+
+        // Фактическая видимая длина хвоста не может быть больше, чем currentMaxTrailLength
+        // и не может быть больше, чем расстояние, которое уже пролетела голова.
+        // Это создает эффект "вытягивания" хвоста из начальной точки.
+        const actualVisibleTrailLength = Math.min(
+          distCoveredByHead,
+          currentMaxTrailLength,
+        );
+
+        tailX = headX - this.nx * actualVisibleTrailLength;
+        tailY = headY - this.ny * actualVisibleTrailLength;
       }
 
-      this.graphics.moveTo(tailX, tailY);
-      this.graphics.lineTo(headX, headY);
-      this.graphics.stroke({
-        width: this.config.thickness,
-        color: this.config.color,
-        alpha: currentAlpha,
-        cap: Graphics.LINE_CAP.ROUND,
-      });
+      // Не рисуем линию, если ее длина слишком мала
+      const lineLength = Math.hypot(headX - tailX, headY - tailY);
+      if (lineLength > 0.5) {
+        // Порог можно настроить
+        this.graphics.moveTo(tailX, tailY);
+        this.graphics.lineTo(headX, headY);
+        this.graphics.stroke({
+          width: this.config.thickness,
+          color: this.config.color,
+          alpha: currentAlpha,
+          cap: 'round',
+        });
+      } else if (progress < 0.5 && this.totalDist === 0) {
+        // Для выстрела в точку можно нарисовать маленький круг
+        this.graphics
+          .circle(headX, headY, this.config.thickness / 2)
+          .fill({ color: this.config.color, alpha: currentAlpha });
+      }
     } else {
       this.isComplete = true;
       this._destroyEffect();

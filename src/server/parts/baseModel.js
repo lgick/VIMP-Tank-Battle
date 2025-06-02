@@ -8,8 +8,8 @@ class BaseModel {
     this._availableWeaponList = data.availableWeaponList;
     this._keysData = data.keysData;
 
-    this._weaponConstructorName =
-      this._weapons[this._currentWeapon].constructor || null;
+    this._weaponConstructorType =
+      this._weapons[this._currentWeapon].type || null;
     this._fullUserData = true;
     this._currentKeys = null;
   }
@@ -62,8 +62,12 @@ class BaseModel {
     return this._currentWeapon;
   }
 
-  get weaponConstructorName() {
-    return this._weaponConstructorName;
+  get weaponConstructorType() {
+    return this._weaponConstructorType;
+  }
+
+  get weapons() {
+    return this._weapons;
   }
 
   // меняет оружие игрока
@@ -83,8 +87,7 @@ class BaseModel {
     }
 
     this._currentWeapon = this._availableWeaponList[key];
-    this._weaponConstructorName =
-      this._weapons[this._currentWeapon].constructor;
+    this._weaponConstructorType = this._weapons[this._currentWeapon].type;
   }
 
   // меняет имя игрока

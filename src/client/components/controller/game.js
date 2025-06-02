@@ -4,6 +4,10 @@ export default class GameCtrl {
   constructor(model, view) {
     this._model = model;
     this._view = view;
+
+    this._vPublic = view.publisher;
+
+    this._vPublic.on('renderEnd', 'runEffects', this);
   }
 
   // обрабатывает данные
@@ -34,9 +38,9 @@ export default class GameCtrl {
     this._view.update(coords, scale);
   }
 
-  // запускает эффекты после добавления их на полотно
-  startEffects() {
-    this._model.startEffects();
+  // запускает эффекты (по событию, после добавления их на полотно)
+  runEffects() {
+    this._model.runEffects();
   }
 
   // удаляет данные игры
