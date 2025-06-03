@@ -113,6 +113,7 @@ class HitscanService {
       +startPoint.y.toFixed(1),
       +endPoint.x,
       +endPoint.y,
+      wasHit,
     ];
   }
 }
