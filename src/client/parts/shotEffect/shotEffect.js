@@ -17,6 +17,7 @@ export default class ShotEffect extends Container {
     this.startPositionY = data[1];
     this.endPositionX = data[2];
     this.endPositionY = data[3];
+    this.hit = data[4];
 
     this.config = {
       color: 0xffff99, // цвет трассера
@@ -29,9 +30,6 @@ export default class ShotEffect extends Container {
       maxDuration: 250, // Максимальная длительность анимации в мс
       // Коэффициент для скорости укорачивания хвоста (progress^N). 1 = линейно, 2 = квадратично (быстрее к концу)
       trailShrinkPower: 1.5,
-      impact: {
-        enabled: true,
-      },
     };
 
     this.graphics = new Graphics();
@@ -160,7 +158,7 @@ export default class ShotEffect extends Container {
     } else {
       this.isComplete = true;
 
-      if (this.config.impact && this.config.impact.enabled) {
+      if (this.hit) {
         this._createImpactEffect();
       }
 
@@ -172,17 +170,15 @@ export default class ShotEffect extends Container {
     const parentContainer = this.parent;
 
     if (parentContainer) {
-      const impactConfig = this.config.impact || {};
-      const impact = new ImpactEffect(
-        this.endPositionX,
-        this.endPositionY,
-        impactConfig,
-      );
+      const impact = new ImpactEffect(this.endPositionX, this.endPositionY, {
+        impactDirectionX: -this.nx, // направление ОТ выстрела
+        impactDirectionY: -this.ny, // направление ОТ выстрела
+      });
 
-      parentContainer.addChild(impact); // Добавляем ImpactEffect к тому же родителю
+      parentContainer.addChild(impact); // добавление ImpactEffect к тому же родителю
 
       if (parentContainer.sortableChildren) {
-        // Если родитель поддерживает сортировку
+        // если родитель поддерживает сортировку
         parentContainer.sortChildren();
       }
 
