@@ -235,11 +235,11 @@ export default class ImpactEffect extends Container {
 
     if (activeParticlesCount === 0 && this.elapsedTime > 0) {
       this.isComplete = true;
-      this._destroyEffectInternal();
+      this.destroy();
     }
   }
 
-  _destroyEffectInternal() {
+  destroy() {
     if (this._tickListener) {
       Ticker.shared.remove(this._tickListener);
       this._tickListener = null;

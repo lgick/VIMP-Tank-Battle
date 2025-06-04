@@ -43,16 +43,16 @@ export default class TrackMark extends Graphics {
     this.alpha = (1 - progress) * this._initialAlpha;
 
     if (progress >= 1) {
-      this.destroyAndRemoveListener();
+      this.destroy();
     }
   }
 
-  destroyAndRemoveListener() {
+  destroy() {
     if (this._fadeListener) {
       Ticker.shared.remove(this._fadeListener);
       this._fadeListener = null;
     }
 
-    this.destroy({ children: true });
+    super.destroy({ children: true });
   }
 }
