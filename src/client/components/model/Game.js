@@ -4,7 +4,6 @@ import Factory from '../../../lib/factory.js';
 export default class GameModel {
   constructor() {
     this._data = {};
-    this._effectList = [];
     this.publisher = new Publisher();
   }
 
@@ -26,17 +25,7 @@ export default class GameModel {
   // сохраняет экземпляр в списке на выполнение
   createEffect(constructor, data) {
     const item = Factory(constructor, data);
-    this.publisher.emit('create', item);
-    this._effectList.push(item);
-  }
-
-  // запускает накопившиеся эффекты и очищает список
-  runEffects() {
-    for (let i = 0, len = this._effectList.length; i < len; i += 1) {
-      this._effectList[i].run();
-    }
-
-    this._effectList = [];
+    this.publisher.emit('createEffect', item);
   }
 
   // возвращает данные:

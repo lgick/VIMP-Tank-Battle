@@ -12,6 +12,7 @@ export default class GameView {
     this._mPublic = this._model.publisher;
 
     this._mPublic.on('create', 'add', this);
+    this._mPublic.on('createEffect', 'addEffect', this);
     this._mPublic.on('remove', 'remove', this);
   }
 
@@ -32,6 +33,12 @@ export default class GameView {
     });
   }
 
+  // создаёт эффект и запускает его
+  addEffect(instance) {
+    this.add(instance);
+    instance.run();
+  }
+
   // вычисляет координаты для отображения
   // пользователя по центру игры и обновляет полотно
   update(coords, scale) {
@@ -42,8 +49,6 @@ export default class GameView {
 
     this._app.stage.updateTransform({ x, y, scaleX: scale, scaleY: scale });
     this._app.render();
-
-    this.publisher.emit('renderEnd');
   }
 
   // удаляет экземпляр с полотна
