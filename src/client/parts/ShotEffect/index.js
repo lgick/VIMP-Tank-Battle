@@ -1,3 +1,3 @@
-import ShotEffect from './ShotEffect.js';
+import ShotEffectController from './ShotEffectController.js';
 
-export default ShotEffect;
+export default ShotEffectController;
