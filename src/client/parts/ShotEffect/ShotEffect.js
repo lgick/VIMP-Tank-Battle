@@ -162,7 +162,7 @@ export default class ShotEffect extends Container {
         this._createImpactEffect();
       }
 
-      this._destroyEffectInternal();
+      this.destroy();
     }
   }
 
@@ -186,7 +186,7 @@ export default class ShotEffect extends Container {
     }
   }
 
-  _destroyEffectInternal() {
+  destroy() {
     if (this._tickListener) {
       Ticker.shared.remove(this._tickListener);
       this._tickListener = null;
