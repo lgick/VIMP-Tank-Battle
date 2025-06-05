@@ -5,8 +5,6 @@ function lerp(a, b, t) {
   return a * (1 - t) + b * t;
 }
 
-// TODO доработать таймер жизни осколков
-
 // функция для случайного числа в диапазоне
 function randomRange(min, max) {
   return Math.random() * (max - min) + min;
@@ -30,12 +28,12 @@ export default class ImpactEffect extends Container {
       maxInitialSpeed: 200, // пикселей в секунду
 
       // жизненный цикл осколков
-      minLifetime: 600, // мс
-      maxLifetime: 5200, // мс
+      minLifetime: 8000, // мс
+      maxLifetime: 15000, // мс
 
-      color: [0x777777, 0x444444], // массив цветов для осколков
+      color: [0x666666, 0x444444], // массив цветов для осколков
 
-      fadeOutStart: 0.7, // начинать угасание, когда прошло 70% времени жизни
+      fadeOutStart: 0.8, // начинать угасание, когда прошло 70% времени жизни
 
       // управление направлением разлета
       impactDirectionX: impactDirectionX, // компонента X базового направления отлета
@@ -45,7 +43,7 @@ export default class ImpactEffect extends Container {
       // параметры для управления движением и остановкой
       dragCoefficient: 5, // коэффициент сопротивления (чем выше, тем быстрее остановка)
       minSpeedThreshold: 1.0, // порог скорости, ниже которого частица считается "остановившейся" (пикс/сек)
-      lingerDuration: 5000, // сколько времени частица лежит неподвижно перед угасанием (мс)
+      lingerDuration: 6000, // сколько времени частица лежит неподвижно перед угасанием (мс)
     };
 
     // обработка случая, когда impactDirection (0,0) - например, выстрел в точку
