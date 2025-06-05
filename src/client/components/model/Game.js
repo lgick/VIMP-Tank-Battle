@@ -4,6 +4,7 @@ import Factory from '../../../lib/factory.js';
 export default class GameModel {
   constructor() {
     this._data = {};
+    this._managedEffects = {};
     this.publisher = new Publisher();
   }
 
@@ -16,16 +17,38 @@ export default class GameModel {
   // id          - id экземпляра
   // data        - данные для создания экземпляра
   create(constructor, id, data) {
+    const instance = Factory(constructor, data);
+
     this._data[constructor] = this._data[constructor] || {};
-    this._data[constructor][id] = Factory(constructor, data);
-    this.publisher.emit('create', this._data[constructor][id]);
+    this._data[constructor][id] = instance;
+    this.publisher.emit('create', instance);
   }
 
   // создает экземпляр эффекта (например анимация выстрела или дыма)
-  // сохраняет экземпляр в списке на выполнение
+  // this._managedEffects['ShotEffect'] = [[100, 1000, 11, 1, true], [200, 200, 200, 200, false]]
   createEffect(constructor, data) {
-    const item = Factory(constructor, data);
-    this.publisher.emit('createEffect', item);
+    const instance = Factory(constructor, data);
+
+    this._managedEffects[constructor] =
+      this._managedEffects[constructor] || new Set();
+    this._managedEffects[constructor].add(instance);
+
+    const originalDestroy = instance.destroy;
+
+    // proxy destroy - для удаления завершенных эффектов из this._managedEffects
+    instance.destroy = (...args) => {
+      if (this._managedEffects[constructor]?.has(instance)) {
+        this._managedEffects[constructor].delete(instance);
+
+        if (this._managedEffects[constructor].size === 0) {
+          delete this._managedEffects[constructor];
+        }
+      }
+
+      originalDestroy.apply(instance, args);
+    };
+
+    this.publisher.emit('createEffect', instance);
   }
 
   // возвращает данные:
@@ -71,7 +94,7 @@ export default class GameModel {
   remove(constructor, id) {
     // если данные по конструктору
     if (constructor) {
-      // .. и они существуют
+      // .. и данные по конструктору существуют
       if (this._data[constructor]) {
         // если данные по конкретному id
         if (id) {
@@ -89,9 +112,17 @@ export default class GameModel {
             }
           }
 
-          this._data[constructor] = {};
+          delete this._data[constructor];
         }
+        // иначе, если данные существуют в эффектах
+      } else if (this._managedEffects[constructor]) {
+        const effectsSet = this._managedEffects[constructor];
+
+        Array.from(effectsSet).forEach(effect => {
+          this.publisher.emit('remove', effect);
+        });
       }
+      // иначе удаление всех данных
     } else {
       for (const constructor in this._data) {
         if (this._data.hasOwnProperty(constructor)) {
@@ -106,6 +137,16 @@ export default class GameModel {
       }
 
       this._data = {};
+
+      Object.keys(this._managedEffects).forEach(constructor => {
+        const effectsSet = this._managedEffects[constructor];
+
+        if (effectsSet) {
+          Array.from(effectsSet).forEach(effect => {
+            this.publisher.emit('remove', effect);
+          });
+        }
+      });
     }
   }
 }
