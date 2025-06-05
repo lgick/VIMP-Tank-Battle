@@ -33,14 +33,16 @@ class Game {
     // конструктор карт
     this._map = this._Factory(parts.mapConstructor, this._world);
 
+    this._hitscanWeapons = Object.fromEntries(
+      Object.entries(this._weapons).filter(([weaponKey, weaponData]) => {
+        return weaponData.type === 'hitscan';
+      }),
+    );
+
     // сервис вычисления hitscan выстрелов
     this._hitscanService = this._Factory(parts.hitscanService, {
       world: this._world,
-      weapons: Object.fromEntries(
-        Object.entries(this._weapons).filter(([weaponKey, weaponData]) => {
-          return weaponData.type === 'hitscan';
-        }),
-      ),
+      weapons: this._hitscanWeapons,
       friendlyFire: parts.friendlyFire,
     });
 
@@ -379,7 +381,11 @@ class Game {
 
   // удаляет данные игроков и пуль и возвращает список удалённых имён
   removePlayersAndShots() {
-    return [...this.removePlayers(), ...this.removeShots()];
+    return [
+      ...this.removePlayers(),
+      ...this.removeShots(),
+      ...Object.keys(this._hitscanWeapons),
+    ];
   }
 
   // сбрасывает currentShotID, удаляет все пули и возвращает список удаленных имён
