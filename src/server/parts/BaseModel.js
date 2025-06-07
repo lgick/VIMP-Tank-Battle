@@ -12,6 +12,14 @@ class BaseModel {
       this._weapons[this._currentWeapon].type || null;
     this._fullUserData = true;
     this._currentKeys = null;
+
+    // инициализация кулдаунов оружия
+    this._weaponRemainingCooldowns = {};
+
+    for (const weaponName in this._weapons) {
+      // изначально все оружие готово к выстрелу
+      this._weaponRemainingCooldowns[weaponName] = 0;
+    }
   }
 
   get teamID() {
@@ -68,6 +76,10 @@ class BaseModel {
 
   get weapons() {
     return this._weapons;
+  }
+
+  get weaponRemainingCooldowns() {
+    return this._weaponRemainingCooldowns;
   }
 
   // меняет оружие игрока

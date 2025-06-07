@@ -115,6 +115,19 @@ class Tank extends BaseModel {
     // ограничение максимального dt, оно может сильно скакать
     dt = Math.min(dt, this._MAX_DT);
 
+    // обновление кулдаунов оружия
+    for (const weaponName in this.weaponRemainingCooldowns) {
+      if (this.weaponRemainingCooldowns[weaponName] > 0) {
+        // dt в секундах, fireRate в мс
+        this.weaponRemainingCooldowns[weaponName] -= dt * 1000;
+      }
+
+      this.weaponRemainingCooldowns[weaponName] = Math.max(
+        0,
+        this.weaponRemainingCooldowns[weaponName],
+      );
+    }
+
     // сначала обновляем поворот башни (если нажаты клавиши)
     // это гарантирует, что gunRotation актуален перед расчетом выстрела
     if (gCenter) {
@@ -127,11 +140,13 @@ class Tank extends BaseModel {
         0,
         Math.min(1, this._gunCenterSpeed * dt),
       );
+
       if (Math.abs(body.gunRotation) < 0.01) {
         // Если почти в центре
         body.gunRotation = 0;
         this._centeringGun = false;
       }
+
       // если во время центрирования нажали ручной поворот, отменяем центрирование
       if (gLeft || gRight) {
         this._centeringGun = false;
@@ -161,14 +176,13 @@ class Tank extends BaseModel {
       }
     }
 
-    // рассчитываем параметры пули (если огонь)
-    // используем состояние танка *до* применения новых сил/момента за этот кадр
+    // если огонь
     if (fire) {
-      // TODO реализовать метод canUseWeapon для проверки на кулдаун/патроты
-      //if (this.canUseWeapon(this.currentWeapon)) {
+      const weaponName = this.currentWeapon;
+      const weaponConfig = this.weapons[weaponName];
 
       // если проверка на кулдаун/патроны пройдена
-      if (true) {
+      if (this._weaponRemainingCooldowns[weaponName] <= 0) {
         const currentAngle = body.getAngle();
         // factory weapon
         if (this.weaponConstructorType === 'factory') {
@@ -187,6 +201,9 @@ class Tank extends BaseModel {
             direction: this.getFireDirection(this.currentWeapon), // нормализованный Vec2
           };
         }
+
+        // установка кулдауна
+        this.weaponRemainingCooldowns[weaponName] = weaponConfig.fireRate;
       }
     }
 
