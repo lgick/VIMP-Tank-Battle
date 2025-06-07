@@ -43,7 +43,6 @@ class Game {
     this._hitscanService = this._Factory(parts.hitscanService, {
       world: this._world,
       weapons: this._hitscanWeapons,
-      friendlyFire: parts.friendlyFire,
     });
 
     // данные игроков

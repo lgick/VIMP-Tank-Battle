@@ -1,6 +1,7 @@
-import { Vec2, Rot } from 'planck';
+import { Vec2 } from 'planck';
 
 // Singleton HitscanService
+
 let hitscanService;
 
 class HitscanService {
@@ -13,7 +14,6 @@ class HitscanService {
 
     this._world = data.world;
     this._weapons = data.weapons;
-    this._friendlyFire = data.friendlyFire;
   }
 
   // обработка hitscan-выстрела
@@ -25,17 +25,18 @@ class HitscanService {
       weaponName, // имя оружия из weaponsConfig
       startPoint, // мировая точка начала луча (например, дуло оружия)
       direction, // нормализованный мировой вектор направления луча
-      filters = {}, // опциональные фильтры для raycast
+      filters = {},
     } = params;
 
     const weaponConfig = this._weapons[weaponName];
 
     const range = weaponConfig.range || 1000; // дальность
+    const impulseMagnitude = weaponConfig.impulseMagnitude || 0; // величина импульса
+
     const endPointRay = Vec2.add(startPoint, direction.mul(range)); // конечная точка луча
 
     let closestHitFixture = null;
     let hitPoint = null;
-    let hitNormal = null;
     let closestFraction = 1.0; // отслеживание ближайшего попадания
 
     this._world.rayCast(
@@ -43,64 +44,38 @@ class HitscanService {
       endPointRay,
       (fixture, point, normal, fraction) => {
         const body = fixture.getBody();
-        // { type: 'player', gameID: 'p1', teamID: 'blue', ... }
-        // { type: 'wall', id: 'wall_segment_5', ... }
-        // { type: 'projectile', objectID: 'proj_abc', ownerGameID: 'p2', ... }
-        const userData = body.getUserData();
 
         // если сам стрелок, игнорировать эту фикстуру и продолжить луч
         if (body === shooterBody) {
           return -1.0;
         }
 
-        // фильтр по типам сущностей, которые нужно игнорировать
-        //if (
-        //  this._friendlyFire === false &&
-        //  userData &&
-        //  filters.ignoreEntityTypes.includes(userData.type)
-        //) {
-        //  return -1.0;
-        //}
-
-        // фильтр по команде (если включен и данные есть)
-        if (
-          filters.ignoreShooterTeam &&
-          shooterTeamID &&
-          userData &&
-          userData.type === 'player' &&
-          userData.teamID === shooterTeamID
-        ) {
-          return -1.0;
-        }
-
-        closestHitFixture = fixture; // сохраняем последнюю фикстуру, в которую попали
+        closestHitFixture = fixture; // сохраняем фикстуру, в которую попали
         hitPoint = point.clone();
-        hitNormal = normal.clone();
         closestFraction = fraction; // устанавливаем новую максимальную долю для луча
 
         return fraction; // продолжить луч, но искать пересечения только до этой точки
       },
     );
 
-    let hitTargetInfo = null;
     let actualImpactPoint = null;
     const wasHit = closestHitFixture !== null && closestFraction < 1.0; // попадание, если fraction < 1.0
 
     if (wasHit) {
       actualImpactPoint = hitPoint; // ближайшая точка попадания
       const hitBody = closestHitFixture.getBody();
-      const hitUserData = hitBody.getUserData();
 
-      hitTargetInfo = {
-        type: hitUserData ? hitUserData.type : 'static_obstacle',
-        id:
-          hitUserData && (hitUserData.gameID || hitUserData.objectID)
-            ? hitUserData.gameID || hitUserData.objectID
-            : null,
-      };
+      // если тело динамическое, то применение физического импульса
+      if (impulseMagnitude > 0 && hitBody.isDynamic()) {
+        const impulseVector = direction.mul(impulseMagnitude);
+        hitBody.applyLinearImpulse(
+          impulseVector,
+          hitBody.getWorldCenter(),
+          true,
+        );
+      }
     }
 
-    // если промах, то actualImpactPoint будет null, нужно endPointRay
     const endPoint = actualImpactPoint
       ? {
           x: +actualImpactPoint.x.toFixed(1),
@@ -108,6 +83,7 @@ class HitscanService {
         }
       : { x: +endPointRay.x.toFixed(1), y: +endPointRay.y.toFixed(1) };
 
+    // данные для отображения трассера
     return [
       +startPoint.x.toFixed(1),
       +startPoint.y.toFixed(1),
