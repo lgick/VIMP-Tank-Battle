@@ -26,7 +26,7 @@ import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
 const document = window.document;
-const parseInt = window.parseInt;
+const Number = window.Number;
 const RegExp = window.RegExp;
 const Object = window.Object;
 const Array = window.Array;
@@ -109,7 +109,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       // пропорции изображения на полотне
       const [w, h] = (options.scale || '1:1')
         .split(':')
-        .map(value => parseInt(value, 10));
+        .map(value => Number(value));
       scale[canvasId] = w / h;
     },
   );
