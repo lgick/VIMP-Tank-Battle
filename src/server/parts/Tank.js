@@ -41,9 +41,7 @@ class Tank extends BaseModel {
 
     // параметры орудия
     this._maxGunAngle = 1.4;
-    this._gunAngleStep = 0.02;
-    this._gunRotationTimer = 0; // таймер для накопления dt (в мс)
-    this._gunRotationInterval = 10; // интервал в миллисекундах
+    this._gunRotationSpeed = 1.5; // скорость поворота башни (радианы в секунду)
 
     this._shotData = null;
 
@@ -117,57 +115,55 @@ class Tank extends BaseModel {
     // ограничение максимального dt, оно может сильно скакать
     dt = Math.min(dt, this._MAX_DT);
 
-    // накапливаем время dt для таймера башни
-    this._gunRotationTimer += dt * 1000;
-
     // сначала обновляем поворот башни (если нажаты клавиши)
     // это гарантирует, что gunRotation актуален перед расчетом выстрела
     if (gCenter) {
       this._centeringGun = true;
     }
 
-    // если центрируем
     if (this._centeringGun) {
-      this._body.gunRotation = this.lerp(
-        this._body.gunRotation,
+      body.gunRotation = this.lerp(
+        body.gunRotation,
         0,
         Math.min(1, this._gunCenterSpeed * dt),
       );
-
-      if (Math.abs(this._body.gunRotation) < 0.01) {
-        this._body.gunRotation = 0;
+      if (Math.abs(body.gunRotation) < 0.01) {
+        // Если почти в центре
+        body.gunRotation = 0;
+        this._centeringGun = false;
+      }
+      // если во время центрирования нажали ручной поворот, отменяем центрирование
+      if (gLeft || gRight) {
         this._centeringGun = false;
       }
     }
 
-    // поворот башни
-    if (gLeft) {
-      if (
-        this._gunRotationTimer >= this._gunRotationInterval &&
-        this._body.gunRotation > -this._maxGunAngle
-      ) {
-        this._body.gunRotation -= this._gunAngleStep;
-        this._gunRotationTimer -= this._gunRotationInterval;
-        this._centeringGun = false;
-      }
-    }
+    // ручной поворот башни (только если не центрируемся)
+    if (!this._centeringGun) {
+      const rotationAmount = this._gunRotationSpeed * dt; // угол поворота за этот кадр
 
-    if (gRight) {
-      if (
-        this._gunRotationTimer >= this._gunRotationInterval &&
-        this._body.gunRotation < this._maxGunAngle
-      ) {
-        this._body.gunRotation += this._gunAngleStep;
-        this._gunRotationTimer -= this._gunRotationInterval;
-        this._centeringGun = false;
+      if (gLeft) {
+        if (body.gunRotation > -this._maxGunAngle) {
+          body.gunRotation -= rotationAmount;
+
+          if (body.gunRotation < -this._maxGunAngle) {
+            body.gunRotation = -this._maxGunAngle;
+          }
+        }
+      } else if (gRight) {
+        if (body.gunRotation < this._maxGunAngle) {
+          body.gunRotation += rotationAmount;
+
+          if (body.gunRotation > this._maxGunAngle) {
+            body.gunRotation = this._maxGunAngle;
+          }
+        }
       }
     }
 
     // рассчитываем параметры пули (если огонь)
     // используем состояние танка *до* применения новых сил/момента за этот кадр
     if (fire) {
-      const weaponConfig = this.weapons[this.currentWeapon];
-
       // TODO реализовать метод canUseWeapon для проверки на кулдаун/патроты
       //if (this.canUseWeapon(this.currentWeapon)) {
 
@@ -295,7 +291,7 @@ class Tank extends BaseModel {
   getFireDirection(weaponName) {
     const body = this.getBody();
     const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    let directionVec = Rot.mulVec2(new Rot(totalAngle), new Vec2(1, 0)); // Изначально Vec2
+    let directionVec = Rot.mulVec2(new Rot(totalAngle), new Vec2(1, 0)); // изначально Vec2
 
     const weaponConfig = this.weapons[weaponName];
 
