@@ -1,4 +1,4 @@
-import BaseModel from './baseModel.js';
+import BaseModel from './BaseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck';
 
 class Tank extends BaseModel {
@@ -6,10 +6,10 @@ class Tank extends BaseModel {
   _MAX_DT = 1 / 30;
 
   // порог скорости для фактора поворота
-  _TURN_SPEED_THRESHOLD = 20;
+  _TURN_SPEED_THRESHOLD = 10;
 
   // фактор поворота при низкой скорости
-  _BASE_TURN_FACTOR_RATIO = 0.5;
+  _BASE_TURN_FACTOR_RATIO = 0.8;
 
   // множитель эффективности поворота при движении назад
   // (меньше 1 = менее резкий поворот назад)
@@ -25,25 +25,23 @@ class Tank extends BaseModel {
 
     this._baseForwardForceFactor = 700; // коэффициент тяги (вперед)
     this._baseReverseForceFactor = 500; // коэффициент тяги (назад)
-    this._baseTurnTorqueFactor = 10; // коэффициент желаемой интенсивности поворота (зависит от инерции)
+    this._baseTurnTorqueFactor = 45; // коэффициент желаемой интенсивности поворота (зависит от инерции)
     this._maxForwardSpeed = 240; // целевая макс. скорость вперед (м/с или юнитов/с)
     this._maxReverseSpeed = -200; // целевая макс. скорость назад (м/с или юнитов/с)
 
     // затухание (Damping) контролирует, как быстро танк замедляется естественно
     // или прекращает поворачиваться.
     // большие значения = большее затухание (замедляется быстрее).
-    this._linearDamping = 2.0; // сопротивление при движении (как сопротивление воздуха/трение)
-    this._angularDamping = 2.0; // сопротивление при повороте
+    this._linearDamping = 3.0; // сопротивление при движении (как сопротивление воздуха/трение)
+    this._angularDamping = 10.0; // сопротивление при повороте
 
     // сила бокового сцепления
     // больше значение = меньше занос/скольжение
-    this._lateralGrip = 2.0;
+    this._lateralGrip = 9.0;
 
     // параметры орудия
     this._maxGunAngle = 1.4;
-    this._gunAngleStep = 0.02;
-    this._gunRotationTimer = 0; // таймер для накопления dt (в мс)
-    this._gunRotationInterval = 10; // интервал в миллисекундах
+    this._gunRotationSpeed = 5; // скорость поворота башни
 
     this._shotData = null;
 
@@ -70,6 +68,7 @@ class Tank extends BaseModel {
     this._body.setUserData({
       type: 'player',
       gameID: data.gameID,
+      teamID: this.teamID,
     });
 
     this._mass = this._body.getMass(); // масса тела
@@ -111,11 +110,23 @@ class Tank extends BaseModel {
 
     const body = this._body;
 
+    this._shotData = null; // сброс данных стрельбы
+
     // ограничение максимального dt, оно может сильно скакать
     dt = Math.min(dt, this._MAX_DT);
 
-    // накапливаем время dt для таймера башни
-    this._gunRotationTimer += dt * 1000;
+    // обновление кулдаунов оружия
+    for (const weaponName in this.weaponRemainingCooldowns) {
+      if (this.weaponRemainingCooldowns[weaponName] > 0) {
+        // dt в секундах, fireRate в мс
+        this.weaponRemainingCooldowns[weaponName] -= dt * 1000;
+      }
+
+      this.weaponRemainingCooldowns[weaponName] = Math.max(
+        0,
+        this.weaponRemainingCooldowns[weaponName],
+      );
+    }
 
     // сначала обновляем поворот башни (если нажаты клавиши)
     // это гарантирует, что gunRotation актуален перед расчетом выстрела
@@ -123,84 +134,76 @@ class Tank extends BaseModel {
       this._centeringGun = true;
     }
 
-    // если центрируем
     if (this._centeringGun) {
-      this._body.gunRotation = this.lerp(
-        this._body.gunRotation,
+      body.gunRotation = this.lerp(
+        body.gunRotation,
         0,
         Math.min(1, this._gunCenterSpeed * dt),
       );
 
-      if (Math.abs(this._body.gunRotation) < 0.01) {
-        this._body.gunRotation = 0;
+      if (Math.abs(body.gunRotation) < 0.01) {
+        // Если почти в центре
+        body.gunRotation = 0;
+        this._centeringGun = false;
+      }
+
+      // если во время центрирования нажали ручной поворот, отменяем центрирование
+      if (gLeft || gRight) {
         this._centeringGun = false;
       }
     }
 
-    // поворот башни
-    if (gLeft) {
-      if (
-        this._gunRotationTimer >= this._gunRotationInterval &&
-        this._body.gunRotation > -this._maxGunAngle
-      ) {
-        this._body.gunRotation -= this._gunAngleStep;
-        this._gunRotationTimer -= this._gunRotationInterval;
-        this._centeringGun = false;
+    // ручной поворот башни (только если не центрируемся)
+    if (!this._centeringGun) {
+      const rotationAmount = this._gunRotationSpeed * dt; // угол поворота за этот кадр
+
+      if (gLeft) {
+        if (body.gunRotation > -this._maxGunAngle) {
+          body.gunRotation -= rotationAmount;
+
+          if (body.gunRotation < -this._maxGunAngle) {
+            body.gunRotation = -this._maxGunAngle;
+          }
+        }
+      } else if (gRight) {
+        if (body.gunRotation < this._maxGunAngle) {
+          body.gunRotation += rotationAmount;
+
+          if (body.gunRotation > this._maxGunAngle) {
+            body.gunRotation = this._maxGunAngle;
+          }
+        }
       }
     }
 
-    if (gRight) {
-      if (
-        this._gunRotationTimer >= this._gunRotationInterval &&
-        this._body.gunRotation < this._maxGunAngle
-      ) {
-        this._body.gunRotation += this._gunAngleStep;
-        this._gunRotationTimer -= this._gunRotationInterval;
-        this._centeringGun = false;
-      }
-    }
-
-    // рассчитываем параметры пули (если огонь)
-    // используем состояние танка *до* применения новых сил/момента за этот кадр
+    // если огонь
     if (fire) {
-      this._shotData = null; // сбрасываем на всякий случай
-      const currentAngle = body.getAngle();
-      const currentGunRotation = this._body.gunRotation;
-      const currentPosition = body.getPosition();
+      const weaponName = this.currentWeapon;
+      const weaponConfig = this.weapons[weaponName];
 
-      if (this.weaponConstructorName === 'bomb') {
-        const extraOffset = 20;
-        const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
+      // если проверка на кулдаун/патроны пройдена
+      if (this._weaponRemainingCooldowns[weaponName] <= 0) {
+        const currentAngle = body.getAngle();
+        // factory weapon
+        if (this.weaponConstructorType === 'factory') {
+          const extraOffset = 20;
+          const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
 
-        this._shotData = {
-          position: body.getWorldPoint(localBombOffset), // можно использовать текущее тело
-          angle: currentAngle,
-        };
-      } else if (this.weaponConstructorName === 'bullet') {
-        const totalAngle = currentAngle + currentGunRotation;
-        const bulletOffsetDistance = this._width / 2 + 10;
-        const relPos = Rot.mulVec2(
-          new Rot(totalAngle),
-          new Vec2(bulletOffsetDistance, 0),
-        );
-        const spawnPos = Vec2.add(currentPosition, relPos);
-        const bulletDirection = Rot.mulVec2(
-          new Rot(totalAngle),
-          new Vec2(1, 0),
-        );
-        const muzzleVelocity = 250; // скорость пули для наглядности
-        // считываем скорость в точке спавна *сейчас*
-        const gunTipVelocity = body.getLinearVelocityFromWorldPoint(spawnPos);
-        const finalBulletVelocity = Vec2.add(
-          gunTipVelocity,
-          bulletDirection.mul(muzzleVelocity),
-        );
+          this._shotData = {
+            position: body.getWorldPoint(localBombOffset), // можно использовать текущее тело
+            angle: currentAngle,
+          };
+          // hitscan weapon
+        } else if (this.weaponConstructorType === 'hitscan') {
+          this._shotData = {
+            shooterBody: body, // тело самого стрелка
+            startPoint: this.getMuzzlePosition(this.currentWeapon), // vec2
+            direction: this.getFireDirection(this.currentWeapon), // нормализованный Vec2
+          };
+        }
 
-        this._shotData = {
-          position: spawnPos,
-          angle: totalAngle,
-          velocity: finalBulletVelocity,
-        };
+        // установка кулдауна
+        this.weaponRemainingCooldowns[weaponName] = weaponConfig.fireRate;
       }
     }
 
@@ -287,6 +290,37 @@ class Tank extends BaseModel {
 
     // обнуление клавиш в конце
     this.currentKeys = null;
+  }
+
+  getMuzzlePosition(weaponName) {
+    const body = this.getBody();
+    const totalAngle = body.getAngle() + (body.gunRotation || 0);
+    const muzzleLocalOffsetX = this._width * 0.55;
+    const muzzleLocalOffsetY = 0;
+    const relPos = Rot.mulVec2(
+      new Rot(totalAngle),
+      new Vec2(muzzleLocalOffsetX, muzzleLocalOffsetY),
+    );
+
+    return Vec2.add(body.getPosition(), relPos);
+  }
+
+  getFireDirection(weaponName) {
+    const body = this.getBody();
+    const totalAngle = body.getAngle() + (body.gunRotation || 0);
+    let directionVec = Rot.mulVec2(new Rot(totalAngle), new Vec2(1, 0)); // изначально Vec2
+
+    const weaponConfig = this.weapons[weaponName];
+
+    if (weaponConfig && weaponConfig.spread > 0) {
+      const spreadVal = (Math.random() - 0.5) * 2 * weaponConfig.spread;
+      // Rot.mulVec2 также возвращает новый Vec2
+      directionVec = Rot.mulVec2(new Rot(spreadVal), directionVec);
+    }
+
+    directionVec.normalize(); // убедимся, что он нормализован
+
+    return directionVec; // planck.Vec2
   }
 
   getBody() {

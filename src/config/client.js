@@ -5,22 +5,22 @@ export default {
   parts: {
     // распределение данных в заданные классы
     gameSets: {
-      c1: ['map', 'mapRadar'],
-      c2: ['map'],
-      m1: ['tank', 'tankRadar', 'smoke', 'tracks'],
-      w1: ['bullet'],
-      w2: ['bomb'],
+      c1: ['Map', 'MapRadar'],
+      c2: ['Map'],
+      m1: ['Tank', 'TankRadar', 'Smoke', 'Tracks'],
+      w1: ['ShotEffect'],
+      w2: ['Bomb'],
     },
     // отображение классов на полотнах
     entitiesOnCanvas: {
-      map: 'vimp',
-      mapRadar: 'radar',
-      tankRadar: 'radar',
-      tank: 'vimp',
-      bullet: 'vimp',
-      bomb: 'vimp',
-      smoke: 'vimp',
-      tracks: 'vimp',
+      Map: 'vimp',
+      MapRadar: 'radar',
+      TankRadar: 'radar',
+      Tank: 'vimp',
+      ShotEffect: 'vimp',
+      Bomb: 'vimp',
+      Smoke: 'vimp',
+      Tracks: 'vimp',
     },
   },
 

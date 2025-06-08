@@ -1,13 +1,18 @@
+import Publisher from '../../../lib/Publisher.js';
+
 export default class GameView {
   constructor(model, app) {
     this._app = app;
 
     this._model = model;
 
+    this.publisher = new Publisher();
+
     // подписка на события модели
     this._mPublic = this._model.publisher;
 
     this._mPublic.on('create', 'add', this);
+    this._mPublic.on('createEffect', 'addEffect', this);
     this._mPublic.on('remove', 'remove', this);
   }
 
@@ -26,6 +31,12 @@ export default class GameView {
 
       return 0;
     });
+  }
+
+  // создаёт эффект и запускает его
+  addEffect(instance) {
+    this.add(instance);
+    instance.run();
   }
 
   // вычисляет координаты для отображения

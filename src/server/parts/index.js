@@ -1,6 +1,6 @@
-import map from './map.js';
-import tank from './tank.js';
-import bullet from './bullet.js';
-import bomb from './bomb.js';
+import Map from './Map.js';
+import Tank from './Tank.js';
+import HitscanService from './HitscanService.js';
+import Bomb from './Bomb.js';
 
-export default { map, tank, bullet, bomb };
+export default { Map, Tank, HitscanService, Bomb };
