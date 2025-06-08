@@ -41,7 +41,7 @@ class Tank extends BaseModel {
 
     // параметры орудия
     this._maxGunAngle = 1.4;
-    this._gunRotationSpeed = 1.5; // скорость поворота башни (радианы в секунду)
+    this._gunRotationSpeed = 5; // скорость поворота башни
 
     this._shotData = null;
 
