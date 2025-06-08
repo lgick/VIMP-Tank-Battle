@@ -189,31 +189,6 @@ export default class TracerEffect extends Container {
           tailY = headY;
         }
 
-        // проверка, чтобы хвост не "залезал" за точку effectiveStart
-        // это важно, если actualVisibleTrailLength очень мала, а голова близко к effectiveStart
-        if (this.totalDist > 0.001) {
-          const distTailToEffectiveStart = Math.hypot(
-            tailX - effectiveStartX,
-            tailY - effectiveStartY,
-          );
-          const distHeadToEffectiveStart = Math.hypot(
-            headX - effectiveStartX,
-            headY - effectiveStartY,
-          );
-
-          if (
-            distTailToEffectiveStart > distHeadToEffectiveStart &&
-            adjustedDistCoveredByHead > 0
-          ) {
-            // Если хвост "перепрыгнул" effectiveStart
-            // Это может произойти, если actualVisibleTrailLength > adjustedDistCoveredByHead,
-            // но Math.min выше должен это предотвращать.
-            // Дополнительная страховка: позиционируем хвост в effectiveStart
-            // tailX = effectiveStartX;
-            // tailY = effectiveStartY;
-          }
-        }
-
         const trailLineLength = Math.hypot(headX - tailX, headY - tailY);
 
         if (
@@ -258,6 +233,7 @@ export default class TracerEffect extends Container {
         Ticker.shared.remove(this._tickListener);
         this._tickListener = null;
       }
+
       this.graphics.clear();
       this.onComplete();
     }
