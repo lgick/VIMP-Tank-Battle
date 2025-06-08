@@ -14,7 +14,6 @@ class Game {
     this._Factory = Factory;
     this._Factory.add(parts.constructors);
 
-    this._mapConstructor = parts.mapConstructor;
     this._models = parts.models;
     this._weapons = parts.weapons;
 
@@ -32,7 +31,19 @@ class Game {
     });
 
     // конструктор карт
-    this._map = this._Factory(this._mapConstructor, this._world);
+    this._map = this._Factory(parts.mapConstructor, this._world);
+
+    this._hitscanWeapons = Object.fromEntries(
+      Object.entries(this._weapons).filter(([weaponKey, weaponData]) => {
+        return weaponData.type === 'hitscan';
+      }),
+    );
+
+    // сервис вычисления hitscan выстрелов
+    this._hitscanService = this._Factory(parts.hitscanService, {
+      world: this._world,
+      weapons: this._hitscanWeapons,
+    });
 
     // данные игроков
     this._playersData = {};
@@ -272,10 +283,27 @@ class Game {
         // если есть данные для создания пули
         if (shotData !== null) {
           const weaponName = player.currentWeapon;
-          const shot = this.createShot(gameID, weaponName, shotData);
 
-          gameData[weaponName] = gameData[weaponName] || {};
-          gameData[weaponName][shot.shotID] = shot.getData();
+          if (this._weapons[weaponName].type === 'hitscan') {
+            const hitscanParams = {
+              shooterBody: shotData.shooterBody,
+              shooterGameID: gameID,
+              shooterTeamID: player.teamID,
+              weaponName: weaponName,
+              startPoint: shotData.startPoint,
+              direction: shotData.direction,
+            };
+
+            const data = this._hitscanService.processShot(hitscanParams);
+
+            gameData[weaponName] = gameData[weaponName] || [];
+            gameData[weaponName].push(data);
+          } else {
+            const shot = this.createWeaponAction(gameID, weaponName, shotData);
+
+            gameData[weaponName] = gameData[weaponName] || {};
+            gameData[weaponName][shot.shotID] = shot.getData();
+          }
         }
       }
     }
@@ -300,8 +328,8 @@ class Game {
     return gameData;
   }
 
-  // создает новую пулю и возвращает ее
-  createShot(gameID, weaponName, shotData) {
+  // создает действие с оружием и возвращает данные о нём
+  createWeaponAction(gameID, weaponName, shotData) {
     const weaponData = this._weapons[weaponName];
     const lifetimeMs = weaponData.time;
     const lifetimeSeconds = lifetimeMs / 1000.0;
@@ -352,7 +380,11 @@ class Game {
 
   // удаляет данные игроков и пуль и возвращает список удалённых имён
   removePlayersAndShots() {
-    return [...this.removePlayers(), ...this.removeShots()];
+    return [
+      ...this.removePlayers(),
+      ...this.removeShots(),
+      ...Object.keys(this._hitscanWeapons),
+    ];
   }
 
   // сбрасывает currentShotID, удаляет все пули и возвращает список удаленных имён

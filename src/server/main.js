@@ -73,7 +73,7 @@ if (argv.mtime) {
 
 // если задан параметр "огонь по команде"
 if (argv.friendlyfire) {
-  config.set('game:friendlyFire', true);
+  config.set('game:parts:friendlyFire', true);
 }
 
 // client config

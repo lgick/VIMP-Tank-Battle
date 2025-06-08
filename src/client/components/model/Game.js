@@ -1,13 +1,14 @@
-import Publisher from '../../../lib/publisher.js';
+import Publisher from '../../../lib/Publisher.js';
 import Factory from '../../../lib/factory.js';
 
 export default class GameModel {
   constructor() {
     this._data = {};
+    this._managedEffects = {};
     this.publisher = new Publisher();
   }
 
-  // Создает экземпляры вида:
+  // создает экземпляры вида:
   // this._data['Tank']['01']   - игрок c id '01'
   // this._data['Map']['1']     - данные карты на 1 слое
   // this._data['Bullet']['f2'] - пуля с id 'f2'
@@ -16,12 +17,41 @@ export default class GameModel {
   // id          - id экземпляра
   // data        - данные для создания экземпляра
   create(constructor, id, data) {
+    const instance = Factory(constructor, data);
+
     this._data[constructor] = this._data[constructor] || {};
-    this._data[constructor][id] = Factory(constructor, data);
-    this.publisher.emit('create', this._data[constructor][id]);
+    this._data[constructor][id] = instance;
+    this.publisher.emit('create', instance);
   }
 
-  // Возвращает данные:
+  // создает экземпляр эффекта (например анимация выстрела или дыма)
+  // this._managedEffects['ShotEffect'] = [[100, 1000, 11, 1, true], [200, 200, 200, 200, false]]
+  createEffect(constructor, data) {
+    const instance = Factory(constructor, data);
+
+    this._managedEffects[constructor] =
+      this._managedEffects[constructor] || new Set();
+    this._managedEffects[constructor].add(instance);
+
+    const originalDestroy = instance.destroy;
+
+    // proxy destroy - для удаления завершенных эффектов из this._managedEffects
+    instance.destroy = (...args) => {
+      if (this._managedEffects[constructor]?.has(instance)) {
+        this._managedEffects[constructor].delete(instance);
+
+        if (this._managedEffects[constructor].size === 0) {
+          delete this._managedEffects[constructor];
+        }
+      }
+
+      originalDestroy.apply(instance, args);
+    };
+
+    this.publisher.emit('createEffect', instance);
+  }
+
+  // возвращает данные:
   // - экземпляра конструктора
   // - всех экземляров конструктора
   // - все данные
@@ -45,7 +75,7 @@ export default class GameModel {
     }
   }
 
-  // Обновляет данные экземпляра
+  // обновляет данные экземпляра
   update(constructor, id, data) {
     if (data === null) {
       this.remove(constructor, id);
@@ -54,7 +84,7 @@ export default class GameModel {
     }
   }
 
-  // Удаляет данные:
+  // удаляет данные:
   // - экземпляра конструктора
   // - всех экземляров конструктора (пустой конструктор)
   // - все данные (чистое полотно)
@@ -64,7 +94,7 @@ export default class GameModel {
   remove(constructor, id) {
     // если данные по конструктору
     if (constructor) {
-      // .. и они существуют
+      // .. и данные по конструктору существуют
       if (this._data[constructor]) {
         // если данные по конкретному id
         if (id) {
@@ -82,9 +112,17 @@ export default class GameModel {
             }
           }
 
-          this._data[constructor] = {};
+          delete this._data[constructor];
         }
+        // иначе, если данные существуют в эффектах
+      } else if (this._managedEffects[constructor]) {
+        const effectsSet = this._managedEffects[constructor];
+
+        Array.from(effectsSet).forEach(effect => {
+          this.publisher.emit('remove', effect);
+        });
       }
+      // иначе удаление всех данных
     } else {
       for (const constructor in this._data) {
         if (this._data.hasOwnProperty(constructor)) {
@@ -99,6 +137,16 @@ export default class GameModel {
       }
 
       this._data = {};
+
+      Object.keys(this._managedEffects).forEach(constructor => {
+        const effectsSet = this._managedEffects[constructor];
+
+        if (effectsSet) {
+          Array.from(effectsSet).forEach(effect => {
+            this.publisher.emit('remove', effect);
+          });
+        }
+      });
     }
   }
 }
