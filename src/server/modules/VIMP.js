@@ -72,16 +72,11 @@ class VIMP {
     this._blockedRemap = false; // флаг блокировки голосования за новую карту
     this._startMapNumber = 0; // номер первой карты в голосовании
 
-    this._panel = new Panel(data.panel);
+    this._game = new Game(data.parts, data.keys, this._timeStep / 1000);
+    this._panel = new Panel(data.panel, this._game);
     this._stat = new Stat(data.stat, this._teams);
     this._chat = new Chat();
     this._vote = new Vote();
-    this._game = new Game(
-      data.factory,
-      data.parts,
-      data.keys,
-      this._timeStep / 1000,
-    );
 
     this.createMap();
   }
