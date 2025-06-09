@@ -184,8 +184,8 @@ class Tank extends BaseModel {
       // если проверка на кулдаун/патроны пройдена
       if (this._weaponRemainingCooldowns[weaponName] <= 0) {
         const currentAngle = body.getAngle();
-        // factory weapon
-        if (this.weaponConstructorType === 'factory') {
+        // explosive weapon
+        if (this.weaponConstructorType === 'explosive') {
           const extraOffset = 20;
           const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
 

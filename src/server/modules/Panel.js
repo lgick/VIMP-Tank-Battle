@@ -2,7 +2,7 @@
 let panel;
 
 class Panel {
-  constructor(config) {
+  constructor(config, game) {
     let counter = 0;
 
     if (panel) {
@@ -13,7 +13,6 @@ class Panel {
 
     this._config = config;
     this._emptyPanel = [];
-
     this._data = {};
 
     for (const p in this._config) {
@@ -22,6 +21,9 @@ class Panel {
         counter += 1;
       }
     }
+
+    this._game = game;
+    this._game.publisher.on('updateUserPanel', this.updateUser, this);
   }
 
   // сбрасывает данные пользователей
@@ -65,27 +67,29 @@ class Panel {
   }
 
   // обновляет данные пользователя
-  updateUser(gameID, param, value) {
-    const user = this._data[gameID];
+  // param: имя параметра из _config (например, 'health', 'bullet')
+  // value: значение
+  // operation: 'set', 'decrement', 'increment'
+  updateUser({ gameID, param, value, operation = 'decrement' }) {
     const conf = this._config[param];
-    const method = conf.method;
-    const minValue = conf.minValue;
     const key = conf.key;
+    const user = this._data[gameID];
+    const currentValue = user.values[key];
+    let newValue;
 
-    // если метод 'уменьшение'
-    if (method === '-') {
-      value = user.values[key] - value;
-
-      // иначе если метод 'замена'
-    } else if (method === '=') {
+    if (operation === 'set') {
+      newValue = value;
+    } else if (operation === 'decrement') {
+      newValue = currentValue - value;
+    } else if (operation === 'increment') {
+      newValue = currentValue + value;
     }
 
-    // если есть минимально допустимое значение и оно больше текущего
-    if (typeof minValue !== 'undefined' && value < minValue) {
-      value = minValue;
+    if (newValue < 0) {
+      newValue = 0;
     }
 
-    user.values[key] = value;
+    user.values[key] = newValue;
     user.status = true;
   }
 

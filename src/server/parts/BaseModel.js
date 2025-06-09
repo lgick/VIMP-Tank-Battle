@@ -5,7 +5,7 @@ class BaseModel {
     this._teamID = data.teamID;
     this._currentWeapon = data.currentWeapon;
     this._weapons = data.weapons;
-    this._availableWeaponList = data.availableWeaponList;
+    this._availableWeaponList = Object.keys(this._weapons);
     this._keysData = data.keysData;
 
     this._weaponConstructorType =
@@ -17,8 +17,10 @@ class BaseModel {
     this._weaponRemainingCooldowns = {};
 
     for (const weaponName in this._weapons) {
-      // изначально все оружие готово к выстрелу
-      this._weaponRemainingCooldowns[weaponName] = 0;
+      if (this._weapons.hasOwnProperty(weaponName)) {
+        // изначально все оружие готово к выстрелу
+        this._weaponRemainingCooldowns[weaponName] = 0;
+      }
     }
   }
 
