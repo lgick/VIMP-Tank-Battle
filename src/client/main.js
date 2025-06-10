@@ -94,7 +94,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       const app = new Application();
 
       await app.init({
-        canvas: canvas,
+        canvas,
         width: canvas.width,
         height: canvas.height,
         antialias: true,
@@ -500,7 +500,7 @@ function unpacking(pack) {
 
 // ДАННЫЕ С СЕРВЕРА
 
-ws.onopen = e => {
+ws.onopen = () => {
   console.log('open');
 };
 
