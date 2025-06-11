@@ -16,7 +16,7 @@ class Panel {
     this._data = {};
 
     for (const p in this._config) {
-      if (this._config.hasOwnProperty(p)) {
+      if (Object.hasOwn(this._config, p)) {
         this._emptyPanel[counter] = '';
         counter += 1;
       }
@@ -29,7 +29,7 @@ class Panel {
   // сбрасывает данные пользователей
   reset() {
     for (const gameID in this._data) {
-      if (this._data.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._data, gameID)) {
         const user = this._data[gameID];
 
         user.values = this.getDefault(user.values);
@@ -41,7 +41,7 @@ class Panel {
   // возвращает дефолтные данные
   getDefault(panel = []) {
     for (const p in this._config) {
-      if (this._config.hasOwnProperty(p)) {
+      if (Object.hasOwn(this._config, p)) {
         const conf = this._config[p];
 
         if (typeof conf.value !== 'undefined') {

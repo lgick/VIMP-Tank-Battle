@@ -175,7 +175,7 @@ class VIMP {
     this._game.createMap(this._currentMapData);
 
     for (const gameID in this._users) {
-      if (this._users.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._users, gameID)) {
         const user = this._users[gameID];
 
         user.socket.send(this._PORT_CLEAR);
@@ -199,7 +199,7 @@ class VIMP {
   // отправляет карту либо конкретному игроку, либо всем
   sendMap(gameID) {
     if (gameID) {
-      let user = this._users[gameID];
+      const user = this._users[gameID];
 
       user.socket.send(this._PORT_INFORM_DATA, [2]);
       user.mapReady = false;
@@ -207,8 +207,8 @@ class VIMP {
       user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
     } else {
       for (const p in this._users) {
-        if (this._users.hasOwnProperty(p)) {
-          let user = this._users[p];
+        if (Object.hasOwn(this._users, p)) {
+          const user = this._users[p];
 
           user.socket.send(this._PORT_INFORM_DATA, [2]);
           user.mapReady = false;
@@ -344,7 +344,7 @@ class VIMP {
     this._game.createMap(this._currentMapData);
 
     for (const gameID in this._users) {
-      if (this._users.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._users, gameID)) {
         const user = this._users[gameID];
 
         if (user.mapReady === false) {
@@ -432,7 +432,7 @@ class VIMP {
   // проверяет имя
   checkName(name, number = 1) {
     for (const p in this._users) {
-      if (this._users.hasOwnProperty(p)) {
+      if (Object.hasOwn(this._users, p)) {
         if (this._users[p].name === name) {
           if (number > 1) {
             name = name.slice(0, name.lastIndexOf('#')) + '#' + number;
@@ -506,9 +506,9 @@ class VIMP {
           }
 
           return;
-        } else {
-          this._chat.pushSystem(`s:5:${team}`, gameID);
         }
+
+        this._chat.pushSystem(`s:5:${team}`, gameID);
       } else {
         this._chat.pushSystem('s:6', gameID);
       }
@@ -535,7 +535,7 @@ class VIMP {
     // ищет команды имеющие свободные респауны
     const searchEmptyTeam = () => {
       for (const p in respawns) {
-        if (respawns.hasOwnProperty(p)) {
+        if (Object.hasOwn(respawns, p)) {
           if (respawns[p].length !== this._teamSizes[p]) {
             return p;
           }
@@ -593,7 +593,7 @@ class VIMP {
 
     // удаление из watchedGameID других игроков
     for (const p in this._users) {
-      if (this._users.hasOwnProperty(p)) {
+      if (Object.hasOwn(this._users, p)) {
         if (this._users[p].watchedGameID === gameID) {
           this._users[p].watchedGameID = this._activePlayersList[0] || null;
         }
@@ -618,9 +618,9 @@ class VIMP {
       }
 
       return this._activePlayersList[key];
-    } else {
-      return this._activePlayersList[0] || null;
     }
+
+    return this._activePlayersList[0] || null;
   }
 
   // создает нового игрока
@@ -643,7 +643,7 @@ class VIMP {
       // gameID игрока
       gameID,
       // сокет
-      socket: socket,
+      socket,
       // флаг загрузки карты
       mapReady: false,
       // текущая карта игры. Важно, чтоб этот параметр совпадал с актуальной картой сервера
@@ -766,7 +766,7 @@ class VIMP {
         const dataArr = [];
 
         for (const p in this._users) {
-          if (this._users.hasOwnProperty(p)) {
+          if (Object.hasOwn(this._users, p)) {
             dataArr.push(this._users[p].name + ':' + p);
           }
         }
@@ -846,7 +846,7 @@ class VIMP {
         const userList = [];
 
         for (const p in this._users) {
-          if (this._users.hasOwnProperty(p)) {
+          if (Object.hasOwn(this._users, p)) {
             const id = this._users[p].gameID;
 
             if (id !== gameID) {
@@ -924,7 +924,7 @@ class VIMP {
         break;
 
       // время карты
-      case '/timeleft':
+      case '/timeleft': {
         function getTime(ms) {
           const totalSeconds = Math.floor(ms / 1000);
           let minutes = Math.floor(totalSeconds / 60);
@@ -943,6 +943,7 @@ class VIMP {
 
         this._chat.pushSystem([getTime(this.getMapTimeLeft())], gameID);
         break;
+      }
 
       // название текущей карты
       case '/mapname':

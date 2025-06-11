@@ -36,8 +36,8 @@ export default class ImpactEffect extends Container {
       fadeOutStart: 0.8, // начинать угасание, когда прошло 70% времени жизни
 
       // управление направлением разлета
-      impactDirectionX: impactDirectionX, // компонента X базового направления отлета
-      impactDirectionY: impactDirectionY, // компонента Y
+      impactDirectionX, // компонента X базового направления отлета
+      impactDirectionY, // компонента Y
       spreadAngle: 60, // угол разброса в градусах (например, 90-градусный сектор)
 
       // параметры для управления движением и остановкой
@@ -127,7 +127,7 @@ export default class ImpactEffect extends Container {
   _drawParticleShape(gfx, particleData) {
     gfx.clear();
     const halfSize = particleData.size / 2;
-    let fillStyle = { color: particleData.color, alpha: particleData.alpha };
+    const fillStyle = { color: particleData.color, alpha: particleData.alpha };
     gfx.circle(0, 0, halfSize);
     gfx.fill(fillStyle);
   }
@@ -194,7 +194,7 @@ export default class ImpactEffect extends Container {
       }
 
       // логика угасания и завершения жизни
-      let currentLifetimeProgress = pData.age / pData.lifetime;
+      const currentLifetimeProgress = pData.age / pData.lifetime;
 
       if (
         !pData.isMoving &&

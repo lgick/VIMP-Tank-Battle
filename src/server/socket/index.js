@@ -197,10 +197,7 @@ export default server => {
 
       waiting.createNotifyObject(notifyObject => {
         for (const p in notifyObject) {
-          if (
-            Object.prototype.hasOwnProperty.call(notifyObject, p) &&
-            sessions[p]
-          ) {
+          if (Object.hasOwn(notifyObject, p) && sessions[p]) {
             sessions[p].socket.send(PS_INFORM_DATA, [0, notifyObject[p]]);
           }
         }

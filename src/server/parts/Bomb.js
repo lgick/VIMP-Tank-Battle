@@ -36,7 +36,7 @@ class Bomb {
     ];
   }
 
-  update(data, cb) {}
+  update() {}
 }
 
 export default Bomb;

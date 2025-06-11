@@ -16,9 +16,9 @@ class BaseModel {
     // инициализация кулдаунов оружия
     this._weaponRemainingCooldowns = {};
 
+    // изначально все оружие готово к выстрелу
     for (const weaponName in this._weapons) {
-      if (this._weapons.hasOwnProperty(weaponName)) {
-        // изначально все оружие готово к выстрелу
+      if (Object.hasOwn(this._weapons, weaponName)) {
         this._weaponRemainingCooldowns[weaponName] = 0;
       }
     }

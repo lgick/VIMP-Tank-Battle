@@ -107,7 +107,7 @@ export default class GameModel {
           const data = this._data[constructor];
 
           for (const id in data) {
-            if (data.hasOwnProperty(id)) {
+            if (Object.hasOwn(data, id)) {
               this.publisher.emit('remove', data[id]);
             }
           }
@@ -125,11 +125,11 @@ export default class GameModel {
       // иначе удаление всех данных
     } else {
       for (const constructor in this._data) {
-        if (this._data.hasOwnProperty(constructor)) {
+        if (Object.hasOwn(this._data, constructor)) {
           const data = this._data[constructor];
 
           for (const id in data) {
-            if (data.hasOwnProperty(id)) {
+            if (Object.hasOwn(data, id)) {
               this.publisher.emit('remove', data[id]);
             }
           }

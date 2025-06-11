@@ -52,8 +52,6 @@ export default class VoteModel {
       return;
     }
 
-    let values;
-
     this._type = 'vote';
     this._back = false;
     this._more = false;
@@ -73,7 +71,8 @@ export default class VoteModel {
     }
 
     this._title = this._currentVote[0];
-    values = this._currentVote[1];
+
+    const values = this._currentVote[1];
 
     if (typeof values === 'string') {
       this._waitingValues = true;
