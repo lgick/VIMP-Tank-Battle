@@ -94,7 +94,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       const app = new Application();
 
       await app.init({
-        canvas: canvas,
+        canvas,
         width: canvas.width,
         height: canvas.height,
         antialias: true,
@@ -321,7 +321,7 @@ socketMethods[PS_CLEAR] = function (setIDList) {
     }
   } else {
     for (const p in CTRL) {
-      if (CTRL.hasOwnProperty(p)) {
+      if (Object.hasOwn(CTRL, p)) {
         CTRL[p].remove();
       }
     }
@@ -500,7 +500,7 @@ function unpacking(pack) {
 
 // ДАННЫЕ С СЕРВЕРА
 
-ws.onopen = e => {
+ws.onopen = () => {
   console.log('open');
 };
 

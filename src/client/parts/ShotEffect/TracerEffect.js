@@ -88,7 +88,7 @@ export default class TracerEffect extends Container {
   _drawSegment(x, y, radius, color, alpha) {
     this.graphics.circle(x, y, radius);
     this.graphics.fill({
-      color: color,
+      color,
       alpha: Math.max(0, Math.min(1, alpha)),
     });
   }
@@ -119,7 +119,7 @@ export default class TracerEffect extends Container {
         tracerDrawProgress,
       );
 
-      let baseTracerAlpha = lerp(
+      const baseTracerAlpha = lerp(
         this.config.alphaStart,
         this.config.alphaEnd,
         tracerDrawProgress,
@@ -153,17 +153,16 @@ export default class TracerEffect extends Container {
         distCoveredByHead < this.config.trailStartOffset &&
         this.totalDist > 0.001
       ) {
+        /* empty */
       } else {
-        let effectiveStartX = this.startPositionX;
-        let effectiveStartY = this.startPositionY;
+        // let effectiveStartX = this.startPositionX;
+        // let effectiveStartY = this.startPositionY;
         let adjustedDistCoveredByHead = distCoveredByHead;
 
         if (this.totalDist > 0.001) {
           // Применяем отступ только если есть направление
-          effectiveStartX =
-            this.startPositionX + this.nx * this.config.trailStartOffset;
-          effectiveStartY =
-            this.startPositionY + this.ny * this.config.trailStartOffset;
+          // effectiveStartX = this.startPositionX + this.nx * this.config.trailStartOffset;
+          // effectiveStartY = this.startPositionY + this.ny * this.config.trailStartOffset;
           // Дистанция, пройденная головой от *эффективной* начальной точки
           adjustedDistCoveredByHead = Math.max(
             0,

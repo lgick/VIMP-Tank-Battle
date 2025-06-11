@@ -49,8 +49,6 @@ class Map {
     let x = x0;
     let wCounter = 0;
     let hCounter = 1;
-    let lenX;
-    let lenY;
     let emptyTile;
 
     // определяем ширину блока
@@ -60,10 +58,11 @@ class Map {
       wCounter += 1;
     }
 
-    lenX = x;
+    const lenX = x;
+    const lenY = this._map.length;
 
     // определяем высоту блока
-    for (y = y0 + 1, lenY = this._map.length; y < lenY; y += 1) {
+    for (y = y0 + 1; y < lenY; y += 1) {
       emptyTile = false;
       x = x0;
 

@@ -95,7 +95,7 @@ export default class Bomb extends Container {
     this.text.text = `${secondsStr}:${hundredthsStr}`;
   }
 
-  update(data) {
+  update() {
     // удаление бомбы и анимация взрыва
   }
 

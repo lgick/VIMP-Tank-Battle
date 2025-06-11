@@ -15,7 +15,7 @@ export default class GameCtrl {
       }
     } else {
       for (const id in instances) {
-        if (instances.hasOwnProperty(id)) {
+        if (Object.hasOwn(instances, id)) {
           // если экземпляр существует - обновить
           if (this._model.read(constructor, id)) {
             this._model.update(constructor, id, instances[id]);
