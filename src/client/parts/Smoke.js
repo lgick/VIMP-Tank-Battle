@@ -111,7 +111,7 @@ export default class Smoke extends Container {
     // интервал определяет, как часто происходит "пачка" спавна (для всех потоков сразу)
     const spawnInterval = 1000.0 / spawnRate;
 
-    let spawnedThisFrame = 0;
+    //let spawnedThisFrame = 0;
 
     // если пора спавнить, спавним частицы для каждого потока
     while (this.timeSinceLastSpawn >= spawnInterval) {
@@ -120,7 +120,7 @@ export default class Smoke extends Container {
       }
 
       this.timeSinceLastSpawn -= spawnInterval;
-      spawnedThisFrame += numStreams;
+      //spawnedThisFrame += numStreams;
     }
 
     // обновление существующих частиц
@@ -247,17 +247,17 @@ export default class Smoke extends Container {
     graphics.scale.set(startSizeFactor * this.particleScaleMultiplier);
 
     const particle = {
-      graphics: graphics,
+      graphics,
       x: spawnX,
       y: spawnY,
       vx: initialVX, // начальная скорость с поворотом
       vy: initialVY,
       age: 0,
-      lifetime: lifetime,
-      startSizeFactor: startSizeFactor,
-      endSizeFactor: endSizeFactor,
-      startAlpha: startAlpha,
-      endAlpha: endAlpha,
+      lifetime,
+      startSizeFactor,
+      endSizeFactor,
+      startAlpha,
+      endAlpha,
     };
 
     this.particleContainer.addChild(graphics);

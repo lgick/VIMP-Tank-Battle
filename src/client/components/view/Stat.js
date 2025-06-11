@@ -70,9 +70,9 @@ export default class StatView {
 
     // сортирует
     const sorting = rowIndex => {
-      let row = tbody.rows[rowIndex];
-      let prevRow = tbody.rows[rowIndex - 1];
-      let nextRow = tbody.rows[rowIndex + 1];
+      const row = tbody.rows[rowIndex];
+      const prevRow = tbody.rows[rowIndex - 1];
+      const nextRow = tbody.rows[rowIndex + 1];
 
       // если есть предыдущая строка
       if (prevRow) {

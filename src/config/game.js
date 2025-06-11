@@ -1,10 +1,7 @@
 import maps from '../../public/maps/index.js';
 import constructors from '../server/parts/index.js';
-import factory from '../lib/factory.js';
 
 export default {
-  factory,
-
   expressions: {
     name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
     message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-',
@@ -24,11 +21,6 @@ export default {
         size: 10, // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
         constructor: 'Tank',
         currentWeapon: 'w1',
-        // боезапас модели танка
-        ammo: {
-          w1: 1000,
-          w2: 3000,
-        },
       },
     },
     weapons: {
@@ -40,11 +32,12 @@ export default {
         range: 1500, // максимальная дальность выстрела (в игровых юнитах)
         fireRate: 200, // кулдаун между выстрелами в мс (5 выстрелов в секунду)
         spread: 0.05, // разброс в радианах (0 для идеальной точности)
+        consumption: 1, // расход патронов за один выстрел
       },
 
       // bomb
       w2: {
-        type: 'factory',
+        type: 'explosive',
         constructor: 'Bomb',
         time: 5000,
         size: 32, // соотношение сторон 1:1
@@ -96,21 +89,15 @@ export default {
   panel: {
     health: {
       key: 0,
-      method: '-',
       value: 100,
-      minValue: 0,
     },
-    bullet: {
+    w1: {
       key: 1,
-      method: '-',
-      value: 1000,
-      minValue: 0,
+      value: 100,
     },
-    bomb: {
+    w2: {
       key: 2,
-      method: '-',
       value: 10,
-      minValue: 0,
     },
   },
 

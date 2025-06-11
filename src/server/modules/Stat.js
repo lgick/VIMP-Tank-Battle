@@ -18,7 +18,7 @@ class Stat {
     this._lastBody = new Map();
 
     for (const p in teams) {
-      if (teams.hasOwnProperty(p)) {
+      if (Object.hasOwn(teams, p)) {
         this._head[teams[p]] = [teams[p], []];
         this._body[teams[p]] = {};
       }
@@ -28,11 +28,11 @@ class Stat {
   // сбрасывает статистику
   reset() {
     for (const teamID in this._body) {
-      if (this._body.hasOwnProperty(teamID)) {
+      if (Object.hasOwn(this._body, teamID)) {
         const bodyStats = this._body[teamID];
 
         for (const gameID in bodyStats) {
-          if (bodyStats.hasOwnProperty(gameID)) {
+          if (Object.hasOwn(bodyStats, gameID)) {
             const stat = bodyStats[gameID];
             stat[2] = this.getDefaultBody(stat[2]);
             this._lastBody.set(`${stat[0]}|${stat[1]}`, stat.slice(2));
@@ -42,11 +42,11 @@ class Stat {
     }
 
     for (const teamID in this._head) {
-      if (this._head.hasOwnProperty(teamID)) {
+      if (Object.hasOwn(this._head, teamID)) {
         const stat = this._head[teamID];
 
         for (const p in this._config) {
-          if (this._config.hasOwnProperty(p)) {
+          if (Object.hasOwn(this._config, p)) {
             const conf = this._config[p];
 
             if (conf.headSync) {
@@ -65,7 +65,7 @@ class Stat {
   // возвращает дефолтные данные для body
   getDefaultBody(stat = []) {
     for (const p in this._config) {
-      if (this._config.hasOwnProperty(p)) {
+      if (Object.hasOwn(this._config, p)) {
         const conf = this._config[p];
 
         if (typeof conf.bodyValue !== 'undefined') {
@@ -99,7 +99,7 @@ class Stat {
     // преобразование данных пользователя из массива в объект и
     // обновление head
     for (const p in this._config) {
-      if (this._config.hasOwnProperty(p)) {
+      if (Object.hasOwn(this._config, p)) {
         const conf = this._config[p];
         const value = data[conf.key];
 
@@ -124,7 +124,7 @@ class Stat {
     const stat = this._body[teamID][gameID];
 
     for (const p in data) {
-      if (data.hasOwnProperty(p)) {
+      if (Object.hasOwn(data, p)) {
         const conf = this._config[p];
         const method = conf.bodyMethod;
         const value = data[p];
@@ -184,7 +184,7 @@ class Stat {
       value = 0;
 
       for (const p in bodyStats) {
-        if (bodyStats.hasOwnProperty(p)) {
+        if (Object.hasOwn(bodyStats, p)) {
           value += bodyStats[p][2][key];
         }
       }
@@ -231,11 +231,11 @@ class Stat {
     stat[1] = [];
 
     for (const teamID in this._body) {
-      if (this._body.hasOwnProperty(teamID)) {
+      if (Object.hasOwn(this._body, teamID)) {
         const bodyStats = this._body[teamID];
 
         for (const gameID in bodyStats) {
-          if (bodyStats.hasOwnProperty(gameID)) {
+          if (Object.hasOwn(bodyStats, gameID)) {
             stat[0].push(bodyStats[gameID]);
           }
         }
@@ -243,7 +243,7 @@ class Stat {
     }
 
     for (const teamID in this._head) {
-      if (this._head.hasOwnProperty(teamID)) {
+      if (Object.hasOwn(this._head, teamID)) {
         stat[1].push(this._head[teamID]);
       }
     }
