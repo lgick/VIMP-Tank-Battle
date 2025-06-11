@@ -19,7 +19,7 @@ class Vote {
     this._list = [];
 
     for (const gameID in this._userList) {
-      if (this._userList.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._userList, gameID)) {
         this._userList[gameID] = [];
       }
     }
@@ -94,7 +94,7 @@ class Vote {
     }
 
     for (const p in results) {
-      if (results.hasOwnProperty(p)) {
+      if (Object.hasOwn(results, p)) {
         if (results[p] > votes) {
           result = p;
           votes = results[p];

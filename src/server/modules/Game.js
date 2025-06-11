@@ -38,9 +38,9 @@ class Game {
     this._map = this._Factory(parts.mapConstructor, this._world);
 
     this._hitscanWeapons = Object.fromEntries(
-      Object.entries(this._weapons).filter(([weaponKey, weaponData]) => {
-        return weaponData.type === 'hitscan';
-      }),
+      Object.entries(this._weapons).filter(
+        ([, weaponData]) => weaponData.type === 'hitscan',
+      ),
     );
 
     // сервис вычисления hitscan выстрелов
@@ -68,7 +68,7 @@ class Game {
     // не для hitscan оружия
     for (const weaponName in this._weapons) {
       if (
-        this._weapons.hasOwnProperty(weaponName) &&
+        Object.hasOwn(this._weapons, weaponName) &&
         this._weapons[weaponName].type !== 'hitscan'
       ) {
         const weapon = this._weapons[weaponName];
@@ -148,7 +148,7 @@ class Game {
     const modelNameSet = new Set();
 
     for (const gameID in this._playersData) {
-      if (this._playersData.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._playersData, gameID)) {
         const player = this._playersData[gameID];
 
         modelNameSet.add(player.model);
@@ -203,7 +203,7 @@ class Game {
   updateData(dt) {
     // обновляем модели игроков
     for (const gameID in this._playersData) {
-      if (this._playersData.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._playersData, gameID)) {
         this._playersData[gameID].updateData(dt);
       }
     }
@@ -230,14 +230,16 @@ class Game {
   // вспомогательный метод для слияния данных об исходе пуль
   mergeShotOutcomeData(newData) {
     for (const weaponName in newData) {
-      if (newData.hasOwnProperty(weaponName)) {
+      if (Object.hasOwn(newData, weaponName)) {
         this._lastExpiredOrCollidedShotsData[weaponName] =
           this._lastExpiredOrCollidedShotsData[weaponName] || {};
 
-        for (const shotID in newData[weaponName]) {
-          if (newData[weaponName].hasOwnProperty(shotID)) {
+        const data = newData[weaponName];
+
+        for (const shotID in data) {
+          if (Object.hasOwn(data, shotID)) {
             this._lastExpiredOrCollidedShotsData[weaponName][shotID] =
-              newData[weaponName][shotID];
+              data[shotID];
           }
         }
       }
@@ -278,7 +280,7 @@ class Game {
     this._lastExpiredOrCollidedShotsData = {};
 
     for (const gameID in this._playersData) {
-      if (this._playersData.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._playersData, gameID)) {
         const player = this._playersData[gameID];
         const model = player.model;
         const { playerData, shotData } = player.getData();
@@ -332,7 +334,7 @@ class Game {
     const gameData = {};
 
     for (const gameID in this._playersData) {
-      if (this._playersData.hasOwnProperty(gameID)) {
+      if (Object.hasOwn(this._playersData, gameID)) {
         const player = this._playersData[gameID];
         const model = player.model;
 
@@ -409,7 +411,7 @@ class Game {
     this._currentShotID = 0;
 
     for (const shotID in this._shotsData) {
-      if (this._shotsData.hasOwnProperty(shotID)) {
+      if (Object.hasOwn(this._shotsData, shotID)) {
         const shot = this._shotsData[shotID];
 
         weaponNameSet.add(shot.weaponName);

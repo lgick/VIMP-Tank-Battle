@@ -321,7 +321,7 @@ socketMethods[PS_CLEAR] = function (setIDList) {
     }
   } else {
     for (const p in CTRL) {
-      if (CTRL.hasOwnProperty(p)) {
+      if (Object.hasOwn(CTRL, p)) {
         CTRL[p].remove();
       }
     }

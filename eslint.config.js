@@ -1,3 +1,5 @@
+/* npx eslint . eslint.config.js */
+
 import js from '@eslint/js';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import globals from 'globals';
@@ -17,8 +19,6 @@ export default [
       },
     },
     rules: {
-      'n/no-unpublished-import': 'off', // конфиги иногда импортируют devDependencies
-      'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
       'no-console': 'off', // в файлах конфигурации console.log может быть полезен
     },
   },
@@ -64,17 +64,19 @@ export default [
       sourceType: 'module',
       globals: {
         ...globals.es2023,
+        ...globals.node,
+        ...globals.browser,
       },
     },
     rules: {
-      'no-console': 'warn',
+      'no-console': 'off',
     },
   },
 
   // общие правила для всего проекта (применяются ко всем JS файлам, если не переопределены выше)
   {
     rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }], // предупреждать о неиспользуемых переменных
+      'no-unused-vars': 'off', // предупреждать о неиспользуемых переменных (используется tsserver)
       eqeqeq: ['error', 'always'], // требовать === и !==
       curly: ['error', 'all'], // требовать фигурные скобки для всех блоков if, for, while и т.д.
       'no-else-return': 'warn', // предупреждать о ненужных else после return
@@ -95,6 +97,8 @@ export default [
       'dist/**', // результаты сборки Vite
       'public/**', // статика, которую не нужно линтить
       'build/**',
+      '**/.*', // игнорировать все файлы/директории, начинающиеся с '.', на любом уровне
+      '**/_*', // игнорировать все файлы/директории, начинающиеся с '_', на любом уровне
     ],
   },
 ];

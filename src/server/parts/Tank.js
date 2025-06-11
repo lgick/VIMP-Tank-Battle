@@ -292,7 +292,7 @@ class Tank extends BaseModel {
     this.currentKeys = null;
   }
 
-  getMuzzlePosition(weaponName) {
+  getMuzzlePosition() {
     const body = this.getBody();
     const totalAngle = body.getAngle() + (body.gunRotation || 0);
     const muzzleLocalOffsetX = this._width * 0.55;
