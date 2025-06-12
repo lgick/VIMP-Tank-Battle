@@ -7,6 +7,7 @@ class BaseModel {
     this._weapons = data.weapons;
     this._availableWeaponList = Object.keys(this._weapons);
     this._keysData = data.keysData;
+    this._services = data.services;
 
     this._weaponConstructorType =
       this._weapons[this._currentWeapon].type || null;
