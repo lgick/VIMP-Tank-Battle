@@ -1,5 +1,4 @@
 import planck from 'planck';
-import Publisher from '../../lib/Publisher.js';
 import Factory from '../../lib/factory.js';
 
 // Singleton Game
@@ -12,8 +11,6 @@ class Game {
     }
 
     game = this;
-
-    this.publisher = new Publisher();
 
     this._Factory = Factory;
     this._Factory.add(parts.constructors);
@@ -28,6 +25,8 @@ class Game {
     this._velocityIterations = 10;
     this._positionIterations = 8;
     this._accumulator = 0;
+
+    this._services = {}; // объект для хранения внедренных сервисов
 
     this._world = new planck.World({
       gravity: { x: 0, y: 0 },
@@ -104,6 +103,11 @@ class Game {
     this._lastExpiredOrCollidedShotsData = {};
   }
 
+  // получает сервисы
+  injectServices(services) {
+    Object.assign(this._services, services);
+  }
+
   // создает карту
   createMap(mapData) {
     this._map.createMap(mapData);
@@ -131,6 +135,7 @@ class Game {
       teamID,
       currentWeapon: modelData.currentWeapon,
       weapons: this._weapons,
+      services: this._services,
     });
   }
 
@@ -292,15 +297,6 @@ class Game {
         if (shotData !== null) {
           const weaponName = player.currentWeapon;
           const weaponConfig = this._weapons[weaponName];
-          const consumption = weaponConfig.consumption || 1; // расход патронов за один выстрел
-
-          // событие о выстреле
-          this.publisher.emit('updateUserPanel', {
-            gameID,
-            param: weaponName,
-            value: consumption,
-            operation: 'decrement',
-          });
 
           if (weaponConfig.type === 'hitscan') {
             const hitscanParams = {

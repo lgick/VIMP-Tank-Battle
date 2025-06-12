@@ -151,10 +151,8 @@ class Tank extends BaseModel {
       if (gLeft || gRight) {
         this._centeringGun = false;
       }
-    }
-
-    // ручной поворот башни (только если не центрируемся)
-    if (!this._centeringGun) {
+      // ручной поворот башни (только если не центрируемся)
+    } else {
       const rotationAmount = this._gunRotationSpeed * dt; // угол поворота за этот кадр
 
       if (gLeft) {

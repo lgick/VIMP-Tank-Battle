@@ -100,8 +100,13 @@ export default class Tracks extends Container {
 
     let rotationDiff = this.currentRotation - this._prevRotation;
 
-    while (rotationDiff > Math.PI) rotationDiff -= 2 * Math.PI;
-    while (rotationDiff < -Math.PI) rotationDiff += 2 * Math.PI;
+    while (rotationDiff > Math.PI) {
+      rotationDiff -= 2 * Math.PI;
+    }
+
+    while (rotationDiff < -Math.PI) {
+      rotationDiff += 2 * Math.PI;
+    }
 
     // текущая угловая скорость (радианы за время deltaMS)
     const currentAngularSpeed = Math.abs(rotationDiff);
