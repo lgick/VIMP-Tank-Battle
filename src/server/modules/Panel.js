@@ -90,6 +90,17 @@ class Panel {
     user.status = true;
   }
 
+  // проверяет, достаточно ли у пользователя ресурсов для действия
+  hasResources(gameID, param, value) {
+    const user = this._data[gameID];
+    const conf = this._config[param];
+
+    if (user && conf) {
+      const currentValue = user.values[conf.key];
+      return currentValue >= value;
+    }
+  }
+
   // возвращает текущее значение параметра для пользователя
   getCurrentValue(gameID, param) {
     const user = this._data[gameID];

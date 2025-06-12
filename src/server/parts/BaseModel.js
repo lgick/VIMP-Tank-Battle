@@ -2,6 +2,7 @@ class BaseModel {
   constructor(data) {
     this._model = data.model;
     this._name = data.name;
+    this._gameID = data.gameID;
     this._teamID = data.teamID;
     this._currentWeapon = data.currentWeapon;
     this._weapons = data.weapons;
@@ -81,8 +82,40 @@ class BaseModel {
     return this._weapons;
   }
 
-  get weaponRemainingCooldowns() {
-    return this._weaponRemainingCooldowns;
+  tryConsumeAmmoAndShoot() {
+    const weaponName = this.currentWeapon;
+    const weaponConfig = this.weapons[weaponName];
+    const consumption = weaponConfig.consumption || 1;
+    const panel = this._services.panel;
+
+    if (
+      this._weaponRemainingCooldowns[weaponName] <= 0 &&
+      panel.hasResources(this._gameID, weaponName, consumption)
+    ) {
+      // списание патронов
+      panel.updateUser(this._gameID, weaponName, consumption, 'decrement');
+
+      // установка кулдауна
+      this._weaponRemainingCooldowns[weaponName] = weaponConfig.fireRate;
+
+      return true;
+    }
+
+    return false;
+  }
+
+  // обновление кулдаунов оружия
+  updateRemainingCooldowns(dt) {
+    for (const weaponName in this._weaponRemainingCooldowns) {
+      if (this._weaponRemainingCooldowns[weaponName] > 0) {
+        this._weaponRemainingCooldowns[weaponName] -= dt;
+      }
+
+      this._weaponRemainingCooldowns[weaponName] = Math.max(
+        0,
+        this._weaponRemainingCooldowns[weaponName],
+      );
+    }
   }
 
   // меняет оружие игрока
