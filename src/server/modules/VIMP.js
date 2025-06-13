@@ -80,7 +80,7 @@ class VIMP {
     const vote = new Vote();
 
     // внедрение зависимостей
-    game.injectServices({ panel });
+    game.injectServices({ vimp: this, panel });
 
     this._game = game;
     this._panel = panel;
@@ -290,8 +290,6 @@ class VIMP {
       const user = this._users[gameID];
       let coords, panel, chatUser, voteUser;
 
-      // TODO проверить работу activePlayer и Panel
-      // если игрок наблюдает за игрой
       if (user.isWatching === true) {
         panel = 0;
 
@@ -609,6 +607,35 @@ class VIMP {
         }
       }
     }
+  }
+
+  // обрабатывает уничтожение игрока, делает его наблюдателем
+  reportPlayerDestroyed(gameID) {
+    const user = this._users[gameID];
+
+    if (!user || user.isWatching) {
+      return;
+    }
+
+    user.isWatching = true;
+
+    this.removeFromActivePlayers(gameID);
+    this._stat.updateUser(gameID, user.teamID, { deaths: 1, status: 'dead' });
+
+    // немедленное обновление, чтобы он переключился в режим наблюдателя
+    const panel = [this.getRoundTimeLeft()].concat(this._panel.getEmpty());
+
+    const updateData = [
+      {},
+      0,
+      panel,
+      0,
+      0,
+      0,
+      0, // keySet = 0 для наблюдателя
+    ];
+
+    user.socket.send(this._PORT_SHOT_DATA, updateData);
   }
 
   // меняет и возвращает gameID наблюдаемого игрока

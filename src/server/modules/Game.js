@@ -33,6 +33,22 @@ class Game {
       allowSleep: true,
     });
 
+    this._friendlyFire = parts.friendlyFire;
+
+    // список контактов для обработки после шага физики
+    this._contactEvents = [];
+
+    // очередь тел на удаление
+    this._bodiesToDestroy = new Set();
+
+    this._world.on('begin-contact', contact => {
+      // контакты, для обработки их после шага физики
+      this._contactEvents.push({
+        fixtureA: contact.getFixtureA(),
+        fixtureB: contact.getFixtureB(),
+      });
+    });
+
     // конструктор карт
     this._map = this._Factory(parts.mapConstructor, this._world);
 
@@ -46,6 +62,7 @@ class Game {
     this._hitscanService = this._Factory(parts.hitscanService, {
       world: this._world,
       weapons: this._hitscanWeapons,
+      game: this,
     });
 
     // данные игроков { gameID: playerInstance }
@@ -228,8 +245,111 @@ class Game {
         this._positionIterations,
       );
 
+      // обрабатываем все события контактов,
+      // которые произошли на этом шаге
+      this.processContactEvents();
+
+      // удаляем все тела, которые были помечены на удаление
+      this.destroyQueuedBodies();
+
       this._accumulator -= this._timeStep;
     }
+  }
+
+  //  применение урона игроку
+  applyDamage(targetGameID, targetTeamID, weaponName, shooterTeamID) {
+    // проверка на дружественный огонь
+    if (!this._friendlyFire && targetTeamID === shooterTeamID) {
+      return;
+    }
+
+    const damage = this._weapons[weaponName]?.damage || 0;
+    const player = this._playersData[targetGameID];
+
+    if (player) {
+      player.takeDamage(damage);
+    }
+  }
+
+  // обрабатывает события контактов, накопленные за шаг физики
+  processContactEvents() {
+    for (const contact of this._contactEvents) {
+      const fixtureA = contact.fixtureA;
+      const fixtureB = contact.fixtureB;
+
+      // проверка на случай, если фикстуры уже невалидны
+      if (!fixtureA || !fixtureB) {
+        continue;
+      }
+
+      const bodyA = fixtureA.getBody();
+      const bodyB = fixtureB.getBody();
+
+      const userDataA = bodyA.getUserData();
+      const userDataB = bodyB.getUserData();
+
+      if (!userDataA || !userDataB) {
+        continue;
+      }
+
+      // логика определения кто в кого попал
+      let playerFixture, shotFixture;
+
+      if (userDataA.type === 'player' && userDataB.type === 'shot') {
+        playerFixture = fixtureA;
+        shotFixture = fixtureB;
+      } else if (userDataB.type === 'player' && userDataA.type === 'shot') {
+        playerFixture = fixtureB;
+        shotFixture = fixtureA;
+      } else {
+        continue; // это не контакт между игроком и снарядом
+      }
+
+      const playerData = playerFixture.getBody().getUserData();
+      const shotData = shotFixture.getBody().getUserData();
+
+      // если тело снаряда уже в очереди на удаление, пропускаем
+      if (this._bodiesToDestroy.has(shotFixture.getBody())) {
+        continue;
+      }
+
+      this.applyDamage(
+        playerData.gameID,
+        playerData.teamID,
+        shotData.weaponName,
+        shotData.teamID,
+      );
+
+      // помечаем снаряд на удаление, а не удаляем сразу
+      this._bodiesToDestroy.add(shotFixture.getBody());
+    }
+
+    // очищаем массив для следующего шага
+    this._contactEvents = [];
+  }
+
+  // уничтожает тела, находящиеся в очереди на удаление
+  destroyQueuedBodies() {
+    if (this._bodiesToDestroy.size === 0) {
+      return;
+    }
+
+    for (const body of this._bodiesToDestroy) {
+      const userData = body.getUserData();
+
+      // если это был снаряд, нужно обновить данные для клиентов
+      if (userData && userData.type === 'shot') {
+        delete this._shotsData[userData.shotID];
+
+        this.mergeShotOutcomeData({
+          [userData.weaponName]: { [userData.shotID]: null },
+        });
+      }
+
+      this._world.destroyBody(body);
+    }
+
+    this._bodiesToDestroy.clear();
   }
 
   // вспомогательный метод для слияния данных об исходе пуль
@@ -349,6 +469,8 @@ class Game {
     const lifetimeSeconds = lifetimeMs / 1000.0;
     let lifetimeInSteps = Math.ceil(lifetimeSeconds / this._timeStep);
 
+    const player = this._playersData[gameID];
+
     if (lifetimeInSteps < 1) {
       lifetimeInSteps = 1;
     }
@@ -374,9 +496,11 @@ class Game {
       weaponData,
       shotData,
       userData: {
+        type: 'shot',
         weaponName,
         shotID,
         gameID,
+        teamID: player.teamID,
       },
       world: this._world,
     });
