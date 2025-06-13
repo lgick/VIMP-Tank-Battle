@@ -28,11 +28,6 @@ class Game {
 
     this._services = {}; // объект для хранения внедренных сервисов
 
-    this._world = new planck.World({
-      gravity: { x: 0, y: 0 },
-      allowSleep: true,
-    });
-
     this._friendlyFire = parts.friendlyFire;
 
     // список контактов для обработки после шага физики
@@ -40,6 +35,11 @@ class Game {
 
     // очередь тел на удаление
     this._bodiesToDestroy = new Set();
+
+    this._world = new planck.World({
+      gravity: { x: 0, y: 0 },
+      allowSleep: true,
+    });
 
     this._world.on('begin-contact', contact => {
       // контакты, для обработки их после шага физики
@@ -505,9 +505,8 @@ class Game {
       world: this._world,
     });
 
-    shot.weaponName = weaponName;
     shot.shotID = shotID;
-    shot.gameID = gameID;
+    shot.weaponName = weaponName;
 
     this._shotsData[shotID] = shot;
     this._shotsAtTime[removalTick].push(shotID);
