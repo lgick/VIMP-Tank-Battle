@@ -1,4 +1,7 @@
-/* npx eslint . eslint.config.js */
+/*
+npx eslint . eslint.config.js
+npx eslint --print-config src/server/modules/Panel.js > log
+*/
 
 import js from '@eslint/js';
 import eslintConfigPrettier from 'eslint-config-prettier';
@@ -7,6 +10,9 @@ import globals from 'globals';
 export default [
   // базовые рекомендованные правила ESLint
   js.configs.recommended,
+
+  // отключение правил ESLint, конфликтующих с Prettier
+  eslintConfigPrettier,
 
   // конфигурация для файлов в корне проекта (конфиги и т.д.)
   {
@@ -86,9 +92,6 @@ export default [
       'arrow-body-style': ['warn', 'as-needed'], // тело стрелочной функции без {} если возможно
     },
   },
-
-  // отключение правил ESLint, конфликтующих с Prettier
-  eslintConfigPrettier,
 
   // игнорируемые файлы и директории
   {

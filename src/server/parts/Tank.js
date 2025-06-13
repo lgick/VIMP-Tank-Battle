@@ -90,6 +90,33 @@ class Tank extends BaseModel {
     return x * (1 - a) + y * a;
   }
 
+  // применяет урон к танку и обновляет его состояние.
+  takeDamage(amount) {
+    // если танк уже уничтожен, урон не считать
+    if (this._condition === 0) {
+      return;
+    }
+
+    const newHealth = this.setHealth(amount);
+
+    if (newHealth <= 0) {
+      this._condition = 0; // танк уничтожен
+
+      // остановка танка при уничтожении
+      this._body.setLinearVelocity(new Vec2(0, 0));
+      this._body.setAngularVelocity(0);
+      // значительные повреждения
+    } else if (newHealth < 35) {
+      this._condition = 1;
+      // незначительные повреждения
+    } else if (newHealth < 70) {
+      this._condition = 2;
+      // норма
+    } else {
+      this._condition = 3;
+    }
+  }
+
   // получение боковой скорости
   getLateralVelocity(body) {
     const currentRightNormal = body.getWorldVector(new Vec2(0, 1)); // вектор вправо отн. танка
@@ -115,18 +142,7 @@ class Tank extends BaseModel {
     // ограничение максимального dt, оно может сильно скакать
     dt = Math.min(dt, this._MAX_DT);
 
-    // обновление кулдаунов оружия
-    for (const weaponName in this.weaponRemainingCooldowns) {
-      if (this.weaponRemainingCooldowns[weaponName] > 0) {
-        // dt в секундах, fireRate в мс
-        this.weaponRemainingCooldowns[weaponName] -= dt * 1000;
-      }
-
-      this.weaponRemainingCooldowns[weaponName] = Math.max(
-        0,
-        this.weaponRemainingCooldowns[weaponName],
-      );
-    }
+    this.updateRemainingCooldowns(dt);
 
     // сначала обновляем поворот башни (если нажаты клавиши)
     // это гарантирует, что gunRotation актуален перед расчетом выстрела
@@ -151,10 +167,8 @@ class Tank extends BaseModel {
       if (gLeft || gRight) {
         this._centeringGun = false;
       }
-    }
-
-    // ручной поворот башни (только если не центрируемся)
-    if (!this._centeringGun) {
+      // ручной поворот башни (только если не центрируемся)
+    } else {
       const rotationAmount = this._gunRotationSpeed * dt; // угол поворота за этот кадр
 
       if (gLeft) {
@@ -178,11 +192,8 @@ class Tank extends BaseModel {
 
     // если огонь
     if (fire) {
-      const weaponName = this.currentWeapon;
-      const weaponConfig = this.weapons[weaponName];
-
       // если проверка на кулдаун/патроны пройдена
-      if (this._weaponRemainingCooldowns[weaponName] <= 0) {
+      if (this.tryConsumeAmmoAndShoot()) {
         const currentAngle = body.getAngle();
         // explosive weapon
         if (this.weaponConstructorType === 'explosive') {
@@ -201,9 +212,6 @@ class Tank extends BaseModel {
             direction: this.getFireDirection(this.currentWeapon), // нормализованный Vec2
           };
         }
-
-        // установка кулдауна
-        this.weaponRemainingCooldowns[weaponName] = weaponConfig.fireRate;
       }
     }
 

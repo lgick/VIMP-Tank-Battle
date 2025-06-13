@@ -2,7 +2,7 @@
 let panel;
 
 class Panel {
-  constructor(config, game) {
+  constructor(config) {
     let counter = 0;
 
     if (panel) {
@@ -21,9 +21,6 @@ class Panel {
         counter += 1;
       }
     }
-
-    this._game = game;
-    this._game.publisher.on('updateUserPanel', this.updateUser, this);
   }
 
   // сбрасывает данные пользователей
@@ -70,7 +67,7 @@ class Panel {
   // param: имя параметра из _config (например, 'health', 'bullet')
   // value: значение
   // operation: 'set', 'decrement', 'increment'
-  updateUser({ gameID, param, value, operation = 'decrement' }) {
+  updateUser(gameID, param, value, operation = 'decrement') {
     const conf = this._config[param];
     const key = conf.key;
     const user = this._data[gameID];
@@ -91,6 +88,27 @@ class Panel {
 
     user.values[key] = newValue;
     user.status = true;
+  }
+
+  // проверяет, достаточно ли у пользователя ресурсов для действия
+  hasResources(gameID, param, value) {
+    const user = this._data[gameID];
+    const conf = this._config[param];
+
+    if (user && conf) {
+      const currentValue = user.values[conf.key];
+      return currentValue >= value;
+    }
+  }
+
+  // возвращает текущее значение параметра для пользователя
+  getCurrentValue(gameID, param) {
+    const user = this._data[gameID];
+    const conf = this._config[param];
+
+    if (user && conf) {
+      return user.values[conf.key];
+    }
   }
 
   // возвращает данные
