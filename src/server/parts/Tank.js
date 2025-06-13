@@ -90,6 +90,33 @@ class Tank extends BaseModel {
     return x * (1 - a) + y * a;
   }
 
+  // применяет урон к танку и обновляет его состояние.
+  takeDamage(amount) {
+    // если танк уже уничтожен, урон не считать
+    if (this._condition === 0) {
+      return;
+    }
+
+    const newHealth = this.setHealth(amount);
+
+    if (newHealth <= 0) {
+      this._condition = 0; // танк уничтожен
+
+      // остановка танка при уничтожении
+      this._body.setLinearVelocity(new Vec2(0, 0));
+      this._body.setAngularVelocity(0);
+      // значительные повреждения
+    } else if (newHealth < 35) {
+      this._condition = 1;
+      // незначительные повреждения
+    } else if (newHealth < 70) {
+      this._condition = 2;
+      // норма
+    } else {
+      this._condition = 3;
+    }
+  }
+
   // получение боковой скорости
   getLateralVelocity(body) {
     const currentRightNormal = body.getWorldVector(new Vec2(0, 1)); // вектор вправо отн. танка
