@@ -170,7 +170,11 @@ class Map {
       const [id, body] = this._dynamicBodies[i];
       const pos = body.getPosition();
 
-      data[id] = [pos.x, pos.y, body.getAngle()];
+      data[id] = [
+        Math.round(pos.x),
+        Math.round(pos.y),
+        +body.getAngle().toFixed(2),
+      ];
     }
 
     return data;
