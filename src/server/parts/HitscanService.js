@@ -14,6 +14,7 @@ class HitscanService {
 
     this._world = data.world;
     this._weapons = data.weapons;
+    this._game = data.game;
   }
 
   // обработка hitscan-выстрела
@@ -29,7 +30,6 @@ class HitscanService {
     } = params;
 
     const weaponConfig = this._weapons[weaponName];
-
     const range = weaponConfig.range || 1000; // дальность
     const impulseMagnitude = weaponConfig.impulseMagnitude || 0; // величина импульса
 
@@ -59,19 +59,31 @@ class HitscanService {
     );
 
     let actualImpactPoint = null;
-    const wasHit = closestHitFixture !== null && closestFraction < 1.0; // попадание, если fraction < 1.0
+    // попадание, если fraction < 1.0
+    const wasHit = closestHitFixture !== null && closestFraction < 1.0;
 
     if (wasHit) {
       actualImpactPoint = hitPoint; // ближайшая точка попадания
       const hitBody = closestHitFixture.getBody();
+      const hitUserData = hitBody.getUserData();
 
       // если тело динамическое, то применение физического импульса
       if (impulseMagnitude > 0 && hitBody.isDynamic()) {
         const impulseVector = direction.mul(impulseMagnitude);
+
         hitBody.applyLinearImpulse(
           impulseVector,
           hitBody.getWorldCenter(),
           true,
+        );
+      }
+
+      if (hitUserData && hitUserData.type === 'player') {
+        this._game.applyDamage(
+          hitUserData.gameID,
+          hitUserData.teamID,
+          weaponName,
+          shooterTeamID,
         );
       }
     }
