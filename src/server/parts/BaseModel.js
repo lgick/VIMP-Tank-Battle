@@ -82,6 +82,25 @@ class BaseModel {
     return this._weapons;
   }
 
+  setHealth(amount) {
+    const panel = this._services.panel;
+    const currentHealth = panel.getCurrentValue(this._gameID, 'health');
+    const newHealth = Math.max(0, currentHealth - amount);
+
+    // если здоровья нет
+    if (newHealth <= 0) {
+      const vimp = this._services.vimp;
+
+      vimp.reportPlayerDestroyed(this._gameID);
+
+      return 0;
+    }
+
+    panel.updateUser(this._gameID, 'health', newHealth, 'set');
+
+    return newHealth;
+  }
+
   tryConsumeAmmoAndShoot() {
     const weaponName = this.currentWeapon;
     const weaponConfig = this.weapons[weaponName];
