@@ -405,7 +405,11 @@ class Game {
 
         // если у оружия есть эффект по истечению времени (например, взрыв)
         if (shotOutcomeID) {
-          const explosionData = shot.detonate(this._world, this);
+          const explosionData = shot.detonate(
+            this._world,
+            this,
+            this._friendlyFire,
+          );
 
           this._lastWeaponEffects[shotOutcomeID] =
             this._lastWeaponEffects[shotOutcomeID] || [];

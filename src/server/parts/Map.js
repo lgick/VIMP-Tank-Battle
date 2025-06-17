@@ -147,6 +147,10 @@ class Map {
         data.density,
       );
 
+      body.setUserData({
+        type: 'map_object',
+      });
+
       this._dynamicBodies.push([`d${i}`, body]);
     }
   }
