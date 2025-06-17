@@ -10,6 +10,7 @@ export default {
       m1: ['Tank', 'TankRadar', 'Smoke', 'Tracks'],
       w1: ['ShotEffect'],
       w2: ['Bomb'],
+      w2e: ['ExplosionEffect'],
     },
     // отображение классов на полотнах
     entitiesOnCanvas: {
@@ -19,6 +20,7 @@ export default {
       Tank: 'vimp',
       ShotEffect: 'vimp',
       Bomb: 'vimp',
+      ExplosionEffect: 'vimp',
       Smoke: 'vimp',
       Tracks: 'vimp',
     },
