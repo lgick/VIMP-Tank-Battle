@@ -13,7 +13,7 @@ export default {
     mapConstructor: 'Map', // название конструктора карт
     hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan оружия
 
-    friendlyFire: false, // огонь по своей команде
+    friendlyFire: true, // огонь по своей команде
 
     models: {
       // tank
@@ -40,8 +40,12 @@ export default {
         type: 'explosive',
         constructor: 'Bomb',
         time: 5000,
+        shotOutcomeID: 'w2e', // id конструктора для детонации бомбы
         size: 32, // соотношение сторон 1:1
-        fireRate: 1, // кулдаун между выстрелами (1 выстрел в секунду)
+        fireRate: 0.1, // кулдаун между выстрелами (1 выстрел в секунду)
+        damage: 10, // урон в эпицентре
+        radius: 300, // радиус взрыва
+        impulseMagnitude: 200000, // сила импульса
       },
     },
   },
@@ -97,7 +101,7 @@ export default {
     },
     w2: {
       key: 2,
-      value: 10,
+      value: 20,
     },
   },
 
