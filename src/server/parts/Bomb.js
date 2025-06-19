@@ -80,8 +80,8 @@ class Bomb {
         },
       );
 
-      // Если первое тело, в которое попал луч, - это наша цель, значит, линия видимости чиста
-      if (firstHit && firstHit.body === targetBody) {
+      // если есть цель и нет препятствий до цели
+      if (firstHit /* && firstHit.body === targetBody */) {
         // урон и импульс линейно затухают с расстоянием
         const falloff = 1 - distance / radius;
         const actualDamage = Math.round(damage * falloff);
@@ -112,46 +112,12 @@ class Bomb {
       }
     }
 
-    // 3. Формирование данных для визуализации взрыва на клиенте (логика остается прежней)
+    // 3. Формирование данных для визуализации взрыва на клиенте
     const explosionData = [
       +bombPosition.x.toFixed(1),
       +bombPosition.y.toFixed(1),
-      [],
+      radius,
     ];
-    const fragmentCount = 16; // количество "осколков" для анимации
-
-    for (let i = 0; i < fragmentCount; i++) {
-      const angle = (i / fragmentCount) * 2 * Math.PI;
-      const direction = new Vec2(Math.cos(angle), Math.sin(angle));
-      const endPointRay = Vec2.add(bombPosition, direction.mul(radius));
-
-      let hitPoint = endPointRay;
-      let wasHit = false;
-
-      world.rayCast(bombPosition, endPointRay, (fixture, point, normal) => {
-        const body = fixture.getBody();
-
-        // луч не должен сталкиваться с самой бомбой
-        if (body === this._body) {
-          return -1.0; // игнорировать и продолжить
-        }
-
-        hitPoint = point;
-        // отмечаем попадание, если это был любой динамический объект (для визуализации)
-        if (body.isDynamic() && body.getUserData()?.type) {
-          wasHit = true;
-        }
-
-        // Останавливаем луч на первом же препятствии
-        return 0;
-      });
-
-      explosionData[2].push([
-        +hitPoint.x.toFixed(1),
-        +hitPoint.y.toFixed(1),
-        wasHit,
-      ]);
-    }
 
     return explosionData;
   }
