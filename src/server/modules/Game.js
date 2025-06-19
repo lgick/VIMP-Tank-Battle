@@ -268,13 +268,23 @@ class Game {
   }
 
   //  применение урона игроку
-  applyDamage(targetGameID, targetTeamID, weaponName, shooterTeamID) {
+  applyDamage(
+    targetGameID,
+    targetTeamID,
+    weaponName,
+    shooterTeamID,
+    damageValue,
+  ) {
     // проверка на дружественный огонь
     if (!this._friendlyFire && targetTeamID === shooterTeamID) {
       return;
     }
 
-    const damage = this._weapons[weaponName]?.damage || 0;
+    // Используем переданный урон, если он есть, иначе берем из конфига оружия
+    const damage =
+      typeof damageValue === 'number'
+        ? damageValue
+        : this._weapons[weaponName]?.damage || 0;
     const player = this._playersData[targetGameID];
 
     if (player) {
