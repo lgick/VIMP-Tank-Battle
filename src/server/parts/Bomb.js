@@ -35,78 +35,53 @@ class Bomb {
       new Vec2(bombPosition.x + radius, bombPosition.y + radius),
     );
 
-    const potentialTargets = new Set(); // используем Set, чтобы избежать дублирования целей
+    const potentialTargets = new Set();
 
-    // поиск всех тел в радиусе взрыва (первичный фильтр)
+    // 1. Находим все потенциальные цели в радиусе взрыва
     world.queryAABB(explosionAABB, fixture => {
       const body = fixture.getBody();
       const userData = body.getUserData();
 
-      // игнорируем саму бомбу, статичные объекты и все, у чего нет типа
       if (body === this._body || !body.isDynamic() || !userData?.type) {
         return true;
       }
 
-      // любой динамический объект в радиусе является потенциальной целью
       const distance = Vec2.distance(bombPosition, body.getPosition());
 
       if (distance < radius) {
         potentialTargets.add({ body, userData, distance });
       }
-
-      return true; // продолжаем поиск
+      return true;
     });
 
-    // 2. Проверка линии видимости и применение урона и импульса
+    // 2. Для каждой цели применяем урон без проверки линии видимости
     for (const target of potentialTargets) {
       const { body: targetBody, userData: targetUserData, distance } = target;
-      let firstHit = null;
 
-      // Пускаем луч от бомбы к цели, чтобы проверить наличие препятствий
-      world.rayCast(
-        bombPosition,
-        targetBody.getPosition(),
-        (fixture, point, normal, fraction) => {
-          const currentHitBody = fixture.getBody();
+      // Рассчитываем и применяем урон и импульс для всех в радиусе
+      const falloff = 1 - distance / radius;
+      const actualDamage = Math.round(damage * falloff);
+      const actualImpulse = impulseMagnitude * falloff;
 
-          // Игнорируем саму бомбу, так как луч начинается внутри нее
-          if (currentHitBody === this._body) {
-            return -1.0; // Проигнорировать это столкновение и продолжить луч
-          }
-
-          // Сохраняем первое тело и точку столкновения, в которые попал луч, и останавливаем его
-          firstHit = { body: currentHitBody, point };
-          return fraction; // Остановить луч на этом столкновении
-        },
-      );
-
-      // если есть цель и нет препятствий до цели
-      if (firstHit /* && firstHit.body === targetBody */) {
-        // урон и импульс линейно затухают с расстоянием
-        const falloff = 1 - distance / radius;
-        const actualDamage = Math.round(damage * falloff);
-        const actualImpulse = impulseMagnitude * falloff;
-
-        // применяем урон только к игрокам
-        if (targetUserData.type === 'player') {
-          // проверка на дружественный огонь
-          if (friendlyFire || shooterData.teamID !== targetUserData.teamID) {
-            game.applyDamage(
-              targetUserData.gameID,
-              targetUserData.teamID,
-              weaponName,
-              shooterData.teamID,
-            );
-          }
+      if (targetUserData.type === 'player') {
+        if (friendlyFire || shooterData.teamID !== targetUserData.teamID) {
+          game.applyDamage(
+            targetUserData.gameID,
+            targetUserData.teamID,
+            weaponName,
+            shooterData.teamID,
+            actualDamage,
+          );
         }
+      }
 
-        // применяем импульс
+      if (actualImpulse > 0 && distance > 0) {
         const direction = Vec2.sub(targetBody.getPosition(), bombPosition);
         direction.normalize();
         const impulseVector = direction.mul(actualImpulse);
         targetBody.applyLinearImpulse(
           impulseVector,
-          firstHit.point, // применяем импульс к точке столкновения для создания вращения
+          targetBody.getPosition(),
           true,
         );
       }
