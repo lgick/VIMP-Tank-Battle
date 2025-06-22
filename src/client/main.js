@@ -22,9 +22,9 @@ import VoteModel from './components/model/Vote.js';
 import VoteView from './components/view/Vote.js';
 import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
+import Baking from './baking/index.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
-import baking from './baking/index.js';
 
 const document = window.document;
 const Number = window.Number;
@@ -93,6 +93,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
     async ([canvasId, options]) => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
+      const baking = new Baking();
 
       await app.init({
         canvas,
@@ -105,17 +106,17 @@ socketMethods[PS_CONFIG_DATA] = async data => {
         },
       });
 
-      const bakingSet = modulesConfig.baking?.[canvasId];
+      const bakingArr = modulesConfig.baking?.[canvasId];
 
-      if (bakingSet) {
-        // запекание компонентов по конфигу
-        baking.bakeAll(bakingSet, app);
-
-        // сохранение рендерера в реестре для общего доступа
-        baking.set('renderer', app.renderer);
+      // если запекание компонентов по конфигу
+      if (bakingArr) {
+        baking.bakeAll(bakingArr, app);
       }
 
-      CTRL[canvasId] = makeGameController(app);
+      // сохранение рендерера в реестре для общего доступа
+      baking.set('renderer', app.renderer);
+
+      CTRL[canvasId] = makeGameController(app, baking.getAssets());
 
       // пропорции изображения на полотне
       const [w, h] = (options.scale || '1:1')
@@ -477,8 +478,8 @@ function runModules(data) {
 }
 
 // создает экземпляр игры
-function makeGameController(app) {
-  const model = new GameModel();
+function makeGameController(app, assets) {
+  const model = new GameModel(assets);
   const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 
