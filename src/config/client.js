@@ -40,6 +40,21 @@ export default {
       },
     },
 
+    // компоненты, которые должны быть "запечены" (созданы один раз) при старте игры
+    baking: {
+      vimp: [
+        {
+          id: 'explosionParticle', // уникальный ID для доступа к текстуре
+          type: 'blurredCircleTexture', // тип определяет, какую логику "запекания" использовать
+          params: {
+            radius: 50, // радиус круга
+            blur: 2, // сила размытия
+            color: 0xffffff, // цвет (белый для удобного tinting)
+          },
+        },
+      ],
+    },
+
     displayID: ['vimp', 'radar', 'panel', 'chat'],
 
     // keys

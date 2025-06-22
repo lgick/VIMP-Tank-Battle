@@ -24,6 +24,7 @@ import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
+import baking from './baking/index.js';
 
 const document = window.document;
 const Number = window.Number;
@@ -88,7 +89,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   informList = data.informer;
 
   // создание полотен игры
-  const initPromises = Object.entries(data.modules.canvasOptions).map(
+  const initPromises = Object.entries(modulesConfig.canvasOptions).map(
     async ([canvasId, options]) => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
@@ -103,6 +104,16 @@ socketMethods[PS_CONFIG_DATA] = async data => {
           activateOnTab: false,
         },
       });
+
+      const bakingSet = modulesConfig.baking?.[canvasId];
+
+      if (bakingSet) {
+        // запекание компонентов по конфигу
+        baking.bakeAll(bakingSet, app);
+
+        // сохранение рендерера в реестре для общего доступа
+        baking.set('renderer', app.renderer);
+      }
 
       CTRL[canvasId] = makeGameController(app);
 
