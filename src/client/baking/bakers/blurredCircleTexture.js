@@ -5,7 +5,7 @@ import { Graphics, BlurFilter, Rectangle } from 'pixi.js';
 // params.blur - Сила размытия
 // params.color - Цвет заливки
 // renderer - PIXI рендерер
-export default function BlurredCircleTexture(params, renderer) {
+export default function blurredCircleTexture(params, renderer) {
   const { radius, blur, color } = params;
   const graphics = new Graphics();
 

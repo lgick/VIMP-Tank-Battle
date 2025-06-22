@@ -2,10 +2,12 @@ import Publisher from '../../../lib/Publisher.js';
 import Factory from '../../../lib/factory.js';
 
 export default class GameModel {
-  constructor() {
+  constructor(assets) {
     this._data = {};
     this._managedEffects = {};
     this.publisher = new Publisher();
+    //коллекция ассетов (Map)
+    this._assets = assets || new Map();
   }
 
   // создает экземпляры вида:
@@ -17,7 +19,7 @@ export default class GameModel {
   // id          - id экземпляра
   // data        - данные для создания экземпляра
   create(constructor, id, data) {
-    const instance = Factory(constructor, data);
+    const instance = Factory(constructor, data, this._assets);
 
     this._data[constructor] = this._data[constructor] || {};
     this._data[constructor][id] = instance;
@@ -27,7 +29,7 @@ export default class GameModel {
   // создает экземпляр эффекта (например анимация выстрела или дыма)
   // this._managedEffects['ShotEffect'] = [[100, 1000, 11, 1, true], [200, 200, 200, 200, false]]
   createEffect(constructor, data) {
-    const instance = Factory(constructor, data);
+    const instance = Factory(constructor, data, this._assets);
 
     this._managedEffects[constructor] =
       this._managedEffects[constructor] || new Set();

@@ -45,7 +45,7 @@ export default {
       vimp: [
         {
           id: 'explosionParticle', // уникальный ID для доступа к текстуре
-          type: 'blurredCircleTexture', // тип определяет, какую логику "запекания" использовать
+          type: 'blurredCircleTexture', // название функции "запекания"
           params: {
             radius: 50, // радиус круга
             blur: 2, // сила размытия
