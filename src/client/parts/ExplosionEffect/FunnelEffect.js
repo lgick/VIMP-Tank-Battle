@@ -6,19 +6,13 @@ import {
   Sprite,
   Rectangle,
 } from 'pixi.js';
-import MainExplosionEffect from './MainExplosionEffect.js';
 import SmokeEffect from './SmokeEffect.js';
 
 export default class FunnelEffect extends Container {
-  constructor(x, y, onComplete) {
+  constructor(x, y, onComplete, assets) {
     super();
 
-    if (!MainExplosionEffect.particleTexture || !MainExplosionEffect.renderer) {
-      throw new Error(
-        'FunnelEffect требует полной инициализации MainExplosionEffect. Вызовите MainExplosionEffect.init(renderer).',
-      );
-    }
-
+    this._assets = assets;
     this.onComplete = onComplete;
     this.x = x;
     this.y = y;
@@ -37,13 +31,16 @@ export default class FunnelEffect extends Container {
     this.addChild(this._funnel);
 
     // параметры дыма
-    this._smoke = new SmokeEffect({
-      spawnRate: 300,
-      maxLife: 4000,
-      maxScale: 0.06,
-      initialAlpha: 0.3,
-      stretch: 7,
-    });
+    this._smoke = new SmokeEffect(
+      {
+        spawnRate: 300,
+        maxLife: 4000,
+        maxScale: 0.06,
+        initialAlpha: 0.3,
+        stretch: 7,
+      },
+      this._assets,
+    );
 
     this._smoke.zIndex = 1;
     this.addChild(this._smoke);
@@ -70,7 +67,9 @@ export default class FunnelEffect extends Container {
     graphics.poly(path).fill(0xffffff);
     graphics.filters = [new BlurFilter({ strength: blur, quality: 10 })];
 
-    const funnelTexture = MainExplosionEffect.renderer.generateTexture({
+    const renderer = this._assets.renderer;
+
+    const funnelTexture = renderer.generateTexture({
       target: graphics,
       frame: new Rectangle(0, 0, canvasSize, canvasSize),
     });

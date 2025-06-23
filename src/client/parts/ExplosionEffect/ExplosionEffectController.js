@@ -3,12 +3,14 @@ import MainExplosionEffect from './MainExplosionEffect.js';
 import FunnelEffect from './FunnelEffect.js';
 
 export default class ExplosionEffectController extends Container {
-  constructor(data) {
+  constructor(data, assets) {
     super();
 
     this.originX = data[0];
     this.originY = data[1];
     this.radius = data[2];
+
+    this._assets = assets;
 
     this.x = this.originX;
     this.y = this.originY;
@@ -21,13 +23,7 @@ export default class ExplosionEffectController extends Container {
   }
 
   run() {
-    if (this._isDestroyed || !this.parent) {
-      if (!this.parent) {
-        console.warn(
-          'ExplosionEffectController должен быть добавлен на сцену перед вызовом run()',
-        );
-      }
-
+    if (this._isDestroyed) {
       return;
     }
 
@@ -35,6 +31,7 @@ export default class ExplosionEffectController extends Container {
       this.originX,
       this.originY,
       this._onFunnelComplete.bind(this),
+      this._assets,
     );
 
     this.funnel.zIndex = 2;
@@ -45,6 +42,7 @@ export default class ExplosionEffectController extends Container {
       0,
       this.radius,
       this._onMainExplosionComplete.bind(this),
+      this._assets,
     );
 
     // взрыв в контроллер

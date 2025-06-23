@@ -20,5 +20,6 @@ export default function blurredCircleTexture(params, renderer) {
   });
 
   graphics.destroy(true);
+
   return texture;
 }
