@@ -1,15 +1,10 @@
 import { Container, Ticker, Sprite } from 'pixi.js';
-import MainExplosionEffect from './MainExplosionEffect.js';
 
 export default class SmokeEffect extends Container {
-  constructor(options = {}) {
+  constructor(options = {}, assets) {
     super();
 
-    if (!MainExplosionEffect.particleTexture) {
-      throw new Error(
-        'SmokeEffect требует инициализации MainExplosionEffect.init(renderer).',
-      );
-    }
+    this.particleTexture = assets.explosionParticle;
 
     this._particles = [];
     this._isStarted = false;
@@ -45,7 +40,7 @@ export default class SmokeEffect extends Container {
   }
 
   _createParticle() {
-    const particle = new Sprite(MainExplosionEffect.particleTexture);
+    const particle = new Sprite(this.particleTexture);
 
     particle.anchor.set(0.5);
     particle.tint = this._particleColor;

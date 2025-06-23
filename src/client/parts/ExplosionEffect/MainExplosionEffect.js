@@ -1,67 +1,12 @@
-import {
-  Graphics,
-  Ticker,
-  Container,
-  BlurFilter,
-  Sprite,
-  Rectangle,
-} from 'pixi.js';
+import { Ticker, Container, Sprite } from 'pixi.js';
 
 export default class MainExplosionEffect extends Container {
-  // статическое свойство для хранения "запеченной" текстуры
-  // оно будет общим для всех экземпляров взрывов
-  static particleTexture = null;
-
-  // статическое свойство для хранения рендерера
-  static renderer = null;
-
-  // инициализирует и "запекает" текстуру для эффекта
-  static init(renderer) {
-    if (this.particleTexture) {
-      return;
-    }
-
-    // сохраняем рендерер для динамической генерации текстур воронок
-    this.renderer = renderer;
-
-    const radius = 50; // базовый радиус для текстуры
-    const blurStrength = 2; // сила размытия для текстуры
-
-    const graphics = new Graphics();
-
-    // белый круг (белый цвет идеально подходит для последующего окрашивания через tint)
-    graphics.circle(radius + blurStrength, radius + blurStrength, radius);
-    graphics.fill(0xffffff);
-
-    // фильтр размытия
-    graphics.filters = [
-      new BlurFilter({ strength: blurStrength, quality: 40 }),
-    ];
-
-    // текстура из объекта с фильтром
-    this.particleTexture = renderer.generateTexture({
-      target: graphics,
-      // область должна включать пространство для размытия
-      frame: new Rectangle(
-        0,
-        0,
-        (radius + blurStrength) * 2,
-        (radius + blurStrength) * 2,
-      ),
-    });
-
-    graphics.destroy(true);
-  }
-
-  constructor(x, y, radius, onComplete) {
+  constructor(x, y, radius, onComplete, assets) {
     super();
 
-    // проверка, был ли вызван статический метод init()
-    if (!MainExplosionEffect.particleTexture || !MainExplosionEffect.renderer) {
-      throw new Error(
-        'MainExplosionEffect не инициализирован. Вызовите MainExplosionEffect.init(renderer) один раз.',
-      );
-    }
+    // получаем "запеченные" ассеты
+    this.particleTexture = assets.explosionParticle;
+    this.renderer = assets.renderer;
 
     this.onComplete = onComplete; // callback по завершению анимации
     this.x = x;
@@ -82,14 +27,14 @@ export default class MainExplosionEffect extends Container {
 
     // спрайты
     // основное тело взрыва (голубое)
-    this._mainBody = new Sprite(MainExplosionEffect.particleTexture);
+    this._mainBody = new Sprite(this.particleTexture);
     this._mainBody.anchor.set(0.5);
     this._mainBody.tint = 0xadd8e6; // светло-голубой
     this._mainBody.scale.set(desiredScale);
     this._mainBody.zIndex = 3; // zIndex должен быть выше, чем у воронки
 
     // коллапсирующее ядро (серое)
-    this._core = new Sprite(MainExplosionEffect.particleTexture);
+    this._core = new Sprite(this.particleTexture);
     this._core.anchor.set(0.5);
     this._core.tint = 0xd3d3d3; // светло-серый
     this._core.scale.set(desiredScale); // начальный размер тот же
