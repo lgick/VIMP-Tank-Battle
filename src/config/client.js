@@ -24,21 +24,6 @@ export default {
       Smoke: 'vimp',
       Tracks: 'vimp',
     },
-  },
-
-  // ***** modules ***** //
-  modules: {
-    canvasOptions: {
-      vimp: {
-        aspectRatio: '3:2',
-        screenRatio: 1,
-        scale: '1:1',
-      },
-      radar: {
-        fixSize: '150',
-        scale: '1:13',
-      },
-    },
 
     // компоненты, которые должны быть "запечены" (созданы один раз) при старте игры
     baking: {
@@ -53,6 +38,27 @@ export default {
           },
         },
       ],
+    },
+
+    // ассеты для компонентов
+    // будут передаваться в конструктор компонента вторым параметром
+    assetDependencies: {
+      ExplosionEffect: ['explosionParticle', 'renderer'],
+    },
+  },
+
+  // ***** modules ***** //
+  modules: {
+    canvasOptions: {
+      vimp: {
+        aspectRatio: '3:2',
+        screenRatio: 1,
+        scale: '1:1',
+      },
+      radar: {
+        fixSize: '150',
+        scale: '1:13',
+      },
     },
 
     displayID: ['vimp', 'radar', 'panel', 'chat'],

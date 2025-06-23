@@ -94,6 +94,8 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
       const baking = new Baking();
+      const bakingConfig = data.parts.baking || {};
+      const dependenciesConfig = data.parts.assetDependencies;
 
       await app.init({
         canvas,
@@ -106,17 +108,14 @@ socketMethods[PS_CONFIG_DATA] = async data => {
         },
       });
 
-      const bakingArr = modulesConfig.baking?.[canvasId];
+      const bakingArr = bakingConfig[canvasId];
 
-      // если запекание компонентов по конфигу
+      // если есть данные для запекания компонентов
       if (bakingArr) {
-        baking.bakeAll(bakingArr, app);
+        baking.bakeAll(bakingArr, app, dependenciesConfig);
       }
 
-      // сохранение рендерера в реестре для общего доступа
-      baking.set('renderer', app.renderer);
-
-      CTRL[canvasId] = makeGameController(app, baking.getAssets());
+      CTRL[canvasId] = makeGameController(app, baking.getAssetsCollection());
 
       // пропорции изображения на полотне
       const [w, h] = (options.scale || '1:1')
@@ -478,8 +477,8 @@ function runModules(data) {
 }
 
 // создает экземпляр игры
-function makeGameController(app, assets) {
-  const model = new GameModel(assets);
+function makeGameController(app, assetsCollection) {
+  const model = new GameModel(assetsCollection);
   const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 
