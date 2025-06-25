@@ -25,25 +25,31 @@ export default {
       Tracks: 'vimp',
     },
 
-    // компоненты, которые должны быть "запечены" (созданы один раз) при старте игры
-    baking: {
+    // ассеты, которые должны быть "запечены" (созданы один раз) при старте игры
+    bakedAssets: {
       vimp: [
         {
           id: 'explosionParticle', // уникальный ID для доступа к текстуре
-          type: 'blurredCircleTexture', // название функции "запекания"
+          baker: 'blurredCircleTexture', // название функции "запекания"
+          component: 'ExplosionEffect', // компонент, которому назначен ассет
           params: {
             radius: 50, // радиус круга
             blur: 2, // сила размытия
             color: 0xffffff, // цвет (белый для удобного tinting)
           },
         },
+        {
+          id: 'funnelTexture', // уникальный ID для доступа к текстуре
+          baker: 'funnelTexture', // название новой функции "запекания"
+          component: 'ExplosionEffect', // компонент, которому назначен ассет
+          params: {
+            baseRadius: 50,
+            irregularity: 15,
+            blur: 20,
+            numPoints: 12,
+          },
+        },
       ],
-    },
-
-    // ассеты для компонентов
-    // будут передаваться в конструктор компонента вторым параметром
-    assetDependencies: {
-      ExplosionEffect: ['explosionParticle', 'renderer'],
     },
   },
 
