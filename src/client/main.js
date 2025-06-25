@@ -22,7 +22,7 @@ import VoteModel from './components/model/Vote.js';
 import VoteView from './components/view/Vote.js';
 import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
-import Baking from './baking/index.js';
+import Baking from './Baking/index.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
@@ -88,14 +88,15 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   modulesConfig = data.modules;
   informList = data.informer;
 
+  const bakedAssets = data.parts.bakedAssets || {};
+
   // создание полотен игры
   const initPromises = Object.entries(modulesConfig.canvasOptions).map(
     async ([canvasId, options]) => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
       const baking = new Baking();
-      const bakingConfig = data.parts.baking || {};
-      const dependenciesConfig = data.parts.assetDependencies;
+      const bakingArr = bakedAssets[canvasId];
 
       await app.init({
         canvas,
@@ -108,11 +109,9 @@ socketMethods[PS_CONFIG_DATA] = async data => {
         },
       });
 
-      const bakingArr = bakingConfig[canvasId];
-
       // если есть данные для запекания компонентов
       if (bakingArr) {
-        baking.bakeAll(bakingArr, app, dependenciesConfig);
+        baking.bakeAll(bakingArr, app);
       }
 
       CTRL[canvasId] = makeGameController(app, baking.getAssetsCollection());

@@ -1,11 +1,4 @@
-import {
-  Graphics,
-  Ticker,
-  Container,
-  BlurFilter,
-  Sprite,
-  Rectangle,
-} from 'pixi.js';
+import { Ticker, Container, Sprite } from 'pixi.js';
 import SmokeEffect from './SmokeEffect.js';
 
 export default class FunnelEffect extends Container {
@@ -49,38 +42,14 @@ export default class FunnelEffect extends Container {
   }
 
   _createFunnelSprite() {
-    const graphics = new Graphics();
-    const baseRadius = 50;
-    const irregularity = 15;
-    const blur = 20;
-    const numPoints = 12;
-    const canvasSize = (baseRadius + irregularity + blur) * 2;
-    const center = canvasSize / 2;
-    const path = [];
-
-    for (let i = 0; i < numPoints; i += 1) {
-      const angle = (i / numPoints) * Math.PI * 2;
-      const r = baseRadius + (Math.random() - 0.5) * 2 * irregularity;
-      path.push(center + r * Math.cos(angle), center + r * Math.sin(angle));
-    }
-
-    graphics.poly(path).fill(0xffffff);
-    graphics.filters = [new BlurFilter({ strength: blur, quality: 10 })];
-
-    const renderer = this._assets.renderer;
-
-    const funnelTexture = renderer.generateTexture({
-      target: graphics,
-      frame: new Rectangle(0, 0, canvasSize, canvasSize),
-    });
-
-    graphics.destroy(true);
+    const funnelTexture = this._assets.funnelTexture;
 
     const funnelSprite = new Sprite(funnelTexture);
     funnelSprite.anchor.set(0.5);
     funnelSprite.tint = 0x3a3a3a;
 
-    // размер воронки
+    // параметр для расчета масштаба, соответствует тому, что был при "запекании"
+    const baseRadius = 50;
     const scale = 15 / (baseRadius * 2);
     funnelSprite.scale.set(scale);
 
@@ -146,10 +115,6 @@ export default class FunnelEffect extends Container {
     if (this._tickListener) {
       Ticker.shared.remove(this._tickListener);
       this._tickListener = null;
-    }
-
-    if (this._funnel && this._funnel.texture) {
-      this._funnel.texture.destroy();
     }
 
     if (this._smoke) {

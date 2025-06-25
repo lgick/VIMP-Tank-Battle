@@ -11,39 +11,33 @@ export default class Baking {
   }
 
   // "запекает" ассеты и упаковывает их для потребителей
-  // components - массив объектов с данными для создания ассетов
+  // arr - массив объектов с данными для создания ассетов
   // pixiApp - экземпляр PIXI приложения
-  // dependenciesConfig - потребители ({потребитель: [список имён ассетов]})
-  bakeAll(components, pixiApp, dependenciesConfig = {}) {
+  bakeAll(arr, pixiApp) {
     const renderer = pixiApp.renderer;
-
-    const bakedAssets = new Map(); // временное хранилище для ассетов
-    bakedAssets.set('renderer', renderer); // accет рендерера
 
     this._collection.clear();
 
     // "запекание" ассетов
-    for (const component of components) {
-      const bakerFn = bakers[component.type];
+    for (const data of arr) {
+      const bakerFn = bakers[data.baker];
 
       if (bakerFn) {
-        bakedAssets.set(component.id, bakerFn(component.params, renderer));
-      }
-    }
+        // "запекаем" ассет
+        const bakedAsset = bakerFn(data.params, renderer);
 
-    // сборка ассетов под потребителя согласно конфигу
-    for (const constructor in dependenciesConfig) {
-      if (Object.hasOwn(dependenciesConfig, constructor)) {
-        const assetList = dependenciesConfig[constructor];
-        const assets = {};
+        // получаем имя компонента и ID ассета из конфига
+        const componentName = data.component;
+        const assetId = data.id;
 
-        for (const asset of assetList) {
-          if (bakedAssets.has(asset)) {
-            assets[asset] = bakedAssets.get(asset);
-          }
+        // если для этого компонента еще нет контейнера ассетов, создаем его
+        if (!this._collection.has(componentName)) {
+          this._collection.set(componentName, {});
         }
 
-        this._collection.set(constructor, assets);
+        // добавляем "запеченный" ассет в контейнер соответствующего компонента
+        const assetsContainer = this._collection.get(componentName);
+        assetsContainer[assetId] = bakedAsset;
       }
     }
   }
