@@ -1,14 +1,13 @@
 import { Ticker, Container, Sprite } from 'pixi.js';
 
-export default class MainExplosionEffect extends Container {
+export default class ExplosionEffect extends Container {
   constructor(x, y, radius, onComplete, assets) {
     super();
 
-    // получаем "запеченные" ассеты
-    this.particleTexture = assets.explosionParticle;
-    this.renderer = assets.renderer;
+    // ассет взрыва
+    this.explosionTexture = assets.explosionTexture;
 
-    this.onComplete = onComplete; // callback по завершению анимации
+    this.onComplete = onComplete;
     this.x = x;
     this.y = y;
     this._radius = radius;
@@ -27,14 +26,14 @@ export default class MainExplosionEffect extends Container {
 
     // спрайты
     // основное тело взрыва (голубое)
-    this._mainBody = new Sprite(this.particleTexture);
+    this._mainBody = new Sprite(this.explosionTexture);
     this._mainBody.anchor.set(0.5);
     this._mainBody.tint = 0xadd8e6; // светло-голубой
     this._mainBody.scale.set(desiredScale);
     this._mainBody.zIndex = 3; // zIndex должен быть выше, чем у воронки
 
     // коллапсирующее ядро (серое)
-    this._core = new Sprite(this.particleTexture);
+    this._core = new Sprite(this.explosionTexture);
     this._core.anchor.set(0.5);
     this._core.tint = 0xd3d3d3; // светло-серый
     this._core.scale.set(desiredScale); // начальный размер тот же

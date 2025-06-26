@@ -4,7 +4,7 @@ export default class SmokeEffect extends Container {
   constructor(options = {}, assets) {
     super();
 
-    this.particleTexture = assets.explosionParticle;
+    this.explosionTexture = assets.explosionTexture;
 
     this._particles = [];
     this._isStarted = false;
@@ -40,7 +40,7 @@ export default class SmokeEffect extends Container {
   }
 
   _createParticle() {
-    const particle = new Sprite(this.particleTexture);
+    const particle = new Sprite(this.explosionTexture);
 
     particle.anchor.set(0.5);
     particle.tint = this._particleColor;

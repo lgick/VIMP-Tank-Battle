@@ -29,8 +29,7 @@ export default {
     bakedAssets: {
       vimp: [
         {
-          id: 'explosionParticle', // уникальный ID для доступа к текстуре
-          baker: 'blurredCircleTexture', // название функции "запекания"
+          name: 'explosionTexture', // ID доступа к текстуре и название функции "запекания"
           component: 'ExplosionEffect', // компонент, которому назначен ассет
           params: {
             radius: 50, // радиус круга
@@ -39,9 +38,8 @@ export default {
           },
         },
         {
-          id: 'funnelTexture', // уникальный ID для доступа к текстуре
-          baker: 'funnelTexture', // название новой функции "запекания"
-          component: 'ExplosionEffect', // компонент, которому назначен ассет
+          name: 'funnelTexture',
+          component: 'ExplosionEffect',
           params: {
             baseRadius: 50,
             irregularity: 15,

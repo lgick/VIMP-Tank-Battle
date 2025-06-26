@@ -20,24 +20,22 @@ export default class Baking {
 
     // "запекание" ассетов
     for (const data of arr) {
-      const bakerFn = bakers[data.baker];
+      const assetName = data.name;
+      const componentName = data.component;
+      const bakerFn = bakers[assetName];
 
       if (bakerFn) {
-        // "запекаем" ассет
         const bakedAsset = bakerFn(data.params, renderer);
 
-        // получаем имя компонента и ID ассета из конфига
-        const componentName = data.component;
-        const assetId = data.id;
-
-        // если для этого компонента еще нет контейнера ассетов, создаем его
+        // если для этого компонента нет контейнера ассетов
         if (!this._collection.has(componentName)) {
           this._collection.set(componentName, {});
         }
 
         // добавляем "запеченный" ассет в контейнер соответствующего компонента
         const assetsContainer = this._collection.get(componentName);
-        assetsContainer[assetId] = bakedAsset;
+
+        assetsContainer[assetName] = bakedAsset;
       }
     }
   }
