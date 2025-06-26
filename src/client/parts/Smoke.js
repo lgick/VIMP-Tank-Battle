@@ -124,7 +124,7 @@ export default class Smoke extends Container {
     }
 
     // обновление существующих частиц
-    for (let i = this.particles.length - 1; i >= 0; i--) {
+    for (let i = this.particles.length - 1; i >= 0; i -= 1) {
       const particle = this.particles[i];
 
       particle.age += deltaMS;

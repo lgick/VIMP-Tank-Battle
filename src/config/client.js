@@ -10,6 +10,7 @@ export default {
       m1: ['Tank', 'TankRadar', 'Smoke', 'Tracks'],
       w1: ['ShotEffect'],
       w2: ['Bomb'],
+      w2e: ['ExplosionEffect'],
     },
     // отображение классов на полотнах
     entitiesOnCanvas: {
@@ -19,8 +20,34 @@ export default {
       Tank: 'vimp',
       ShotEffect: 'vimp',
       Bomb: 'vimp',
+      ExplosionEffect: 'vimp',
       Smoke: 'vimp',
       Tracks: 'vimp',
+    },
+
+    // ассеты, которые должны быть "запечены" (созданы один раз) при старте игры
+    bakedAssets: {
+      vimp: [
+        {
+          name: 'explosionTexture', // ID доступа к текстуре и название функции "запекания"
+          component: 'ExplosionEffect', // компонент, которому назначен ассет
+          params: {
+            radius: 50, // радиус круга
+            blur: 2, // сила размытия
+            color: 0xffffff, // цвет (белый для удобного tinting)
+          },
+        },
+        {
+          name: 'funnelTexture',
+          component: 'ExplosionEffect',
+          params: {
+            baseRadius: 50,
+            irregularity: 15,
+            blur: 20,
+            numPoints: 12,
+          },
+        },
+      ],
     },
   },
 
