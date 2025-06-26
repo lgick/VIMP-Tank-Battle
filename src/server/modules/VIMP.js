@@ -619,7 +619,6 @@ class VIMP {
 
     user.isWatching = true;
 
-    this.removeFromActivePlayers(gameID);
     this._stat.updateUser(gameID, user.teamID, { deaths: 1, status: 'dead' });
 
     // немедленное обновление, чтобы он переключился в режим наблюдателя

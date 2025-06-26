@@ -22,6 +22,7 @@ import VoteModel from './components/model/Vote.js';
 import VoteView from './components/view/Vote.js';
 import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
+import Baking from './Baking/index.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
@@ -87,11 +88,15 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   modulesConfig = data.modules;
   informList = data.informer;
 
+  const bakedAssets = data.parts.bakedAssets || {};
+
   // создание полотен игры
-  const initPromises = Object.entries(data.modules.canvasOptions).map(
+  const initPromises = Object.entries(modulesConfig.canvasOptions).map(
     async ([canvasId, options]) => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
+      const baking = new Baking();
+      const bakingArr = bakedAssets[canvasId];
 
       await app.init({
         canvas,
@@ -104,7 +109,12 @@ socketMethods[PS_CONFIG_DATA] = async data => {
         },
       });
 
-      CTRL[canvasId] = makeGameController(app);
+      // если есть данные для запекания компонентов
+      if (bakingArr) {
+        baking.bakeAll(bakingArr, app);
+      }
+
+      CTRL[canvasId] = makeGameController(app, baking.getAssetsCollection());
 
       // пропорции изображения на полотне
       const [w, h] = (options.scale || '1:1')
@@ -466,8 +476,8 @@ function runModules(data) {
 }
 
 // создает экземпляр игры
-function makeGameController(app) {
-  const model = new GameModel();
+function makeGameController(app, assetsCollection) {
+  const model = new GameModel(assetsCollection);
   const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 

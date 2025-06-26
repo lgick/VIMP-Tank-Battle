@@ -71,11 +71,7 @@ class HitscanService {
       if (impulseMagnitude > 0 && hitBody.isDynamic()) {
         const impulseVector = direction.mul(impulseMagnitude);
 
-        hitBody.applyLinearImpulse(
-          impulseVector,
-          hitBody.getWorldCenter(),
-          true,
-        );
+        hitBody.applyLinearImpulse(impulseVector, hitPoint, true);
       }
 
       if (hitUserData && hitUserData.type === 'player') {

@@ -1,14 +1,14 @@
-// Фабрика для строительства объектов игры
+// фабрика для строительства объектов игры
 // создает объект игры указанного типа
 // по заданным параметрам
-const Factory = (name, params) => {
+const Factory = (name, ...args) => {
   const Constructor = Factory.constructors[name];
 
   if (typeof Constructor !== 'function') {
     throw new Error(`Constructor for ${name} not found.`);
   }
 
-  return new Constructor(params);
+  return new Constructor(...args);
 };
 
 Factory.constructors = {};

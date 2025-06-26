@@ -65,6 +65,14 @@ class Game {
       game: this,
     });
 
+    this._weaponEffectList = [
+      ...new Set(
+        Object.values(this._weapons)
+          .filter(weapon => weapon.shotOutcomeID)
+          .map(weapon => weapon.shotOutcomeID),
+      ),
+    ];
+
     // данные игроков { gameID: playerInstance }
     this._playersData = {};
 
@@ -117,7 +125,10 @@ class Game {
     }
 
     // хранение данных об удаленных пулях между updateData и getGameData
-    this._lastExpiredOrCollidedShotsData = {};
+    this._lastExpiredShotsData = {};
+
+    // хранение данных эффектов завершения оружия
+    this._lastWeaponEffects = {};
   }
 
   // получает сервисы
@@ -217,7 +228,7 @@ class Game {
 
     this._playersData = {};
     this.removeShots();
-    this._lastExpiredOrCollidedShotsData = {};
+    this._lastExpiredShotsData = {};
     this._accumulator = 0;
   }
 
@@ -257,13 +268,23 @@ class Game {
   }
 
   //  применение урона игроку
-  applyDamage(targetGameID, targetTeamID, weaponName, shooterTeamID) {
+  applyDamage(
+    targetGameID,
+    targetTeamID,
+    weaponName,
+    shooterTeamID,
+    damageValue,
+  ) {
     // проверка на дружественный огонь
     if (!this._friendlyFire && targetTeamID === shooterTeamID) {
       return;
     }
 
-    const damage = this._weapons[weaponName]?.damage || 0;
+    // Используем переданный урон, если он есть, иначе берем из конфига оружия
+    const damage =
+      typeof damageValue === 'number'
+        ? damageValue
+        : this._weapons[weaponName]?.damage || 0;
     const player = this._playersData[targetGameID];
 
     if (player) {
@@ -307,6 +328,13 @@ class Game {
 
       const playerData = playerFixture.getBody().getUserData();
       const shotData = shotFixture.getBody().getUserData();
+
+      // Если это оружие взрывного типа (например, бомба),
+      // оно не должно уничтожаться при контакте, а только по таймеру.
+      const weaponConfig = this._weapons[shotData.weaponName];
+      if (weaponConfig && weaponConfig.type === 'explosive') {
+        continue; // Игнорируем контакт и переходим к следующему
+      }
 
       // если тело снаряда уже в очереди на удаление, пропускаем
       if (this._bodiesToDestroy.has(shotFixture.getBody())) {
@@ -356,15 +384,14 @@ class Game {
   mergeShotOutcomeData(newData) {
     for (const weaponName in newData) {
       if (Object.hasOwn(newData, weaponName)) {
-        this._lastExpiredOrCollidedShotsData[weaponName] =
-          this._lastExpiredOrCollidedShotsData[weaponName] || {};
+        this._lastExpiredShotsData[weaponName] =
+          this._lastExpiredShotsData[weaponName] || {};
 
         const data = newData[weaponName];
 
         for (const shotID in data) {
           if (Object.hasOwn(data, shotID)) {
-            this._lastExpiredOrCollidedShotsData[weaponName][shotID] =
-              data[shotID];
+            this._lastExpiredShotsData[weaponName][shotID] = data[shotID];
           }
         }
       }
@@ -383,12 +410,28 @@ class Game {
       // если пуля все еще существует (не была уничтожена досрочно)
       if (shot) {
         const weaponName = shot.weaponName;
+        const weapon = this._weapons[weaponName];
+        const shotOutcomeID = weapon.shotOutcomeID;
+
+        // если у оружия есть эффект по истечению времени (например, взрыв)
+        if (shotOutcomeID) {
+          const explosionData = shot.detonate(
+            this._world,
+            this,
+            this._friendlyFire,
+          );
+
+          this._lastWeaponEffects[shotOutcomeID] =
+            this._lastWeaponEffects[shotOutcomeID] || [];
+          this._lastWeaponEffects[shotOutcomeID].push(explosionData);
+        }
 
         this._world.destroyBody(shot.getBody());
         delete this._shotsData[shotID];
 
+        // помечаем исходный снаряд (бомбу) как удаленный
         outcomeData[weaponName] = outcomeData[weaponName] || {};
-        outcomeData[weaponName][shotID] = null; // помечаем как удаленную по времени
+        outcomeData[weaponName][shotID] = null;
       }
     }
 
@@ -401,8 +444,13 @@ class Game {
 
   // возвращает данные
   getGameData() {
-    const gameData = { ...this._lastExpiredOrCollidedShotsData };
-    this._lastExpiredOrCollidedShotsData = {};
+    const gameData = {
+      ...this._lastExpiredShotsData,
+      ...this._lastWeaponEffects,
+    };
+
+    this._lastExpiredShotsData = {};
+    this._lastWeaponEffects = {};
 
     for (const gameID in this._playersData) {
       if (Object.hasOwn(this._playersData, gameID)) {
@@ -520,6 +568,7 @@ class Game {
       ...this.removePlayers(),
       ...this.removeShots(),
       ...Object.keys(this._hitscanWeapons),
+      ...this._weaponEffectList,
     ];
   }
 
