@@ -1,13 +1,14 @@
-import { Container, Ticker, Sprite } from 'pixi.js';
+import { Sprite } from 'pixi.js';
+import BaseEffect from '../BaseEffect.js';
 
-export default class SmokeEffect extends Container {
+export default class SmokeEffect extends BaseEffect {
   constructor(options = {}, assets) {
-    super();
+    // если вдруг потребуется onComplete для SmokeEffect
+    super(options.onComplete);
 
     this.explosionTexture = assets.explosionTexture;
 
     this._particles = [];
-    this._isStarted = false;
     this._isSpawning = true;
 
     // параметры дыма
@@ -22,17 +23,6 @@ export default class SmokeEffect extends Container {
     this._stretch = options.stretch ?? 5;
 
     this._lastSpawnTime = 0;
-    this._tickListener = null;
-  }
-
-  run() {
-    if (this._isStarted) {
-      return;
-    }
-
-    this._isStarted = true;
-    this._tickListener = ticker => this._update(ticker.deltaMS);
-    Ticker.shared.add(this._tickListener);
   }
 
   stopSpawning() {
@@ -66,6 +56,10 @@ export default class SmokeEffect extends Container {
   }
 
   _update(deltaMS) {
+    if (this.isComplete) {
+      return;
+    }
+
     if (this._isSpawning) {
       this._lastSpawnTime += deltaMS;
 
@@ -81,7 +75,7 @@ export default class SmokeEffect extends Container {
 
       if (particle.customData.life >= this._particleMaxLifeMS) {
         this.removeChild(particle);
-        particle.destroy();
+        particle.destroy(); // уничтожение частицы PIXI.Sprite
         this._particles.splice(i, 1);
       } else {
         const progress = particle.customData.life / this._particleMaxLifeMS;
@@ -104,24 +98,27 @@ export default class SmokeEffect extends Container {
       }
     }
 
-    if (!this._isSpawning && this._particles.length === 0) {
-      this.destroy();
+    if (!this._isSpawning && this._particles.length === 0 && this._isStarted) {
+      this._completeEffect(); // завершение логики эффекта
+      if (!this.destroyed) {
+        this.destroy();
+      }
     }
   }
 
   destroy(options) {
-    if (this._tickListener) {
-      Ticker.shared.remove(this._tickListener);
-      this._tickListener = null;
+    // очистка массива частиц до вызова super.destroy, который уничтожит дочерние спрайты
+    // частицы уже уничтожаются в _update, но на всякий случай, если destroy вызван досрочно
+    for (let i = this._particles.length - 1; i >= 0; i -= 1) {
+      const particle = this._particles[i];
+      if (particle && !particle.destroyed) {
+        this.removeChild(particle);
+        particle.destroy();
+      }
     }
 
-    this._isStarted = false;
+    this._particles = []; // очистка массива ссылок
 
-    if (this.parent) {
-      this.parent.removeChild(this);
-    }
-
-    super.destroy({ children: true, ...options });
-    this._particles = [];
+    super.destroy(options);
   }
 }

@@ -16,7 +16,7 @@ export default class ShotEffectController extends Container {
 
     this.tracer = null;
     this.impact = null;
-    this._isDestroyed = false; // флаг для предотвращения двойного уничтожения
+    this._isDestroyed = false;
   }
 
   run() {
@@ -29,7 +29,7 @@ export default class ShotEffectController extends Container {
       this.startPositionY,
       this.endPositionX,
       this.endPositionY,
-      this._onTracerComplete.bind(this), // callback
+      this._onTracerComplete.bind(this),
     );
 
     this.addChild(this.tracer);
@@ -64,7 +64,6 @@ export default class ShotEffectController extends Container {
       );
 
       this.addChild(this.impact);
-
       this.impact.run();
 
       // иначе, если попадания не было,
@@ -92,7 +91,6 @@ export default class ShotEffectController extends Container {
 
     this._isDestroyed = true;
 
-    // уничтожаем дочерние эффекты, если они существуют
     if (this.tracer) {
       this.tracer.destroy();
       this.tracer = null;
