@@ -47,6 +47,15 @@ export default {
             numPoints: 12,
           },
         },
+        {
+          name: 'smokeTexture',
+          component: 'Smoke',
+          params: {
+            radius: 3, // базовый радиус частицы дыма
+            blur: 1, // размытие для мягкости
+            color: 0xffffff, // цвет для последующего tint'а
+          },
+        },
       ],
     },
   },
