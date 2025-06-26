@@ -1,4 +1,5 @@
-import { Graphics, Ticker, Container } from 'pixi.js';
+import { Graphics } from 'pixi.js';
+import BaseEffect from '../BaseEffect.js';
 
 // функция для линейной интерполяции
 function lerp(a, b, t) {
@@ -10,13 +11,12 @@ function randomRange(min, max) {
   return Math.random() * (max - min) + min;
 }
 
-export default class ImpactEffect extends Container {
+export default class ImpactEffect extends BaseEffect {
   constructor(x, y, impactDirectionX, impactDirectionY, onComplete) {
-    super();
+    super(onComplete);
 
     this.x = x; // координата X центра эффекта
     this.y = y; // координата Y центра эффекта
-    this.onComplete = onComplete; // callback, когда все частицы исчезли
 
     this.config = {
       particleCount: randomRange(2, 6), // количество осколков
@@ -59,8 +59,7 @@ export default class ImpactEffect extends Container {
 
     this.particlesData = []; // хранение данные для управления логикой
     this.particleGraphics = []; // PIXI.Graphics для каждого осколка
-    this.elapsedTime = 0;
-    this.isComplete = false; // флаг станет true, когда все частицы исчезнут
+    this.elapsedTime = 0; // elapsedTime теперь может быть специфичным для логики эффекта, а не для тикера
 
     this._createParticles();
   }
@@ -118,6 +117,7 @@ export default class ImpactEffect extends Container {
       this.particlesData.push(particleData);
 
       const gfx = new Graphics();
+      // начальная отрисовка формы, но позиция и альфа будут в _update
       this._drawParticleShape(gfx, particleData);
       this.addChild(gfx);
       this.particleGraphics.push(gfx);
@@ -127,19 +127,9 @@ export default class ImpactEffect extends Container {
   _drawParticleShape(gfx, particleData) {
     gfx.clear();
     const halfSize = particleData.size / 2;
-    const fillStyle = { color: particleData.color, alpha: particleData.alpha };
     gfx.circle(0, 0, halfSize);
-    gfx.fill(fillStyle);
-  }
-
-  run() {
-    if (this.isComplete) {
-      return;
-    }
-
-    this._tickListener = ticker => this._update(ticker.deltaMS);
-    Ticker.shared.add(this._tickListener);
-    this._update(0);
+    // начальная альфа для fill, общая альфа графики управляется отдельно
+    gfx.fill({ color: particleData.color, alpha: 1.0 });
   }
 
   _update(deltaMS) {
@@ -225,41 +215,29 @@ export default class ImpactEffect extends Container {
       }
 
       if (pData.age >= pData.lifetime || pData.alpha < 0.01) {
-        pData.active = false; // Делаем частицу неактивной
-        pData.alpha = 0; // Убедимся, что она полностью прозрачна
+        pData.active = false; // частица неактивна
+        pData.alpha = 0; // полностью прозрачна
       }
 
       // обновление PIXI.Graphics
       const pGfx = this.particleGraphics[i];
       pGfx.position.set(pData.x, pData.y);
-      pGfx.alpha = pData.alpha;
+      pGfx.alpha = pData.alpha; // управляем общей прозрачностью Graphics объекта
       pGfx.visible = pData.active; // скрыть неактивные частицы
     }
 
-    if (activeParticlesCount === 0 && this.elapsedTime > 0) {
-      this.isComplete = true;
-
-      if (this._tickListener) {
-        Ticker.shared.remove(this._tickListener);
-        this._tickListener = null;
-      }
-
-      this.onComplete();
+    if (activeParticlesCount === 0 && this._isStarted) {
+      this._completeEffect();
     }
   }
 
-  destroy() {
-    this.isComplete = true; // _update больше не сработает
+  destroy(options) {
+    // particleGraphics будут уничтожены как children через super.destroy
+    this.particlesData = []; // очищаем массив данных
+    this.particleGraphics = []; // очищаем массив ссылок на графику
 
-    if (this._tickListener) {
-      Ticker.shared.remove(this._tickListener);
-      this._tickListener = null;
-    }
-
-    if (this.parent) {
-      this.parent.removeChild(this);
-    }
-
-    super.destroy({ children: true, texture: true, baseTexture: true });
+    // BaseEffect по умолчанию использует { children: true, texture: false, baseTexture: false }
+    // для Graphics-объектов это подходит
+    super.destroy(options);
   }
 }
