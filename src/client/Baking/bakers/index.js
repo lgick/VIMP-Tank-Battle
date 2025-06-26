@@ -1,7 +1,7 @@
-import blurredCircleTexture from './blurredCircleTexture.js';
+import explosionTexture from './explosionTexture.js';
 import funnelTexture from './funnelTexture.js';
 
 export default {
-  blurredCircleTexture,
+  explosionTexture,
   funnelTexture,
 };

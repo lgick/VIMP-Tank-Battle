@@ -1,5 +1,5 @@
 import { Container } from 'pixi.js';
-import MainExplosionEffect from './MainExplosionEffect.js';
+import ExplosionEffect from './ExplosionEffect.js';
 import FunnelEffect from './FunnelEffect.js';
 
 export default class ExplosionEffectController extends Container {
@@ -17,7 +17,7 @@ export default class ExplosionEffectController extends Container {
 
     this.zIndex = 4;
     this.sortableChildren = true;
-    this.mainExplosion = null;
+    this.explosion = null;
     this.funnel = null;
     this._isDestroyed = false;
   }
@@ -37,30 +37,30 @@ export default class ExplosionEffectController extends Container {
     this.funnel.zIndex = 2;
     this.parent.addChild(this.funnel);
 
-    this.mainExplosion = new MainExplosionEffect(
+    this.explosion = new ExplosionEffect(
       0,
       0,
       this.radius,
-      this._onMainExplosionComplete.bind(this),
+      this._onExplosionComplete.bind(this),
       this._assets,
     );
 
     // взрыв в контроллер
-    this.addChild(this.mainExplosion);
+    this.addChild(this.explosion);
 
     // воронка и взрыв
     this.funnel.run();
-    this.mainExplosion.run();
+    this.explosion.run();
   }
 
-  _onMainExplosionComplete() {
+  _onExplosionComplete() {
     if (this._isDestroyed) {
       return;
     }
 
-    if (this.mainExplosion) {
-      this.mainExplosion.destroy();
-      this.mainExplosion = null;
+    if (this.explosion) {
+      this.explosion.destroy();
+      this.explosion = null;
     }
   }
 
@@ -79,9 +79,9 @@ export default class ExplosionEffectController extends Container {
 
     this._isDestroyed = true;
 
-    if (this.mainExplosion) {
-      this.mainExplosion.destroy();
-      this.mainExplosion = null;
+    if (this.explosion) {
+      this.explosion.destroy();
+      this.explosion = null;
     }
 
     if (this.funnel) {
