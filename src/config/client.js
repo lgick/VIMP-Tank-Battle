@@ -57,14 +57,14 @@ export default {
           },
         },
         {
-          name: 'tank1Texture',
+          name: 'tankTexture',
           component: 'Tank',
-          params: { colorA: 0xeeeeee, colorB: 0x552222 },
-        },
-        {
-          name: 'tank2Texture',
-          component: 'Tank',
-          params: { colorA: 0xeeeeee, colorB: 0x225522 },
+          params: {
+            colors: {
+              teamID1: 0x552222,
+              teamID2: 0x225522,
+            },
+          },
         },
         {
           name: 'bombTexture',
@@ -87,7 +87,6 @@ export default {
             colors: {
               teamID1: 0x552222,
               teamID2: 0x225522,
-              destroyed: 0x333333,
             },
           },
         },

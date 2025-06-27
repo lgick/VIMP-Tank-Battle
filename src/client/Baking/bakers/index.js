@@ -9,8 +9,7 @@ export default {
   explosionTexture,
   funnelTexture,
   smokeTexture,
-  tank1Texture: tankTexture,
-  tank2Texture: tankTexture,
+  tankTexture,
   tankRadarTexture,
   bombTexture,
 };
