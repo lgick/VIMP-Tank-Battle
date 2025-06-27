@@ -38,6 +38,15 @@ export default {
           },
         },
         {
+          name: 'impactParticleTexture',
+          component: 'ShotEffect',
+          params: {
+            radius: 4,
+            blur: 1,
+            color: 0xffffff,
+          },
+        },
+        {
           name: 'funnelTexture',
           component: 'ExplosionEffect',
           params: {
@@ -45,6 +54,58 @@ export default {
             irregularity: 15,
             blur: 20,
             numPoints: 12,
+          },
+        },
+        {
+          name: 'smokeTexture',
+          component: 'Smoke',
+          params: {
+            radius: 3, // базовый радиус частицы дыма
+            blur: 1, // размытие для мягкости
+            color: 0xffffff, // цвет для последующего tint'а
+          },
+        },
+        {
+          name: 'tankTexture',
+          component: 'Tank',
+          params: {
+            colors: {
+              teamID1: 0x552222,
+              teamID2: 0x225522,
+            },
+          },
+        },
+        {
+          name: 'bombTexture',
+          component: 'Bomb',
+          params: {
+            colorOuter: 0xffffff,
+            colorInner: 0x275c2d,
+          },
+        },
+        {
+          name: 'trackMarkTexture',
+          component: 'Tracks',
+          params: {
+            width: 4,
+            length: 5,
+            color: 0x1a1a12,
+          },
+        },
+      ],
+      radar: [
+        {
+          name: 'tankRadarTexture',
+          component: 'TankRadar',
+          params: {
+            radius: 6,
+            borderWidth: 2,
+            crossSize: 9,
+            crossThickness: 1.5,
+            colors: {
+              teamID1: 0x552222,
+              teamID2: 0x225522,
+            },
           },
         },
       ],

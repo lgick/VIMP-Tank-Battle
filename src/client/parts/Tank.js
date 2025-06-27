@@ -1,15 +1,25 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Sprite } from 'pixi.js';
 
 export default class Tank extends Container {
-  constructor(data) {
+  constructor(data, assets) {
     super();
 
     this.zIndex = 3;
 
-    this.body = new Graphics();
-    this.gun = new Graphics();
+    // спрайты для отображения танка
+    this.body = new Sprite();
+    this.gun = new Sprite();
 
-    this.addChild(this.body, this.gun);
+    // спрайт для уничтоженного состояния
+    this.wreck = new Sprite();
+
+    // якоря
+    this.body.anchor.set(0.5);
+    this.wreck.anchor.set(0.5);
+
+    this.addChild(this.body, this.gun, this.wreck);
+
+    this._textures = assets.tankTexture;
 
     // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
     this.x = data[0] || 0;
@@ -25,169 +35,60 @@ export default class Tank extends Container {
 
     this._teamID = data[8];
 
-    // определение цветов в зависимости от типа
-    if (this._teamID === 1) {
-      this.colorA = 0xeeeeee;
-      this.colorB = 0x552222;
-    } else if (this._teamID === 2) {
-      this.colorA = 0xeeeeee;
-      this.colorB = 0x225522;
+    // правильный якорь для пушки в зависимости от команды
+    const liveTextures =
+      this._teamID === 1
+        ? this._textures.liveTeamID1
+        : this._textures.liveTeamID2;
+    const gunAnchorData = liveTextures ? liveTextures.gunAnchor : null;
+
+    if (gunAnchorData) {
+      this.gun.anchor.set(gunAnchorData.x, gunAnchorData.y);
     } else {
-      this.colorA = 0x000000;
-      this.colorB = 0x333333;
+      this.gun.anchor.set(0.5); // запасной вариант
     }
 
+    // коэффициент масштабирования, чтобы соответствовать размеру танка
+    const BAKER_BASE_SIZE = 10; // размер, использованный в текстурах
+    const scaleFactor = this._size / BAKER_BASE_SIZE;
+
+    // масштаб ко всем спрайтам
+    this.body.scale.set(scaleFactor);
+    this.gun.scale.set(scaleFactor);
+    this.wreck.scale.set(scaleFactor);
+
+    // первоначальная установка визуального состояния
     this.create();
   }
 
   create() {
-    this.body.clear();
-    this.gun.clear();
-
     // если танк уничтожен
     if (this._condition === 0) {
-      const bodyColorDark = 0x3a3a3a;
-      const bodyColorDarker = 0x252525;
-      const gunColorDark = 0x303030;
-      const damageColor = 0x181818;
-      const edgeColor = 0x505050;
+      this.body.visible = false;
+      this.gun.visible = false;
 
-      const w = this._width;
-      const h = this._height;
-      const s = this._size;
+      this.wreck.texture = this._textures.destroyed;
+      this.wreck.visible = true;
 
-      // поврежденный корпус
-      this.body
-        .moveTo(-w / 2 - s * 0.1, -h / 2 + s * 0.2)
-        .lineTo(w / 2 + s * 0.2, -h / 2 - s * 0.1)
-        .lineTo(w / 2 - s * 0.1, h / 2 + s * 0.3)
-        .lineTo(-w / 2 + s * 0.3, h / 2 - s * 0.2)
-        .closePath()
-        .fill(bodyColorDark)
-        .stroke({ width: s * 0.2, color: edgeColor, alignment: 0.5 });
-
-      // тень/выгоревшая область
-      this.body
-        .moveTo(-w / 2 + s * 0.4, -h / 2 + s * 0.5)
-        .lineTo(w / 2 - s * 0.3, -h / 2 + s * 0.2)
-        .lineTo(w / 2 - s * 0.4, h / 2 - s * 0.1)
-        .lineTo(-w / 2 + s * 0.2, h / 2 - s * 0.4)
-        .closePath()
-        .fill(bodyColorDarker);
-
-      // пробоины на корпусе
-      this.body.circle(w * 0.15, h * 0.1, s * 1.2).fill(damageColor);
-      this.body.circle(-w * 0.3, -h * 0.25, s * 0.5).fill(damageColor);
-
-      // небольшое случайное смещение башни от центра
-      const randomOffsetX = s * 0.3;
-      const randomOffsetY = -s * 0.2;
-      this.gun.position.set(randomOffsetX, randomOffsetY);
-
-      // основание башни (искаженное)
-      const gunBasePoints = [
-        s * 1.1,
-        -s * 0.7,
-        s * 0.2,
-        -s * 1.0,
-        -s * 0.6,
-        -s * 0.9,
-        -s * 1.3,
-        -s * 0.2,
-        -s * 1.1,
-        s * 0.6,
-        -s * 0.2,
-        s * 1.0,
-        s * 0.7,
-        s * 0.8,
-        s * 1.3,
-        s * 0.1,
-      ];
-
-      this.gun
-        .poly(gunBasePoints)
-        .fill(gunColorDark)
-        .stroke({ width: s * 0.15, color: edgeColor, alignment: 0 });
-
-      // обломок ствола
-      const barrelPoints = [
-        s * 0.8,
-        -s * 0.25,
-        s * 1.5,
-        -s * 0.4,
-        s * 1.4,
-        s * 0.15,
-        s * 0.7,
-        s * 0.05,
-      ];
-
-      this.gun
-        .poly(barrelPoints)
-        .fill(gunColorDark)
-        .stroke({ width: s * 0.1, color: edgeColor, alignment: 0 });
-
-      // пробоина на башне
-      this.gun.circle(s * 0.1, -s * 0.2, s * 0.4).fill(damageColor);
+      // поворот башни, так как она теперь часть обломков
+      this.gun.rotation = 0;
+      // если танк в нормальном состоянии
     } else {
-      // сбрасывание позиции пушки на центр
-      this.gun.position.set(0, 0);
+      this.wreck.visible = false;
 
-      // рисование корпуса (body)
-      // координаты танка на карте - центр его body
-      this.body
-        .rect(
-          -(this._width / 2),
-          -(this._height / 2),
-          this._width,
-          this._height,
-        )
-        .fill(0x555555)
-        .rect(
-          -(this._width / 2) + 1,
-          -(this._height / 2) + 1,
-          this._width - 2,
-          this._height - 2,
-        )
-        .fill(0x999999)
-        .rect(
-          -(this._width / 2) + 2,
-          -(this._height / 2) + 2,
-          this._width - 4,
-          this._height - 4,
-        )
-        .fill(0xcccccc)
-        .rect(
-          -(this._width / 2) + 3,
-          -(this._height / 2) + 3,
-          this._width - 6,
-          this._height - 6,
-        )
-        .fill(this.colorA);
+      let liveTextures;
 
-      // рисование пушки
-      // рассчитываем ЕДИНЫЙ коэффициент масштабирования.
-      // первый полигон пушки (основание)
-      this.gun
-        .moveTo(1.33 * this._size, -0.42 * this._size)
-        .lineTo(0.42 * this._size, -1 * this._size)
-        .lineTo(-0.42 * this._size, -1 * this._size)
-        .lineTo(-1.33 * this._size, -0.42 * this._size)
-        .lineTo(-1.33 * this._size, 0.42 * this._size)
-        .lineTo(-0.42 * this._size, 1 * this._size)
-        .lineTo(0.42 * this._size, 1 * this._size)
-        .lineTo(1.33 * this._size, 0.42 * this._size)
-        .closePath()
-        .fill(this.colorB)
-        .stroke({ width: 0.17 * this._size, color: 0xaaaaaa })
+      // набор текстур в зависимости от команды
+      if (this._teamID === 1) {
+        liveTextures = this._textures.liveTeamID1;
+      } else if (this._teamID === 2) {
+        liveTextures = this._textures.liveTeamID2;
+      }
 
-        // второй полигон пушки (ствол)
-        .moveTo(2.33 * this._size, -0.25 * this._size)
-        .lineTo(0.25 * this._size, -0.25 * this._size)
-        .lineTo(0.25 * this._size, 0.25 * this._size)
-        .lineTo(2.33 * this._size, 0.25 * this._size)
-        .closePath()
-        .stroke({ width: 0.17 * this._size, color: 0xaaaaaa })
-        .fill(this.colorB);
+      this.body.texture = liveTextures.body;
+      this.gun.texture = liveTextures.gun;
+      this.body.visible = true;
+      this.gun.visible = true;
     }
   }
 
@@ -211,12 +112,9 @@ export default class Tank extends Container {
   destroy(options) {
     super.destroy({
       children: true,
-      texture: false,
+      texture: false, // текстуры общие, не должны уничтожаться
       baseTexture: false,
       ...options,
     });
-
-    this.body = null;
-    this.gun = null;
   }
 }

@@ -1,19 +1,19 @@
-import { Graphics, Ticker, Container } from 'pixi.js';
+import { Graphics } from 'pixi.js';
+import BaseEffect from '../BaseEffect.js';
 
 // функция для линейной интерполяции
 function lerp(a, b, t) {
   return a * (1 - t) + b * t;
 }
 
-export default class TracerEffect extends Container {
+export default class TracerEffect extends BaseEffect {
   constructor(startX, startY, endX, endY, onComplete) {
-    super();
+    super(onComplete);
 
     this.startPositionX = startX;
     this.startPositionY = startY;
     this.endPositionX = endX;
     this.endPositionY = endY;
-    this.onComplete = onComplete;
 
     this.config = {
       color: 0xffff99, // цвет трассера
@@ -35,7 +35,6 @@ export default class TracerEffect extends Container {
     this.addChild(this.graphics);
 
     this.elapsedTime = 0; // время, прошедшее с начала анимации
-    this.isComplete = false;
 
     // расчет вектора направления и дистанции
     this.dx = this.endPositionX - this.startPositionX;
@@ -75,16 +74,6 @@ export default class TracerEffect extends Container {
     }
   }
 
-  run() {
-    if (this.isComplete) {
-      return;
-    }
-
-    this._tickListener = ticker => this._update(ticker.deltaMS);
-    Ticker.shared.add(this._tickListener);
-    this._update(0);
-  }
-
   _drawSegment(x, y, radius, color, alpha) {
     this.graphics.circle(x, y, radius);
     this.graphics.fill({
@@ -95,6 +84,7 @@ export default class TracerEffect extends Container {
 
   _update(deltaMS) {
     if (this.isComplete) {
+      // проверка из BaseEffect
       return;
     }
 
@@ -153,17 +143,14 @@ export default class TracerEffect extends Container {
         distCoveredByHead < this.config.trailStartOffset &&
         this.totalDist > 0.001
       ) {
-        /* empty */
       } else {
-        // let effectiveStartX = this.startPositionX;
-        // let effectiveStartY = this.startPositionY;
         let adjustedDistCoveredByHead = distCoveredByHead;
 
         if (this.totalDist > 0.001) {
-          // Применяем отступ только если есть направление
+          // применяем отступ только если есть направление
           // effectiveStartX = this.startPositionX + this.nx * this.config.trailStartOffset;
           // effectiveStartY = this.startPositionY + this.ny * this.config.trailStartOffset;
-          // Дистанция, пройденная головой от *эффективной* начальной точки
+          // дистанция, пройденная головой от *эффективной* начальной точки
           adjustedDistCoveredByHead = Math.max(
             0,
             distCoveredByHead - this.config.trailStartOffset,
@@ -178,7 +165,7 @@ export default class TracerEffect extends Container {
 
         let tailX, tailY;
         // хвост теперь отсчитывается от головы назад на actualVisibleTrailLength
-        // если actualVisibleTrailLength = 0, хвост будет в голове.
+        // если actualVisibleTrailLength = 0, хвост будет в голове
         if (this.totalDist > 0.001) {
           tailX = headX - this.nx * actualVisibleTrailLength;
           tailY = headY - this.ny * actualVisibleTrailLength;
@@ -226,32 +213,19 @@ export default class TracerEffect extends Container {
     }
 
     if (this.elapsedTime >= this.animationDuration) {
-      this.isComplete = true;
-
-      if (this._tickListener) {
-        Ticker.shared.remove(this._tickListener);
-        this._tickListener = null;
-      }
-
-      this.graphics.clear();
-      this.onComplete();
+      this.graphics.clear(); // очищаем графику перед вызовом onComplete
+      this._completeEffect(); // метод из BaseEffect
     }
   }
 
-  destroy() {
-    this.isComplete = true;
-
-    if (this._tickListener) {
-      Ticker.shared.remove(this._tickListener);
-      this._tickListener = null;
+  destroy(options) {
+    // если graphics существует, требуется clear
+    if (this.graphics) {
+      this.graphics.clear();
     }
 
-    this.graphics.clear();
-
-    if (this.parent) {
-      this.parent.removeChild(this);
-    }
-
-    super.destroy({ children: true, texture: true, baseTexture: true });
+    // BaseEffect по умолчанию использует { children: true, texture: false, baseTexture: false }
+    // для Graphics-объектов это подходит
+    super.destroy(options);
   }
 }
