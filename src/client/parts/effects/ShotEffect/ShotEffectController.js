@@ -3,7 +3,7 @@ import TracerEffect from './TracerEffect.js';
 import ImpactEffect from './ImpactEffect.js';
 
 export default class ShotEffectController extends Container {
-  constructor(data) {
+  constructor(data, assets) {
     super();
 
     this.zIndex = 2;
@@ -14,6 +14,7 @@ export default class ShotEffectController extends Container {
     this.endPositionY = data[3];
     this.hit = data[4];
 
+    this._assets = assets;
     this.tracer = null;
     this.impact = null;
     this._isDestroyed = false;
@@ -61,6 +62,7 @@ export default class ShotEffectController extends Container {
         impactDirectionX,
         impactDirectionY,
         this._onImpactComplete.bind(this), // callback
+        this._assets,
       );
 
       this.addChild(this.impact);

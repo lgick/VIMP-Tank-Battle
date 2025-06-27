@@ -1,5 +1,9 @@
-import { Graphics } from 'pixi.js';
+import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
+
+// диаметр "запеченной" текстуры частицы
+// рассчитывается как (radius + blur) * 2 из client.js (4 + 1) * 2 = 10
+const BAKED_PARTICLE_DIAMETER = 10;
 
 // функция для линейной интерполяции
 function lerp(a, b, t) {
@@ -12,11 +16,14 @@ function randomRange(min, max) {
 }
 
 export default class ImpactEffect extends BaseEffect {
-  constructor(x, y, impactDirectionX, impactDirectionY, onComplete) {
+  constructor(x, y, impactDirectionX, impactDirectionY, onComplete, assets) {
     super(onComplete);
 
     this.x = x; // координата X центра эффекта
     this.y = y; // координата Y центра эффекта
+
+    this._assets = assets;
+    this._particleTexture = this._assets.impactParticleTexture;
 
     this.config = {
       particleCount: randomRange(2, 6), // количество осколков
@@ -58,7 +65,6 @@ export default class ImpactEffect extends BaseEffect {
     }
 
     this.particlesData = []; // хранение данные для управления логикой
-    this.particleGraphics = []; // PIXI.Graphics для каждого осколка
     this.elapsedTime = 0; // elapsedTime теперь может быть специфичным для логики эффекта, а не для тикера
 
     this._createParticles();
@@ -92,7 +98,12 @@ export default class ImpactEffect extends BaseEffect {
         this.config.maxInitialSpeed,
       );
 
+      // спрайт для частицы
+      const sprite = new Sprite(this._particleTexture);
+      sprite.anchor.set(0.5);
+
       const particleData = {
+        sprite, // ссылка на спрайт
         x: 0,
         y: 0,
         vx: Math.cos(particleAngle) * initialSpeed,
@@ -114,22 +125,12 @@ export default class ImpactEffect extends BaseEffect {
         timeSinceStopped: 0,
       };
 
+      // начальный цвет
+      sprite.tint = particleData.color;
+
       this.particlesData.push(particleData);
-
-      const gfx = new Graphics();
-      // начальная отрисовка формы, но позиция и альфа будут в _update
-      this._drawParticleShape(gfx, particleData);
-      this.addChild(gfx);
-      this.particleGraphics.push(gfx);
+      this.addChild(sprite);
     }
-  }
-
-  _drawParticleShape(gfx, particleData) {
-    gfx.clear();
-    const halfSize = particleData.size / 2;
-    gfx.circle(0, 0, halfSize);
-    // начальная альфа для fill, общая альфа графики управляется отдельно
-    gfx.fill({ color: particleData.color, alpha: 1.0 });
   }
 
   _update(deltaMS) {
@@ -143,6 +144,7 @@ export default class ImpactEffect extends BaseEffect {
 
     for (let i = 0, len = this.particlesData.length; i < len; i += 1) {
       const pData = this.particlesData[i];
+
       if (!pData.active) {
         continue;
       }
@@ -178,8 +180,8 @@ export default class ImpactEffect extends BaseEffect {
           pData.vx = 0;
           pData.vy = 0;
         }
-      } else {
         // частица остановилась
+      } else {
         pData.timeSinceStopped += deltaMS;
       }
 
@@ -219,11 +221,16 @@ export default class ImpactEffect extends BaseEffect {
         pData.alpha = 0; // полностью прозрачна
       }
 
-      // обновление PIXI.Graphics
-      const pGfx = this.particleGraphics[i];
-      pGfx.position.set(pData.x, pData.y);
-      pGfx.alpha = pData.alpha; // управляем общей прозрачностью Graphics объекта
-      pGfx.visible = pData.active; // скрыть неактивные частицы
+      // обновление спрайта
+      const pSprite = pData.sprite;
+
+      pSprite.position.set(pData.x, pData.y);
+      pSprite.alpha = pData.alpha;
+      pSprite.visible = pData.active;
+
+      const scale = pData.size / BAKED_PARTICLE_DIAMETER;
+
+      pSprite.scale.set(scale);
     }
 
     if (activeParticlesCount === 0 && this._isStarted) {
@@ -232,12 +239,7 @@ export default class ImpactEffect extends BaseEffect {
   }
 
   destroy(options) {
-    // particleGraphics будут уничтожены как children через super.destroy
-    this.particlesData = []; // очищаем массив данных
-    this.particleGraphics = []; // очищаем массив ссылок на графику
-
-    // BaseEffect по умолчанию использует { children: true, texture: false, baseTexture: false }
-    // для Graphics-объектов это подходит
+    this.particlesData = [];
     super.destroy(options);
   }
 }
