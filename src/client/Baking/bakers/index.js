@@ -2,6 +2,7 @@ import explosionTexture from './explosionTexture.js';
 import funnelTexture from './funnelTexture.js';
 import smokeTexture from './smokeTexture.js';
 import tankTexture from './tankTexture.js';
+import bombTexture from './bombTexture.js';
 
 export default {
   explosionTexture,
@@ -9,4 +10,5 @@ export default {
   smokeTexture,
   tank1Texture: tankTexture,
   tank2Texture: tankTexture,
+  bombTexture,
 };

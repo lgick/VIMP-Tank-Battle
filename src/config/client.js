@@ -66,6 +66,14 @@ export default {
           component: 'Tank',
           params: { colorA: 0xeeeeee, colorB: 0x225522 },
         },
+        {
+          name: 'bombTexture',
+          component: 'Bomb',
+          params: {
+            colorOuter: 0xffffff,
+            colorInner: 0x275c2d,
+          },
+        },
       ],
     },
   },
