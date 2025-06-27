@@ -56,6 +56,16 @@ export default {
             color: 0xffffff, // цвет для последующего tint'а
           },
         },
+        {
+          name: 'tank1Texture',
+          component: 'Tank',
+          params: { colorA: 0xeeeeee, colorB: 0x552222 },
+        },
+        {
+          name: 'tank2Texture',
+          component: 'Tank',
+          params: { colorA: 0xeeeeee, colorB: 0x225522 },
+        },
       ],
     },
   },
