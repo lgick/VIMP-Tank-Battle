@@ -38,6 +38,15 @@ export default {
           },
         },
         {
+          name: 'impactParticleTexture',
+          component: 'ShotEffect',
+          params: {
+            radius: 4,
+            blur: 1,
+            color: 0xffffff,
+          },
+        },
+        {
           name: 'funnelTexture',
           component: 'ExplosionEffect',
           params: {

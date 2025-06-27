@@ -5,6 +5,7 @@ import tankTexture from './tankTexture.js';
 import tankRadarTexture from './tankRadarTexture.js';
 import bombTexture from './bombTexture.js';
 import trackMarkTexture from './trackMarkTexture.js';
+import impactParticleTexture from './impactParticleTexture.js';
 
 export default {
   explosionTexture,
@@ -14,4 +15,5 @@ export default {
   tankRadarTexture,
   bombTexture,
   trackMarkTexture,
+  impactParticleTexture,
 };
