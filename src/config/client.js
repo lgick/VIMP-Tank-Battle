@@ -75,6 +75,23 @@ export default {
           },
         },
       ],
+      radar: [
+        {
+          name: 'tankRadarTexture',
+          component: 'TankRadar',
+          params: {
+            radius: 6,
+            borderWidth: 2,
+            crossSize: 9,
+            crossThickness: 1.5,
+            colors: {
+              teamID1: 0x552222,
+              teamID2: 0x225522,
+              destroyed: 0x333333,
+            },
+          },
+        },
+      ],
     },
   },
 

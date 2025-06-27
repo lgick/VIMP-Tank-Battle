@@ -1,65 +1,41 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Sprite } from 'pixi.js';
 
 export default class TankRadar extends Container {
-  constructor(data) {
+  constructor(data, assets) {
     super();
 
     this.zIndex = 2;
 
-    this.body = new Graphics();
+    this._textures = assets.tankRadarTexture;
+
+    this.body = new Sprite();
+    this.body.anchor.set(0.5);
+
     this.addChild(this.body);
 
     // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this._condition = data[6];
-
-    // масштаб
-    this.scale.set(10, 10);
-
-    // радиус круга
-    this.radius = 6;
-
-    // толщина линий креста
-    this.crossThickness = 1.5;
-
     this._teamID = data[8];
+
+    // масштаб контейнера
+    this.scale.set(10, 10);
 
     this.create();
   }
 
   create() {
-    this.body.clear();
-
     // если танк уничтожен
     if (this._condition === 0) {
-      const size = this.radius * 1.5; // размер креста
-      const halfSize = size / 2;
-
-      // рисуем две пересекающиеся линии
-      this.body
-        .moveTo(-halfSize, -halfSize)
-        .lineTo(halfSize, halfSize)
-        .moveTo(-halfSize, halfSize)
-        .lineTo(halfSize, -halfSize)
-        .stroke({ width: this.crossThickness, color: 0x333333 });
+      this.body.texture = this._textures.destroyed;
     } else {
-      // определение цветов в зависимости от типа
+      // определение текстуры в зависимости от команды
       if (this._teamID === 1) {
-        this.colorA = 0x552222;
-        this.colorB = 0xeeeeee;
+        this.body.texture = this._textures.liveTeamID1;
       } else if (this._teamID === 2) {
-        this.colorA = 0x225522;
-        this.colorB = 0xeeeeee;
-      } else {
-        this.colorA = 0x000000;
-        this.colorB = 0x333333;
+        this.body.texture = this._textures.liveTeamID2;
       }
-
-      this.body.circle(0, 0, this.radius);
-      this.body.fill(this.colorB);
-      this.body.circle(0, 0, this.radius - 2);
-      this.body.fill(this.colorA);
     }
   }
 
@@ -81,11 +57,12 @@ export default class TankRadar extends Container {
   destroy(options) {
     super.destroy({
       children: true,
-      texture: false,
+      texture: false, // текстуры общие
       baseTexture: false,
       ...options,
     });
 
     this.body = null;
+    this._textures = null;
   }
 }
