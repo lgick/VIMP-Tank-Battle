@@ -1,13 +1,15 @@
-import { Ticker, Container, Sprite } from 'pixi.js';
+import { Sprite } from 'pixi.js';
+import BaseEffect from '../BaseEffect.js';
 
-export default class ExplosionEffect extends Container {
+const EFFECT_BASE_RADIUS_PX = 50; // базовый радиус для расчета масштаба
+
+export default class ExplosionEffect extends BaseEffect {
   constructor(x, y, radius, onComplete, assets) {
-    super();
+    super(onComplete); // конструктор BaseEffect
 
     // ассет взрыва
     this.explosionTexture = assets.explosionTexture;
 
-    this.onComplete = onComplete;
     this.x = x;
     this.y = y;
     this._radius = radius;
@@ -17,12 +19,10 @@ export default class ExplosionEffect extends Container {
 
     this._durationMS = 3000;
     this._elapsedMS = 0;
-    this._isStarted = false;
-    this.isComplete = false;
 
     // необходимый масштаб спрайта, чтобы он соответствовал радиусу взрыва
-    // делить на 50, так как базовый радиус в текстуре был 50px
-    const desiredScale = this._radius / 50;
+    // делить на EFFECT_BASE_RADIUS_PX, так как базовый радиус в текстуре был 50px
+    const desiredScale = this._radius / EFFECT_BASE_RADIUS_PX;
 
     // спрайты
     // основное тело взрыва (голубое)
@@ -40,24 +40,12 @@ export default class ExplosionEffect extends Container {
     this._core.zIndex = 4; // zIndex ядра должен быть самым высоким
 
     this.addChild(this._mainBody, this._core);
-    this._tickListener = null;
-  }
-
-  // запуск анимации взрыва
-  run() {
-    if (this.isComplete || this._isStarted) {
-      return;
-    }
-
-    this._isStarted = true;
-    this._tickListener = ticker => this._update(ticker.deltaMS);
-    Ticker.shared.add(this._tickListener);
-    this._update(0);
   }
 
   // обновление анимации
   _update(deltaMS) {
     if (this.isComplete) {
+      // проверка из BaseEffect
       return;
     }
 
@@ -67,21 +55,15 @@ export default class ExplosionEffect extends Container {
       const progress = this._elapsedMS / this._durationMS;
       this._draw(progress);
     } else {
-      this.isComplete = true;
-
-      if (this._tickListener) {
-        Ticker.shared.remove(this._tickListener);
-        this._tickListener = null;
-      }
-
-      this.onComplete();
+      // метод из BaseEffect
+      this._completeEffect();
     }
   }
 
   // отрисовка
   _draw(progress) {
     const easeInQuad = t => t * t;
-    const baseScale = this._radius / 50;
+    const baseScale = this._radius / EFFECT_BASE_RADIUS_PX;
 
     // анимация основного тела (затухание)
     this._mainBody.alpha = 0.8 * (1 - easeInQuad(progress));
@@ -94,22 +76,7 @@ export default class ExplosionEffect extends Container {
 
   // уничтожение объекта
   destroy(options) {
-    this.isComplete = true;
-
-    if (this._tickListener) {
-      Ticker.shared.remove(this._tickListener);
-      this._tickListener = null;
-    }
-
-    if (this.parent) {
-      this.parent.removeChild(this);
-    }
-
-    super.destroy({
-      children: true,
-      texture: false, // основную текстуру не требуется удалять, она общая
-      baseTexture: false,
-      ...options,
-    });
+    // вызов destroy из BaseEffect
+    super.destroy(options);
   }
 }

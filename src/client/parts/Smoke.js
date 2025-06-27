@@ -1,4 +1,4 @@
-import { Container, Graphics, Ticker } from 'pixi.js';
+import { Container, Ticker, Sprite } from 'pixi.js';
 
 // глобальные переменные для ветра
 const globalWindX = 50;
@@ -6,7 +6,6 @@ const globalWindY = 30;
 
 const SMOKE_CONFIG = {
   // размеры и жизнь частиц
-  particleBaseSize: 6, // базовый размер
   particleLifetime: { min: 1200, max: 2000 },
   particleStartSizeFactor: { 2: 1, 1: 1, 0: 0.3 }, // множитель в начале
   particleEndSizeFactor: { 2: 1.5, 1: 1.5, 0: 0.3 }, // множитель в конце
@@ -43,10 +42,13 @@ function lerp(a, b, t) {
 }
 
 export default class Smoke extends Container {
-  constructor(data) {
+  constructor(data, assets) {
     super();
 
     this.zIndex = 4;
+
+    // ассет для частиц дыма
+    this.smokeTexture = assets.smokeTexture;
 
     // параметры с сервера:
     // [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
@@ -131,6 +133,7 @@ export default class Smoke extends Container {
 
       if (particle.age >= particle.lifetime) {
         this.particleContainer.removeChild(particle.graphics);
+        particle.graphics.destroy();
         this.particles.splice(i, 1);
         continue;
       }
@@ -176,7 +179,6 @@ export default class Smoke extends Container {
     const endSizeFactor = SMOKE_CONFIG.particleEndSizeFactor[this.condition];
     const startAlpha = SMOKE_CONFIG.particleStartAlpha;
     const endAlpha = SMOKE_CONFIG.particleEndAlpha;
-    const baseSize = SMOKE_CONFIG.particleBaseSize;
     const angle = this.emitterRotation;
     const cosAngle = Math.cos(angle);
     const sinAngle = Math.sin(angle);
@@ -237,14 +239,17 @@ export default class Smoke extends Container {
       this.emitterVY * SMOKE_CONFIG.emitterMovementInfluence;
 
     // создание графики и объекта частицы
-    const graphics = new Graphics();
-    graphics.circle(0, 0, baseSize);
-    graphics.fill(SMOKE_CONFIG.particleColor);
+    const graphics = new Sprite(this.smokeTexture);
+    graphics.anchor.set(0.5);
+    graphics.tint = SMOKE_CONFIG.particleColor;
 
     graphics.x = spawnX; // начальная позиция с поворотом
     graphics.y = spawnY;
     graphics.alpha = startAlpha;
-    graphics.scale.set(startSizeFactor * this.particleScaleMultiplier);
+
+    // начальный масштаб будет startSizeFactor * this.particleScaleMultiplier
+    const initialScale = startSizeFactor * this.particleScaleMultiplier;
+    graphics.scale.set(initialScale);
 
     const particle = {
       graphics,
@@ -274,16 +279,22 @@ export default class Smoke extends Container {
   destroy(options) {
     this._stopTimer();
 
-    this.particleContainer.destroy({
-      children: true,
-      texture: false,
-      baseTexture: false,
-    });
+    // уничтожаем частицы, если они еще остались
+    for (let i = this.particles.length - 1; i >= 0; i -= 1) {
+      this.particleContainer.removeChild(this.particles[i].graphics);
+      this.particles[i].graphics.destroy();
+    }
 
     this.particles = [];
 
-    super.destroy({
+    this.particleContainer.destroy({
       children: true,
+      texture: false, // текстуры общие
+      baseTexture: false,
+    });
+
+    super.destroy({
+      children: true, // уничтожит particleContainer, если он еще не уничтожен
       texture: false,
       baseTexture: false,
       ...options,

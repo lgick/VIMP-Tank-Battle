@@ -2,7 +2,7 @@ import { Container, Ticker } from 'pixi.js';
 import TrackMark from './TrackMark.js';
 
 export default class Tracks extends Container {
-  constructor(data, effectsLayer) {
+  constructor(data, assets) {
     super();
     this.zIndex = 1;
 
@@ -19,7 +19,7 @@ export default class Tracks extends Container {
     this._prevSpeed = 0; // предыдущая линейная скорость
     this._prevAngularSpeed = 0; // предыдущая угловая скорость
 
-    this.effectsLayer = effectsLayer || this;
+    this._assets = assets;
 
     // минимальное время (ms), которое должно пройти между созданием двух последовательных "пачек" следов
     // чем меньше значение, тем больше кол-во следов
@@ -69,9 +69,6 @@ export default class Tracks extends Container {
     // смещение назад точки появления следов от центра танка
     this.backwardOffset = tankHeight * 0.4;
 
-    // цвет заливки сегментов следа
-    this.trackColor = 0x1a1a12;
-
     // начальная прозрачность следа (от 0 до 1), когда он только появляется
     this.trackInitialAlpha = 0.4;
 
@@ -89,6 +86,18 @@ export default class Tracks extends Container {
   _internalUpdate(deltaMS) {
     if (deltaMS <= 0) {
       return;
+    }
+
+    // обновление всех существующих следов в одном цикле
+    // итерация в обратном порядке, чтобы безопасно удалять элементы из массива this.children
+    for (let i = this.children.length - 1; i >= 0; i -= 1) {
+      const mark = this.children[i];
+      // если возвращается true, значит время жизни вышло
+      if (mark.update(deltaMS)) {
+        // уничтожение спрайта
+        // метод destroy() автоматически удаляет объект из родительского контейнера
+        mark.destroy();
+      }
     }
 
     // текущие скорости
@@ -112,7 +121,8 @@ export default class Tracks extends Container {
     const currentAngularSpeed = Math.abs(rotationDiff);
 
     // линейное ускорение/замедление
-    const acceleration = currentSpeed - this._prevSpeed; // положительное - ускорение, отрицательное - торможение
+    // положительное - ускорение, отрицательное - торможение
+    const acceleration = currentSpeed - this._prevSpeed;
     const absAcceleration = Math.abs(acceleration);
 
     // угловое ускорение/замедление
@@ -172,16 +182,17 @@ export default class Tracks extends Container {
       const markX = this._prevX + sideOffsetX + backwardComponentX;
       const markY = this._prevY + sideOffsetY + backwardComponentY;
 
-      new TrackMark(
+      const mark = new TrackMark(
         markX,
         markY,
         this._prevRotation,
         this.trackWidth,
         this.trackLength,
-        this.trackColor,
         this.trackInitialAlpha,
-        this.effectsLayer,
+        this._assets.trackMarkTexture,
       );
+
+      this.addChild(mark);
     }
   }
 
@@ -201,7 +212,5 @@ export default class Tracks extends Container {
       baseTexture: false,
       ...options,
     });
-
-    this.effectsLayer = null;
   }
 }

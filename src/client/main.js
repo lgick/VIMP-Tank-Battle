@@ -515,11 +515,13 @@ ws.onopen = () => {
 };
 
 ws.onclose = e => {
+  const connectionInterruptedID = 3;
+
   if (e.reason) {
     const msg = unpacking(e.reason);
     socketMethods[msg[0]](msg[1]);
   } else {
-    socketMethods[5]([3]);
+    socketMethods[PS_INFORM_DATA]([connectionInterruptedID]);
   }
 
   console.log('disconnect');

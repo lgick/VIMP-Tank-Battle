@@ -1,12 +1,13 @@
-import { Text, Graphics, Ticker, Container } from 'pixi.js';
+import { Text, Ticker, Container, Sprite } from 'pixi.js';
 
 export default class Bomb extends Container {
-  constructor(params) {
+  constructor(params, assets) {
     super();
 
     this.zIndex = 2;
 
-    this.body = new Graphics();
+    this.body = new Sprite(assets.bombTexture);
+    this.body.anchor.set(0.5);
 
     this.x = params[0];
     this.y = params[1];
@@ -14,44 +15,33 @@ export default class Bomb extends Container {
     this._size = params[3]; // соотношение сторон 1:1
     this._totalDurationMS = params[4];
 
+    // Масштабируем спрайт под нужный размер
+    const textureSize = assets.bombTexture.width; // предполагаем, что текстура квадратная
+    const scale = this._size / textureSize;
+    this.body.scale.set(scale);
+
     this.text = new Text({
       text: '--:--',
       style: {
         fontFamily: 'Arial',
-        fontSize: this._size / 3.2,
+        fontSize: this._size / 3,
         fill: 0xff1010,
         align: 'center',
       },
     });
+
     this.text.anchor.set(0.5);
-    this.text.x = 0.5;
+    this.text.x = 0; // центр текста относительно родительского контейнера
     this.text.y = 0;
 
     // накопленное время с момента создания
     this._accumulatedTimeMS = 0;
 
-    this._drawBody();
     this.addChild(this.body, this.text);
     this._updateTimerDisplay(this._totalDurationMS);
 
     this._tickListener = ticker => this._updateTimer(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
-  }
-
-  _drawBody() {
-    this.body
-      .clear()
-      // внешний контур (белый)
-      .rect(-(this._size / 2), -(this._size / 2), this._size, this._size)
-      .fill(0xffffff)
-      // внутренняя часть (зеленая)
-      .rect(
-        -(this._size / 2) + 1,
-        -(this._size / 2) + 1,
-        this._size - 2,
-        this._size - 2,
-      )
-      .fill(0x275c2d);
   }
 
   // обновление таймера
@@ -95,9 +85,7 @@ export default class Bomb extends Container {
     this.text.text = `${secondsStr}:${hundredthsStr}`;
   }
 
-  update() {
-    // удаление бомбы и анимация взрыва
-  }
+  update() {}
 
   _stopTimer() {
     if (this._tickListener) {
