@@ -13,6 +13,7 @@ export default function tankRadarTexture(params, renderer) {
   const fullSize = (radius + borderWidth) * 2;
   const center = fullSize / 2;
   const baseColor = 0xeeeeee;
+  const destroyedColor = 0x333333;
 
   // генерация текстуры живого танка
   const createLiveTankTexture = color => {
@@ -41,7 +42,7 @@ export default function tankRadarTexture(params, renderer) {
       .lineTo(center + halfSize, center + halfSize)
       .moveTo(center - halfSize, center + halfSize)
       .lineTo(center + halfSize, center - halfSize)
-      .stroke({ width: crossThickness, color: colors.destroyed });
+      .stroke({ width: crossThickness, color: destroyedColor });
 
     const texture = renderer.generateTexture({
       target: graphics,

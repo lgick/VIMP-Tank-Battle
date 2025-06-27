@@ -19,12 +19,7 @@ export default class Tank extends Container {
 
     this.addChild(this.body, this.gun, this.wreck);
 
-    this._textures = {
-      tank1Normal: assets.tank1Texture.normal,
-      tank2Normal: assets.tank2Texture.normal,
-      tank1Destroyed: assets.tank1Texture.destroyed,
-      tank2Destroyed: assets.tank2Texture.destroyed,
-    };
+    this._textures = assets.tankTexture;
 
     // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
     this.x = data[0] || 0;
@@ -41,11 +36,11 @@ export default class Tank extends Container {
     this._teamID = data[8];
 
     // правильный якорь для пушки в зависимости от команды
-    const gunAnchorData = (
+    const liveTextures =
       this._teamID === 1
-        ? this._textures.tank1Normal
-        : this._textures.tank2Normal
-    ).gunAnchor;
+        ? this._textures.liveTeamID1
+        : this._textures.liveTeamID2;
+    const gunAnchorData = liveTextures ? liveTextures.gunAnchor : null;
 
     if (gunAnchorData) {
       this.gun.anchor.set(gunAnchorData.x, gunAnchorData.y);
@@ -67,41 +62,31 @@ export default class Tank extends Container {
   }
 
   create() {
-    let normalTextures;
-    let destroyedTexture;
-
-    // набор текстур в зависимости от команды
-    if (this._teamID === 1) {
-      normalTextures = this._textures.tank1Normal;
-      destroyedTexture = this._textures.tank1Destroyed;
-    } else if (this._teamID === 2) {
-      normalTextures = this._textures.tank2Normal;
-      destroyedTexture = this._textures.tank2Destroyed;
-      // заглушка для наблюдателей или неопределенных команд, чтобы танк не отображался
-    } else {
-      this.body.visible = false;
-      this.gun.visible = false;
-      this.wreck.visible = false;
-      return;
-    }
-
     // если танк уничтожен
     if (this._condition === 0) {
       this.body.visible = false;
       this.gun.visible = false;
 
-      this.wreck.texture = destroyedTexture;
+      this.wreck.texture = this._textures.destroyed;
       this.wreck.visible = true;
 
       // поворот башни, так как она теперь часть обломков
       this.gun.rotation = 0;
-    } else {
       // если танк в нормальном состоянии
+    } else {
       this.wreck.visible = false;
 
-      this.body.texture = normalTextures.body;
-      this.gun.texture = normalTextures.gun;
+      let liveTextures;
 
+      // набор текстур в зависимости от команды
+      if (this._teamID === 1) {
+        liveTextures = this._textures.liveTeamID1;
+      } else if (this._teamID === 2) {
+        liveTextures = this._textures.liveTeamID2;
+      }
+
+      this.body.texture = liveTextures.body;
+      this.gun.texture = liveTextures.gun;
       this.body.visible = true;
       this.gun.visible = true;
     }
