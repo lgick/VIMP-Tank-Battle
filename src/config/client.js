@@ -74,6 +74,15 @@ export default {
             colorInner: 0x275c2d,
           },
         },
+        {
+          name: 'trackMarkTexture',
+          component: 'Tracks',
+          params: {
+            width: 4,
+            length: 5,
+            color: 0x1a1a12,
+          },
+        },
       ],
       radar: [
         {
