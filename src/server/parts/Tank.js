@@ -90,6 +90,11 @@ class Tank extends BaseModel {
     return x * (1 - a) + y * a;
   }
 
+  // проверяет, жив ли танк
+  isAlive() {
+    return this._condition > 0;
+  }
+
   // применяет урон к танку и обновляет его состояние.
   takeDamage(amount) {
     // если танк уже уничтожен, урон не считать
