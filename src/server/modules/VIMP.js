@@ -310,6 +310,30 @@ class VIMP {
         panel = panel ? [null].concat(panel) : 0;
       }
 
+      // если у игрока активен эффект тряски камеры
+      if (user.shakeDuration > 0) {
+        // расчёт текущей интенсивности с затуханием
+        const currentIntensity =
+          user.shakeIntensity * (user.shakeDuration / user.shakeTotalDuration);
+
+        // случайное смещение
+        const offsetX = (Math.random() - 0.5) * 2 * currentIntensity;
+        const offsetY = (Math.random() - 0.5) * 2 * currentIntensity;
+
+        coords[0] += offsetX;
+        coords[1] += offsetY;
+
+        // оставшаяся длительность
+        // dt в секундах, duration в мс
+        user.shakeDuration -= dt * 1000;
+
+        if (user.shakeDuration <= 0) {
+          user.shakeDuration = 0;
+          user.shakeIntensity = 0;
+          user.shakeTotalDuration = 0;
+        }
+      }
+
       // если общих сообщений нет
       if (!chat) {
         chatUser = this._chat.shiftByUser(gameID) || 0;
@@ -659,6 +683,17 @@ class VIMP {
     return this._activePlayersList[0] || null;
   }
 
+  // запускает тряску камеры у игрока
+  triggerCameraShake(gameID, shakeParams) {
+    const user = this._users[gameID];
+
+    if (user) {
+      user.shakeIntensity = shakeParams.intensity;
+      user.shakeDuration = shakeParams.duration;
+      user.shakeTotalDuration = shakeParams.duration;
+    }
+  }
+
   // создает нового игрока
   createUser(params, socket, cb) {
     // подбирает gameID
@@ -698,6 +733,12 @@ class VIMP {
       isWatching: true,
       // ID наблюдаемого игрока
       watchedGameID: this._activePlayersList[0] || null,
+      // текущая интенсивность тряски камеры
+      shakeIntensity: 0,
+      // оставшаяся длительность тряски камеры
+      shakeDuration: 0,
+      // общая длительность тряски для расчета затухания
+      shakeTotalDuration: 0,
     };
 
     this._chat.addUser(gameID);
