@@ -275,21 +275,33 @@ class Game {
     shooterTeamID,
     damageValue,
   ) {
+    const player = this._playersData[targetGameID];
+
+    // если игрок не существует или уже уничтожен, ничего не делаем
+    if (!player || !player.isAlive()) {
+      return;
+    }
+
     // проверка на дружественный огонь
     if (!this._friendlyFire && targetTeamID === shooterTeamID) {
       return;
     }
 
-    // Используем переданный урон, если он есть, иначе берем из конфига оружия
-    const damage =
-      typeof damageValue === 'number'
-        ? damageValue
-        : this._weapons[weaponName]?.damage || 0;
-    const player = this._playersData[targetGameID];
+    const weaponConfig = this._weapons[weaponName];
 
-    if (player) {
-      player.takeDamage(damage);
+    // если эффект тряски есть
+    if (weaponConfig?.cameraShake) {
+      this._services.vimp.triggerCameraShake(
+        targetGameID,
+        weaponConfig.cameraShake,
+      );
     }
+
+    // если урон не передан, берётся из конфига оружия
+    const damage =
+      typeof damageValue === 'number' ? damageValue : weaponConfig?.damage || 0;
+
+    player.takeDamage(damage);
   }
 
   // обрабатывает события контактов, накопленные за шаг физики
