@@ -14,6 +14,7 @@ class Panel {
     this._config = config;
     this._emptyPanel = [];
     this._data = {};
+    this._timerManager = null;
 
     for (const p in this._config) {
       if (Object.hasOwn(this._config, p)) {
@@ -21,6 +22,11 @@ class Panel {
         counter += 1;
       }
     }
+  }
+
+  // внедряет зависимость TimerManager
+  injectTimerManager(timerManager) {
+    this._timerManager = timerManager;
   }
 
   // сбрасывает данные пользователей
