@@ -185,8 +185,6 @@ export default server => {
 
       waiting.remove(id);
 
-      console.log('close');
-
       waiting.getNext(nextId => {
         if (nextId && sessions[nextId]) {
           sessions[nextId].socket.socketMethods[PC_AUTH_RESPONSE] = true;

@@ -405,6 +405,7 @@ class VIMP {
     this._timerManager.stopRoundTimer();
     this.startRound();
     this._timerManager.startRoundTimer();
+    this._chat.pushSystem('t:1');
   }
 
   // проверяет имя
@@ -456,17 +457,17 @@ class VIMP {
     // если команда уже была выбрана
     if (team === nextTeam) {
       if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:5:${team}`, gameID);
+        this._chat.pushSystem(`s:4:${team}`, gameID);
       } else {
-        this._chat.pushSystem('s:6', gameID);
+        this._chat.pushSystem('s:5', gameID);
       }
 
       // иначе если команда является текущей и не изменится в следующем раунде
     } else if (team === currentTeam && nextTeam === null) {
       if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:3:${team}`, gameID);
+        this._chat.pushSystem(`s:2:${team}`, gameID);
       } else {
-        this._chat.pushSystem('s:4', gameID);
+        this._chat.pushSystem('s:3', gameID);
       }
 
       // иначе смена команды
@@ -488,7 +489,7 @@ class VIMP {
 
         this._chat.pushSystem(`s:5:${team}`, gameID);
       } else {
-        this._chat.pushSystem('s:6', gameID);
+        this._chat.pushSystem('s:5', gameID);
       }
 
       this._teamSizes[currentTeam] -= 1;
@@ -503,49 +504,6 @@ class VIMP {
         this.restartRound();
       }
     }
-  }
-
-  // проверяет команду на свободные респауны и возвращает сообщение
-  checkTeam(team) {
-    const respawns = this._currentMapData.respawns;
-    let emptyTeam, message;
-
-    // ищет команды имеющие свободные респауны
-    const searchEmptyTeam = () => {
-      for (const p in respawns) {
-        if (Object.hasOwn(respawns, p)) {
-          if (respawns[p].length !== this._teamSizes[p]) {
-            return p;
-          }
-        }
-      }
-    };
-
-    // если команда наблюдателя
-    if (team !== this._spectatorTeam) {
-      // если количество респаунов на карте в выбраной команде
-      // равно количеству игроков в этой команде
-      if (respawns[team].length === this._teamSizes[team]) {
-        emptyTeam = searchEmptyTeam();
-
-        // если найдена команда с свободным местом
-        if (emptyTeam) {
-          message = `s:0:${team},${emptyTeam}`;
-          team = emptyTeam;
-        } else {
-          message = 's:2';
-          team = this._spectatorTeam;
-        }
-      } else {
-        message = `s:3:${team}`;
-      }
-    } else {
-      message = 's:4';
-    }
-
-    this._teamSizes[team] += 1;
-
-    return { team, message };
   }
 
   // сбрасывает this._teamSizes в нулевые значения
