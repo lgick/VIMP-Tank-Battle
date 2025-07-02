@@ -79,7 +79,7 @@ class TimerManager extends AbstractTimer {
   getRoundTimeLeft() {
     let timeLeft = this._roundTime - (Date.now() - this._startRoundTime);
 
-    timeLeft = Math.floor(timeLeft / 1000 - 3);
+    timeLeft = Math.floor(timeLeft / 1000);
 
     return timeLeft < 0 ? 0 : timeLeft;
   }
