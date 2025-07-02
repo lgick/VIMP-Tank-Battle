@@ -55,7 +55,7 @@
   flex: 1;
 }
 
-#panel table td#panel-health div.panel-health-blink > div.panel-health-block {
+#panel table td#panel-health div.panel-health-blink {
   animation: pulse-effect 2s infinite ease-out;
 }
 

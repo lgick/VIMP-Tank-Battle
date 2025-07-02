@@ -16,10 +16,11 @@ export default class PanelView {
     this._document = this._window.document;
 
     this._panel = data.panel;
-    this._healthBlocks = [];
-    this._healthBarWrapper = null;
-    this._totalHealthBlocks = 20;
-    this._emptyBlockColor = '#888';
+    this._healthBarWrapper = null; // контейнер
+    this._healthBlocks = []; // блоки здоровья
+    this._totalHealthBlocks = 20; // количество блоков здоровья
+    this._healthBlockColors = []; // цвета блоков здоровья
+    this._emptyBlockColor = '#888'; // цвет пустых блоков
 
     this.publisher = new Publisher();
 
@@ -50,6 +51,7 @@ export default class PanelView {
       wrapper.appendChild(block);
 
       this._healthBlocks.push(block);
+      this._healthBlockColors.push(this.getHealthBlockColor(i));
     }
 
     healthContainer.appendChild(wrapper);
@@ -103,11 +105,7 @@ export default class PanelView {
     if (data.name === 'health') {
       if (data.value === '') {
         elem.style.display = 'none';
-        // если игрок не активен, класс мигания не нужен
-        this._healthBarWrapper.classList.remove('panel-health-blink');
       } else {
-        elem.style.display = 'table-cell';
-
         const health = parseInt(data.value, 10);
         const blocksToShow = Math.ceil(
           (health / 100) * this._totalHealthBlocks,
@@ -116,19 +114,23 @@ export default class PanelView {
         this._healthBlocks.forEach((block, index) => {
           if (index < blocksToShow) {
             block.className = 'panel-health-block';
-            block.style.backgroundColor = this.getHealthBlockColor(index);
+            block.style.backgroundColor = this._healthBlockColors[index];
           } else {
             block.className = 'panel-health-block-empty';
             block.style.backgroundColor = this._emptyBlockColor;
           }
         });
 
-        // добавление мигания
-        if (health <= 10 && health > 0) {
-          this._healthBarWrapper.classList.add('panel-health-blink');
-        } else {
-          this._healthBarWrapper.classList.remove('panel-health-blink');
+        // мигание для последнего неполного блока
+        const exactBlocks = (health / 100) * this._totalHealthBlocks;
+
+        if (health > 0 && exactBlocks % 1 !== 0) {
+          this._healthBlocks[blocksToShow - 1].classList.add(
+            'panel-health-blink',
+          );
         }
+
+        elem.style.display = 'table-cell';
       }
     } else {
       if (data.value === '') {
