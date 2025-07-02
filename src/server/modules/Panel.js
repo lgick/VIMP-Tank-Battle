@@ -120,17 +120,25 @@ class Panel {
   // возвращает данные
   getPanel(gameID) {
     const user = this._data[gameID];
+    let data = [this._timerManager.getRoundTimeLeft()];
 
     if (user && user.status === true) {
       user.status = false;
 
-      return user.values;
+      data = data.concat(user.values);
     }
+
+    return data;
   }
 
-  // возвращает пустые данные
-  getEmpty() {
-    return this._emptyPanel;
+  // возвращает пустые данные (пустые строки)
+  // требуется, чтоб скрыть контейнеры этих данных
+  getEmptyPanel() {
+    return [this._timerManager.getRoundTimeLeft(), ...this._emptyPanel];
+  }
+
+  getTime() {
+    return [this._timerManager.getRoundTimeLeft()];
   }
 }
 

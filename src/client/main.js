@@ -409,10 +409,7 @@ function runModules(data) {
   // Panel Module
   //==========================================//
 
-  const panelModel = new PanelModel({
-    window,
-    panels: panelData.panels,
-  });
+  const panelModel = new PanelModel(panelData.panels);
 
   const panelView = new PanelView(panelModel, {
     window,

@@ -136,7 +136,7 @@ class VIMP {
       let coords, panel, chatUser, voteUser;
 
       if (user.isWatching === true) {
-        panel = 0;
+        panel = this._panel.getTime();
 
         // если есть играющие пользователи
         if (this._activePlayersList.length) {
@@ -152,7 +152,6 @@ class VIMP {
       } else {
         coords = this._game.getPlayerCoords(gameID);
         panel = this._panel.getPanel(gameID);
-        panel = panel ? [null].concat(panel) : 0;
       }
 
       // если у игрока активен эффект тряски камеры
@@ -289,7 +288,7 @@ class VIMP {
         user.socket.send(this._PORT_SHOT_DATA, [
           this._game.getFullPlayersData(), // game
           0, // coords
-          [this._timerManager.getRoundTimeLeft()], // panel: для наблюдателя только время раунда
+          this._panel.getEmptyPanel(), // panel
           this._stat.getFull(), // stat
           0, // chat
           [
@@ -367,15 +366,13 @@ class VIMP {
 
         if (teamID !== this._spectatorID) {
           user.isWatching = false;
-          firstShotData[2] = [this._timerManager.getRoundTimeLeft()];
+          firstShotData[2] = this._panel.getPanel(gameID);
           firstShotData[6] = 1; // keySet игрока
           this.addToActivePlayers(gameID);
           this._stat.updateUser(gameID, teamID, { status: '' });
         } else {
           user.isWatching = true;
-          firstShotData[2] = [this._timerManager.getRoundTimeLeft()].concat(
-            this._panel.getEmpty(),
-          );
+          firstShotData[2] = this._panel.getEmptyPanel();
           firstShotData[6] = 0; // keySet наблюдателя
         }
 
@@ -487,7 +484,7 @@ class VIMP {
           return;
         }
 
-        this._chat.pushSystem(`s:5:${team}`, gameID);
+        this._chat.pushSystem(`s:4:${team}`, gameID);
       } else {
         this._chat.pushSystem('s:5', gameID);
       }
@@ -549,15 +546,10 @@ class VIMP {
 
     this._stat.updateUser(gameID, user.teamID, { deaths: 1, status: 'dead' });
 
-    // немедленное обновление, чтобы он переключился в режим наблюдателя
-    const panel = [this._timerManager.getRoundTimeLeft()].concat(
-      this._panel.getEmpty(),
-    );
-
     const updateData = [
       {},
       0,
-      panel,
+      this._panel.getEmptyPanel(),
       0,
       0,
       0,
