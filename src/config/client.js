@@ -29,6 +29,11 @@ export default {
     bakedAssets: {
       vimp: [
         {
+          name: 'renderer', // для карт ассеты создаются динамически, поэтому нужен только renderer
+          component: 'Map',
+          params: {},
+        },
+        {
           name: 'explosionTexture', // ID доступа к текстуре и название функции "запекания"
           component: 'ExplosionEffect', // компонент, которому назначен ассет
           params: {
@@ -98,10 +103,10 @@ export default {
           name: 'tankRadarTexture',
           component: 'TankRadar',
           params: {
-            radius: 6,
+            radius: 8,
             borderWidth: 2,
-            crossSize: 9,
-            crossThickness: 1.5,
+            crossSize: 12,
+            crossThickness: 2,
             colors: {
               teamID1: 0x552222,
               teamID2: 0x225522,
@@ -121,8 +126,8 @@ export default {
         scale: '1:1',
       },
       radar: {
-        fixSize: '150',
-        scale: '1:13',
+        fixSize: '180',
+        scale: '1:20',
       },
     },
 
