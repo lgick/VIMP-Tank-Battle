@@ -1,3 +1,4 @@
+import renderer from './renderer.js';
 import explosionTexture from './explosionTexture.js';
 import funnelTexture from './funnelTexture.js';
 import smokeTexture from './smokeTexture.js';
@@ -8,6 +9,7 @@ import trackMarkTexture from './trackMarkTexture.js';
 import impactParticleTexture from './impactParticleTexture.js';
 
 export default {
+  renderer,
   explosionTexture,
   funnelTexture,
   smokeTexture,

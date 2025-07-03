@@ -491,7 +491,7 @@ function runModules(data) {
 
 // создает экземпляр игры
 function makeGameController(app, assetsCollection) {
-  const model = new GameModel(assetsCollection, app); // <<< ИЗМЕНЕНИЕ ЗДЕСЬ
+  const model = new GameModel(assetsCollection);
   const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 

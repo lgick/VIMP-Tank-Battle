@@ -1,14 +1,15 @@
-import { Container, Sprite, Assets, Spritesheet, RenderTexture } from 'pixi.js';
+import { Container, Sprite, Assets, Spritesheet, Rectangle } from 'pixi.js';
 
 export default class Map extends Container {
-  constructor(data) {
+  constructor(data, assets) {
     super();
 
     // хранение Promise, который возвращает Assets.load()
     this._baseTexturePromise = null;
     this._assetUrl = null; // URL для возможной выгрузки
 
-    this._app = null; // хранилище для экземпляра приложения
+    this._renderer = assets.renderer;
+
     this.sprite = null;
     this.mapSprite = null; // спрайт для "запеченной" карты
 
@@ -18,13 +19,11 @@ export default class Map extends Container {
       this._baseTexturePromise = Assets.load(this._assetUrl);
 
       // data состоит из:
-      // app - экземпляр приложения для доступа к рендереру
       // layer - слой,
       // tiles - массив с названиями тайлов,
       // spriteSheet - объект с данными картинки (например, PIXI.Spritesheet),
       // map - двумерный массив карты,
       // step - размер шага.
-      this._app = data.app;
       this._map = data.map;
       this._tiles = data.tiles;
       this._spriteSheetData = data.spriteSheet;
@@ -96,11 +95,6 @@ export default class Map extends Container {
       const mapWidth = this._map[0].length * this._step;
       const mapHeight = this._map.length * this._step;
 
-      const renderTexture = RenderTexture.create({
-        width: mapWidth,
-        height: mapHeight,
-      });
-
       // временный контейнер для размещения всех тайлов
       const tempContainer = new Container();
 
@@ -128,20 +122,16 @@ export default class Map extends Container {
         }
       }
 
-      // "Запекаем" временный контейнер в RenderTexture
-      // Используем рендерер из переданного экземпляра app
-      if (this._app && this._app.renderer) {
-        this._app.renderer.render(tempContainer, { renderTexture });
-      } else {
-        console.error('Pixi Application renderer not found for baking map.');
-        return;
-      }
+      const bakedTexture = this._renderer.generateTexture({
+        target: tempContainer,
+        frame: new Rectangle(0, 0, mapWidth, mapHeight),
+      });
 
       // Очищаем временный контейнер
       tempContainer.destroy({ children: true });
 
-      // Создаем один большой спрайт из нашей "запеченной" текстуры
-      this.mapSprite = new Sprite(renderTexture);
+      // один большой спрайт из "запеченной" текстуры
+      this.mapSprite = new Sprite(bakedTexture);
       this.addChild(this.mapSprite);
     } catch (error) {
       console.error(
@@ -160,7 +150,6 @@ export default class Map extends Container {
   }
 
   destroy(options) {
-    // уничтожаем спрайт карты и его текстуру (RenderTexture)
     if (this.mapSprite) {
       this.mapSprite.destroy({ children: true, texture: true });
       this.mapSprite = null;
@@ -174,7 +163,7 @@ export default class Map extends Container {
     });
 
     // если текстуры были загружены через Assets.load и больше не нужны глобально,
-    // их следует выгрузить из кеша Assets.
+    // выгрузить их из кеша Assets
     if (this._assetUrl) {
       if (Assets.cache.has(this._assetUrl)) {
         Assets.unload(this._assetUrl).catch(err =>
@@ -193,5 +182,6 @@ export default class Map extends Container {
     this._map = null;
     this._tiles = null;
     this._spriteSheetData = null;
+    this._renderer = null;
   }
 }
