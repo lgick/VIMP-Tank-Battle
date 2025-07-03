@@ -73,6 +73,12 @@ let currentMapSetID; // текущий ID набора конструкторо�
 const coords = { x: 0, y: 0 }; // координаты
 const socketMethods = []; // методы для обработки сокет-данных
 
+// переменные для динамического зума
+const ZOOM_LERP_FACTOR = 0.08;
+let targetZoom = 1.0;
+let currentZoom = 1.0;
+let gameLoopStarted = false; // флаг для запуска Ticker
+
 // SOCKET МЕТОДЫ
 
 // config data
@@ -178,6 +184,12 @@ socketMethods[PS_AUTH_ERRORS] = err => {
 
   if (!err) {
     runModules(modulesConfig);
+
+    // запуск рендера после успешной авторизации
+    if (!gameLoopStarted) {
+      gameLoopStarted = true;
+      Ticker.shared.add(updateGameControllers);
+    }
   }
 };
 
@@ -243,7 +255,7 @@ socketMethods[PS_MAP_DATA] = data => {
 
 // shot data
 socketMethods[PS_SHOT_DATA] = data => {
-  const [game, crds, panel, stat, chat, vote, keySet] = data;
+  const [game, crds, panel, stat, chat, vote, keySet, zoom] = data;
 
   // данные игры
   Object.entries(game).forEach(([p, instances]) => {
@@ -258,6 +270,11 @@ socketMethods[PS_SHOT_DATA] = data => {
   if (crds !== 0) {
     coords.x = crds[0];
     coords.y = crds[1];
+  }
+
+  // целевой зум
+  if (typeof zoom === 'number') {
+    targetZoom = zoom;
   }
 
   updateGameControllers();
@@ -474,7 +491,7 @@ function runModules(data) {
 
 // создает экземпляр игры
 function makeGameController(app, assetsCollection) {
-  const model = new GameModel(assetsCollection);
+  const model = new GameModel(assetsCollection, app); // <<< ИЗМЕНЕНИЕ ЗДЕСЬ
   const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 
@@ -483,8 +500,13 @@ function makeGameController(app, assetsCollection) {
 
 // обновляет полотна
 function updateGameControllers() {
+  // Плавное изменение текущего зума к целевому
+  currentZoom += (targetZoom - currentZoom) * ZOOM_LERP_FACTOR;
+
   Object.keys(CTRL).forEach(canvasId => {
-    CTRL[canvasId].update(coords, scale[canvasId]);
+    // Итоговый масштаб = базовый масштаб * текущий зум
+    const finalScale = scale[canvasId] * currentZoom;
+    CTRL[canvasId].update(coords, finalScale);
   });
 }
 

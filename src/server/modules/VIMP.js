@@ -22,6 +22,7 @@ class VIMP {
     this._mapSetID = data.mapSetID; // дефолтный id конструктора карт
     this._currentMap = data.currentMap; // название текущей карты
     this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
+    this._cameraConfig = data.camera; // конфигурация камеры
 
     this._expressions = {
       name: new RegExp(data.expressions.name),
@@ -133,7 +134,12 @@ class VIMP {
 
     const getUserData = gameID => {
       const user = this._users[gameID];
-      let coords, panel, chatUser, voteUser;
+      let coords,
+        panel,
+        chatUser,
+        voteUser,
+        zoom = this._cameraConfig.minZoom,
+        instantSpeed = 0;
 
       if (user.isWatching === true) {
         panel = this._panel.getTime();
@@ -152,6 +158,36 @@ class VIMP {
       } else {
         coords = this._game.getPlayerCoords(gameID);
         panel = this._panel.getPanel(gameID);
+      }
+
+      // ID игрока, чью скорость используем для расчета зума
+      const targetGameID = user.isWatching ? user.watchedGameID : gameID;
+      const targetPlayer = this._game.getPlayer(targetGameID);
+
+      // получение мгновенной скорости
+      if (targetPlayer) {
+        const velocity = targetPlayer.getBody().getLinearVelocity();
+        instantSpeed = Math.sqrt(
+          velocity.x * velocity.x + velocity.y * velocity.y,
+        );
+      }
+
+      // сглаживание скорости через линейную интерполяцию
+      user.smoothedSpeed +=
+        (instantSpeed - user.smoothedSpeed) * this._cameraConfig.speedSmoothing;
+
+      // расчет зума на основе сглаженной скорости
+      const { minSpeed, maxSpeed, minZoom, maxZoom } = this._cameraConfig;
+
+      if (user.smoothedSpeed <= minSpeed) {
+        zoom = minZoom;
+      } else if (user.smoothedSpeed >= maxSpeed) {
+        zoom = maxZoom;
+      } else {
+        // Линейная интерполяция
+        const speedRatio =
+          (user.smoothedSpeed - minSpeed) / (maxSpeed - minSpeed);
+        zoom = minZoom + speedRatio * (maxZoom - minZoom);
       }
 
       // если у игрока активен эффект тряски камеры
@@ -192,7 +228,16 @@ class VIMP {
         voteUser = vote;
       }
 
-      return [game, coords, panel, stat, chatUser, voteUser];
+      return [
+        game,
+        coords,
+        panel,
+        stat,
+        chatUser,
+        voteUser,
+        undefined,
+        +zoom.toFixed(3),
+      ];
     };
 
     // отправка данных
@@ -631,6 +676,8 @@ class VIMP {
       isWatching: true,
       // ID наблюдаемого игрока
       watchedGameID: this._activePlayersList[0] || null,
+      // сглаженная скорость для плавного зума камеры
+      smoothedSpeed: 0,
       // текущая интенсивность тряски камеры
       shakeIntensity: 0,
       // оставшаяся длительность тряски камеры

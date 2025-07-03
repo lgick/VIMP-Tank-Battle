@@ -212,6 +212,11 @@ class Game {
     return [+position.x.toFixed(), +position.y.toFixed()];
   }
 
+  // возвращает объект игрока
+  getPlayer(gameID) {
+    return this._playersData[gameID];
+  }
+
   // стирает данные игрового мира
   clear() {
     // сброс сил

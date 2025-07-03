@@ -2,8 +2,9 @@ import Publisher from '../../../lib/Publisher.js';
 import Factory from '../../../lib/factory.js';
 
 export default class GameModel {
-  constructor(assetsCollection) {
+  constructor(assetsCollection, app) {
     this._assets = assetsCollection || new Map(); // коллекция ассетов (Map)
+    this._app = app;
 
     this._data = {};
     this._managedEffects = {};
@@ -19,6 +20,11 @@ export default class GameModel {
   // id          - id экземпляра
   // data        - данные для создания экземпляра
   create(constructor, id, data) {
+    // Передаем экземпляр приложения в конструктор, если он 'Map'
+    if (constructor === 'Map' && data.type === 'static') {
+      data.app = this._app; // <<< ИЗМЕНЕНИЕ ЗДЕСЬ
+    }
+
     const instance = Factory(constructor, data, this._assets.get(constructor));
 
     this._data[constructor] = this._data[constructor] || {};
