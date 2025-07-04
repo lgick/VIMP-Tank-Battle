@@ -1,14 +1,17 @@
-import { Container, Sprite, Assets, Spritesheet } from 'pixi.js';
+import { Container, Sprite, Assets, Spritesheet, Rectangle } from 'pixi.js';
 
 export default class Map extends Container {
-  constructor(data) {
+  constructor(data, _assets, dependencies) {
     super();
 
     // хранение Promise, который возвращает Assets.load()
     this._baseTexturePromise = null;
     this._assetUrl = null; // URL для возможной выгрузки
 
+    this._renderer = dependencies.renderer;
+
     this.sprite = null;
+    this.mapSprite = null; // спрайт для "запеченной" карты
 
     // если статические данные
     if (data.type === 'static') {
@@ -89,6 +92,12 @@ export default class Map extends Container {
       const spriteSheet = new Spritesheet(baseTexture, sheetDataForPixi);
       await spriteSheet.parse();
 
+      const mapWidth = this._map[0].length * this._step;
+      const mapHeight = this._map.length * this._step;
+
+      // временный контейнер для размещения всех тайлов
+      const tempContainer = new Container();
+
       for (let y = 0, lenY = this._map.length; y < lenY; y += 1) {
         for (let x = 0, lenX = this._map[y].length; x < lenX; x += 1) {
           const tileIndex = this._map[y][x];
@@ -101,9 +110,11 @@ export default class Map extends Container {
 
             if (texture) {
               const sprite = new Sprite(texture);
+
               sprite.x = x * this._step;
               sprite.y = y * this._step;
-              this.addChild(sprite);
+
+              tempContainer.addChild(sprite);
             } else {
               console.warn(
                 `Texture not found in spritesheet: ${textureName} for tile index ${tileIndex}`,
@@ -112,6 +123,18 @@ export default class Map extends Container {
           }
         }
       }
+
+      const bakedTexture = this._renderer.generateTexture({
+        target: tempContainer,
+        frame: new Rectangle(0, 0, mapWidth, mapHeight),
+      });
+
+      // очищаем временный контейнер
+      tempContainer.destroy({ children: true });
+
+      // один большой спрайт из "запеченной" текстуры
+      this.mapSprite = new Sprite(bakedTexture);
+      this.addChild(this.mapSprite);
     } catch (error) {
       console.error(
         `Failed to create static map with asset ${this._assetUrl}:`,
@@ -129,6 +152,11 @@ export default class Map extends Container {
   }
 
   destroy(options) {
+    if (this.mapSprite) {
+      this.mapSprite.destroy({ children: true, texture: true });
+      this.mapSprite = null;
+    }
+
     super.destroy({
       children: true,
       texture: false,
@@ -136,8 +164,9 @@ export default class Map extends Container {
       ...options,
     });
 
-    // если текстуры были загружены через Assets.load и больше не нужны глобально,
-    // их следует выгрузить из кеша Assets.
+    // если текстуры были загружены через Assets.load
+    // и больше не нужны глобально,
+    // выгрузить из кеша Assets
     if (this._assetUrl) {
       if (Assets.cache.has(this._assetUrl)) {
         Assets.unload(this._assetUrl).catch(err =>
@@ -156,5 +185,6 @@ export default class Map extends Container {
     this._map = null;
     this._tiles = null;
     this._spriteSheetData = null;
+    this._renderer = null;
   }
 }

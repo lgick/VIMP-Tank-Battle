@@ -82,6 +82,7 @@ class BaseModel {
     return this._weapons;
   }
 
+  // задаёт значение здоровья
   setHealth(amount) {
     const panel = this._services.panel;
     const currentHealth = panel.getCurrentValue(this._gameID, 'health');
@@ -101,6 +102,7 @@ class BaseModel {
     return newHealth;
   }
 
+  // проверяет кулдауны и патроны
   tryConsumeAmmoAndShoot() {
     const weaponName = this.currentWeapon;
     const weaponConfig = this.weapons[weaponName];
@@ -123,7 +125,7 @@ class BaseModel {
     return false;
   }
 
-  // обновление кулдаунов оружия
+  // обновляет кулдауны оружия
   updateRemainingCooldowns(dt) {
     for (const weaponName in this._weaponRemainingCooldowns) {
       if (this._weaponRemainingCooldowns[weaponName] > 0) {
