@@ -83,28 +83,49 @@ class Vote {
     }
   }
 
-  // возвращает результат голосования
+  // возвращает результат голосования с обработкой ничьей
   getResult(name) {
     const results = this._votes[name];
-    let votes = 0;
-    let result;
+    let maxVotes = 0;
+    let winners = []; // массив для хранения победителей
 
-    if (!results) {
+    if (!results || Object.keys(results).length === 0) {
+      delete this._votes[name];
       return;
     }
 
-    for (const p in results) {
-      if (Object.hasOwn(results, p)) {
-        if (results[p] > votes) {
-          result = p;
-          votes = results[p];
+    // поиск победителей
+    for (const option in results) {
+      if (Object.hasOwn(results, option)) {
+        const currentVotes = results[option];
+
+        // если текущий вариант набрал больше голосов, он становится единственным лидером
+        if (currentVotes > maxVotes) {
+          maxVotes = currentVotes;
+          winners = [option];
+          // если голосов столько же, добавляем в список победителей (ничья)
+        } else if (currentVotes === maxVotes) {
+          winners.push(option);
         }
       }
     }
 
     delete this._votes[name];
 
-    return result;
+    // если никто не проголосовал
+    if (winners.length === 0) {
+      return;
+    }
+
+    // если победитель один
+    if (winners.length === 1) {
+      return winners[0];
+    }
+
+    // случайный выбор, если победителей несколько
+    const randomIndex = Math.floor(Math.random() * winners.length);
+
+    return winners[randomIndex];
   }
 }
 
