@@ -840,23 +840,12 @@ class VIMP {
         this._vote.createVote([['changeMap'], arr]);
       }
 
-      // собирает результаты голосования и стартует новую игру
+      // собирает результаты голосования и стартует новую карту
       this._timerManager.startChangeMapTimer(() => {
         const mapName = this._vote.getResult('changeMap');
 
-        if (mapName === null) {
-          return;
-        }
-
-        // если есть результат и карта существует
-        if (this._maps[mapName]) {
-          this._chat.pushSystem('v:4:' + mapName);
-
-          setTimeout(() => {
-            this._currentMap = mapName;
-            this.createMap();
-          }, 2000);
-        } else {
+        // если карта не выбрана
+        if (!mapName) {
           // если голосование создаёт игра, требуется обновить время карты
           if (typeof gameID === 'undefined') {
             this._timerManager.stopMapTimer();
@@ -865,6 +854,15 @@ class VIMP {
 
           this._chat.pushSystem('v:5');
           this._chat.pushSystem('t:0:' + this._currentMap);
+
+          // если есть результат и карта существует
+        } else if (this._maps[mapName]) {
+          this._chat.pushSystem('v:4:' + mapName);
+
+          setTimeout(() => {
+            this._currentMap = mapName;
+            this.createMap();
+          }, 2000);
         }
 
         // снимает блокировку смены карты
