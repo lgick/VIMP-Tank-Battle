@@ -3,6 +3,7 @@ import Stat from './Stat.js';
 import Chat from './chat.js';
 import Vote from './Vote.js';
 import Game from './Game.js';
+import TimerManager from './TimerManager.js';
 
 // Singleton
 let vimp;
@@ -26,14 +27,6 @@ class VIMP {
       name: new RegExp(data.expressions.name),
       message: new RegExp(data.expressions.message, 'g'),
     };
-
-    this._mapTime = data.mapTime; // продолжительность карты
-    this._roundTime = data.roundTime; // продолжительность раунда
-    this._voteTime = data.voteTime; // время голосования
-    this._timeBlockedRemap = data.timeBlockedRemap;
-
-    this._timeStep = data.timeStep; // время обновления кадра игры
-    this._lastShotTime = Date.now();
 
     this._users = {}; // игроки
 
@@ -60,208 +53,60 @@ class VIMP {
 
     this._currentMapData = null; // данные текущей карты
 
-    this._roundTimer = null;
-    this._stepTimer = null;
-    this._mapTimer = null;
-    this._changeMapTimer = null;
-    this._blockedRemapTimer = null;
-
-    this._startMapTime = 0; // время запуска карты
-    this._startRoundTime = 0; // время запуска раунда
-
     this._blockedRemap = false; // флаг блокировки голосования за новую карту
     this._startMapNumber = 0; // номер первой карты в голосовании
 
     // инициализация сервисов
-    const game = new Game(data.parts, data.keys, this._timeStep / 1000);
+    const game = new Game(data.parts, data.keys, data.timeStep / 1000);
     const panel = new Panel(data.panel);
     const stat = new Stat(data.stat, this._teams);
     const chat = new Chat();
     const vote = new Vote();
 
+    const timerManager = new TimerManager(
+      {
+        mapTime: data.mapTime, // продолжительность карты
+        roundTime: data.roundTime, // продолжительность раунда
+        voteTime: data.voteTime, // время голосования
+        timeBlockedRemap: data.timeBlockedRemap, // время ожидания повторной смены карты
+        timeStep: data.timeStep, // время обновления кадра игры
+      },
+      {
+        onMapTimeEnd: this.onMapTimeEnd.bind(this),
+        onRoundTimeEnd: this.onRoundTimeEnd.bind(this),
+        onShotTick: this.onShotTick.bind(this),
+      },
+    );
+
     // внедрение зависимостей
     game.injectServices({ vimp: this, panel });
+    panel.injectTimerManager(timerManager);
 
     this._game = game;
     this._panel = panel;
     this._stat = stat;
     this._chat = chat;
     this._vote = vote;
+    this._timerManager = timerManager;
 
     this.createMap();
   }
 
-  // запускает таймеры игры
-  startGameTimers() {
-    this.startMapTimer();
-    this.startShotTimer();
-    this.startRoundTimer();
+  onMapTimeEnd() {
+    this._timerManager.stopChangeMapTimer();
+    this._timerManager.stopBlockedRemapTimer();
+    this._blockedRemap = false;
+    this.changeMap();
   }
 
-  // останавливает таймеры игры
-  stopGameTimers() {
-    // останавливает расчет кадров игры
-    clearInterval(this._stepTimer);
-    // останавливает раунд
-    clearTimeout(this._roundTimer);
-    // останавливает карту
-    clearTimeout(this._mapTimer);
-  }
-
-  // стартует карту
-  startMapTimer() {
-    this._startMapTime = Date.now();
-
-    this._mapTimer = setTimeout(() => {
-      clearTimeout(this._changeMapTimer);
-      clearTimeout(this._blockedRemapTimer);
-      this._blockedRemap = false;
-      this.changeMap();
-    }, this._mapTime);
-  }
-
-  // стартует раунд
-  startRoundTimer() {
-    this._startRoundTime = Date.now();
-
+  onRoundTimeEnd() {
     this.startRound();
-
-    this._roundTimer = setTimeout(() => {
-      this.startRoundTimer();
-      this._chat.pushSystem('t:1');
-    }, this._roundTime);
-  }
-
-  // стартует расчет кадров игры
-  startShotTimer() {
-    this._lastShotTime = Date.now();
-
-    this._stepTimer = setInterval(() => {
-      const now = Date.now();
-      const dt = (now - this._lastShotTime) / 1000;
-      this._lastShotTime = now;
-
-      this.sendShot(dt);
-    }, this._timeStep);
-  }
-
-  // возвращает оставшееся время раунда (seconds)
-  getRoundTimeLeft() {
-    let timeLeft = this._roundTime - (Date.now() - this._startRoundTime);
-
-    timeLeft = Math.floor(timeLeft / 1000 - 3);
-
-    return timeLeft < 0 ? 0 : timeLeft;
-  }
-
-  // возвращает оставшееся время карты (ms)
-  getMapTimeLeft() {
-    const timeLeft = this._mapTime - (Date.now() - this._startMapTime);
-
-    return timeLeft < 0 ? 0 : timeLeft;
-  }
-
-  // создаёт карту
-  createMap() {
-    this._currentMapData = this._maps[this._currentMap];
-
-    // если нет индивидуального конструктора для создания карты
-    if (!this._currentMapData.setID) {
-      this._currentMapData.setID = this._mapSetID;
-    }
-
-    this.stopGameTimers();
-
-    this.resetTeamSizes();
-
-    this._activePlayersList = [];
-    this._removedPlayersList = [];
-
-    this._panel.reset();
-    this._stat.reset();
-    this._vote.reset();
-
-    this._game.clear();
-    this._game.createMap(this._currentMapData);
-
-    for (const gameID in this._users) {
-      if (Object.hasOwn(this._users, gameID)) {
-        const user = this._users[gameID];
-
-        user.socket.send(this._PORT_CLEAR);
-
-        // перемещение пользователя в наблюдатели
-        this._stat.moveUser(gameID, user.teamID, this._spectatorID);
-
-        // обнулить параметры
-        user.team = this._spectatorTeam;
-        user.teamID = this._spectatorID;
-        user.nextTeam = null;
-        user.isWatching = true;
-        user.watchedGameID = null;
-      }
-    }
-
-    this.sendMap();
-    this.startGameTimers();
-  }
-
-  // отправляет карту либо конкретному игроку, либо всем
-  sendMap(gameID) {
-    if (gameID) {
-      const user = this._users[gameID];
-
-      user.socket.send(this._PORT_INFORM_DATA, [2]);
-      user.mapReady = false;
-      user.currentMap = this._currentMap;
-      user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
-    } else {
-      for (const p in this._users) {
-        if (Object.hasOwn(this._users, p)) {
-          const user = this._users[p];
-
-          user.socket.send(this._PORT_INFORM_DATA, [2]);
-          user.mapReady = false;
-          user.currentMap = this._currentMap;
-          user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
-        }
-      }
-    }
-  }
-
-  // сообщает о загрузке карты
-  mapReady(err, gameID) {
-    const user = this._users[gameID];
-
-    if (!err && user.mapReady === false) {
-      // если карта загруженая пользователем совпадает с картой сервера
-      if (user.currentMap === this._currentMap) {
-        // скрывает экран загрузки
-        user.socket.send(this._PORT_INFORM_DATA);
-        user.mapReady = true;
-
-        // отправка первого shot
-        user.socket.send(this._PORT_SHOT_DATA, [
-          this._game.getFullPlayersData(), // game
-          0, // coords
-          [this.getRoundTimeLeft()], // panel: для наблюдателя только время раунда
-          this._stat.getFull(), // stat
-          0, // chat
-          [
-            ['team', true],
-            ['Выберите команду', Object.keys(this._teams), null],
-          ], // vote: опрос выбора команды
-        ]);
-
-        // иначе загрузить актуальную карту
-      } else {
-        this.sendMap(gameID);
-      }
-    }
+    this._timerManager.startRoundTimer();
+    this._chat.pushSystem('t:1');
   }
 
   // создает кадр игры
-  sendShot(dt) {
+  onShotTick(dt) {
     // обновление данных и физики
     this._game.updateData(dt);
 
@@ -291,7 +136,7 @@ class VIMP {
       let coords, panel, chatUser, voteUser;
 
       if (user.isWatching === true) {
-        panel = 0;
+        panel = this._panel.getTime();
 
         // если есть играющие пользователи
         if (this._activePlayersList.length) {
@@ -307,7 +152,6 @@ class VIMP {
       } else {
         coords = this._game.getPlayerCoords(gameID);
         panel = this._panel.getPanel(gameID);
-        panel = panel ? [null].concat(panel) : 0;
       }
 
       // если у игрока активен эффект тряски камеры
@@ -358,6 +202,106 @@ class VIMP {
         getUserData(gameID),
       ),
     );
+  }
+
+  // создаёт карту
+  createMap() {
+    this._currentMapData = this._maps[this._currentMap];
+
+    // если нет индивидуального конструктора для создания карты
+    if (!this._currentMapData.setID) {
+      this._currentMapData.setID = this._mapSetID;
+    }
+
+    // остановка таймеров игры
+    this._timerManager.stopGameTimers();
+
+    this.resetTeamSizes();
+
+    this._activePlayersList = [];
+    this._removedPlayersList = [];
+
+    this._panel.reset();
+    this._stat.reset();
+    this._vote.reset();
+
+    this._game.clear();
+    this._game.createMap(this._currentMapData);
+
+    for (const gameID in this._users) {
+      if (Object.hasOwn(this._users, gameID)) {
+        const user = this._users[gameID];
+
+        user.socket.send(this._PORT_CLEAR);
+
+        // перемещение пользователя в наблюдатели
+        this._stat.moveUser(gameID, user.teamID, this._spectatorID);
+
+        // обнулить параметры
+        user.team = this._spectatorTeam;
+        user.teamID = this._spectatorID;
+        user.nextTeam = null;
+        user.isWatching = true;
+        user.watchedGameID = null;
+      }
+    }
+
+    this.sendMap();
+    this._timerManager.startGameTimers();
+  }
+
+  // отправляет карту либо конкретному игроку, либо всем
+  sendMap(gameID) {
+    if (gameID) {
+      const user = this._users[gameID];
+
+      user.socket.send(this._PORT_INFORM_DATA, [2]);
+      user.mapReady = false;
+      user.currentMap = this._currentMap;
+      user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
+    } else {
+      for (const p in this._users) {
+        if (Object.hasOwn(this._users, p)) {
+          const user = this._users[p];
+
+          user.socket.send(this._PORT_INFORM_DATA, [2]);
+          user.mapReady = false;
+          user.currentMap = this._currentMap;
+          user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
+        }
+      }
+    }
+  }
+
+  // сообщает о загрузке карты
+  mapReady(err, gameID) {
+    const user = this._users[gameID];
+
+    if (!err && user.mapReady === false) {
+      // если карта загруженая пользователем совпадает с картой сервера
+      if (user.currentMap === this._currentMap) {
+        // скрывает экран загрузки
+        user.socket.send(this._PORT_INFORM_DATA);
+        user.mapReady = true;
+
+        // отправка первого shot
+        user.socket.send(this._PORT_SHOT_DATA, [
+          this._game.getFullPlayersData(), // game
+          0, // coords
+          this._panel.getEmptyPanel(), // panel
+          this._stat.getFull(), // stat
+          0, // chat
+          [
+            ['team', true],
+            ['Выберите команду', Object.keys(this._teams), null],
+          ], // vote: опрос выбора команды
+        ]);
+
+        // иначе загрузить актуальную карту
+      } else {
+        this.sendMap(gameID);
+      }
+    }
   }
 
   // начало раунда: перемещаем игроков и отправляем первый кадр
@@ -422,15 +366,13 @@ class VIMP {
 
         if (teamID !== this._spectatorID) {
           user.isWatching = false;
-          firstShotData[2] = [this.getRoundTimeLeft()];
+          firstShotData[2] = this._panel.getPanel(gameID);
           firstShotData[6] = 1; // keySet игрока
           this.addToActivePlayers(gameID);
           this._stat.updateUser(gameID, teamID, { status: '' });
         } else {
           user.isWatching = true;
-          firstShotData[2] = [this.getRoundTimeLeft()].concat(
-            this._panel.getEmpty(),
-          );
+          firstShotData[2] = this._panel.getEmptyPanel();
           firstShotData[6] = 0; // keySet наблюдателя
         }
 
@@ -457,8 +399,10 @@ class VIMP {
 
   // принудительно стартует раунд заново
   restartRound() {
-    clearTimeout(this._roundTimer);
-    this.startRoundTimer();
+    this._timerManager.stopRoundTimer();
+    this.startRound();
+    this._timerManager.startRoundTimer();
+    this._chat.pushSystem('t:1');
   }
 
   // проверяет имя
@@ -510,17 +454,17 @@ class VIMP {
     // если команда уже была выбрана
     if (team === nextTeam) {
       if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:5:${team}`, gameID);
+        this._chat.pushSystem(`s:4:${team}`, gameID);
       } else {
-        this._chat.pushSystem('s:6', gameID);
+        this._chat.pushSystem('s:5', gameID);
       }
 
       // иначе если команда является текущей и не изменится в следующем раунде
     } else if (team === currentTeam && nextTeam === null) {
       if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:3:${team}`, gameID);
+        this._chat.pushSystem(`s:2:${team}`, gameID);
       } else {
-        this._chat.pushSystem('s:4', gameID);
+        this._chat.pushSystem('s:3', gameID);
       }
 
       // иначе смена команды
@@ -540,9 +484,9 @@ class VIMP {
           return;
         }
 
-        this._chat.pushSystem(`s:5:${team}`, gameID);
+        this._chat.pushSystem(`s:4:${team}`, gameID);
       } else {
-        this._chat.pushSystem('s:6', gameID);
+        this._chat.pushSystem('s:5', gameID);
       }
 
       this._teamSizes[currentTeam] -= 1;
@@ -557,49 +501,6 @@ class VIMP {
         this.restartRound();
       }
     }
-  }
-
-  // проверяет команду на свободные респауны и возвращает сообщение
-  checkTeam(team) {
-    const respawns = this._currentMapData.respawns;
-    let emptyTeam, message;
-
-    // ищет команды имеющие свободные респауны
-    const searchEmptyTeam = () => {
-      for (const p in respawns) {
-        if (Object.hasOwn(respawns, p)) {
-          if (respawns[p].length !== this._teamSizes[p]) {
-            return p;
-          }
-        }
-      }
-    };
-
-    // если команда наблюдателя
-    if (team !== this._spectatorTeam) {
-      // если количество респаунов на карте в выбраной команде
-      // равно количеству игроков в этой команде
-      if (respawns[team].length === this._teamSizes[team]) {
-        emptyTeam = searchEmptyTeam();
-
-        // если найдена команда с свободным местом
-        if (emptyTeam) {
-          message = `s:0:${team},${emptyTeam}`;
-          team = emptyTeam;
-        } else {
-          message = 's:2';
-          team = this._spectatorTeam;
-        }
-      } else {
-        message = `s:3:${team}`;
-      }
-    } else {
-      message = 's:4';
-    }
-
-    this._teamSizes[team] += 1;
-
-    return { team, message };
   }
 
   // сбрасывает this._teamSizes в нулевые значения
@@ -645,13 +546,10 @@ class VIMP {
 
     this._stat.updateUser(gameID, user.teamID, { deaths: 1, status: 'dead' });
 
-    // немедленное обновление, чтобы он переключился в режим наблюдателя
-    const panel = [this.getRoundTimeLeft()].concat(this._panel.getEmpty());
-
     const updateData = [
       {},
       0,
-      panel,
+      this._panel.getEmptyPanel(),
       0,
       0,
       0,
@@ -717,7 +615,7 @@ class VIMP {
       socket,
       // флаг загрузки карты
       mapReady: false,
-      // текущая карта игры. Важно, чтоб этот параметр совпадал с актуальной картой сервера
+      // текущая карта игры
       currentMap: null,
       // имя пользователя
       name,
@@ -943,7 +841,7 @@ class VIMP {
       }
 
       // собирает результаты голосования и стартует новую игру
-      this._changeMapTimer = setTimeout(() => {
+      this._timerManager.startChangeMapTimer(() => {
         const mapName = this._vote.getResult('changeMap');
 
         if (mapName === null) {
@@ -961,8 +859,8 @@ class VIMP {
         } else {
           // если голосование создаёт игра, требуется обновить время карты
           if (typeof gameID === 'undefined') {
-            clearTimeout(this._mapTimer);
-            this.startMapTimer();
+            this._timerManager.stopMapTimer();
+            this._timerManager.startMapTimer();
           }
 
           this._chat.pushSystem('v:5');
@@ -970,10 +868,10 @@ class VIMP {
         }
 
         // снимает блокировку смены карты
-        this._blockedRemapTimer = setTimeout(() => {
+        this._timerManager.startBlockedRemapTimer(() => {
           this._blockedRemap = false;
-        }, this._timeBlockedRemap);
-      }, this._voteTime);
+        });
+      });
     } else {
       if (typeof gameID !== 'undefined') {
         this._chat.pushSystem('v:3', gameID);
@@ -1018,7 +916,10 @@ class VIMP {
           return `${minutes}:${seconds}`;
         }
 
-        this._chat.pushSystem([getTime(this.getMapTimeLeft())], gameID);
+        this._chat.pushSystem(
+          [getTime(this._timerManager.getMapTimeLeft())],
+          gameID,
+        );
         break;
       }
 
