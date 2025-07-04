@@ -18,7 +18,7 @@ export default class PanelView {
     this._panel = data.panel;
     this._healthBarWrapper = null; // контейнер
     this._healthBlocks = []; // блоки здоровья
-    this._totalHealthBlocks = 20; // количество блоков здоровья
+    this._totalHealthBlocks = 30; // количество блоков здоровья
     this._healthBlockColors = []; // цвета блоков здоровья
     this._emptyBlockColor = '#888'; // цвет пустых блоков
 
@@ -42,7 +42,7 @@ export default class PanelView {
 
     this._healthBarWrapper = wrapper; // сохранение ссылки на обертку
 
-    for (let i = 0; i < this._totalHealthBlocks; i += 1) {
+    for (let i = 0, len = this._totalHealthBlocks; i < len; i += 1) {
       const block = this._document.createElement('div');
 
       block.className = 'panel-health-block';
@@ -101,11 +101,11 @@ export default class PanelView {
       return;
     }
 
-    // логика для здоровья
-    if (data.name === 'health') {
-      if (data.value === '') {
-        elem.style.display = 'none';
-      } else {
+    if (data.value === '') {
+      elem.style.display = 'none';
+    } else {
+      // логика для здоровья
+      if (data.name === 'health') {
         const health = parseInt(data.value, 10);
         const blocksToShow = Math.ceil(
           (health / 100) * this._totalHealthBlocks,
@@ -131,10 +131,6 @@ export default class PanelView {
         }
 
         elem.style.display = 'table-cell';
-      }
-    } else {
-      if (data.value === '') {
-        elem.style.display = 'none';
       } else {
         elem.innerHTML = data.value;
         elem.style.display = 'table-cell';
