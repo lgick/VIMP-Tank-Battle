@@ -3,7 +3,7 @@ import bakers from './bakers/index.js';
 
 // класс для управления "запеченными" ассетами
 // каждый потребитель владеет собственной коллекцией ассетов
-export default class Baking {
+export default class BakingProvider {
   constructor() {
     // коллекция для хранения "запеченных" ассетов
     // Map<constructor, assetsObject>

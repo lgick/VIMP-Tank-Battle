@@ -142,4 +142,5 @@ class TimerManager extends AbstractTimer {
     this._stopTimer('blockedRemap');
   }
 }
+
 export default TimerManager;

@@ -110,6 +110,11 @@ export default {
         },
       ],
     },
+
+    // карта зависимостей компонентов
+    componentDependencies: {
+      Map: ['renderer'], // Map требует сервис с ключом 'renderer'
+    },
   },
 
   // ***** modules ***** //

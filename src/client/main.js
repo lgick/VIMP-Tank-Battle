@@ -22,7 +22,8 @@ import VoteModel from './components/model/Vote.js';
 import VoteView from './components/view/Vote.js';
 import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
-import Baking from './Baking/index.js';
+import BakingProvider from './providers/BakingProvider.js';
+import DependencyProvider from './providers/DependencyProvider.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
@@ -89,13 +90,15 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   informList = data.informer;
 
   const bakedAssets = data.parts.bakedAssets || {};
+  const componentDependencies = data.parts.componentDependencies || {};
 
   // создание полотен игры
   const initPromises = Object.entries(modulesConfig.canvasOptions).map(
     async ([canvasId, options]) => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
-      const baking = new Baking();
+      const assetProvider = new BakingProvider();
+      const dependencyProvider = new DependencyProvider();
       const bakingArr = bakedAssets[canvasId];
 
       await app.init({
@@ -109,12 +112,23 @@ socketMethods[PS_CONFIG_DATA] = async data => {
         },
       });
 
+      // пул всех доступных сервисов в этом контексте
+      const availableServices = {
+        renderer: app.renderer,
+      };
+
       // если есть данные для запекания компонентов
       if (bakingArr) {
-        baking.bakeAll(bakingArr, app);
+        assetProvider.bakeAll(bakingArr, app);
       }
 
-      CTRL[canvasId] = makeGameController(app, baking.getAssetsCollection());
+      dependencyProvider.collectAll(availableServices, componentDependencies);
+
+      CTRL[canvasId] = makeGameController(
+        assetProvider.getAssetsCollection(),
+        dependencyProvider.getDependenciesCollection(),
+        app,
+      );
 
       // пропорции изображения на полотне
       const [w, h] = (options.scale || '1:1')
@@ -473,8 +487,8 @@ function runModules(data) {
 }
 
 // создает экземпляр игры
-function makeGameController(app, assetsCollection) {
-  const model = new GameModel(assetsCollection);
+function makeGameController(assetsCollection, dependenciesCollection, app) {
+  const model = new GameModel(assetsCollection, dependenciesCollection);
   const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 
