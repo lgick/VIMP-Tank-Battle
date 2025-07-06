@@ -12,25 +12,22 @@ export default class UserView {
 
     userView = this;
 
-    this._window = data.window;
-    this._document = this._window.document;
-
     this._displayId = data.displayId;
 
     this.publisher = new Publisher();
 
-    this._window.onkeydown = event => {
+    onkeydown = event => {
       userView.publisher.emit('keyDown', event);
     };
 
-    this._window.onkeyup = event => {
+    onkeyup = event => {
       userView.publisher.emit('keyUp', event);
     };
 
-    this._window.onresize = () => {
+    onresize = () => {
       userView.publisher.emit('resize', {
-        width: userView._window.innerWidth,
-        height: userView._window.innerHeight,
+        width: innerWidth,
+        height: innerHeight,
       });
     };
 
@@ -43,7 +40,7 @@ export default class UserView {
   // инициализация
   init() {
     for (const id of this._displayId) {
-      const elem = this._document.getElementById(id);
+      const elem = document.getElementById(id);
 
       if (elem) {
         elem.style.display = 'block';
@@ -54,7 +51,7 @@ export default class UserView {
   // изменение размеров
   resize(sizes) {
     for (const id of Object.keys(sizes)) {
-      const elem = this._document.getElementById(id);
+      const elem = document.getElementById(id);
 
       if (elem) {
         elem.style.width = `${sizes[id].width}px`;
