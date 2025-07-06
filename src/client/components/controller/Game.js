@@ -8,7 +8,8 @@ export default class GameCtrl {
 
   // обрабатывает данные
   parse(constructor, instances) {
-    // если массив (без id) - это эффекты, которые проигрываются и самоуничтожаются
+    // если массив (без id) - это эффекты,
+    // которые проигрываются и самоуничтожаются
     if (Array.isArray(instances)) {
       for (let i = 0, len = instances.length; i < len; i += 1) {
         this._model.createEffect(constructor, instances[i]);

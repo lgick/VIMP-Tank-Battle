@@ -12,9 +12,6 @@ export default class VoteView {
 
     voteView = this;
 
-    this._window = data.window;
-    this._document = this._window.document;
-
     this._voteId = data.elems.voteId || 'vote';
     this._titleClass = data.elems.titleClass || 'vote-title';
     this._listClass = data.elems.listClass || 'vote-list';
@@ -32,13 +29,13 @@ export default class VoteView {
   // создает окно голосования
   createVote(data) {
     const { title, list, back, more, time } = data;
-    const vote = this._document.createElement('div');
-    const p = this._document.createElement('p');
-    const ol = this._document.createElement('ol');
-    const navContainer = this._document.createElement('div');
-    const backElem = this._document.createElement('p');
-    const moreElem = this._document.createElement('p');
-    const exitElem = this._document.createElement('p');
+    const vote = document.createElement('div');
+    const p = document.createElement('p');
+    const ol = document.createElement('ol');
+    const navContainer = document.createElement('div');
+    const backElem = document.createElement('p');
+    const moreElem = document.createElement('p');
+    const exitElem = document.createElement('p');
     let timerId = null;
 
     vote.setAttribute('id', this._voteId);
@@ -49,7 +46,7 @@ export default class VoteView {
     ol.setAttribute('class', this._listClass);
 
     list.forEach(item => {
-      const li = this._document.createElement('li');
+      const li = document.createElement('li');
       li.innerHTML = item;
       ol.appendChild(li);
     });
@@ -79,10 +76,10 @@ export default class VoteView {
 
     vote.appendChild(navContainer);
 
-    this._document.body.appendChild(vote);
+    document.body.appendChild(vote);
 
     if (time !== null) {
-      timerId = this._window.setTimeout(() => {
+      timerId = setTimeout(() => {
         vote.parentElement.removeChild(vote);
         this.publisher.emit('timer', null);
         this.publisher.emit('clear');
@@ -94,10 +91,10 @@ export default class VoteView {
 
   // удаляет окно голосования
   removeVote(timerId) {
-    const vote = this._document.getElementById(this._voteId);
+    const vote = document.getElementById(this._voteId);
 
     if (timerId) {
-      this._window.clearTimeout(timerId);
+      clearTimeout(timerId);
     }
 
     if (vote) {

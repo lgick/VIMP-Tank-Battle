@@ -12,11 +12,10 @@ export default class ChatView {
 
     chatView = this;
 
-    this._window = data.window;
-    this._document = this._window.document;
+    const elems = data.elems;
 
-    this._chat = data.chat;
-    this._cmd = data.cmd;
+    this._chat = document.getElementById(elems.chatBox);
+    this._cmd = document.getElementById(elems.cmd);
 
     this.publisher = new Publisher();
 
@@ -49,7 +48,7 @@ export default class ChatView {
 
   // добавляет сообщение в чат-лист
   createLine(data) {
-    const line = this._document.createElement('div');
+    const line = document.createElement('div');
     const id = data.id;
     const message = data.message;
     const text = message[0];
@@ -66,11 +65,11 @@ export default class ChatView {
 
   // удаляет сообщение в чат-листе
   removeLine(id) {
-    const line = this._document.getElementById(`line_${id}`);
+    const line = document.getElementById(`line_${id}`);
 
     line.style.opacity = 0;
 
-    this._window.setTimeout(() => {
+    setTimeout(() => {
       this._chat.removeChild(line);
     }, 2000);
   }
@@ -79,7 +78,7 @@ export default class ChatView {
   createTimer(data) {
     const messageId = data.id;
     const time = data.time;
-    const timerId = this._window.setTimeout(() => {
+    const timerId = setTimeout(() => {
       this.publisher.emit('oldTimer');
     }, time);
 
@@ -88,6 +87,6 @@ export default class ChatView {
 
   // снимает таймер
   removeTimer(timer) {
-    this._window.clearTimeout(timer);
+    clearTimeout(timer);
   }
 }

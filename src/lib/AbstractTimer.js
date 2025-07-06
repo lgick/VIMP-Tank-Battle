@@ -1,7 +1,7 @@
 /**
  * @class AbstractTimer
- * @description Базовый класс для управления таймерами (setTimeout, setInterval).
- * Предоставляет унифицированные методы для запуска и остановки таймеров по ключу.
+ * @description Базовый класс для управления таймерами (setTimeout, setInterval)
+ * Унифицированные методы для запуска и остановки таймеров по ключу
  */
 class AbstractTimer {
   constructor() {
@@ -10,13 +10,13 @@ class AbstractTimer {
   }
 
   /**
-   * Централизованно запускает таймер и сохраняет его в Map.
-   * Если таймер с таким ключом уже существует, он будет сперва остановлен.
+   * Централизованно запускает таймер и сохраняет его в Map,
+   * если таймер с таким ключом уже существует, он будет сперва остановлен
    * @protected
-   * @param {string} key - Уникальный ключ для идентификации таймера.
-   * @param {function} callback - Функция, которая будет вызвана по истечении времени.
-   * @param {number} duration - Длительность в миллисекундах.
-   * @param {boolean} [isInterval=false] - Использовать setInterval вместо setTimeout.
+   * @param {string} key - уникальный ключ для идентификации таймера
+   * @param {function} callback - функция по завершению времени
+   * @param {number} duration - длительность в миллисекундах
+   * @param {boolean} [isInterval=false] - setInterval или setTimeout
    */
   _startTimer(key, callback, duration, isInterval = false) {
     // остановка существующего таймера с тем же ключом
@@ -29,9 +29,9 @@ class AbstractTimer {
   }
 
   /**
-   * Централизованно останавливает таймер по его ключу.
+   * Централизованно останавливает таймер по его ключу
    * @protected
-   * @param {string} key - Ключ таймера, который нужно остановить.
+   * @param {string} key - ключ таймера, который нужно остановить
    */
   _stopTimer(key) {
     if (this._timers.has(key)) {
@@ -45,17 +45,17 @@ class AbstractTimer {
   }
 
   /**
-   * Проверяет наличие активного таймера по ключу.
+   * Проверяет наличие активного таймера по ключу
    * @protected
-   * @param {string} key - Ключ для проверки.
-   * @returns {boolean} - true, если таймер существует, иначе false.
+   * @param {string} key - ключ для проверки
+   * @returns {boolean} - true, если таймер существует, иначе false
    */
   _hasTimer(key) {
     return this._timers.has(key);
   }
 
   /**
-   * Останавливает и удаляет все активные таймеры, управляемые этим экземпляром.
+   * Останавливает и удаляет все активные таймеры, управляемые этим экземпляром
    * @protected
    */
   _clearAllTimers() {

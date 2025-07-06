@@ -27,17 +27,6 @@ import DependencyProvider from './providers/DependencyProvider.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
-const document = window.document;
-const Number = window.Number;
-const RegExp = window.RegExp;
-const Object = window.Object;
-const Array = window.Array;
-const Promise = window.Promise;
-const location = window.location;
-const localStorage = window.localStorage;
-const JSON = window.JSON;
-const WebSocket = window.WebSocket;
-
 // PS (server ports): порты получения данные от сервера
 const PS_CONFIG_DATA = wsports.server.CONFIG_DATA;
 const PS_AUTH_DATA = wsports.server.AUTH_DATA;
@@ -169,16 +158,10 @@ socketMethods[PS_AUTH_DATA] = data => {
     }
   });
 
-  const viewData = {
-    window,
-    auth: document.getElementById(elems.authId),
-    form: document.getElementById(elems.formId),
-    error: document.getElementById(elems.errorId),
-    enter: document.getElementById(elems.enterId),
-  };
-
   const authModel = new AuthModel();
-  const authView = new AuthView(authModel, viewData);
+  const authView = new AuthView(authModel, {
+    elems,
+  });
   modules.auth = new AuthCtrl(authModel, authView);
 
   authModel.publisher.on('socket', data => sending(PC_AUTH_RESPONSE, data));
@@ -378,14 +361,12 @@ function runModules(data) {
   //==========================================//
 
   const userModel = new UserModel({
-    window,
     sizeOptions: canvasOptions,
     keys,
     Ticker,
   });
 
   const userView = new UserView(userModel, {
-    window,
     displayId,
   });
 
@@ -393,8 +374,8 @@ function runModules(data) {
 
   // инициализация
   modules.user.init({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: innerWidth,
+    height: innerHeight,
   });
 
   //==========================================//
@@ -402,7 +383,6 @@ function runModules(data) {
   //==========================================//
 
   const chatModel = new ChatModel({
-    window,
     listLimit: chatData.params.listLimit,
     lineTime: chatData.params.lineTime,
     cacheMin: chatData.params.cacheMin,
@@ -412,9 +392,7 @@ function runModules(data) {
   });
 
   const chatView = new ChatView(chatModel, {
-    window,
-    chat: document.getElementById(chatData.elems.chatBox),
-    cmd: document.getElementById(chatData.elems.cmd),
+    elems: chatData.elems,
   });
 
   modules.chat = new ChatCtrl(chatModel, chatView);
@@ -426,7 +404,6 @@ function runModules(data) {
   const panelModel = new PanelModel(panelData.panels);
 
   const panelView = new PanelView(panelModel, {
-    window,
     panel: panelData.elems,
   });
 
@@ -439,8 +416,7 @@ function runModules(data) {
   const statModel = new StatModel(statData.params);
 
   const statView = new StatView(statModel, {
-    window,
-    stat: document.getElementById(statData.elems.stat),
+    elems: statData.elems,
   });
 
   modules.stat = new StatCtrl(statModel, statView);
@@ -450,13 +426,11 @@ function runModules(data) {
   //==========================================//
 
   const voteModel = new VoteModel({
-    window,
     menu: voteData.params.menu,
     time: voteData.params.time,
   });
 
   const voteView = new VoteView(voteModel, {
-    window,
     elems: voteData.elems,
   });
 

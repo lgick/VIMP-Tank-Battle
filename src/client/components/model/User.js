@@ -12,11 +12,6 @@ export default class UserModel {
 
     userModel = this;
 
-    this._window = data.window;
-
-    this._parseInt = this._window.parseInt;
-    this._Math = this._window.Math;
-
     this._sizeOptions = data.sizeOptions;
 
     this._keySetList = data.keys.keySetList;
@@ -184,21 +179,21 @@ export default class UserModel {
           const parts = aspectRatio.split(':');
 
           // строку в число
-          const widthRatio = this._parseInt(parts[0], 10);
-          const heightRatio = this._parseInt(parts[1], 10);
+          const widthRatio = parseInt(parts[0], 10);
+          const heightRatio = parseInt(parts[1], 10);
 
-          width = this._Math.round(screenWidth * screenRatio);
+          width = Math.round(screenWidth * screenRatio);
           height = (width / widthRatio) * heightRatio;
 
           // если фактическая высота больше полученной,
           // то вычисления производятся относительно высоты
           if (height > screenHeight) {
-            height = this._Math.round(screenHeight * screenRatio);
+            height = Math.round(screenHeight * screenRatio);
             width = (height / heightRatio) * widthRatio;
           }
         } else {
-          width = this._Math.round(screenWidth * screenRatio);
-          height = this._Math.round(screenHeight * screenRatio);
+          width = Math.round(screenWidth * screenRatio);
+          height = Math.round(screenHeight * screenRatio);
         }
 
         // Приводим к числу с целым значением

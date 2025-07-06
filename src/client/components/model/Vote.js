@@ -12,10 +12,6 @@ export default class VoteModel {
 
     voteModel = this;
 
-    this._window = data.window;
-    this._String = this._window.String;
-    this._parseInt = this._window.parseInt;
-
     this._menu = data.menu; // меню
 
     this._currentVote = null; // текущее голосование
@@ -128,8 +124,8 @@ export default class VoteModel {
 
     // если keyCode это число от 0 до 9
     if (48 <= keyCode && keyCode <= 57) {
-      number = this._String.fromCharCode(keyCode);
-      number = this._parseInt(number, 10);
+      number = String.fromCharCode(keyCode);
+      number = parseInt(number, 10);
 
       // exit
       if (number === 0) {

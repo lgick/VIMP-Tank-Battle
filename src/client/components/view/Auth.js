@@ -14,13 +14,12 @@ export default class AuthView {
 
     this._mPublic = model.publisher;
 
-    this._window = data.window;
-    this._localStorage = this._window.localStorage;
+    const elems = data.elems;
 
-    this._auth = data.auth;
-    this._form = data.form;
-    this._error = data.error;
-    this._enter = data.enter;
+    this._auth = document.getElementById(elems.authId);
+    this._form = document.getElementById(elems.formId);
+    this._error = document.getElementById(elems.errorId);
+    this._enter = document.getElementById(elems.enterId);
 
     this.publisher = new Publisher();
 
@@ -55,7 +54,7 @@ export default class AuthView {
   hideAuth(data) {
     if (data) {
       data.forEach(item => {
-        this._localStorage[item.name] = item.value;
+        localStorage[item.name] = item.value;
       });
     }
 
