@@ -1,4 +1,5 @@
 // Singleton Panel
+
 let panel;
 
 class Panel {

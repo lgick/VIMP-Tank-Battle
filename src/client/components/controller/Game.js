@@ -1,4 +1,4 @@
-// Контроллер игры
+// GameCtrl
 
 export default class GameCtrl {
   constructor(model, view) {

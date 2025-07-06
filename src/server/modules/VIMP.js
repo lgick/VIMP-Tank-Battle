@@ -5,7 +5,8 @@ import Vote from './Vote.js';
 import Game from './Game.js';
 import TimerManager from './TimerManager.js';
 
-// Singleton
+// Singleton VIMP
+
 let vimp;
 
 class VIMP {
@@ -31,7 +32,8 @@ class VIMP {
     this._users = {}; // игроки
 
     // команды
-    this._teams = data.teams; // team: teamId; { team1: 1, team2: 2, spectators: 3 }
+    // team: teamId; { team1: 1, team2: 2, spectators: 3 }
+    this._teams = data.teams;
     // название команды наблюдателя
     this._spectatorTeam = data.spectatorTeam;
     // id команды наблюдателя
@@ -68,7 +70,7 @@ class VIMP {
         mapTime: data.mapTime, // продолжительность карты
         roundTime: data.roundTime, // продолжительность раунда
         voteTime: data.voteTime, // время голосования
-        timeBlockedRemap: data.timeBlockedRemap, // время ожидания повторной смены карты
+        timeBlockedRemap: data.timeBlockedRemap, // время ожидания смены карты
         timeStep: data.timeStep, // время обновления кадра игры
       },
       {
@@ -627,7 +629,8 @@ class VIMP {
       teamId: this._spectatorId,
       // название команды в следующем раунде
       nextTeam: null,
-      // флаг наблюдателя за игрой (true у игроков, которые в текущий момент наблюдают за игрой)
+      // флаг наблюдателя за игрой
+      // (true у игроков, которые в текущий момент наблюдают за игрой)
       isWatching: true,
       // id наблюдаемого игрока
       watchedGameId: this._activePlayersList[0] || null,

@@ -2,6 +2,7 @@ import planck from 'planck';
 import Factory from '../../lib/factory.js';
 
 // Singleton Game
+
 let game;
 
 class Game {
@@ -448,8 +449,9 @@ class Game {
     }
 
     this._shotsAtTime[this._currentStepTick] = []; // очищаем текущий слот
+    // переходим к следующему слоту
     this._currentStepTick =
-      (this._currentStepTick + 1) % this._maxShotTimeInSteps; // переходим к следующему слоту
+      (this._currentStepTick + 1) % this._maxShotTimeInSteps;
 
     return outcomeData;
   }
@@ -481,7 +483,6 @@ class Game {
           if (weaponConfig.type === 'hitscan') {
             const hitscanParams = {
               shooterBody: shotData.shooterBody,
-              shooterGameId: gameId,
               shooterTeamId: player.teamId,
               weaponName,
               startPoint: shotData.startPoint,
@@ -584,7 +585,8 @@ class Game {
     ];
   }
 
-  // сбрасывает currentShotId, удаляет все пули и возвращает список удаленных имён
+  // сбрасывает currentShotId,
+  // удаляет все пули и возвращает список удаленных имён
   removeShots() {
     const weaponNameSet = new Set();
 

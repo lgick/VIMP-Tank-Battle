@@ -1,6 +1,7 @@
 import AbstractTimer from '../../lib/AbstractTimer.js';
 
 // Singleton TimerManager
+
 let timerManager;
 
 class TimerManager extends AbstractTimer {

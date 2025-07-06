@@ -1,6 +1,7 @@
 import { Graphics, Container, Rectangle } from 'pixi.js';
 
-// создает набор текстур для танка (нормальное состояние для команд и уничтоженное)
+// создает набор текстур для танка
+// (нормальное состояние для команд и уничтоженное)
 // params.colors - Объект с цветами для команд
 // renderer - PIXI рендерер
 export default function tankTexture(params, renderer) {
@@ -93,7 +94,8 @@ export default function tankTexture(params, renderer) {
     });
 
     // вычисление якоря для пушки
-    // gunBounds.x - это смещение левого края текстуры относительно (0,0) Graphics.
+    // gunBounds.x - это смещение левого края текстуры
+    // относительно (0,0) Graphics.
     const gunAnchor = {
       x: -gunBounds.x / gunBounds.width,
       y: -gunBounds.y / gunBounds.height,

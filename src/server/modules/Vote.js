@@ -99,7 +99,8 @@ class Vote {
       if (Object.hasOwn(results, option)) {
         const currentVotes = results[option];
 
-        // если текущий вариант набрал больше голосов, он становится единственным лидером
+        // если текущий вариант набрал больше голосов,
+        // он становится единственным лидером
         if (currentVotes > maxVotes) {
           maxVotes = currentVotes;
           winners = [option];
