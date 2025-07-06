@@ -13,7 +13,8 @@ export default class TankRadar extends Container {
 
     this.addChild(this.body);
 
-    // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
+    // параметры с сервера:
+    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this._condition = data[6];

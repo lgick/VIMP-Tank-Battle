@@ -21,7 +21,8 @@ export default class ExplosionEffect extends BaseEffect {
     this._elapsedMs = 0;
 
     // необходимый масштаб спрайта, чтобы он соответствовал радиусу взрыва
-    // делить на EFFECT_BASE_RADIUS_PX, так как базовый радиус в текстуре был 50px
+    // делить на EFFECT_BASE_RADIUS_PX,
+    // так как базовый радиус в текстуре был 50px
     const desiredScale = this._radius / EFFECT_BASE_RADIUS_PX;
 
     // спрайты

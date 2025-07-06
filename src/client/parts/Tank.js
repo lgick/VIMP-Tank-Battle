@@ -21,7 +21,8 @@ export default class Tank extends Container {
 
     this._textures = assets.tankTexture;
 
-    // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
+    // параметры с сервера:
+    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this.rotation = data[2] || 0;

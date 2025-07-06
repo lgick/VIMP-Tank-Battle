@@ -168,7 +168,7 @@ export default server => {
     });
 
     // обработчик закрытия соединения принимает (code, reason)
-    ws.on('close', (code, reason) => {
+    ws.on('close', (code, _reason) => {
       // Коды закрытия:
       // 4001 - origin conflict
       // 4002 - oneConnection

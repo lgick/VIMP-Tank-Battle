@@ -11,14 +11,15 @@ export default {
     constructors, // конструкторы частей игры
 
     mapConstructor: 'Map', // название конструктора карт
-    hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan оружия
+    hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan
 
     friendlyFire: true, // огонь по своей команде
 
     models: {
       // tank
       m1: {
-        size: 10, // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
+        // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
+        size: 10,
         constructor: 'Tank',
         currentWeapon: 'w1',
       },

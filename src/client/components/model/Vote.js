@@ -54,7 +54,8 @@ export default class VoteModel {
     this._currentPage = 0;
 
     // если данные имеют вид:
-    // [[name:string, timeOff: boolean], [title: string, value: array, next: array || null]]
+    // [[name:string, timeOff: boolean],
+    // [title: string, value: array, next: array || null]]
     if (data.length === 2) {
       this._voteName = data[0][0];
       this._timeOff = data[0][1] ? true : false;

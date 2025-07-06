@@ -1,6 +1,7 @@
 import { BoxShape, Vec2 } from 'planck';
 
 // Singleton Map
+
 let map;
 
 class Map {

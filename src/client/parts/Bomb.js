@@ -16,7 +16,8 @@ export default class Bomb extends Container {
     this._totalDurationMs = params[4];
 
     // Масштабируем спрайт под нужный размер
-    const textureSize = assets.bombTexture.width; // предполагаем, что текстура квадратная
+    // предполагаем, что текстура квадратная
+    const textureSize = assets.bombTexture.width;
     const scale = this._size / textureSize;
     this.body.scale.set(scale);
 

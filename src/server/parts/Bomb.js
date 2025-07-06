@@ -15,13 +15,15 @@ class Bomb {
 
     this._body.createFixture(new BoxShape(size / 2, size / 2), {
       density: 20,
-      isSensor: true, // фиксируем как сенсор, чтобы не было физического столкновения
+      // фиксируем как сенсор, чтобы не было физического столкновения
+      isSensor: true,
     });
 
     this._body.setUserData(data.userData);
   }
 
-  // выполняет детонацию, находит цели, применяет урон/импульс и возвращает данные для клиента
+  // выполняет детонацию, находит цели,
+  // применяет урон/импульс и возвращает данные для клиента
   detonate(world, game, friendlyFire) {
     const bombPosition = this._body.getPosition();
     const shooterData = this._body.getUserData();
@@ -30,7 +32,7 @@ class Bomb {
     const impulseMagnitude = this._weaponData.impulseMagnitude;
     const weaponName = shooterData.weaponName;
 
-    const explosionAABB = new AABB(
+    const aabb = new AABB(
       new Vec2(bombPosition.x - radius, bombPosition.y - radius),
       new Vec2(bombPosition.x + radius, bombPosition.y + radius),
     );
@@ -38,7 +40,7 @@ class Bomb {
     const potentialTargets = new Set();
 
     // 1. Находим все потенциальные цели в радиусе взрыва
-    world.queryAABB(explosionAABB, fixture => {
+    world.queryAABB(aabb, fixture => {
       const body = fixture.getBody();
       const userData = body.getUserData();
 

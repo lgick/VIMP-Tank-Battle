@@ -1,4 +1,5 @@
 // Singleton Stat
+
 let stat;
 
 class Stat {

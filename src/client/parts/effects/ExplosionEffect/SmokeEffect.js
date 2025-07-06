@@ -48,7 +48,8 @@ export default class SmokeEffect extends BaseEffect {
       driftX: (Math.random() - 0.5) * 0.2,
       driftY: -Math.random() * 0.35,
       // каждая частица получает свой уникальный множитель растяжения
-      stretchFactor: this._stretch * (0.8 + Math.random() * 0.4), // от 80% до 120% от базового
+      // от 80% до 120% от базового
+      stretchFactor: this._stretch * (0.8 + Math.random() * 0.4),
     };
 
     this.addChild(particle);
@@ -107,8 +108,10 @@ export default class SmokeEffect extends BaseEffect {
   }
 
   destroy(options) {
-    // очистка массива частиц до вызова super.destroy, который уничтожит дочерние спрайты
-    // частицы уже уничтожаются в _update, но на всякий случай, если destroy вызван досрочно
+    // очистка массива частиц до вызова super.destroy,
+    // который уничтожит дочерние спрайты
+    // частицы уже уничтожаются в _update,
+    // но на всякий случай, если destroy вызван досрочно
     for (let i = this._particles.length - 1; i >= 0; i -= 1) {
       const particle = this._particles[i];
       if (particle && !particle.destroyed) {

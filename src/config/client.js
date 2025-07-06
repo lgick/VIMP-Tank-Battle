@@ -29,7 +29,8 @@ export default {
     bakedAssets: {
       vimp: [
         {
-          name: 'explosionTexture', // id доступа к текстуре и название функции "запекания"
+          // id доступа к текстуре и название функции "запекания"
+          name: 'explosionTexture',
           component: 'ExplosionEffect', // компонент, которому назначен ассет
           params: {
             radius: 50, // радиус круга

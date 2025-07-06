@@ -1,4 +1,5 @@
 // Singleton Chat
+
 let chat;
 
 class Chat {

@@ -23,17 +23,24 @@ class Tank extends BaseModel {
     this._width = this._modelData.size * 4;
     this._height = this._modelData.size * 3;
 
-    this._baseForwardForceFactor = 700; // коэффициент тяги (вперед)
-    this._baseReverseForceFactor = 500; // коэффициент тяги (назад)
-    this._baseTurnTorqueFactor = 45; // коэффициент желаемой интенсивности поворота (зависит от инерции)
-    this._maxForwardSpeed = 240; // целевая макс. скорость вперед (м/с или юнитов/с)
-    this._maxReverseSpeed = -200; // целевая макс. скорость назад (м/с или юнитов/с)
+    // коэффициент тяги (вперед)
+    this._baseForwardForceFactor = 700;
+    // коэффициент тяги (назад)
+    this._baseReverseForceFactor = 500;
+    // коэффициент желаемой интенсивности поворота (зависит от инерции)
+    this._baseTurnTorqueFactor = 45;
+    // целевая макс. скорость вперед (м/с или юнитов/с)
+    this._maxForwardSpeed = 240;
+    // целевая макс. скорость назад (м/с или юнитов/с)
+    this._maxReverseSpeed = -200;
 
     // затухание (Damping) контролирует, как быстро танк замедляется естественно
     // или прекращает поворачиваться.
     // большие значения = большее затухание (замедляется быстрее).
-    this._linearDamping = 3.0; // сопротивление при движении (как сопротивление воздуха/трение)
-    this._angularDamping = 10.0; // сопротивление при повороте
+    // сопротивление при движении (как сопротивление воздуха/трение)
+    this._linearDamping = 3.0;
+    // сопротивление при повороте
+    this._angularDamping = 10.0;
 
     // сила бокового сцепления
     // больше значение = меньше занос/скольжение
@@ -124,8 +131,11 @@ class Tank extends BaseModel {
 
   // получение боковой скорости
   getLateralVelocity(body) {
-    const currentRightNormal = body.getWorldVector(new Vec2(0, 1)); // вектор вправо отн. танка
-    return Vec2.dot(currentRightNormal, body.getLinearVelocity()); // проекция скорости на правый вектор
+    // вектор вправо отн. танка
+    const currentRightNormal = body.getWorldVector(new Vec2(0, 1));
+
+    // проекция скорости на правый вектор
+    return Vec2.dot(currentRightNormal, body.getLinearVelocity());
   }
 
   updateData(dt) {
@@ -168,13 +178,15 @@ class Tank extends BaseModel {
         this._centeringGun = false;
       }
 
-      // если во время центрирования нажали ручной поворот, отменяем центрирование
+      // если во время центрирования нажали ручной поворот,
+      // отменяем центрирование
       if (gLeft || gRight) {
         this._centeringGun = false;
       }
       // ручной поворот башни (только если не центрируемся)
     } else {
-      const rotationAmount = this._gunRotationSpeed * dt; // угол поворота за этот кадр
+      // угол поворота за этот кадр
+      const rotationAmount = this._gunRotationSpeed * dt;
 
       if (gLeft) {
         if (body.gunRotation > -this._maxGunAngle) {
@@ -206,15 +218,15 @@ class Tank extends BaseModel {
           const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
 
           this._shotData = {
-            position: body.getWorldPoint(localBombOffset), // можно использовать текущее тело
+            position: body.getWorldPoint(localBombOffset),
             angle: currentAngle,
           };
           // hitscan weapon
         } else if (this.weaponConstructorType === 'hitscan') {
           this._shotData = {
-            shooterBody: body, // тело самого стрелка
-            startPoint: this.getMuzzlePosition(this.currentWeapon), // vec2
-            direction: this.getFireDirection(this.currentWeapon), // нормализованный Vec2
+            shooterBody: body,
+            startPoint: this.getMuzzlePosition(this.currentWeapon),
+            direction: this.getFireDirection(this.currentWeapon),
           };
         }
       }
@@ -321,7 +333,7 @@ class Tank extends BaseModel {
   getFireDirection(weaponName) {
     const body = this.getBody();
     const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    let directionVec = Rot.mulVec2(new Rot(totalAngle), new Vec2(1, 0)); // изначально Vec2
+    let directionVec = Rot.mulVec2(new Rot(totalAngle), new Vec2(1, 0));
 
     const weaponConfig = this.weapons[weaponName];
 

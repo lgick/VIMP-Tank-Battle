@@ -21,19 +21,20 @@ class HitscanService {
   processShot(params) {
     const {
       shooterBody, // тело стреляющего
-      shooterGameId, // id игрока, совершившего выстрел
       shooterTeamId, // команда игрока для фильтрации при friendlyFire === true
       weaponName, // имя оружия из weaponsConfig
       startPoint, // мировая точка начала луча (например, дуло оружия)
       direction, // нормализованный мировой вектор направления луча
-      filters = {},
     } = params;
 
     const weaponConfig = this._weapons[weaponName];
     const range = weaponConfig.range || 1000; // дальность
-    const impulseMagnitude = weaponConfig.impulseMagnitude || 0; // величина импульса
 
-    const endPointRay = Vec2.add(startPoint, direction.mul(range)); // конечная точка луча
+    // величина импульса
+    const impulseMagnitude = weaponConfig.impulseMagnitude || 0;
+
+    // конечная точка луча
+    const endPointRay = Vec2.add(startPoint, direction.mul(range));
 
     let closestHitFixture = null;
     let hitPoint = null;
@@ -42,7 +43,7 @@ class HitscanService {
     this._world.rayCast(
       startPoint,
       endPointRay,
-      (fixture, point, normal, fraction) => {
+      (fixture, point, _normal, fraction) => {
         const body = fixture.getBody();
 
         // если сам стрелок, игнорировать эту фикстуру и продолжить луч
@@ -52,9 +53,10 @@ class HitscanService {
 
         closestHitFixture = fixture; // сохраняем фикстуру, в которую попали
         hitPoint = point.clone();
-        closestFraction = fraction; // устанавливаем новую максимальную долю для луча
+        closestFraction = fraction; // новая максимальная доля для луча
 
-        return fraction; // продолжить луч, но искать пересечения только до этой точки
+        // продолжить луч, но искать пересечения только до этой точки
+        return fraction;
       },
     );
 
