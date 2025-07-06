@@ -1,5 +1,5 @@
 export default {
-  setID: 'c2',
+  setId: 'c2',
 
   spriteSheet: {
     img: 'tiles.png',

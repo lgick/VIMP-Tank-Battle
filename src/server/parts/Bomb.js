@@ -64,12 +64,12 @@ class Bomb {
       const actualImpulse = impulseMagnitude * falloff;
 
       if (targetUserData.type === 'player') {
-        if (friendlyFire || shooterData.teamID !== targetUserData.teamID) {
+        if (friendlyFire || shooterData.teamId !== targetUserData.teamId) {
           game.applyDamage(
-            targetUserData.gameID,
-            targetUserData.teamID,
+            targetUserData.gameId,
+            targetUserData.teamId,
             weaponName,
-            shooterData.teamID,
+            shooterData.teamId,
             actualDamage,
           );
         }

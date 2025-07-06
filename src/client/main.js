@@ -70,7 +70,7 @@ const CTRL = {}; // контроллеры
 const scale = {}; // масштаб
 let gameSets = {}; // наборы конструкторов (id: [наборы])
 let entitiesOnCanvas = {}; // сущности, отображаемые на полотнах
-let currentMapSetID; // текущий ID набора конструкторов для карт
+let currentMapSetId; // текущий id набора конструкторов для карт
 const coords = { x: 0, y: 0 }; // координаты
 const socketMethods = []; // методы для обработки сокет-данных
 
@@ -197,11 +197,11 @@ socketMethods[PS_AUTH_ERRORS] = err => {
 
 // map data
 socketMethods[PS_MAP_DATA] = data => {
-  const { layers, map, step, setID, spriteSheet, physicsStatic } = data;
+  const { layers, map, step, setId, spriteSheet, physicsStatic } = data;
 
   // удаление данных карт
-  const removeMap = setID => {
-    const nameArr = gameSets[setID] || [];
+  const removeMap = setId => {
+    const nameArr = gameSets[setId] || [];
 
     nameArr.forEach(name => {
       CTRL[entitiesOnCanvas[name]].remove(name);
@@ -209,8 +209,8 @@ socketMethods[PS_MAP_DATA] = data => {
   };
 
   // создание карт
-  const createMap = (setID, staticData) => {
-    const nameArr = gameSets[setID];
+  const createMap = (setId, staticData) => {
+    const nameArr = gameSets[setId];
     const dynamicArr = data.physicsDynamic || [];
     const dynamicData = {};
 
@@ -229,7 +229,7 @@ socketMethods[PS_MAP_DATA] = data => {
       CTRL[canvasId].parse(name, dynamicData);
     });
 
-    currentMapSetID = setID;
+    currentMapSetId = setId;
   };
 
   const staticData = Object.entries(layers).reduce(
@@ -249,8 +249,8 @@ socketMethods[PS_MAP_DATA] = data => {
     {},
   );
 
-  removeMap(currentMapSetID);
-  createMap(setID, staticData);
+  removeMap(currentMapSetId);
+  createMap(setId, staticData);
   updateGameControllers();
   sending(PC_MAP_READY);
 };
@@ -333,11 +333,11 @@ socketMethods[PS_MISC] = data => {
 };
 
 // clear
-socketMethods[PS_CLEAR] = function (setIDList) {
-  // если есть список setID (учитывается в том числе пустой список)
-  if (Array.isArray(setIDList)) {
-    for (let i = 0, len = setIDList.length; i < len; i += 1) {
-      const nameArr = gameSets[setIDList[i]] || [];
+socketMethods[PS_CLEAR] = function (setIdList) {
+  // если есть список setId (учитывается в том числе пустой список)
+  if (Array.isArray(setIdList)) {
+    for (let i = 0, len = setIdList.length; i < len; i += 1) {
+      const nameArr = gameSets[setIdList[i]] || [];
 
       nameArr.forEach(name => {
         CTRL[entitiesOnCanvas[name]].remove(name);
@@ -366,7 +366,7 @@ function runModules(data) {
   const {
     canvasOptions,
     keys,
-    displayID,
+    displayId,
     chat: chatData,
     panel: panelData,
     stat: statData,
@@ -386,7 +386,7 @@ function runModules(data) {
 
   const userView = new UserView(userModel, {
     window,
-    displayID,
+    displayId,
   });
 
   modules.user = new UserCtrl(userModel, userView);
@@ -526,13 +526,13 @@ ws.onopen = () => {
 };
 
 ws.onclose = e => {
-  const connectionInterruptedID = 3;
+  const connectionInterruptedId = 3;
 
   if (e.reason) {
     const msg = unpacking(e.reason);
     socketMethods[msg[0]](msg[1]);
   } else {
-    socketMethods[PS_INFORM_DATA]([connectionInterruptedID]);
+    socketMethods[PS_INFORM_DATA]([connectionInterruptedId]);
   }
 
   console.log('disconnect');

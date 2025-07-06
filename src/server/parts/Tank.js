@@ -67,8 +67,8 @@ class Tank extends BaseModel {
 
     this._body.setUserData({
       type: 'player',
-      gameID: data.gameID,
-      teamID: this.teamID,
+      gameId: data.gameId,
+      teamId: this.teamId,
     });
 
     this._mass = this._body.getMass(); // масса тела
@@ -380,7 +380,7 @@ class Tank extends BaseModel {
       +vel.y.toFixed(1), // скорость по y (мировая)
       this._condition, // состояние танка
       this._modelData.size, // размер танка
-      this.teamID, // id танка
+      this.teamId, // id танка
     ];
   }
 }

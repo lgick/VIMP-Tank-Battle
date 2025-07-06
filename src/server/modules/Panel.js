@@ -31,9 +31,9 @@ class Panel {
 
   // сбрасывает данные пользователей
   reset() {
-    for (const gameID in this._data) {
-      if (Object.hasOwn(this._data, gameID)) {
-        const user = this._data[gameID];
+    for (const gameId in this._data) {
+      if (Object.hasOwn(this._data, gameId)) {
+        const user = this._data[gameId];
 
         user.values = this.getDefault(user.values);
         user.status = true;
@@ -57,26 +57,26 @@ class Panel {
   }
 
   // добавляет пользователя
-  addUser(gameID) {
-    this._data[gameID] = {
+  addUser(gameId) {
+    this._data[gameId] = {
       values: this.getDefault(),
       status: true,
     };
   }
 
   // удаляет пользователя
-  removeUser(gameID) {
-    delete this._data[gameID];
+  removeUser(gameId) {
+    delete this._data[gameId];
   }
 
   // обновляет данные пользователя
   // param: имя параметра из _config (например, 'health', 'bullet')
   // value: значение
   // operation: 'set', 'decrement', 'increment'
-  updateUser(gameID, param, value, operation = 'decrement') {
+  updateUser(gameId, param, value, operation = 'decrement') {
     const conf = this._config[param];
     const key = conf.key;
-    const user = this._data[gameID];
+    const user = this._data[gameId];
     const currentValue = user.values[key];
     let newValue;
 
@@ -97,8 +97,8 @@ class Panel {
   }
 
   // проверяет, достаточно ли у пользователя ресурсов для действия
-  hasResources(gameID, param, value) {
-    const user = this._data[gameID];
+  hasResources(gameId, param, value) {
+    const user = this._data[gameId];
     const conf = this._config[param];
 
     if (user && conf) {
@@ -108,8 +108,8 @@ class Panel {
   }
 
   // возвращает текущее значение параметра для пользователя
-  getCurrentValue(gameID, param) {
-    const user = this._data[gameID];
+  getCurrentValue(gameId, param) {
+    const user = this._data[gameId];
     const conf = this._config[param];
 
     if (user && conf) {
@@ -118,8 +118,8 @@ class Panel {
   }
 
   // возвращает данные
-  getPanel(gameID) {
-    const user = this._data[gameID];
+  getPanel(gameId) {
+    const user = this._data[gameId];
     let data = [this._timerManager.getRoundTimeLeft()];
 
     if (user && user.status === true) {

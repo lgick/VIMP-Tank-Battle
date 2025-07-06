@@ -23,7 +23,7 @@ export default class VoteModel {
     this._waitingValues = false; // ожидания значений
 
     this._time = data.time || 10000; // время жизни голосования
-    this._timerID = null; // id таймера
+    this._timerId = null; // id таймера
 
     this._timeOff = false; // флаг отключения времени жизни голосования
 
@@ -200,7 +200,7 @@ export default class VoteModel {
       currentValues = this._currentValues;
     }
 
-    this.publisher.emit('clear', this._timerID);
+    this.publisher.emit('clear', this._timerId);
 
     this.publisher.emit('vote', {
       title: this._title,
@@ -215,12 +215,12 @@ export default class VoteModel {
   complete() {
     this._data = [];
     this._waitingValues = false;
-    this.publisher.emit('clear', this._timerID);
+    this.publisher.emit('clear', this._timerId);
     this.publisher.emit('mode', { name: 'vote', status: 'closed' });
   }
 
   // добавляет id таймера голосования
-  assignTimer(timerID) {
-    this._timerID = timerID || null;
+  assignTimer(timerId) {
+    this._timerId = timerId || null;
   }
 }

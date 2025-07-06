@@ -82,13 +82,13 @@ export default class TracerEffect extends BaseEffect {
     });
   }
 
-  _update(deltaMS) {
+  _update(deltaMs) {
     if (this.isComplete) {
       // проверка из BaseEffect
       return;
     }
 
-    this.elapsedTime += deltaMS;
+    this.elapsedTime += deltaMs;
     this.graphics.clear();
 
     const tracerDrawProgress = Math.min(

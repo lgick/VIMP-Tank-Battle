@@ -212,8 +212,8 @@ export default function tankTexture(params, renderer) {
   };
 
   // создание текстур для каждой команды и состояния
-  textures.liveTeamID1 = createLiveTankTextures(colors.teamID1);
-  textures.liveTeamID2 = createLiveTankTextures(colors.teamID2);
+  textures.liveTeamId1 = createLiveTankTextures(colors.teamId1);
+  textures.liveTeamId2 = createLiveTankTextures(colors.teamId2);
   textures.destroyed = createDestroyedTankTexture();
 
   return textures;

@@ -18,9 +18,9 @@ class Vote {
   reset() {
     this._list = [];
 
-    for (const gameID in this._userList) {
-      if (Object.hasOwn(this._userList, gameID)) {
-        this._userList[gameID] = [];
+    for (const gameId in this._userList) {
+      if (Object.hasOwn(this._userList, gameId)) {
+        this._userList[gameId] = [];
       }
     }
 
@@ -28,13 +28,13 @@ class Vote {
   }
 
   // добавляет пользователя
-  addUser(gameID) {
-    this._userList[gameID] = [];
+  addUser(gameId) {
+    this._userList[gameId] = [];
   }
 
   // удаляет пользователя
-  removeUser(gameID) {
-    delete this._userList[gameID];
+  removeUser(gameId) {
+    delete this._userList[gameId];
   }
 
   // добавляет данные голосования
@@ -43,8 +43,8 @@ class Vote {
   }
 
   // добавляет данные голосования для пользователя
-  pushByUser(gameID, arr) {
-    this._userList[gameID].push(arr);
+  pushByUser(gameId, arr) {
+    this._userList[gameId].push(arr);
   }
 
   // возвращает данные
@@ -53,8 +53,8 @@ class Vote {
   }
 
   // возвращает данные для пользователя
-  shiftByUser(gameID) {
-    return this._userList[gameID].shift();
+  shiftByUser(gameId) {
+    return this._userList[gameId].shift();
   }
 
   // создает голосование со сбором голосов
