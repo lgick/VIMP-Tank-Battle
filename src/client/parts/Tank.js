@@ -21,7 +21,7 @@ export default class Tank extends Container {
 
     this._textures = assets.tankTexture;
 
-    // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
+    // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this.rotation = data[2] || 0;
@@ -33,13 +33,13 @@ export default class Tank extends Container {
     this._width = this._size * 4;
     this._height = this._size * 3;
 
-    this._teamID = data[8];
+    this._teamId = data[8];
 
     // правильный якорь для пушки в зависимости от команды
     const liveTextures =
-      this._teamID === 1
-        ? this._textures.liveTeamID1
-        : this._textures.liveTeamID2;
+      this._teamId === 1
+        ? this._textures.liveTeamId1
+        : this._textures.liveTeamId2;
     const gunAnchorData = liveTextures ? liveTextures.gunAnchor : null;
 
     if (gunAnchorData) {
@@ -79,10 +79,10 @@ export default class Tank extends Container {
       let liveTextures;
 
       // набор текстур в зависимости от команды
-      if (this._teamID === 1) {
-        liveTextures = this._textures.liveTeamID1;
-      } else if (this._teamID === 2) {
-        liveTextures = this._textures.liveTeamID2;
+      if (this._teamId === 1) {
+        liveTextures = this._textures.liveTeamId1;
+      } else if (this._teamId === 2) {
+        liveTextures = this._textures.liveTeamId2;
       }
 
       this.body.texture = liveTextures.body;

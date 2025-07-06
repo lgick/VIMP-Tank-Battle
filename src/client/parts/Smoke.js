@@ -51,7 +51,7 @@ export default class Smoke extends Container {
     this.smokeTexture = assets.smokeTexture;
 
     // параметры с сервера:
-    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
+    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
     this.emitterX = data[0];
     this.emitterY = data[1];
     this.emitterRotation = data[2];
@@ -90,15 +90,15 @@ export default class Smoke extends Container {
     this.condition = data[6];
   }
 
-  _updateParticles(deltaMS) {
-    if (deltaMS <= 0) {
+  _updateParticles(deltaMs) {
+    if (deltaMs <= 0) {
       return;
     }
 
-    const deltaTime = deltaMS / 1000.0; // время в секундах
+    const deltaTime = deltaMs / 1000.0; // время в секундах
 
     // спавн новых частиц
-    this.timeSinceLastSpawn += deltaMS;
+    this.timeSinceLastSpawn += deltaMs;
 
     // определяем количество потоков
     let numStreams = 1;
@@ -129,7 +129,7 @@ export default class Smoke extends Container {
     for (let i = this.particles.length - 1; i >= 0; i -= 1) {
       const particle = this.particles[i];
 
-      particle.age += deltaMS;
+      particle.age += deltaMs;
 
       if (particle.age >= particle.lifetime) {
         this.particleContainer.removeChild(particle.graphics);

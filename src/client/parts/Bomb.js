@@ -13,7 +13,7 @@ export default class Bomb extends Container {
     this.y = params[1];
     this.rotation = params[2];
     this._size = params[3]; // соотношение сторон 1:1
-    this._totalDurationMS = params[4];
+    this._totalDurationMs = params[4];
 
     // Масштабируем спрайт под нужный размер
     const textureSize = assets.bombTexture.width; // предполагаем, что текстура квадратная
@@ -35,48 +35,48 @@ export default class Bomb extends Container {
     this.text.y = 0;
 
     // накопленное время с момента создания
-    this._accumulatedTimeMS = 0;
+    this._accumulatedTimeMs = 0;
 
     this.addChild(this.body, this.text);
-    this._updateTimerDisplay(this._totalDurationMS);
+    this._updateTimerDisplay(this._totalDurationMs);
 
     this._tickListener = ticker => this._updateTimer(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
   }
 
   // обновление таймера
-  // deltaMS - время в миллисекундах, прошедшее с прошлого кадра
-  _updateTimer(deltaMS) {
+  // deltaMs - время в миллисекундах, прошедшее с прошлого кадра
+  _updateTimer(deltaMs) {
     // накопление прошедшего времени
-    this._accumulatedTimeMS += deltaMS;
+    this._accumulatedTimeMs += deltaMs;
 
     // вычисление оставшегося времени
-    const remainingMS = Math.max(
+    const remainingMs = Math.max(
       0,
-      this._totalDurationMS - this._accumulatedTimeMS,
+      this._totalDurationMs - this._accumulatedTimeMs,
     );
 
     // обновление текста на экране
-    this._updateTimerDisplay(remainingMS);
+    this._updateTimerDisplay(remainingMs);
 
     // если вышло ли время, требуется завершить анимацию
-    if (remainingMS <= 0) {
+    if (remainingMs <= 0) {
       this._stopTimer();
       this._updateTimerDisplay(0);
     }
   }
 
   // обновление текста таймера на основе оставшегося времени
-  // remainingMS - оставшееся время в миллисекундах
-  _updateTimerDisplay(remainingMS) {
+  // remainingMs - оставшееся время в миллисекундах
+  _updateTimerDisplay(remainingMs) {
     // определение количества целых секунд, оставшихся до конца
-    const wholeSecondsLeft = Math.floor(remainingMS / 1000);
+    const wholeSecondsLeft = Math.floor(remainingMs / 1000);
 
     // определение количества сотых долей секунды, оставшихся в текущей секунде
-    const hundredthsLeftInSecond = Math.floor((remainingMS % 1000) / 10);
+    const hundredthsLeftInSecond = Math.floor((remainingMs % 1000) / 10);
 
-    // при remainingMS == 0, сотые тоже должны быть 0
-    const displayHundredths = remainingMS <= 0 ? 0 : hundredthsLeftInSecond;
+    // при remainingMs == 0, сотые тоже должны быть 0
+    const displayHundredths = remainingMs <= 0 ? 0 : hundredthsLeftInSecond;
 
     // форматирование с ведущими нулями
     const secondsStr = String(wholeSecondsLeft).padStart(2, '0');

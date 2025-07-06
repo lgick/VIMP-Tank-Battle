@@ -15,7 +15,7 @@ export default class UserView {
     this._window = data.window;
     this._document = this._window.document;
 
-    this._displayID = data.displayID;
+    this._displayId = data.displayId;
 
     this.publisher = new Publisher();
 
@@ -42,7 +42,7 @@ export default class UserView {
 
   // инициализация
   init() {
-    for (const id of this._displayID) {
+    for (const id of this._displayId) {
       const elem = this._document.getElementById(id);
 
       if (elem) {

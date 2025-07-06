@@ -44,7 +44,7 @@ export default {
         type: 'explosive',
         constructor: 'Bomb',
         time: 5000,
-        shotOutcomeID: 'w2e', // id конструктора для детонации бомбы
+        shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
         size: 32, // соотношение сторон 1:1
         fireRate: 0.1, // кулдаун между выстрелами
         damage: 30, // урон в эпицентре
@@ -61,7 +61,7 @@ export default {
   maps, // карты
   currentMap: 'empty', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
-  mapSetID: 'c1', // дефолтный id конструкторов создания карт
+  mapSetId: 'c1', // дефолтный id конструкторов создания карт
 
   timeStep: 1000 / 120, // время обновления кадра ~120 Гц
   roundTime: 60000, // время раунда (60)

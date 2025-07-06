@@ -44,8 +44,8 @@ export default class VoteCtrl {
   }
 
   // добавляет таймер
-  assignTimer(timerID) {
-    this._model.assignTimer(timerID);
+  assignTimer(timerId) {
+    this._model.assignTimer(timerId);
   }
 
   // удаляет голосование

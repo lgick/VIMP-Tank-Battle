@@ -13,11 +13,11 @@ export default class TankRadar extends Container {
 
     this.addChild(this.body);
 
-    // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
+    // параметры с сервера: [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this._condition = data[6];
-    this._teamID = data[8];
+    this._teamId = data[8];
 
     // масштаб контейнера
     this.scale.set(10, 10);
@@ -31,10 +31,10 @@ export default class TankRadar extends Container {
       this.body.texture = this._textures.destroyed;
     } else {
       // определение текстуры в зависимости от команды
-      if (this._teamID === 1) {
-        this.body.texture = this._textures.liveTeamID1;
-      } else if (this._teamID === 2) {
-        this.body.texture = this._textures.liveTeamID2;
+      if (this._teamId === 1) {
+        this.body.texture = this._textures.liveTeamId1;
+      } else if (this._teamId === 2) {
+        this.body.texture = this._textures.liveTeamId2;
       }
     }
   }

@@ -133,13 +133,13 @@ export default class ImpactEffect extends BaseEffect {
     }
   }
 
-  _update(deltaMS) {
+  _update(deltaMs) {
     if (this.isComplete) {
       return;
     }
 
-    this.elapsedTime += deltaMS;
-    const deltaSeconds = deltaMS / 1000;
+    this.elapsedTime += deltaMs;
+    const deltaSeconds = deltaMs / 1000;
     let activeParticlesCount = 0;
 
     for (let i = 0, len = this.particlesData.length; i < len; i += 1) {
@@ -150,7 +150,7 @@ export default class ImpactEffect extends BaseEffect {
       }
 
       activeParticlesCount += 1;
-      pData.age += deltaMS;
+      pData.age += deltaMs;
 
       if (pData.isMoving) {
         // сопротивление среды (drag)
@@ -182,7 +182,7 @@ export default class ImpactEffect extends BaseEffect {
         }
         // частица остановилась
       } else {
-        pData.timeSinceStopped += deltaMS;
+        pData.timeSinceStopped += deltaMs;
       }
 
       // логика угасания и завершения жизни

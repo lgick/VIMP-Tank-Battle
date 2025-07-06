@@ -15,7 +15,7 @@ export default class VoteView {
     this._window = data.window;
     this._document = this._window.document;
 
-    this._voteID = data.elems.voteID || 'vote';
+    this._voteId = data.elems.voteId || 'vote';
     this._titleClass = data.elems.titleClass || 'vote-title';
     this._listClass = data.elems.listClass || 'vote-list';
     this._navClass = data.elems.navClass || 'vote-nav';
@@ -39,9 +39,9 @@ export default class VoteView {
     const backElem = this._document.createElement('p');
     const moreElem = this._document.createElement('p');
     const exitElem = this._document.createElement('p');
-    let timerID = null;
+    let timerId = null;
 
-    vote.setAttribute('id', this._voteID);
+    vote.setAttribute('id', this._voteId);
 
     p.setAttribute('class', this._titleClass);
     p.innerHTML = title;
@@ -82,22 +82,22 @@ export default class VoteView {
     this._document.body.appendChild(vote);
 
     if (time !== null) {
-      timerID = this._window.setTimeout(() => {
+      timerId = this._window.setTimeout(() => {
         vote.parentElement.removeChild(vote);
         this.publisher.emit('timer', null);
         this.publisher.emit('clear');
       }, time);
     }
 
-    this.publisher.emit('timer', timerID);
+    this.publisher.emit('timer', timerId);
   }
 
   // удаляет окно голосования
-  removeVote(timerID) {
-    const vote = this._document.getElementById(this._voteID);
+  removeVote(timerId) {
+    const vote = this._document.getElementById(this._voteId);
 
-    if (timerID) {
-      this._window.clearTimeout(timerID);
+    if (timerId) {
+      this._window.clearTimeout(timerId);
     }
 
     if (vote) {

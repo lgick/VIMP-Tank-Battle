@@ -52,7 +52,7 @@ export default class StatView {
 
   // обновляет <thead>
   updateTableHead(data) {
-    const table = this._document.getElementById(data.tableID);
+    const table = this._document.getElementById(data.tableId);
     const cells = table.tHead.rows[data.rowNumber].cells;
     const cellsData = data.cellsData;
 
@@ -63,7 +63,7 @@ export default class StatView {
 
   // обновляет <tbody>
   updateTableBody(data) {
-    const table = this._document.getElementById(data.tableID);
+    const table = this._document.getElementById(data.tableId);
     const tbody = table.tBodies[data.bodyNumber];
     let row = tbody.rows.namedItem(`stat_${data.id}`);
     const { cellsData, sortData } = data;

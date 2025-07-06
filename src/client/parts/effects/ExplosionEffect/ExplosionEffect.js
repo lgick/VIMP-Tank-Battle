@@ -17,8 +17,8 @@ export default class ExplosionEffect extends BaseEffect {
     // сортировка дочерних элементов по zIndex
     this.sortableChildren = true;
 
-    this._durationMS = 3000;
-    this._elapsedMS = 0;
+    this._durationMs = 3000;
+    this._elapsedMs = 0;
 
     // необходимый масштаб спрайта, чтобы он соответствовал радиусу взрыва
     // делить на EFFECT_BASE_RADIUS_PX, так как базовый радиус в текстуре был 50px
@@ -43,16 +43,16 @@ export default class ExplosionEffect extends BaseEffect {
   }
 
   // обновление анимации
-  _update(deltaMS) {
+  _update(deltaMs) {
     if (this.isComplete) {
       // проверка из BaseEffect
       return;
     }
 
-    this._elapsedMS += deltaMS;
+    this._elapsedMs += deltaMs;
 
-    if (this._elapsedMS <= this._durationMS) {
-      const progress = this._elapsedMS / this._durationMS;
+    if (this._elapsedMs <= this._durationMs) {
+      const progress = this._elapsedMs / this._durationMs;
       this._draw(progress);
     } else {
       // метод из BaseEffect

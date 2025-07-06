@@ -30,7 +30,7 @@ export default class Tracks extends Container {
     this.lastTrackMarkTime = 0;
 
     // минимальное изменение линейной скорости, чтобы оставить след
-    // скорость измеряется в пикселях за время deltaMS последнего тика
+    // скорость измеряется в пикселях за время deltaMs последнего тика
     // при уменьшении значения, следы будут появляться чаще при малейшем маневрировании скоростью
     // (легкий разгон, небольшое торможение)
     this.minAbsAccelerationForMark = 4;
@@ -83,8 +83,8 @@ export default class Tracks extends Container {
     this.condition = data[6];
   }
 
-  _internalUpdate(deltaMS) {
-    if (deltaMS <= 0) {
+  _internalUpdate(deltaMs) {
+    if (deltaMs <= 0) {
       return;
     }
 
@@ -93,7 +93,7 @@ export default class Tracks extends Container {
     for (let i = this.children.length - 1; i >= 0; i -= 1) {
       const mark = this.children[i];
       // если возвращается true, значит время жизни вышло
-      if (mark.update(deltaMS)) {
+      if (mark.update(deltaMs)) {
         // уничтожение спрайта
         // метод destroy() автоматически удаляет объект из родительского контейнера
         mark.destroy();
@@ -104,7 +104,7 @@ export default class Tracks extends Container {
     const deltaX = this.currentX - this._prevX;
     const deltaY = this.currentY - this._prevY;
 
-    // текущая линейная скорость (пикселей за время deltaMS)
+    // текущая линейная скорость (пикселей за время deltaMs)
     const currentSpeed = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
     let rotationDiff = this.currentRotation - this._prevRotation;
@@ -117,7 +117,7 @@ export default class Tracks extends Container {
       rotationDiff += 2 * Math.PI;
     }
 
-    // текущая угловая скорость (радианы за время deltaMS)
+    // текущая угловая скорость (радианы за время deltaMs)
     const currentAngularSpeed = Math.abs(rotationDiff);
 
     // линейное ускорение/замедление
