@@ -90,6 +90,7 @@ export default [
       'prefer-const': 'warn', // предлагать использовать const, если переменная не переназначается
       'object-shorthand': ['warn', 'properties'], // рекомендовать короткий синтаксис для свойств объектов
       'arrow-body-style': ['warn', 'as-needed'], // тело стрелочной функции без {} если возможно
+      camelcase: 'error', // требовать camelCase именования
     },
   },
 

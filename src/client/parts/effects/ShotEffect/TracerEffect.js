@@ -22,9 +22,9 @@ export default class TracerEffect extends BaseEffect {
       trailLength: 55, // фиксированная максимальная длина видимой части хвоста трассера в пикселях
       tracerSpeed: 19000, // желаемая скорость "головы" трассера в px/second
       minDuration: 45, // минимальная длительность анимации в миллисекундах
-      maxDuration: 110, // максимальная длительность анимации в миллисекундах
+      maxDuration: 80, // максимальная длительность анимации в миллисекундах
       trailShrinkPower: 1.0, // коэффициент для скорости укорачивания хвоста (чем больше, тем быстрее хвост укорачивается к концу пути)
-      trailStartOffset: 8, // начало появления трассера на этом расстоянии от дула (начальной точки) в пикселях
+      trailStartOffset: 30, // начало появления трассера на этом расстоянии от дула (начальной точки) в пикселях
       segmentCount: 12, // количество сегментов (кругов), из которых состоит линия трассера
       segmentRadius: 2, // толщина трассера (радиус каждого сегмента)
       alphaPulseFrequency: 0.1, // частота пульсации прозрачности (чем выше, тем чаще пульсирует)
@@ -139,11 +139,7 @@ export default class TracerEffect extends BaseEffect {
       const distCoveredByHead = this.totalDist * tracerDrawProgress;
 
       // если голова еще не прошла отступ trailStartOffset, не рисуем трассер
-      if (
-        distCoveredByHead < this.config.trailStartOffset &&
-        this.totalDist > 0.001
-      ) {
-      } else {
+      if (distCoveredByHead >= this.config.trailStartOffset) {
         let adjustedDistCoveredByHead = distCoveredByHead;
 
         if (this.totalDist > 0.001) {
