@@ -5,6 +5,7 @@ npx eslint --print-config src/server/modules/Panel.js > log
 
 import js from '@eslint/js';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import noConsecutiveCapsPlugin from 'eslint-plugin-no-consecutive-caps';
 import globals from 'globals';
 
 export default [
@@ -13,6 +14,12 @@ export default [
 
   // отключение правил ESLint, конфликтующих с Prettier
   eslintConfigPrettier,
+
+  {
+    plugins: {
+      'no-consecutive-caps': noConsecutiveCapsPlugin,
+    },
+  },
 
   // конфигурация для файлов в корне проекта (конфиги и т.д.)
   {
@@ -25,7 +32,7 @@ export default [
       },
     },
     rules: {
-      'no-console': 'off', // в файлах конфигурации console.log может быть полезен
+      'no-console': 'off', // в файлах конфигурации console.log
     },
   },
 
@@ -38,11 +45,10 @@ export default [
       ecmaVersion: 'latest', // последний ECMAScript
       sourceType: 'module', // "type": "module" в package.json
       globals: {
-        ...globals.node, // глобальные переменные Node.js (console, process, etc.)
+        ...globals.node, // глобальные переменные Node.js (console, process...)
       },
     },
     rules: {
-      // предупреждать об использовании console.log на сервере (кроме разработки)
       'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     },
   },
@@ -56,7 +62,7 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-        ...globals.browser, // глобальные переменные браузера (window, document, etc.)
+        ...globals.browser, // глобальные переменные браузера
       },
     },
     rules: {
@@ -79,18 +85,33 @@ export default [
     },
   },
 
-  // общие правила для всего проекта (применяются ко всем JS файлам, если не переопределены выше)
+  // общие правила для всего проекта
+  // (применяются ко всем JS файлам, если не переопределены выше)
   {
     rules: {
-      'no-unused-vars': 'off', // предупреждать о неиспользуемых переменных (используется tsserver)
-      eqeqeq: ['error', 'always'], // требовать === и !==
-      curly: ['error', 'all'], // требовать фигурные скобки для всех блоков if, for, while и т.д.
-      'no-else-return': 'warn', // предупреждать о ненужных else после return
-      'no-var': 'error', // использовать let/const вместо var
-      'prefer-const': 'warn', // предлагать использовать const, если переменная не переназначается
-      'object-shorthand': ['warn', 'properties'], // рекомендовать короткий синтаксис для свойств объектов
-      'arrow-body-style': ['warn', 'as-needed'], // тело стрелочной функции без {} если возможно
-      camelcase: 'error', // требовать camelCase именования
+      // предупреждать о неиспользуемых переменных (используется tsserver)
+      'no-unused-vars': 'off',
+      // требовать === и !==
+      eqeqeq: ['error', 'always'],
+      // требовать фигурные скобки для всех блоков if, for, while и т.д.
+      curly: ['error', 'all'],
+      // предупреждать о ненужных else после return
+      'no-else-return': 'warn',
+      // использовать let/const вместо var
+      'no-var': 'error',
+      // предлагать использовать const, если переменная не переназначается
+      'prefer-const': 'warn',
+      // рекомендовать короткий синтаксис для свойств объектов
+      'object-shorthand': ['warn', 'properties'],
+      // тело стрелочной функции без {} если возможно
+      'arrow-body-style': ['warn', 'as-needed'],
+      // требовать camelCase именования
+      camelcase: 'error',
+      // плагин с запретом на caps в названиях
+      'no-consecutive-caps/no-consecutive-caps': [
+        'error',
+        { exceptions: ['VX', 'VY'] }, // исключения в названиях
+      ],
     },
   },
 
@@ -101,8 +122,8 @@ export default [
       'dist/**', // результаты сборки Vite
       'public/**', // статика, которую не нужно линтить
       'build/**',
-      '**/.*', // игнорировать все файлы/директории, начинающиеся с '.', на любом уровне
-      '**/_*', // игнорировать все файлы/директории, начинающиеся с '_', на любом уровне
+      '**/.*', // игнорировать все файлы/директории, начинающиеся с '.'
+      '**/_*', // игнорировать все файлы/директории, начинающиеся с '_'
     ],
   },
 ];
