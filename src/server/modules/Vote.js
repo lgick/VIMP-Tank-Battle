@@ -18,9 +18,9 @@ class Vote {
   reset() {
     this._list = [];
 
-    for (const gameID in this._userList) {
-      if (Object.hasOwn(this._userList, gameID)) {
-        this._userList[gameID] = [];
+    for (const gameId in this._userList) {
+      if (Object.hasOwn(this._userList, gameId)) {
+        this._userList[gameId] = [];
       }
     }
 
@@ -28,13 +28,13 @@ class Vote {
   }
 
   // добавляет пользователя
-  addUser(gameID) {
-    this._userList[gameID] = [];
+  addUser(gameId) {
+    this._userList[gameId] = [];
   }
 
   // удаляет пользователя
-  removeUser(gameID) {
-    delete this._userList[gameID];
+  removeUser(gameId) {
+    delete this._userList[gameId];
   }
 
   // добавляет данные голосования
@@ -43,8 +43,8 @@ class Vote {
   }
 
   // добавляет данные голосования для пользователя
-  pushByUser(gameID, arr) {
-    this._userList[gameID].push(arr);
+  pushByUser(gameId, arr) {
+    this._userList[gameId].push(arr);
   }
 
   // возвращает данные
@@ -53,8 +53,8 @@ class Vote {
   }
 
   // возвращает данные для пользователя
-  shiftByUser(gameID) {
-    return this._userList[gameID].shift();
+  shiftByUser(gameId) {
+    return this._userList[gameId].shift();
   }
 
   // создает голосование со сбором голосов
@@ -83,28 +83,50 @@ class Vote {
     }
   }
 
-  // возвращает результат голосования
+  // возвращает результат голосования с обработкой ничьей
   getResult(name) {
     const results = this._votes[name];
-    let votes = 0;
-    let result;
+    let maxVotes = 0;
+    let winners = []; // массив для хранения победителей
 
-    if (!results) {
+    if (!results || Object.keys(results).length === 0) {
+      delete this._votes[name];
       return;
     }
 
-    for (const p in results) {
-      if (Object.hasOwn(results, p)) {
-        if (results[p] > votes) {
-          result = p;
-          votes = results[p];
+    // поиск победителей
+    for (const option in results) {
+      if (Object.hasOwn(results, option)) {
+        const currentVotes = results[option];
+
+        // если текущий вариант набрал больше голосов,
+        // он становится единственным лидером
+        if (currentVotes > maxVotes) {
+          maxVotes = currentVotes;
+          winners = [option];
+          // если голосов столько же, добавляем в список победителей (ничья)
+        } else if (currentVotes === maxVotes) {
+          winners.push(option);
         }
       }
     }
 
     delete this._votes[name];
 
-    return result;
+    // если никто не проголосовал
+    if (winners.length === 0) {
+      return;
+    }
+
+    // если победитель один
+    if (winners.length === 1) {
+      return winners[0];
+    }
+
+    // случайный выбор, если победителей несколько
+    const randomIndex = Math.floor(Math.random() * winners.length);
+
+    return winners[randomIndex];
   }
 }
 

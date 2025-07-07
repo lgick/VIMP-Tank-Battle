@@ -12,7 +12,7 @@ class Publisher {
   /**
    * Добавляет подписчика для указанного типа события.
    * @param {string} type - Тип события.
-   * @param {Function|string} fn - Функция-обработчик или имя метода в объекте context.
+   * @param {Function|string} fn - Функция-обработчик или имя метода.
    * @param {Object} [context] - Контекст, в котором будет вызвана функция.
    */
   on(type, fn, context) {

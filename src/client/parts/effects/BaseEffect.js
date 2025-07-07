@@ -22,8 +22,9 @@ export default class BaseEffect extends Container {
     this._onEffectStart();
 
     // если эффект не был завершен сразу в _onEffectStart
+    // начальный вызов для немедленной отрисовки/установки состояния
     if (!this.isComplete) {
-      this._update(0); // начальный вызов для немедленной отрисовки/установки состояния
+      this._update(0);
     }
   }
 
@@ -63,7 +64,8 @@ export default class BaseEffect extends Container {
       this.parent.removeChild(this);
     }
 
-    // уничтожение дочерних элементов по умолчанию, но не текстур, т.к. они могут быть общими
+    // уничтожение дочерних элементов по умолчанию, но не текстур,
+    // т.к. они могут быть общими
     super.destroy({
       children: true,
       texture: false,

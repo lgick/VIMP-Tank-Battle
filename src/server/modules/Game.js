@@ -2,6 +2,7 @@ import planck from 'planck';
 import Factory from '../../lib/factory.js';
 
 // Singleton Game
+
 let game;
 
 class Game {
@@ -68,23 +69,23 @@ class Game {
     this._weaponEffectList = [
       ...new Set(
         Object.values(this._weapons)
-          .filter(weapon => weapon.shotOutcomeID)
-          .map(weapon => weapon.shotOutcomeID),
+          .filter(weapon => weapon.shotOutcomeId)
+          .map(weapon => weapon.shotOutcomeId),
       ),
     ];
 
-    // данные игроков { gameID: playerInstance }
+    // данные игроков { gameId: playerInstance }
     this._playersData = {};
 
-    // общий список активных пуль { shotID: shotObject }
+    // общий список активных пуль { shotId: shotObject }
     this._shotsData = {};
 
     // созданные пули в момент времени (кольцевой буфер)
-    // { stepTick: [shotID1, shotID2] }
+    // { stepTick: [shotId1, shotId2] }
     this._shotsAtTime = {};
 
     // id для пуль
-    this._currentShotID = 0;
+    this._currentShotId = 0;
 
     // инициализация времени жизни пуль и кольцевого буфера
     let maxLifetimeMs = 0;
@@ -147,20 +148,20 @@ class Game {
   }
 
   // создает игрока
-  createPlayer(gameID, model, name, teamID, data) {
+  createPlayer(gameId, model, name, teamId, data) {
     const modelData = this._models[model];
 
     modelData.position = [data[0], data[1]];
     modelData.angle = data[2];
 
-    this._playersData[gameID] = this._Factory(modelData.constructor, {
+    this._playersData[gameId] = this._Factory(modelData.constructor, {
       keysData: this._keysData,
       modelData,
       world: this._world,
       model,
       name,
-      gameID,
-      teamID,
+      gameId,
+      teamId,
       currentWeapon: modelData.currentWeapon,
       weapons: this._weapons,
       services: this._services,
@@ -168,11 +169,11 @@ class Game {
   }
 
   // удаляет игрока
-  removePlayer(gameID) {
+  removePlayer(gameId) {
     // если игрок существует
-    if (this._playersData[gameID]) {
-      this._world.destroyBody(this._playersData[gameID].getBody());
-      delete this._playersData[gameID];
+    if (this._playersData[gameId]) {
+      this._world.destroyBody(this._playersData[gameId].getBody());
+      delete this._playersData[gameId];
     }
   }
 
@@ -180,9 +181,9 @@ class Game {
   removePlayers() {
     const modelNameSet = new Set();
 
-    for (const gameID in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameID)) {
-        const player = this._playersData[gameID];
+    for (const gameId in this._playersData) {
+      if (Object.hasOwn(this._playersData, gameId)) {
+        const player = this._playersData[gameId];
 
         modelNameSet.add(player.model);
         this._world.destroyBody(player.getBody());
@@ -195,20 +196,20 @@ class Game {
   }
 
   // меняет имя игрока
-  changeName(gameID, name) {
-    if (this._playersData[gameID]) {
-      this._playersData[gameID].changeName(name);
+  changeName(gameId, name) {
+    if (this._playersData[gameId]) {
+      this._playersData[gameId].changeName(name);
     }
   }
 
   // обновляет нажатые клавиши
-  updateKeys(gameID, keys) {
-    this._playersData[gameID].currentKeys = keys;
+  updateKeys(gameId, keys) {
+    this._playersData[gameId].currentKeys = keys;
   }
 
   // возвращает координаты игрока
-  getPlayerCoords(gameID) {
-    const position = this._playersData[gameID].getBody().getPosition();
+  getPlayerCoords(gameId) {
+    const position = this._playersData[gameId].getBody().getPosition();
     return [+position.x.toFixed(), +position.y.toFixed()];
   }
 
@@ -235,9 +236,9 @@ class Game {
   // обновляет данные физики
   updateData(dt) {
     // обновляем модели игроков
-    for (const gameID in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameID)) {
-        this._playersData[gameID].updateData(dt);
+    for (const gameId in this._playersData) {
+      if (Object.hasOwn(this._playersData, gameId)) {
+        this._playersData[gameId].updateData(dt);
       }
     }
 
@@ -269,13 +270,13 @@ class Game {
 
   //  применение урона игроку
   applyDamage(
-    targetGameID,
-    targetTeamID,
+    targetGameId,
+    targetTeamId,
     weaponName,
-    shooterTeamID,
+    shooterTeamId,
     damageValue,
   ) {
-    const player = this._playersData[targetGameID];
+    const player = this._playersData[targetGameId];
 
     // если игрок не существует или уже уничтожен, ничего не делаем
     if (!player || !player.isAlive()) {
@@ -283,7 +284,7 @@ class Game {
     }
 
     // проверка на дружественный огонь
-    if (!this._friendlyFire && targetTeamID === shooterTeamID) {
+    if (!this._friendlyFire && targetTeamId === shooterTeamId) {
       return;
     }
 
@@ -292,7 +293,7 @@ class Game {
     // если эффект тряски есть
     if (weaponConfig?.cameraShake) {
       this._services.vimp.triggerCameraShake(
-        targetGameID,
+        targetGameId,
         weaponConfig.cameraShake,
       );
     }
@@ -354,10 +355,10 @@ class Game {
       }
 
       this.applyDamage(
-        playerData.gameID,
-        playerData.teamID,
+        playerData.gameId,
+        playerData.teamId,
         shotData.weaponName,
-        shotData.teamID,
+        shotData.teamId,
       );
 
       // помечаем снаряд на удаление, а не удаляем сразу
@@ -379,10 +380,10 @@ class Game {
 
       // если это был снаряд, нужно обновить данные для клиентов
       if (userData && userData.type === 'shot') {
-        delete this._shotsData[userData.shotID];
+        delete this._shotsData[userData.shotId];
 
         this.mergeShotOutcomeData({
-          [userData.weaponName]: { [userData.shotID]: null },
+          [userData.weaponName]: { [userData.shotId]: null },
         });
       }
 
@@ -401,9 +402,9 @@ class Game {
 
         const data = newData[weaponName];
 
-        for (const shotID in data) {
-          if (Object.hasOwn(data, shotID)) {
-            this._lastExpiredShotsData[weaponName][shotID] = data[shotID];
+        for (const shotId in data) {
+          if (Object.hasOwn(data, shotId)) {
+            this._lastExpiredShotsData[weaponName][shotId] = data[shotId];
           }
         }
       }
@@ -416,40 +417,41 @@ class Game {
     const outcomeData = {};
 
     for (let i = 0, len = shotsInCurrentTick.length; i < len; i += 1) {
-      const shotID = shotsInCurrentTick[i];
-      const shot = this._shotsData[shotID];
+      const shotId = shotsInCurrentTick[i];
+      const shot = this._shotsData[shotId];
 
       // если пуля все еще существует (не была уничтожена досрочно)
       if (shot) {
         const weaponName = shot.weaponName;
         const weapon = this._weapons[weaponName];
-        const shotOutcomeID = weapon.shotOutcomeID;
+        const shotOutcomeId = weapon.shotOutcomeId;
 
         // если у оружия есть эффект по истечению времени (например, взрыв)
-        if (shotOutcomeID) {
+        if (shotOutcomeId) {
           const explosionData = shot.detonate(
             this._world,
             this,
             this._friendlyFire,
           );
 
-          this._lastWeaponEffects[shotOutcomeID] =
-            this._lastWeaponEffects[shotOutcomeID] || [];
-          this._lastWeaponEffects[shotOutcomeID].push(explosionData);
+          this._lastWeaponEffects[shotOutcomeId] =
+            this._lastWeaponEffects[shotOutcomeId] || [];
+          this._lastWeaponEffects[shotOutcomeId].push(explosionData);
         }
 
         this._world.destroyBody(shot.getBody());
-        delete this._shotsData[shotID];
+        delete this._shotsData[shotId];
 
         // помечаем исходный снаряд (бомбу) как удаленный
         outcomeData[weaponName] = outcomeData[weaponName] || {};
-        outcomeData[weaponName][shotID] = null;
+        outcomeData[weaponName][shotId] = null;
       }
     }
 
     this._shotsAtTime[this._currentStepTick] = []; // очищаем текущий слот
+    // переходим к следующему слоту
     this._currentStepTick =
-      (this._currentStepTick + 1) % this._maxShotTimeInSteps; // переходим к следующему слоту
+      (this._currentStepTick + 1) % this._maxShotTimeInSteps;
 
     return outcomeData;
   }
@@ -464,14 +466,14 @@ class Game {
     this._lastExpiredShotsData = {};
     this._lastWeaponEffects = {};
 
-    for (const gameID in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameID)) {
-        const player = this._playersData[gameID];
+    for (const gameId in this._playersData) {
+      if (Object.hasOwn(this._playersData, gameId)) {
+        const player = this._playersData[gameId];
         const model = player.model;
         const { playerData, shotData } = player.getData();
 
         gameData[model] = gameData[model] || {};
-        gameData[model][gameID] = playerData;
+        gameData[model][gameId] = playerData;
 
         // если есть данные для создания пули (взрыва)
         if (shotData !== null) {
@@ -481,8 +483,7 @@ class Game {
           if (weaponConfig.type === 'hitscan') {
             const hitscanParams = {
               shooterBody: shotData.shooterBody,
-              shooterGameID: gameID,
-              shooterTeamID: player.teamID,
+              shooterTeamId: player.teamId,
               weaponName,
               startPoint: shotData.startPoint,
               direction: shotData.direction,
@@ -493,10 +494,10 @@ class Game {
             gameData[weaponName] = gameData[weaponName] || [];
             gameData[weaponName].push(shot);
           } else if (weaponConfig.type === 'explosive') {
-            const shot = this.createWeaponAction(gameID, weaponName, shotData);
+            const shot = this.createWeaponAction(gameId, weaponName, shotData);
 
             gameData[weaponName] = gameData[weaponName] || {};
-            gameData[weaponName][shot.shotID] = shot.getData();
+            gameData[weaponName][shot.shotId] = shot.getData();
           }
         }
       }
@@ -509,13 +510,13 @@ class Game {
   getFullPlayersData() {
     const gameData = {};
 
-    for (const gameID in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameID)) {
-        const player = this._playersData[gameID];
+    for (const gameId in this._playersData) {
+      if (Object.hasOwn(this._playersData, gameId)) {
+        const player = this._playersData[gameId];
         const model = player.model;
 
         gameData[model] = gameData[model] || {};
-        gameData[model][gameID] = player.getFullData();
+        gameData[model][gameId] = player.getFullData();
       }
     }
 
@@ -523,13 +524,13 @@ class Game {
   }
 
   // создает действие с оружием и возвращает объект снаряда
-  createWeaponAction(gameID, weaponName, shotData) {
+  createWeaponAction(gameId, weaponName, shotData) {
     const weaponData = this._weapons[weaponName];
     const lifetimeMs = weaponData.time;
     const lifetimeSeconds = lifetimeMs / 1000.0;
     let lifetimeInSteps = Math.ceil(lifetimeSeconds / this._timeStep);
 
-    const player = this._playersData[gameID];
+    const player = this._playersData[gameId];
 
     if (lifetimeInSteps < 1) {
       lifetimeInSteps = 1;
@@ -543,9 +544,9 @@ class Game {
       }
     }
 
-    this._currentShotID += 1;
+    this._currentShotId += 1;
 
-    const shotID = this._currentShotID.toString(36);
+    const shotId = this._currentShotId.toString(36);
 
     // слот, в который будет помещена пуля для удаления
     const removalTick =
@@ -558,18 +559,18 @@ class Game {
       userData: {
         type: 'shot',
         weaponName,
-        shotID,
-        gameID,
-        teamID: player.teamID,
+        shotId,
+        gameId,
+        teamId: player.teamId,
       },
       world: this._world,
     });
 
-    shot.shotID = shotID;
+    shot.shotId = shotId;
     shot.weaponName = weaponName;
 
-    this._shotsData[shotID] = shot;
-    this._shotsAtTime[removalTick].push(shotID);
+    this._shotsData[shotId] = shot;
+    this._shotsAtTime[removalTick].push(shotId);
 
     return shot;
   }
@@ -584,15 +585,16 @@ class Game {
     ];
   }
 
-  // сбрасывает currentShotID, удаляет все пули и возвращает список удаленных имён
+  // сбрасывает currentShotId,
+  // удаляет все пули и возвращает список удаленных имён
   removeShots() {
     const weaponNameSet = new Set();
 
-    this._currentShotID = 0;
+    this._currentShotId = 0;
 
-    for (const shotID in this._shotsData) {
-      if (Object.hasOwn(this._shotsData, shotID)) {
-        const shot = this._shotsData[shotID];
+    for (const shotId in this._shotsData) {
+      if (Object.hasOwn(this._shotsData, shotId)) {
+        const shot = this._shotsData[shotId];
 
         weaponNameSet.add(shot.weaponName);
         this._world.destroyBody(shot.getBody());

@@ -1,4 +1,5 @@
 // Singleton Chat
+
 let chat;
 
 class Chat {
@@ -14,27 +15,27 @@ class Chat {
   }
 
   // добавляет пользователя
-  addUser(gameID) {
-    this._userList[gameID] = [];
+  addUser(gameId) {
+    this._userList[gameId] = [];
   }
 
   // удаляет пользователя
-  removeUser(gameID) {
-    delete this._userList[gameID];
+  removeUser(gameId) {
+    delete this._userList[gameId];
   }
 
   // добавляет сообщение
-  push(message, name, teamID) {
-    this._list.push([message, name, teamID]);
+  push(message, name, teamId) {
+    this._list.push([message, name, teamId]);
   }
 
   // добавляет системное сообщение
   // message может быть:
   // - шаблонным сообщением '<группа шаблонов>:<номер шаблона>:<параметры>'
   // - сообщением в виде массива [<текст сообщения>]
-  pushSystem(message, gameID) {
-    if (gameID) {
-      this._userList[gameID].push(message);
+  pushSystem(message, gameId) {
+    if (gameId) {
+      this._userList[gameId].push(message);
     } else {
       this._list.push(message);
     }
@@ -46,8 +47,8 @@ class Chat {
   }
 
   // возвращает сообщение для пользователя
-  shiftByUser(gameID) {
-    return this._userList[gameID].shift();
+  shiftByUser(gameId) {
+    return this._userList[gameId].shift();
   }
 }
 

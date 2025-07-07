@@ -45,12 +45,15 @@ export default class ImpactEffect extends BaseEffect {
       // управление направлением разлета
       impactDirectionX, // компонента X базового направления отлета
       impactDirectionY, // компонента Y
-      spreadAngle: 60, // угол разброса в градусах (например, 90-градусный сектор)
+      spreadAngle: 60, // угол разброса в градусах
 
       // параметры для управления движением и остановкой
-      dragCoefficient: 5, // коэффициент сопротивления (чем выше, тем быстрее остановка)
-      minSpeedThreshold: 1.0, // порог скорости, ниже которого частица считается "остановившейся" (пикс/сек)
-      lingerDuration: 6000, // сколько времени частица лежит неподвижно перед угасанием (мс)
+      // коэффициент сопротивления (чем выше, тем быстрее остановка)
+      dragCoefficient: 5,
+      // порог скорости, ниже которого частица считается "остановившейся"
+      minSpeedThreshold: 1.0,
+      // сколько времени частица лежит неподвижно перед угасанием (мс)
+      lingerDuration: 6000,
     };
 
     // обработка случая, когда impactDirection (0,0) - например, выстрел в точку
@@ -65,7 +68,7 @@ export default class ImpactEffect extends BaseEffect {
     }
 
     this.particlesData = []; // хранение данные для управления логикой
-    this.elapsedTime = 0; // elapsedTime теперь может быть специфичным для логики эффекта, а не для тикера
+    this.elapsedTime = 0;
 
     this._createParticles();
   }
@@ -133,13 +136,13 @@ export default class ImpactEffect extends BaseEffect {
     }
   }
 
-  _update(deltaMS) {
+  _update(deltaMs) {
     if (this.isComplete) {
       return;
     }
 
-    this.elapsedTime += deltaMS;
-    const deltaSeconds = deltaMS / 1000;
+    this.elapsedTime += deltaMs;
+    const deltaSeconds = deltaMs / 1000;
     let activeParticlesCount = 0;
 
     for (let i = 0, len = this.particlesData.length; i < len; i += 1) {
@@ -150,7 +153,7 @@ export default class ImpactEffect extends BaseEffect {
       }
 
       activeParticlesCount += 1;
-      pData.age += deltaMS;
+      pData.age += deltaMs;
 
       if (pData.isMoving) {
         // сопротивление среды (drag)
@@ -182,7 +185,7 @@ export default class ImpactEffect extends BaseEffect {
         }
         // частица остановилась
       } else {
-        pData.timeSinceStopped += deltaMS;
+        pData.timeSinceStopped += deltaMs;
       }
 
       // логика угасания и завершения жизни

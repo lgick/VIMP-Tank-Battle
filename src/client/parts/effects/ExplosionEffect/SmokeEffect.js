@@ -12,8 +12,8 @@ export default class SmokeEffect extends BaseEffect {
     this._isSpawning = true;
 
     // параметры дыма
-    this._particleSpawnRateMS = options.spawnRate ?? 1000;
-    this._particleMaxLifeMS = options.maxLife ?? 3000;
+    this._particleSpawnRateMs = options.spawnRate ?? 1000;
+    this._particleMaxLifeMs = options.maxLife ?? 3000;
     this._particleColor = options.color ?? 0x494949;
     this._initialScale = options.initialScale ?? 0.02;
     this._maxScale = options.maxScale ?? 0.04;
@@ -48,22 +48,23 @@ export default class SmokeEffect extends BaseEffect {
       driftX: (Math.random() - 0.5) * 0.2,
       driftY: -Math.random() * 0.35,
       // каждая частица получает свой уникальный множитель растяжения
-      stretchFactor: this._stretch * (0.8 + Math.random() * 0.4), // от 80% до 120% от базового
+      // от 80% до 120% от базового
+      stretchFactor: this._stretch * (0.8 + Math.random() * 0.4),
     };
 
     this.addChild(particle);
     this._particles.push(particle);
   }
 
-  _update(deltaMS) {
+  _update(deltaMs) {
     if (this.isComplete) {
       return;
     }
 
     if (this._isSpawning) {
-      this._lastSpawnTime += deltaMS;
+      this._lastSpawnTime += deltaMs;
 
-      if (this._lastSpawnTime > this._particleSpawnRateMS) {
+      if (this._lastSpawnTime > this._particleSpawnRateMs) {
         this._createParticle();
         this._lastSpawnTime = 0;
       }
@@ -71,16 +72,16 @@ export default class SmokeEffect extends BaseEffect {
 
     for (let i = this._particles.length - 1; i >= 0; i -= 1) {
       const particle = this._particles[i];
-      particle.customData.life += deltaMS;
+      particle.customData.life += deltaMs;
 
-      if (particle.customData.life >= this._particleMaxLifeMS) {
+      if (particle.customData.life >= this._particleMaxLifeMs) {
         this.removeChild(particle);
         particle.destroy(); // уничтожение частицы PIXI.Sprite
         this._particles.splice(i, 1);
       } else {
-        const progress = particle.customData.life / this._particleMaxLifeMS;
-        particle.x += particle.customData.driftX * (deltaMS / 16);
-        particle.y += particle.customData.driftY * (deltaMS / 16);
+        const progress = particle.customData.life / this._particleMaxLifeMs;
+        particle.x += particle.customData.driftX * (deltaMs / 16);
+        particle.y += particle.customData.driftY * (deltaMs / 16);
 
         const scaleGrowth = this._maxScale - this._initialScale;
         const baseScale = this._initialScale + progress * scaleGrowth;
@@ -107,8 +108,10 @@ export default class SmokeEffect extends BaseEffect {
   }
 
   destroy(options) {
-    // очистка массива частиц до вызова super.destroy, который уничтожит дочерние спрайты
-    // частицы уже уничтожаются в _update, но на всякий случай, если destroy вызван досрочно
+    // очистка массива частиц до вызова super.destroy,
+    // который уничтожит дочерние спрайты
+    // частицы уже уничтожаются в _update,
+    // но на всякий случай, если destroy вызван досрочно
     for (let i = this._particles.length - 1; i >= 0; i -= 1) {
       const particle = this._particles[i];
       if (particle && !particle.destroyed) {

@@ -12,10 +12,6 @@ export default class VoteModel {
 
     voteModel = this;
 
-    this._window = data.window;
-    this._String = this._window.String;
-    this._parseInt = this._window.parseInt;
-
     this._menu = data.menu; // меню
 
     this._currentVote = null; // текущее голосование
@@ -23,7 +19,7 @@ export default class VoteModel {
     this._waitingValues = false; // ожидания значений
 
     this._time = data.time || 10000; // время жизни голосования
-    this._timerID = null; // id таймера
+    this._timerId = null; // id таймера
 
     this._timeOff = false; // флаг отключения времени жизни голосования
 
@@ -58,7 +54,8 @@ export default class VoteModel {
     this._currentPage = 0;
 
     // если данные имеют вид:
-    // [[name:string, timeOff: boolean], [title: string, value: array, next: array || null]]
+    // [[name:string, timeOff: boolean],
+    // [title: string, value: array, next: array || null]]
     if (data.length === 2) {
       this._voteName = data[0][0];
       this._timeOff = data[0][1] ? true : false;
@@ -128,8 +125,8 @@ export default class VoteModel {
 
     // если keyCode это число от 0 до 9
     if (48 <= keyCode && keyCode <= 57) {
-      number = this._String.fromCharCode(keyCode);
-      number = this._parseInt(number, 10);
+      number = String.fromCharCode(keyCode);
+      number = parseInt(number, 10);
 
       // exit
       if (number === 0) {
@@ -200,7 +197,7 @@ export default class VoteModel {
       currentValues = this._currentValues;
     }
 
-    this.publisher.emit('clear', this._timerID);
+    this.publisher.emit('clear', this._timerId);
 
     this.publisher.emit('vote', {
       title: this._title,
@@ -215,12 +212,12 @@ export default class VoteModel {
   complete() {
     this._data = [];
     this._waitingValues = false;
-    this.publisher.emit('clear', this._timerID);
+    this.publisher.emit('clear', this._timerId);
     this.publisher.emit('mode', { name: 'vote', status: 'closed' });
   }
 
   // добавляет id таймера голосования
-  assignTimer(timerID) {
-    this._timerID = timerID || null;
+  assignTimer(timerId) {
+    this._timerId = timerId || null;
   }
 }

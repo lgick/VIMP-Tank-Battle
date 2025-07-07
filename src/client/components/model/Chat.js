@@ -12,15 +12,12 @@ export default class ChatModel {
 
     chatModel = this;
 
-    this._window = data.window;
-    this._RegExp = this._window.RegExp;
-
     this._listLimit = data.listLimit || 5;
     this._lineTime = data.lineTime || 15000;
     this._cacheMin = data.cacheMin || 200;
     this._cacheMax = data.cacheMax || 300;
     this._messages = data.messages || {};
-    this._messageExp = new this._RegExp(data.messageExp, 'g');
+    this._messageExp = new RegExp(data.messageExp, 'g');
 
     this._cache = []; // хранилище сообщений
     this._list = []; // активный чат-лист
@@ -71,7 +68,7 @@ export default class ChatModel {
         params = params.split(',');
 
         for (let i = 0, len = params.length; i < len; i += 1) {
-          const regExp = new this._RegExp('\\{' + i + '\\}', 'g');
+          const regExp = new RegExp('\\{' + i + '\\}', 'g');
           message = message.replace(regExp, params[i]);
         }
       }

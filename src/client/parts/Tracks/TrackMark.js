@@ -23,10 +23,10 @@ export default class TrackMark extends Sprite {
 
   // обновляет состояние следа
   // вызывается извне классом Tracks
-  // deltaMS - время, прошедшее с последнего кадра
+  // deltaMs - время, прошедшее с последнего кадра
   // возвращает true, если жизненный цикл следа завершен
-  update(deltaMS) {
-    this._elapsedTime += deltaMS;
+  update(deltaMs) {
+    this._elapsedTime += deltaMs;
     const progress = Math.min(this._elapsedTime / this._fadeDuration, 1);
 
     // альфа изменяется от сохраненной начальной альфы до 0

@@ -29,7 +29,8 @@ export default {
     bakedAssets: {
       vimp: [
         {
-          name: 'explosionTexture', // ID доступа к текстуре и название функции "запекания"
+          // id доступа к текстуре и название функции "запекания"
+          name: 'explosionTexture',
           component: 'ExplosionEffect', // компонент, которому назначен ассет
           params: {
             radius: 50, // радиус круга
@@ -70,8 +71,8 @@ export default {
           component: 'Tank',
           params: {
             colors: {
-              teamID1: 0x552222,
-              teamID2: 0x225522,
+              teamId1: 0x552222,
+              teamId2: 0x225522,
             },
           },
         },
@@ -103,8 +104,8 @@ export default {
             crossSize: 9,
             crossThickness: 1.5,
             colors: {
-              teamID1: 0x552222,
-              teamID2: 0x225522,
+              teamId1: 0x552222,
+              teamId2: 0x225522,
             },
           },
         },
@@ -131,7 +132,7 @@ export default {
       },
     },
 
-    displayID: ['vimp', 'radar', 'panel', 'chat'],
+    displayId: ['vimp', 'radar', 'panel', 'chat'],
 
     // keys
     keys: {
@@ -287,7 +288,7 @@ export default {
     // vote
     vote: {
       elems: {
-        voteID: 'vote',
+        voteId: 'vote',
         titleClass: 'vote-title',
         listClass: 'vote-list',
         navClass: 'vote-nav',

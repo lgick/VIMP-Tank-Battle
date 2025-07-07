@@ -45,14 +45,14 @@ export default class StatModel {
     // если есть данные для <tbody>
     if (tBodiesData) {
       for (let i = 0, len = tBodiesData.length; i < len; i += 1) {
-        const tableID = this._bodies[tBodiesData[i][1]];
+        const tableId = this._bodies[tBodiesData[i][1]];
 
-        if (tableID) {
+        if (tableId) {
           this.publisher.emit('tBody', {
             id: tBodiesData[i][0],
-            tableID,
+            tableId,
             cellsData: tBodiesData[i][2],
-            sortData: this._sortList[tableID],
+            sortData: this._sortList[tableId],
             bodyNumber: tBodiesData[i][3] || 0,
           });
         }
@@ -62,11 +62,11 @@ export default class StatModel {
     // если есть данные для <thead>
     if (tHeadData) {
       for (let i = 0, len = tHeadData.length; i < len; i += 1) {
-        const tableID = this._heads[tHeadData[i][0]];
+        const tableId = this._heads[tHeadData[i][0]];
 
-        if (tableID) {
+        if (tableId) {
           this.publisher.emit('tHead', {
-            tableID,
+            tableId,
             cellsData: tHeadData[i][1],
             rowNumber: tHeadData[i][2] || 0,
           });

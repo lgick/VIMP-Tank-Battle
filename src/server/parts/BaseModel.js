@@ -2,8 +2,8 @@ class BaseModel {
   constructor(data) {
     this._model = data.model;
     this._name = data.name;
-    this._gameID = data.gameID;
-    this._teamID = data.teamID;
+    this._gameId = data.gameId;
+    this._teamId = data.teamId;
     this._currentWeapon = data.currentWeapon;
     this._weapons = data.weapons;
     this._availableWeaponList = Object.keys(this._weapons);
@@ -26,12 +26,12 @@ class BaseModel {
     }
   }
 
-  get teamID() {
-    return this._teamID;
+  get teamId() {
+    return this._teamId;
   }
 
-  set teamID(teamID) {
-    this._teamID = teamID;
+  set teamId(teamId) {
+    this._teamId = teamId;
   }
 
   get fullUserData() {
@@ -85,19 +85,19 @@ class BaseModel {
   // задаёт значение здоровья
   setHealth(amount) {
     const panel = this._services.panel;
-    const currentHealth = panel.getCurrentValue(this._gameID, 'health');
+    const currentHealth = panel.getCurrentValue(this._gameId, 'health');
     const newHealth = Math.max(0, currentHealth - amount);
 
     // если здоровья нет
     if (newHealth <= 0) {
       const vimp = this._services.vimp;
 
-      vimp.reportPlayerDestroyed(this._gameID);
+      vimp.reportPlayerDestroyed(this._gameId);
 
       return 0;
     }
 
-    panel.updateUser(this._gameID, 'health', newHealth, 'set');
+    panel.updateUser(this._gameId, 'health', newHealth, 'set');
 
     return newHealth;
   }
@@ -111,10 +111,10 @@ class BaseModel {
 
     if (
       this._weaponRemainingCooldowns[weaponName] <= 0 &&
-      panel.hasResources(this._gameID, weaponName, consumption)
+      panel.hasResources(this._gameId, weaponName, consumption)
     ) {
       // списание патронов
-      panel.updateUser(this._gameID, weaponName, consumption, 'decrement');
+      panel.updateUser(this._gameId, weaponName, consumption, 'decrement');
 
       // установка кулдауна
       this._weaponRemainingCooldowns[weaponName] = weaponConfig.fireRate;

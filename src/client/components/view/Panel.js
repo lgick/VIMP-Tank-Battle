@@ -12,9 +12,6 @@ export default class PanelView {
 
     panelView = this;
 
-    this._window = data.window;
-    this._document = this._window.document;
-
     this._panel = data.panel;
     this._healthBarWrapper = null; // контейнер
     this._healthBlocks = []; // блоки здоровья
@@ -32,18 +29,18 @@ export default class PanelView {
 
   // инициализирует полосу здоровья
   initHealthBar() {
-    const healthContainer = this._document.getElementById(this._panel.health);
+    const healthContainer = document.getElementById(this._panel.health);
 
     healthContainer.innerHTML = '';
 
-    const wrapper = this._document.createElement('div');
+    const wrapper = document.createElement('div');
 
     wrapper.className = 'panel-health-wrapper';
 
     this._healthBarWrapper = wrapper; // сохранение ссылки на обертку
 
     for (let i = 0, len = this._totalHealthBlocks; i < len; i += 1) {
-      const block = this._document.createElement('div');
+      const block = document.createElement('div');
 
       block.className = 'panel-health-block';
       block.style.backgroundColor = this._emptyBlockColor;
@@ -95,7 +92,7 @@ export default class PanelView {
 
   // обновляет пользовательскую панель
   update(data) {
-    const elem = this._document.getElementById(this._panel[data.name]);
+    const elem = document.getElementById(this._panel[data.name]);
 
     if (!elem) {
       return;

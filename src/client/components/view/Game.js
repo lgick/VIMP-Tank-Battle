@@ -1,5 +1,7 @@
 import Publisher from '../../../lib/Publisher.js';
 
+// GameView
+
 export default class GameView {
   constructor(model, app) {
     this._app = app;

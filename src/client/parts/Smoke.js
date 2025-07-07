@@ -14,8 +14,10 @@ const SMOKE_CONFIG = {
   particleStartAlpha: 0.25,
   particleEndAlpha: 0,
 
-  particleColor: 0x333333, // цвет дыма
-  particleSpawnRate: { 2: 30, 1: 40, 0: 50 }, // общая частота спавна для потоков
+  // цвет дыма
+  particleColor: 0x333333,
+  // общая частота спавна для потоков
+  particleSpawnRate: { 2: 30, 1: 40, 0: 50 },
 
   // скорость относительно танка
   particleInitialVelocity: {
@@ -25,7 +27,8 @@ const SMOKE_CONFIG = {
 
   windInfluence: 1.6,
   emitterMovementInfluence: 0.7,
-  particleVelocityVariance: 10, // общий разброс скорости в случайном направлении
+  // общий разброс скорости в случайном направлении
+  particleVelocityVariance: 10,
 
   // множитель к половине ширине для смещения потоков дыма (0=центр, 1=края)
   streamOffsetFactor: 0.3,
@@ -51,7 +54,7 @@ export default class Smoke extends Container {
     this.smokeTexture = assets.smokeTexture;
 
     // параметры с сервера:
-    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamID]
+    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
     this.emitterX = data[0];
     this.emitterY = data[1];
     this.emitterRotation = data[2];
@@ -64,7 +67,8 @@ export default class Smoke extends Container {
     this._width = this._size * 4;
     this._height = this._size * 3;
 
-    // коэффициент масштаба на основе площади. Используем sqrt для менее резкого масштабирования
+    // коэффициент масштаба на основе площади.
+    // Используем sqrt для менее резкого масштабирования
     // Math.max чтобы размер не был слишком маленьким для очень мелких танков
     this.particleScaleMultiplier = Math.max(
       0.5,
@@ -90,15 +94,15 @@ export default class Smoke extends Container {
     this.condition = data[6];
   }
 
-  _updateParticles(deltaMS) {
-    if (deltaMS <= 0) {
+  _updateParticles(deltaMs) {
+    if (deltaMs <= 0) {
       return;
     }
 
-    const deltaTime = deltaMS / 1000.0; // время в секундах
+    const deltaTime = deltaMs / 1000.0; // время в секундах
 
     // спавн новых частиц
-    this.timeSinceLastSpawn += deltaMS;
+    this.timeSinceLastSpawn += deltaMs;
 
     // определяем количество потоков
     let numStreams = 1;
@@ -110,7 +114,8 @@ export default class Smoke extends Container {
     }
 
     const spawnRate = SMOKE_CONFIG.particleSpawnRate[this.condition];
-    // интервал определяет, как часто происходит "пачка" спавна (для всех потоков сразу)
+    // интервал определяет, как часто происходит "пачка" спавна
+    // (для всех потоков сразу)
     const spawnInterval = 1000.0 / spawnRate;
 
     //let spawnedThisFrame = 0;
@@ -129,7 +134,7 @@ export default class Smoke extends Container {
     for (let i = this.particles.length - 1; i >= 0; i -= 1) {
       const particle = this.particles[i];
 
-      particle.age += deltaMS;
+      particle.age += deltaMs;
 
       if (particle.age >= particle.lifetime) {
         this.particleContainer.removeChild(particle.graphics);
