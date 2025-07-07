@@ -14,11 +14,11 @@ export default class FunnelEffect extends BaseEffect {
     this.x = x;
     this.y = y;
     this.sortableChildren = true;
-    this._funnelDurationMS = 20000;
-    this._funnelFadeDurationMS = 4000;
-    this._elapsedMS = 0;
+    this._funnelDurationMs = 20000;
+    this._funnelFadeDurationMs = 4000;
+    this._elapsedMs = 0;
     this._isFading = false;
-    this._smokeDurationMS = 4000; // время дыма
+    this._smokeDurationMs = 4000; // время дыма
     this._smokeSpawningStopped = false;
 
     this._funnel = this._createFunnelSprite();
@@ -64,30 +64,30 @@ export default class FunnelEffect extends BaseEffect {
     }
   }
 
-  _update(deltaMS) {
+  _update(deltaMs) {
     if (this.isComplete) {
       return;
     }
 
-    this._elapsedMS += deltaMS;
+    this._elapsedMs += deltaMs;
 
     // если время дыма закончилось
     if (
       !this._smokeSpawningStopped &&
-      this._elapsedMS >= this._smokeDurationMS
+      this._elapsedMs >= this._smokeDurationMs
     ) {
       this._smoke.stopSpawning();
       this._smokeSpawningStopped = true;
     }
 
-    const timeLeft = this._funnelDurationMS - this._elapsedMS;
+    const timeLeft = this._funnelDurationMs - this._elapsedMs;
 
-    if (timeLeft <= this._funnelFadeDurationMS) {
+    if (timeLeft <= this._funnelFadeDurationMs) {
       if (!this._isFading) {
         this._isFading = true;
       }
 
-      const fadeProgress = timeLeft / this._funnelFadeDurationMS;
+      const fadeProgress = timeLeft / this._funnelFadeDurationMs;
 
       this._funnel.alpha = Math.max(0, fadeProgress);
     }

@@ -37,7 +37,8 @@ export default class ShotEffectController extends Container {
     this.tracer.run();
   }
 
-  // трассер завершил анимацию. Его графика уже должна быть очищена TracerEffect'ом.
+  // трассер завершил анимацию.
+  // Его графика уже должна быть очищена TracerEffect'ом.
   // сам объект TracerEffect будет уничтожен в destroy
   _onTracerComplete() {
     if (this._isDestroyed) {
@@ -80,7 +81,8 @@ export default class ShotEffectController extends Container {
       return;
     }
 
-    // ImpactEffect завершил свою работу, его флаг isComplete уже должен быть true
+    // ImpactEffect завершил свою работу,
+    // его флаг isComplete уже должен быть true
     // трассер к этому моменту также должен быть завершен
     // это финальная стадия эффекта, если было попадание
     this.destroy();

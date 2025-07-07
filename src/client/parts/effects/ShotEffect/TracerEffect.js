@@ -16,19 +16,34 @@ export default class TracerEffect extends BaseEffect {
     this.endPositionY = endY;
 
     this.config = {
-      color: 0xffff99, // цвет трассера
-      alphaStart: 1, // начальная прозрачность "головы" трассера
-      alphaEnd: 0.6, // конечная прозрачность "головы" трассера (когда она достигнет цели)
-      trailLength: 55, // фиксированная максимальная длина видимой части хвоста трассера в пикселях
-      tracerSpeed: 19000, // желаемая скорость "головы" трассера в px/second
-      minDuration: 45, // минимальная длительность анимации в миллисекундах
-      maxDuration: 110, // максимальная длительность анимации в миллисекундах
-      trailShrinkPower: 1.0, // коэффициент для скорости укорачивания хвоста (чем больше, тем быстрее хвост укорачивается к концу пути)
-      trailStartOffset: 8, // начало появления трассера на этом расстоянии от дула (начальной точки) в пикселях
-      segmentCount: 12, // количество сегментов (кругов), из которых состоит линия трассера
-      segmentRadius: 2, // толщина трассера (радиус каждого сегмента)
-      alphaPulseFrequency: 0.1, // частота пульсации прозрачности (чем выше, тем чаще пульсирует)
-      alphaPulseAmplitude: 0.15, // амплитуда пульсации прозрачности (насколько сильно меняется альфа)
+      // цвет трассера
+      color: 0xffff99,
+      // начальная прозрачность "головы" трассера
+      alphaStart: 1,
+      // конечная прозрачность "головы" трассера (когда она достигнет цели)
+      alphaEnd: 0.6,
+      // фиксированная максимальная длина видимой части хвоста трассера в px
+      trailLength: 55,
+      // желаемая скорость "головы" трассера в px/second
+      tracerSpeed: 19000,
+      // минимальная длительность анимации в миллисекундах
+      minDuration: 45,
+      // максимальная длительность анимации в миллисекундах
+      maxDuration: 80,
+      // коэффициент для скорости укорачивания хвоста
+      // (чем больше, тем быстрее хвост укорачивается к концу пути)
+      trailShrinkPower: 1.0,
+      // начало появления трассера
+      // на этом расстоянии от дула (начальной точки) в px
+      trailStartOffset: 30,
+      // количество сегментов (кругов), из которых состоит линия трассера
+      segmentCount: 12,
+      // толщина трассера (радиус каждого сегмента)
+      segmentRadius: 2,
+      // частота пульсации прозрачности (чем выше, тем чаще пульсирует)
+      alphaPulseFrequency: 0.1,
+      // амплитуда пульсации прозрачности (насколько сильно меняется альфа)
+      alphaPulseAmplitude: 0.15,
     };
 
     this.graphics = new Graphics();
@@ -82,13 +97,13 @@ export default class TracerEffect extends BaseEffect {
     });
   }
 
-  _update(deltaMS) {
+  _update(deltaMs) {
     if (this.isComplete) {
       // проверка из BaseEffect
       return;
     }
 
-    this.elapsedTime += deltaMS;
+    this.elapsedTime += deltaMs;
     this.graphics.clear();
 
     const tracerDrawProgress = Math.min(
@@ -139,17 +154,11 @@ export default class TracerEffect extends BaseEffect {
       const distCoveredByHead = this.totalDist * tracerDrawProgress;
 
       // если голова еще не прошла отступ trailStartOffset, не рисуем трассер
-      if (
-        distCoveredByHead < this.config.trailStartOffset &&
-        this.totalDist > 0.001
-      ) {
-      } else {
+      if (distCoveredByHead >= this.config.trailStartOffset) {
         let adjustedDistCoveredByHead = distCoveredByHead;
 
         if (this.totalDist > 0.001) {
           // применяем отступ только если есть направление
-          // effectiveStartX = this.startPositionX + this.nx * this.config.trailStartOffset;
-          // effectiveStartY = this.startPositionY + this.ny * this.config.trailStartOffset;
           // дистанция, пройденная головой от *эффективной* начальной точки
           adjustedDistCoveredByHead = Math.max(
             0,
@@ -164,7 +173,7 @@ export default class TracerEffect extends BaseEffect {
         );
 
         let tailX, tailY;
-        // хвост теперь отсчитывается от головы назад на actualVisibleTrailLength
+        // хвост отсчитывается от головы назад на actualVisibleTrailLength
         // если actualVisibleTrailLength = 0, хвост будет в голове
         if (this.totalDist > 0.001) {
           tailX = headX - this.nx * actualVisibleTrailLength;
@@ -224,7 +233,8 @@ export default class TracerEffect extends BaseEffect {
       this.graphics.clear();
     }
 
-    // BaseEffect по умолчанию использует { children: true, texture: false, baseTexture: false }
+    // BaseEffect по умолчанию использует
+    // { children: true, texture: false, baseTexture: false }
     // для Graphics-объектов это подходит
     super.destroy(options);
   }

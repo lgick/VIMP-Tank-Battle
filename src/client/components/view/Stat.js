@@ -12,10 +12,9 @@ export default class StatView {
 
     statView = this;
 
-    this._window = data.window;
-    this._document = this._window.document;
+    const elems = data.elems;
 
-    this._stat = data.stat;
+    this._stat = document.getElementById(elems.stat);
 
     this.publisher = new Publisher();
 
@@ -41,7 +40,7 @@ export default class StatView {
   // очищает таблицы <tbody>
   clearBodies(bodiesList) {
     for (let i = 0, len = bodiesList.length; i < len; i += 1) {
-      const table = this._document.getElementById(bodiesList[i]);
+      const table = document.getElementById(bodiesList[i]);
       const tBodies = table.tBodies;
 
       for (let i2 = 0, len2 = tBodies.length; i2 < len2; i2 += 1) {
@@ -52,7 +51,7 @@ export default class StatView {
 
   // обновляет <thead>
   updateTableHead(data) {
-    const table = this._document.getElementById(data.tableID);
+    const table = document.getElementById(data.tableId);
     const cells = table.tHead.rows[data.rowNumber].cells;
     const cellsData = data.cellsData;
 
@@ -63,7 +62,7 @@ export default class StatView {
 
   // обновляет <tbody>
   updateTableBody(data) {
-    const table = this._document.getElementById(data.tableID);
+    const table = document.getElementById(data.tableId);
     const tbody = table.tBodies[data.bodyNumber];
     let row = tbody.rows.namedItem(`stat_${data.id}`);
     const { cellsData, sortData } = data;

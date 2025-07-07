@@ -117,7 +117,7 @@ export default class Map extends Container {
               tempContainer.addChild(sprite);
             } else {
               console.warn(
-                `Texture not found in spritesheet: ${textureName} for tile index ${tileIndex}`,
+                `Texture not found. Tile: ${tileIndex}, sprite: ${textureName}`,
               );
             }
           }

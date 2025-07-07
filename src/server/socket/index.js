@@ -28,7 +28,7 @@ const auth = config.get('auth');
 const cConf = config.get('client');
 
 const sessions = {}; // { '0ff81720-e2b2-11e3-9614-018be5de670e': ws }
-const IPs = {}; // { '127.0.0.1': '0ff81720-e2b2-11e3-9614-018be5de670e' }
+const ips = {}; // { '127.0.0.1': '0ff81720-e2b2-11e3-9614-018be5de670e' }
 
 export default server => {
   const wss = new WebSocketServer({ server });
@@ -38,7 +38,7 @@ export default server => {
     const origin = req.headers.origin;
     const socketMethods = [];
     let id;
-    let gameID;
+    let gameId;
 
     security.origin(origin, err => {
       if (err) {
@@ -88,11 +88,11 @@ export default server => {
     // 0: config ready
     socketMethods[PC_CONFIG_READY] = err => {
       if (!err) {
-        if (oneConnection && IPs[address]) {
-          sessions[IPs[address]].socket.close(4002, [PS_INFORM_DATA, [1]]);
+        if (oneConnection && ips[address]) {
+          sessions[ips[address]].socket.close(4002, [PS_INFORM_DATA, [1]]);
         }
 
-        IPs[address] = id;
+        ips[address] = id;
 
         waiting.check(id, empty => {
           if (empty) {
@@ -123,7 +123,7 @@ export default server => {
           ws.socket.socketMethods[PC_VOTE_DATA] = true;
 
           vimp.createUser(data, ws.socket, createdId => {
-            gameID = createdId;
+            gameId = createdId;
           });
         }
       }
@@ -131,27 +131,27 @@ export default server => {
 
     // 2: map ready
     socketMethods[PC_MAP_READY] = err => {
-      vimp.mapReady(err, gameID);
+      vimp.mapReady(err, gameId);
     };
 
     // 3: keys data
     socketMethods[PC_KEYS_DATA] = keys => {
       if (keys) {
-        vimp.updateKeys(gameID, keys);
+        vimp.updateKeys(gameId, keys);
       }
     };
 
     // 4: chat data
     socketMethods[PC_CHAT_DATA] = message => {
       if (typeof message === 'string') {
-        vimp.pushMessage(gameID, message);
+        vimp.pushMessage(gameId, message);
       }
     };
 
     // 5: vote data
     socketMethods[PC_VOTE_DATA] = data => {
       if (data) {
-        vimp.parseVote(gameID, data);
+        vimp.parseVote(gameId, data);
       }
     };
 
@@ -168,19 +168,19 @@ export default server => {
     });
 
     // обработчик закрытия соединения принимает (code, reason)
-    ws.on('close', (code, reason) => {
+    ws.on('close', (code, _reason) => {
       // Коды закрытия:
       // 4001 - origin conflict
       // 4002 - oneConnection
 
       if (code !== 4002) {
-        delete IPs[address];
+        delete ips[address];
       }
 
       delete sessions[id];
 
-      if (gameID) {
-        vimp.removeUser(gameID);
+      if (gameId) {
+        vimp.removeUser(gameId);
       }
 
       waiting.remove(id);

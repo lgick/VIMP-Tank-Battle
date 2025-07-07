@@ -1,6 +1,8 @@
 import Publisher from '../../../lib/Publisher.js';
 import Factory from '../../../lib/factory.js';
 
+// GameModel
+
 export default class GameModel {
   constructor(assetsCollection, dependenciesCollection) {
     // коллекция ассетов (Map)

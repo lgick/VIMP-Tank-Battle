@@ -292,7 +292,7 @@ menu = [
     ['Value 1', 'Value 2'],    // 1: string[]
     null                       // 2: array || null
   ],
-  [gameID, gameID, ...]        // string[] || empty
+  [gameId, gameId, ...]        // string[] || empty
 ]
 ```
 
@@ -557,7 +557,7 @@ keys: {
   {
     m1: {
       // полные данные об игроке
-      // gameID: [x, y, rotation, gunRotation, type, name, width, height],
+      // gameId: [x, y, rotation, gunRotation, type, name, width, height],
       3: [736, 320, 180, 0, 2, 'jek', 48, 36],
       5: null,
     },
@@ -615,8 +615,8 @@ keys: {
 1. После проверки возможности посетить игру и прохождения авторизации, в функции `createUser`
    создаётся пользователь. На этом этапе:
 
-- создаётся пользователь и назначаются `gameID`, `name`, `team`, `teamID` и дефолтные настройки
-- параметр `isWatching` в значении `true`, `watchedGameID` имеет `gameID` наблюдаемого игрока
+- создаётся пользователь и назначаются `gameId`, `name`, `team`, `teamId` и дефолтные настройки
+- параметр `isWatching` в значении `true`, `watchedGameId` имеет `gameId` наблюдаемого игрока
   (на данном этапе пользователь наблюдатель)
 - статус `user.mapReady` в значении `false`
 - добавление пользователя в модули `chat`, `vote`, `stat`, `panel`

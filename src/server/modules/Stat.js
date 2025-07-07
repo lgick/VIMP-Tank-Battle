@@ -1,4 +1,5 @@
 // Singleton Stat
+
 let stat;
 
 class Stat {
@@ -27,13 +28,13 @@ class Stat {
 
   // сбрасывает статистику
   reset() {
-    for (const teamID in this._body) {
-      if (Object.hasOwn(this._body, teamID)) {
-        const bodyStats = this._body[teamID];
+    for (const teamId in this._body) {
+      if (Object.hasOwn(this._body, teamId)) {
+        const bodyStats = this._body[teamId];
 
-        for (const gameID in bodyStats) {
-          if (Object.hasOwn(bodyStats, gameID)) {
-            const stat = bodyStats[gameID];
+        for (const gameId in bodyStats) {
+          if (Object.hasOwn(bodyStats, gameId)) {
+            const stat = bodyStats[gameId];
             stat[2] = this.getDefaultBody(stat[2]);
             this._lastBody.set(`${stat[0]}|${stat[1]}`, stat.slice(2));
           }
@@ -41,16 +42,16 @@ class Stat {
       }
     }
 
-    for (const teamID in this._head) {
-      if (Object.hasOwn(this._head, teamID)) {
-        const stat = this._head[teamID];
+    for (const teamId in this._head) {
+      if (Object.hasOwn(this._head, teamId)) {
+        const stat = this._head[teamId];
 
         for (const p in this._config) {
           if (Object.hasOwn(this._config, p)) {
             const conf = this._config[p];
 
             if (conf.headSync) {
-              this.updateHeadSync(teamID, p);
+              this.updateHeadSync(teamId, p);
             } else if (typeof conf.headValue !== 'undefined') {
               stat[1][conf.key] = conf.headValue;
             }
@@ -78,20 +79,20 @@ class Stat {
   }
 
   // добавляет пользователя
-  addUser(gameID, teamID, data) {
-    this._body[teamID][gameID] = [gameID, teamID, this.getDefaultBody()];
+  addUser(gameId, teamId, data) {
+    this._body[teamId][gameId] = [gameId, teamId, this.getDefaultBody()];
 
     if (typeof data === 'object') {
-      this.updateUser(gameID, teamID, data);
+      this.updateUser(gameId, teamId, data);
     }
   }
 
   // удаляет пользователя и возвращает его данные
-  removeUser(gameID, teamID) {
-    let data = this._body[teamID][gameID];
+  removeUser(gameId, teamId) {
+    let data = this._body[teamId][gameId];
     const stat = {};
 
-    delete this._body[teamID][gameID];
+    delete this._body[teamId][gameId];
     this._lastBody.set(`${data[0]}|${data[1]}`, [null]);
 
     data = data[2];
@@ -106,7 +107,7 @@ class Stat {
         stat[p] = value;
 
         if (conf.headSync === true) {
-          this.updateHeadSync(teamID, p, true);
+          this.updateHeadSync(teamId, p, true);
         }
       }
     }
@@ -115,13 +116,13 @@ class Stat {
   }
 
   // перемещает пользователя в новую команду
-  moveUser(gameID, teamID, newTeamID) {
-    this.addUser(gameID, newTeamID, this.removeUser(gameID, teamID));
+  moveUser(gameId, teamId, newTeamId) {
+    this.addUser(gameId, newTeamId, this.removeUser(gameId, teamId));
   }
 
   // обновляет статистику пользователя
-  updateUser(gameID, teamID, data) {
-    const stat = this._body[teamID][gameID];
+  updateUser(gameId, teamId, data) {
+    const stat = this._body[teamId][gameId];
 
     for (const p in data) {
       if (Object.hasOwn(data, p)) {
@@ -139,7 +140,7 @@ class Stat {
         }
 
         if (conf.headSync === true) {
-          this.updateHeadSync(teamID, p, true);
+          this.updateHeadSync(teamId, p, true);
         }
       }
     }
@@ -148,8 +149,8 @@ class Stat {
   }
 
   // обновляет статистику head
-  updateHead(teamID, param, value) {
-    const stat = this._head[teamID];
+  updateHead(teamId, param, value) {
+    const stat = this._head[teamId];
     const conf = this._config[param];
     const method = conf.headMethod;
     const key = conf.key;
@@ -167,9 +168,9 @@ class Stat {
   }
 
   // обновляет статистику head синхронизированную с body
-  updateHeadSync(teamID, param, save) {
-    const stat = this._head[teamID];
-    const bodyStats = this._body[teamID];
+  updateHeadSync(teamId, param, save) {
+    const stat = this._head[teamId];
+    const bodyStats = this._body[teamId];
     const conf = this._config[param];
     const method = conf.headMethod;
     const key = conf.key;
@@ -230,21 +231,21 @@ class Stat {
     stat[0] = [];
     stat[1] = [];
 
-    for (const teamID in this._body) {
-      if (Object.hasOwn(this._body, teamID)) {
-        const bodyStats = this._body[teamID];
+    for (const teamId in this._body) {
+      if (Object.hasOwn(this._body, teamId)) {
+        const bodyStats = this._body[teamId];
 
-        for (const gameID in bodyStats) {
-          if (Object.hasOwn(bodyStats, gameID)) {
-            stat[0].push(bodyStats[gameID]);
+        for (const gameId in bodyStats) {
+          if (Object.hasOwn(bodyStats, gameId)) {
+            stat[0].push(bodyStats[gameId]);
           }
         }
       }
     }
 
-    for (const teamID in this._head) {
-      if (Object.hasOwn(this._head, teamID)) {
-        stat[1].push(this._head[teamID]);
+    for (const teamId in this._head) {
+      if (Object.hasOwn(this._head, teamId)) {
+        stat[1].push(this._head[teamId]);
       }
     }
 
