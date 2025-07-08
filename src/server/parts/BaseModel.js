@@ -24,6 +24,8 @@ class BaseModel {
         this._weaponRemainingCooldowns[weaponName] = 0;
       }
     }
+
+    this._services.panel.setActiveWeapon(this._gameId, this._currentWeapon);
   }
 
   get teamId() {
@@ -157,6 +159,9 @@ class BaseModel {
 
     this._currentWeapon = this._availableWeaponList[key];
     this._weaponConstructorType = this._weapons[this._currentWeapon].type;
+
+    // сообщаем сервису панели, что активное оружие изменилось
+    this._services.panel.setActiveWeapon(this._gameId, this._currentWeapon);
   }
 
   // меняет имя игрока

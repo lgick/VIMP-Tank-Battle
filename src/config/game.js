@@ -101,15 +101,15 @@ export default {
 
   panel: {
     health: {
-      key: 0,
+      key: 'h',
       value: 100,
     },
     w1: {
-      key: 1,
+      key: 'w1',
       value: 100,
     },
     w2: {
-      key: 2,
+      key: 'w2',
       value: 50,
     },
   },
