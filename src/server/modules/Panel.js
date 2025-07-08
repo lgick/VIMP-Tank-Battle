@@ -4,8 +4,6 @@ let panel;
 
 class Panel {
   constructor(config) {
-    let counter = 0;
-
     if (panel) {
       return panel;
     }
@@ -13,15 +11,13 @@ class Panel {
     panel = this;
 
     this._config = config;
-    this._emptyPanel = [];
     this._data = {};
     this._timerManager = null;
+    this._emptyPanel = Object.values(this._config).map(item => item.key);
+    this._defaultPanel = {};
 
-    for (const p in this._config) {
-      if (Object.hasOwn(this._config, p)) {
-        this._emptyPanel[counter] = '';
-        counter += 1;
-      }
+    for (const key of Object.keys(this._config)) {
+      this._defaultPanel[key] = this._config[key].value;
     }
   }
 
@@ -36,31 +32,17 @@ class Panel {
       if (Object.hasOwn(this._data, gameId)) {
         const user = this._data[gameId];
 
-        user.values = this.getDefault(user.values);
+        user.values = { ...this._defaultPanel };
         user.status = true;
       }
     }
   }
 
-  // возвращает дефолтные данные
-  getDefault(panel = []) {
-    for (const p in this._config) {
-      if (Object.hasOwn(this._config, p)) {
-        const conf = this._config[p];
-
-        if (typeof conf.value !== 'undefined') {
-          panel[conf.key] = conf.value;
-        }
-      }
-    }
-
-    return panel;
-  }
-
   // добавляет пользователя
   addUser(gameId) {
     this._data[gameId] = {
-      values: this.getDefault(),
+      values: { ...this._defaultPanel },
+      activeWeapon: null,
       status: true,
     };
   }
@@ -71,14 +53,12 @@ class Panel {
   }
 
   // обновляет данные пользователя
-  // param: имя параметра из _config (например, 'health', 'bullet')
+  // param: имя параметра из _config (например, 'health', 'w1')
   // value: значение
   // operation: 'set', 'decrement', 'increment'
   updateUser(gameId, param, value, operation = 'decrement') {
-    const conf = this._config[param];
-    const key = conf.key;
     const user = this._data[gameId];
-    const currentValue = user.values[key];
+    const currentValue = user.values[param];
     let newValue;
 
     if (operation === 'set') {
@@ -93,53 +73,73 @@ class Panel {
       newValue = 0;
     }
 
-    user.values[key] = newValue;
+    user.values[param] = newValue;
+    user.status = true;
+  }
+
+  // устанавливает активное оружие
+  setActiveWeapon(gameId, weaponKey) {
+    const user = this._data[gameId];
+
+    user.activeWeapon = weaponKey;
     user.status = true;
   }
 
   // проверяет, достаточно ли у пользователя ресурсов для действия
   hasResources(gameId, param, value) {
     const user = this._data[gameId];
-    const conf = this._config[param];
+    const currentValue = user.values[param];
 
-    if (user && conf) {
-      const currentValue = user.values[conf.key];
-      return currentValue >= value;
-    }
+    return currentValue >= value;
   }
 
   // возвращает текущее значение параметра для пользователя
   getCurrentValue(gameId, param) {
     const user = this._data[gameId];
-    const conf = this._config[param];
 
-    if (user && conf) {
-      return user.values[conf.key];
-    }
+    return user.values[param];
   }
 
   // возвращает данные
   getPanel(gameId) {
     const user = this._data[gameId];
-    let data = [this._timerManager.getRoundTimeLeft()];
+    const data = this.getTime();
 
-    if (user && user.status === true) {
+    if (user.status === true) {
       user.status = false;
+      const values = user.values;
 
-      data = data.concat(user.values);
+      // если активное оружие изменилось
+      if (user.activeWeapon) {
+        data.push(`wa:${user.activeWeapon}`);
+        user.activeWeapon = null; // сброс после отправки
+      }
+
+      // остальные данные игрока
+      for (const param in values) {
+        if (Object.hasOwn(values, param)) {
+          const key = this._config[param].key;
+          const value = values[param];
+
+          data.push(`${key}:${value}`);
+        }
+      }
+    } else {
+      // даже если статус не true, всегда отправляем время
+      return data;
     }
 
     return data;
   }
 
-  // возвращает пустые данные (пустые строки)
+  // возвращает пустые данные (ключи без значений)
   // требуется, чтоб скрыть контейнеры этих данных
   getEmptyPanel() {
-    return [this._timerManager.getRoundTimeLeft(), ...this._emptyPanel];
+    return this.getTime().concat(this._emptyPanel);
   }
 
   getTime() {
-    return [this._timerManager.getRoundTimeLeft()];
+    return [`t:${this._timerManager.getRoundTimeLeft()}`];
   }
 }
 

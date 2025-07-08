@@ -5,14 +5,12 @@ import Publisher from '../../../lib/Publisher.js';
 let chatView;
 
 export default class ChatView {
-  constructor(model, data) {
+  constructor(model, elems) {
     if (chatView) {
       return chatView;
     }
 
     chatView = this;
-
-    const elems = data.elems;
 
     this._chat = document.getElementById(elems.chatBox);
     this._cmd = document.getElementById(elems.cmd);

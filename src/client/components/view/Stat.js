@@ -5,14 +5,12 @@ import Publisher from '../../../lib/Publisher.js';
 let statView;
 
 export default class StatView {
-  constructor(model, data) {
+  constructor(model, elems) {
     if (statView) {
       return statView;
     }
 
     statView = this;
-
-    const elems = data.elems;
 
     this._stat = document.getElementById(elems.stat);
 

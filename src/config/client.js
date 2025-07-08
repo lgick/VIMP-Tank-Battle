@@ -1,5 +1,3 @@
-// regExp строкой
-// dependencies пути
 export default {
   // ***** parts ***** //
   parts: {
@@ -132,7 +130,7 @@ export default {
       },
     },
 
-    displayId: ['vimp', 'radar', 'panel', 'chat'],
+    displayIdList: ['vimp', 'radar', 'panel', 'chat'],
 
     // keys
     keys: {
@@ -251,10 +249,18 @@ export default {
       elems: {
         time: 'panel-time',
         health: 'panel-health',
-        bullet: 'panel-bullet',
-        bomb: 'panel-bomb',
+        weapons: {
+          bullet: 'panel-bullet',
+          bomb: 'panel-bomb',
+        },
       },
-      panels: ['time', 'health', 'bullet', 'bomb'],
+      keys: {
+        t: 'time',
+        h: 'health',
+        wa: 'activeWeapon',
+        w1: 'bullet',
+        w2: 'bomb',
+      },
     },
 
     // stat

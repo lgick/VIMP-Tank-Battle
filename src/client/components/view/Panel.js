@@ -5,14 +5,26 @@ import Publisher from '../../../lib/Publisher.js';
 let panelView;
 
 export default class PanelView {
-  constructor(model, data) {
+  constructor(model, elems) {
     if (panelView) {
       return panelView;
     }
 
     panelView = this;
 
-    this._panel = data.panel;
+    this._panels = {};
+
+    this._panels.time = document.getElementById(elems.time);
+    this._panels.health = document.getElementById(elems.health);
+
+    this._weaponList = Object.keys(elems.weapons);
+
+    for (const weaponName of this._weaponList) {
+      this._panels[weaponName] = document.getElementById(
+        elems.weapons[weaponName],
+      );
+    }
+
     this._healthBarWrapper = null; // контейнер
     this._healthBlocks = []; // блоки здоровья
     this._totalHealthBlocks = 30; // количество блоков здоровья
@@ -23,13 +35,15 @@ export default class PanelView {
 
     this._mPublic = model.publisher;
     this._mPublic.on('data', 'update', this);
+    this._mPublic.on('hide', 'hidePanel', this);
+    this._mPublic.on('activeWeapon', 'setCurrentWeapon', this);
 
     this.initHealthBar();
   }
 
   // инициализирует полосу здоровья
   initHealthBar() {
-    const healthContainer = document.getElementById(this._panel.health);
+    const healthContainer = this._panels.health;
 
     healthContainer.innerHTML = '';
 
@@ -92,45 +106,51 @@ export default class PanelView {
 
   // обновляет пользовательскую панель
   update(data) {
-    const elem = document.getElementById(this._panel[data.name]);
+    const { name, value } = data;
+    const elem = this._panels[name];
 
-    if (!elem) {
-      return;
+    // логика для здоровья
+    if (name === 'health') {
+      const blocksToShow = Math.ceil((value / 100) * this._totalHealthBlocks);
+
+      this._healthBlocks.forEach((block, index) => {
+        if (index < blocksToShow) {
+          block.className = 'panel-health-block';
+          block.style.backgroundColor = this._healthBlockColors[index];
+        } else {
+          block.className = 'panel-health-block-empty';
+          block.style.backgroundColor = this._emptyBlockColor;
+        }
+      });
+
+      // мигание для последнего неполного блока
+      const exactBlocks = (value / 100) * this._totalHealthBlocks;
+
+      if (value > 0 && exactBlocks % 1 !== 0) {
+        this._healthBlocks[blocksToShow - 1].classList.add(
+          'panel-health-blink',
+        );
+      }
+    } else {
+      elem.innerHTML = value;
     }
 
-    if (data.value === '') {
-      elem.style.display = 'none';
-    } else {
-      // логика для здоровья
-      if (data.name === 'health') {
-        const health = parseInt(data.value, 10);
-        const blocksToShow = Math.ceil(
-          (health / 100) * this._totalHealthBlocks,
-        );
+    elem.style.display = 'table-cell';
+  }
 
-        this._healthBlocks.forEach((block, index) => {
-          if (index < blocksToShow) {
-            block.className = 'panel-health-block';
-            block.style.backgroundColor = this._healthBlockColors[index];
-          } else {
-            block.className = 'panel-health-block-empty';
-            block.style.backgroundColor = this._emptyBlockColor;
-          }
-        });
+  hidePanel(name) {
+    this._panels[name].style.display = 'none';
+  }
 
-        // мигание для последнего неполного блока
-        const exactBlocks = (health / 100) * this._totalHealthBlocks;
+  // устанавливает активное оружие
+  setCurrentWeapon(activeWeaponName) {
+    for (const weaponName of this._weaponList) {
+      const elem = this._panels[weaponName];
 
-        if (health > 0 && exactBlocks % 1 !== 0) {
-          this._healthBlocks[blocksToShow - 1].classList.add(
-            'panel-health-blink',
-          );
-        }
-
-        elem.style.display = 'table-cell';
+      if (weaponName === activeWeaponName) {
+        elem.classList.add('active');
       } else {
-        elem.innerHTML = data.value;
-        elem.style.display = 'table-cell';
+        elem.classList.remove('active');
       }
     }
   }

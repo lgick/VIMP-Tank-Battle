@@ -159,9 +159,7 @@ socketMethods[PS_AUTH_DATA] = data => {
   });
 
   const authModel = new AuthModel();
-  const authView = new AuthView(authModel, {
-    elems,
-  });
+  const authView = new AuthView(authModel, elems);
   modules.auth = new AuthCtrl(authModel, authView);
 
   authModel.publisher.on('socket', data => sending(PC_AUTH_RESPONSE, data));
@@ -349,7 +347,7 @@ function runModules(data) {
   const {
     canvasOptions,
     keys,
-    displayId,
+    displayIdList,
     chat: chatData,
     panel: panelData,
     stat: statData,
@@ -366,9 +364,7 @@ function runModules(data) {
     Ticker,
   });
 
-  const userView = new UserView(userModel, {
-    displayId,
-  });
+  const userView = new UserView(userModel, displayIdList);
 
   modules.user = new UserCtrl(userModel, userView);
 
@@ -391,9 +387,7 @@ function runModules(data) {
     messageExp: chatData.params.messageExp,
   });
 
-  const chatView = new ChatView(chatModel, {
-    elems: chatData.elems,
-  });
+  const chatView = new ChatView(chatModel, chatData.elems);
 
   modules.chat = new ChatCtrl(chatModel, chatView);
 
@@ -401,11 +395,8 @@ function runModules(data) {
   // Panel Module
   //==========================================//
 
-  const panelModel = new PanelModel(panelData.panels);
-
-  const panelView = new PanelView(panelModel, {
-    panel: panelData.elems,
-  });
+  const panelModel = new PanelModel(panelData.keys);
+  const panelView = new PanelView(panelModel, panelData.elems);
 
   modules.panel = new PanelCtrl(panelModel, panelView);
 
@@ -414,10 +405,7 @@ function runModules(data) {
   //==========================================//
 
   const statModel = new StatModel(statData.params);
-
-  const statView = new StatView(statModel, {
-    elems: statData.elems,
-  });
+  const statView = new StatView(statModel, statData.elems);
 
   modules.stat = new StatCtrl(statModel, statView);
 
@@ -430,9 +418,7 @@ function runModules(data) {
     time: voteData.params.time,
   });
 
-  const voteView = new VoteView(voteModel, {
-    elems: voteData.elems,
-  });
+  const voteView = new VoteView(voteModel, voteData.elems);
 
   modules.vote = new VoteCtrl(voteModel, voteView);
 
