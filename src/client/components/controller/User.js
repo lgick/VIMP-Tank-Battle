@@ -50,4 +50,9 @@ export default class UserCtrl {
   resize(data) {
     this._model.resize(data);
   }
+
+  // меняет статус готовности игрока к игре
+  setPlayerReady(isReady) {
+    this._model.setPlayerReady(isReady);
+  }
 }
