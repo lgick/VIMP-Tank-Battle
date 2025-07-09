@@ -28,6 +28,7 @@ class Panel {
   // внедряет зависимость TimerManager
   injectTimerManager(timerManager) {
     this._timerManager = timerManager;
+    this._lastSentRoundTime = this._timerManager.getRoundTimeLeft();
   }
 
   // сбрасывает внутреннее состояние пользователей к дефолтному
@@ -53,6 +54,17 @@ class Panel {
   // удаляет пользователя
   removeUser(gameId) {
     delete this._data[gameId];
+  }
+
+  // очищает ожидающие изменения для пользователя
+  // требуется, когда состояние пользователя резко меняется
+  // (например при уничтожении)
+  invalidate(gameId) {
+    const user = this._data[gameId];
+
+    if (user) {
+      user.pendingChanges = {};
+    }
   }
 
   // обновляет данные пользователя
@@ -144,7 +156,7 @@ class Panel {
     const user = this._data[gameId];
     user.pendingChanges = {}; // очистка старых изменений
 
-    const panelData = [`t:${this._timerManager.getRoundTimeLeft()}`];
+    const panelData = [`t:${this._lastSentRoundTime}`];
     const values = user.values;
 
     for (const param in values) {
@@ -160,7 +172,7 @@ class Panel {
 
   // возвращает пустые данные (ключи без значений)
   getEmptyPanel() {
-    return this._emptyPanel;
+    return [`t:${this._lastSentRoundTime}`].concat(this._emptyPanel);
   }
 }
 

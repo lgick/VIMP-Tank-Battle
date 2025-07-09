@@ -32,6 +32,7 @@ const PS_CONFIG_DATA = wsports.server.CONFIG_DATA;
 const PS_AUTH_DATA = wsports.server.AUTH_DATA;
 const PS_AUTH_ERRORS = wsports.server.AUTH_ERRORS;
 const PS_MAP_DATA = wsports.server.MAP_DATA;
+const PS_FIRST_SHOT_DATA = wsports.server.FIRST_SHOT_DATA;
 const PS_SHOT_DATA = wsports.server.SHOT_DATA;
 const PS_INFORM_DATA = wsports.server.INFORM_DATA;
 const PS_MISC = wsports.server.MISC;
@@ -42,6 +43,7 @@ const PS_CONSOLE = wsports.server.CONSOLE;
 const PC_CONFIG_READY = wsports.client.CONFIG_READY;
 const PC_AUTH_RESPONSE = wsports.client.AUTH_RESPONSE;
 const PC_MAP_READY = wsports.client.MAP_READY;
+const PC_FIRST_SHOT_READY = wsports.client.FIRST_SHOT_READY;
 const PC_KEYS_DATA = wsports.client.KEYS_DATA;
 const PC_CHAT_DATA = wsports.client.CHAT_DATA;
 const PC_VOTE_DATA = wsports.client.VOTE_DATA;
@@ -236,8 +238,78 @@ socketMethods[PS_MAP_DATA] = data => {
   sending(PC_MAP_READY);
 };
 
+socketMethods[PS_FIRST_SHOT_DATA] = data => {
+  shotData(data);
+
+  // подтверждение получения первого шота
+  sending(PC_FIRST_SHOT_READY);
+};
+
 // shot data
-socketMethods[PS_SHOT_DATA] = data => {
+socketMethods[PS_SHOT_DATA] = shotData;
+
+// inform data
+socketMethods[PS_INFORM_DATA] = data => {
+  if (data) {
+    const [messageKey, dataArr] = data;
+    let message = informList[messageKey];
+
+    if (message && dataArr) {
+      dataArr.forEach((value, index) => {
+        const regExp = new RegExp(`\\{${index}\\}`, 'g');
+        message = message.replace(regExp, value);
+      });
+    }
+
+    informer.innerHTML = message;
+    informer.style.display = 'block';
+    modules.user.setPlayerReady(false);
+  } else {
+    informer.innerHTML = '';
+    informer.style.display = 'none';
+    modules.user.setPlayerReady(true);
+  }
+};
+
+// misc
+socketMethods[PS_MISC] = data => {
+  const { key, value } = data;
+
+  if (key === 'localstorageNameReplace') {
+    localStorage['userName'] = value;
+  }
+};
+
+// clear
+socketMethods[PS_CLEAR] = function (setIdList) {
+  // если есть список setId (учитывается в том числе пустой список)
+  if (Array.isArray(setIdList)) {
+    for (let i = 0, len = setIdList.length; i < len; i += 1) {
+      const nameArr = gameSets[setIdList[i]] || [];
+
+      nameArr.forEach(name => {
+        CTRL[entitiesOnCanvas[name]].remove(name);
+      });
+    }
+  } else {
+    for (const p in CTRL) {
+      if (Object.hasOwn(CTRL, p)) {
+        CTRL[p].remove();
+      }
+    }
+  }
+
+  updateGameControllers();
+};
+
+// console
+socketMethods[PS_CONSOLE] = data => {
+  console.log(data);
+};
+
+// ФУНКЦИИ
+
+function shotData(data) {
   const [game, crds, panel, stat, chat, vote, keySet] = data;
 
   // данные игры
@@ -281,66 +353,7 @@ socketMethods[PS_SHOT_DATA] = data => {
   if (typeof keySet === 'number') {
     modules.user.changeKeySet(keySet);
   }
-};
-
-// inform data
-socketMethods[PS_INFORM_DATA] = data => {
-  if (data) {
-    const [messageKey, dataArr] = data;
-    let message = informList[messageKey];
-
-    if (message && dataArr) {
-      dataArr.forEach((value, index) => {
-        const regExp = new RegExp(`\\{${index}\\}`, 'g');
-        message = message.replace(regExp, value);
-      });
-    }
-
-    informer.innerHTML = message;
-    informer.style.display = 'block';
-  } else {
-    informer.innerHTML = '';
-    informer.style.display = 'none';
-  }
-};
-
-// misc
-socketMethods[PS_MISC] = data => {
-  const { key, value } = data;
-
-  if (key === 'localstorageNameReplace') {
-    localStorage['userName'] = value;
-  }
-};
-
-// clear
-socketMethods[PS_CLEAR] = function (setIdList) {
-  // если есть список setId (учитывается в том числе пустой список)
-  if (Array.isArray(setIdList)) {
-    for (let i = 0, len = setIdList.length; i < len; i += 1) {
-      const nameArr = gameSets[setIdList[i]] || [];
-
-      nameArr.forEach(name => {
-        CTRL[entitiesOnCanvas[name]].remove(name);
-      });
-    }
-  } else {
-    for (const p in CTRL) {
-      if (Object.hasOwn(CTRL, p)) {
-        CTRL[p].remove();
-      }
-    }
-  }
-
-  updateGameControllers();
-};
-
-// console
-socketMethods[PS_CONSOLE] = data => {
-  console.log(data);
-};
-
-// ФУНКЦИИ
+}
 
 // создает пользователя
 function runModules(data) {

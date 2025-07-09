@@ -47,6 +47,7 @@ class VIMP {
     this._removedPlayersList = [];
 
     this._PORT_MAP_DATA = ports.MAP_DATA;
+    this._PORT_FIRST_SHOT_DATA = ports.FIRST_SHOT_DATA;
     this._PORT_SHOT_DATA = ports.SHOT_DATA;
     this._PORT_INFORM_DATA = ports.INFORM_DATA;
     this._PORT_MISC = ports.MISC;
@@ -112,9 +113,9 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData(dt);
 
-    // список пользователей с готовой картой
+    // список пользователей готовых к игре
     const userList = Object.keys(this._users).filter(
-      gameId => this._users[gameId].mapReady === true,
+      gameId => this._users[gameId].isReady === true,
     );
 
     const game = this._game.getGameData();
@@ -244,65 +245,59 @@ class VIMP {
         user.nextTeam = null;
         user.isWatching = true;
         user.watchedGameId = null;
-      }
-    }
 
-    this.sendMap();
-    this._timerManager.startGameTimers();
-  }
-
-  // отправляет карту либо конкретному игроку, либо всем
-  sendMap(gameId) {
-    if (gameId) {
-      const user = this._users[gameId];
-
-      user.socket.send(this._PORT_INFORM_DATA, [2]);
-      user.mapReady = false;
-      user.currentMap = this._currentMap;
-      user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
-    } else {
-      for (const p in this._users) {
-        if (Object.hasOwn(this._users, p)) {
-          const user = this._users[p];
-
-          user.socket.send(this._PORT_INFORM_DATA, [2]);
-          user.mapReady = false;
-          user.currentMap = this._currentMap;
-          user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
-        }
-      }
-    }
-  }
-
-  // сообщает о загрузке карты
-  mapReady(err, gameId) {
-    const user = this._users[gameId];
-
-    if (!err && user.mapReady === false) {
-      // если карта загруженая пользователем совпадает с картой сервера
-      if (user.currentMap === this._currentMap) {
-        // скрывает экран загрузки
-        user.socket.send(this._PORT_INFORM_DATA);
-        user.mapReady = true;
-
-        // отправка первого shot
-        user.socket.send(this._PORT_SHOT_DATA, [
-          this._game.getFullPlayersData(), // game
-          0, // coords
-          this._panel.getEmptyPanel(), // panel
-          this._stat.getFull(), // stat
-          0, // chat
-          [
-            ['team', true],
-            ['Выберите команду', Object.keys(this._teams), null],
-          ], // vote: опрос выбора команды
-        ]);
-
-        // иначе загрузить актуальную карту
-      } else {
         this.sendMap(gameId);
       }
     }
+
+    this._timerManager.startGameTimers();
+  }
+
+  // отправляет карту
+  sendMap(gameId) {
+    const user = this._users[gameId];
+
+    user.socket.send(this._PORT_INFORM_DATA, [2]);
+    user.isReady = false;
+    user.currentMap = this._currentMap;
+    user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
+  }
+
+  // сообщает о загрузке карты
+  mapReady(gameId) {
+    const user = this._users[gameId];
+
+    // если карта не актуальна
+    if (user.currentMap !== this._currentMap) {
+      this.sendMap(gameId);
+      return;
+    }
+
+    // если игрок ещё не готов
+    if (user.isReady === false) {
+      // отправка первого shot
+      user.socket.send(this._PORT_FIRST_SHOT_DATA, [
+        this._game.getFullPlayersData(), // game
+        0, // coords
+        this._panel.getEmptyPanel(), // panel
+        this._stat.getFull(), // stat
+        0, // chat
+        [
+          ['team', true],
+          ['Выберите команду', Object.keys(this._teams), null],
+        ], // vote: опрос выбора команды
+        0, // keySet: 0 (наблюдатель)
+      ]);
+    }
+  }
+
+  // сообщает о готовности игрока к игре
+  firstShotReady(gameId) {
+    const user = this._users[gameId];
+
+    // скрывает экран загрузки
+    user.socket.send(this._PORT_INFORM_DATA);
+    user.isReady = true;
   }
 
   // начало раунда: перемещаем игроков и отправляем первый кадр
@@ -324,13 +319,13 @@ class VIMP {
       if (Object.hasOwn(this._users, gameId)) {
         const user = this._users[gameId];
 
-        if (user.mapReady === false) {
+        if (user.isReady === false) {
           continue;
         }
 
         user.socket.send(this._PORT_CLEAR, setIdList);
 
-        const firstShotData = [
+        const shotData = [
           {}, // game
           0, // coords
           0, // panel
@@ -368,19 +363,19 @@ class VIMP {
         if (teamId !== this._spectatorId) {
           user.isWatching = false;
           // полный набор данных для инициализации активного игрока
-          firstShotData[2] = this._panel.getFullPanel(gameId);
-          firstShotData[6] = 1; // keySet игрока
+          shotData[2] = this._panel.getFullPanel(gameId);
+          shotData[6] = 1; // keySet игрока
           this.addToActivePlayers(gameId);
           this._stat.updateUser(gameId, teamId, { status: '' });
         } else {
           user.isWatching = true;
           // пустая панель для наблюдателя
-          firstShotData[2] = this._panel.getEmptyPanel();
-          firstShotData[6] = 0; // keySet наблюдателя
+          shotData[2] = this._panel.getEmptyPanel();
+          shotData[6] = 0; // keySet наблюдателя
         }
 
         // отправка первого кадра
-        user.socket.send(this._PORT_SHOT_DATA, firstShotData);
+        user.socket.send(this._PORT_SHOT_DATA, shotData);
 
         respId[user.team] = respId[user.team] || 0;
         const data = respawns[user.team];
@@ -548,8 +543,10 @@ class VIMP {
     user.isWatching = true;
 
     this._stat.updateUser(gameId, user.teamId, { deaths: 1, status: 'dead' });
+    // отмена всех запланированных обновлений для панели
+    this._panel.invalidate(gameId);
 
-    const updateData = [
+    const shotData = [
       {},
       0,
       this._panel.getEmptyPanel(),
@@ -559,7 +556,7 @@ class VIMP {
       0, // keySet = 0 для наблюдателя
     ];
 
-    user.socket.send(this._PORT_SHOT_DATA, updateData);
+    user.socket.send(this._PORT_SHOT_DATA, shotData);
   }
 
   // меняет и возвращает gameId наблюдаемого игрока
@@ -616,8 +613,8 @@ class VIMP {
       gameId,
       // сокет
       socket,
-      // флаг загрузки карты
-      mapReady: false,
+      // флаг готовности игрока
+      isReady: false,
       // текущая карта игры
       currentMap: null,
       // имя пользователя
@@ -707,7 +704,7 @@ class VIMP {
   pushMessage(gameId, message) {
     const user = this._users[gameId];
 
-    if (user.mapReady === false) {
+    if (user.isReady === false) {
       return;
     }
 
@@ -726,7 +723,7 @@ class VIMP {
   parseVote(gameId, data) {
     const user = this._users[gameId];
 
-    if (user.mapReady === false) {
+    if (user.isReady === false) {
       return;
     }
 
