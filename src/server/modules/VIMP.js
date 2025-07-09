@@ -118,6 +118,7 @@ class VIMP {
     );
 
     const game = this._game.getGameData();
+    const panelUpdates = this._panel.processUpdates();
     const stat = this._stat.getLast();
     const chat = this._chat.shift();
     const vote = this._vote.shift();
@@ -135,11 +136,10 @@ class VIMP {
 
     const getUserData = gameId => {
       const user = this._users[gameId];
-      let coords, panel, chatUser, voteUser;
+      let coords, chatUser, voteUser;
+      const panel = panelUpdates[gameId] || 0;
 
       if (user.isWatching === true) {
-        panel = this._panel.getTime();
-
         // если есть играющие пользователи
         if (this._activePlayersList.length) {
           // если наблюдаемый игрок не существует (завершил игру)
@@ -153,7 +153,6 @@ class VIMP {
         }
       } else {
         coords = this._game.getPlayerCoords(gameId);
-        panel = this._panel.getPanel(gameId);
       }
 
       // если у игрока активен эффект тряски камеры
@@ -368,12 +367,14 @@ class VIMP {
 
         if (teamId !== this._spectatorId) {
           user.isWatching = false;
-          firstShotData[2] = this._panel.getPanel(gameId);
+          // полный набор данных для инициализации активного игрока
+          firstShotData[2] = this._panel.getFullPanel(gameId);
           firstShotData[6] = 1; // keySet игрока
           this.addToActivePlayers(gameId);
           this._stat.updateUser(gameId, teamId, { status: '' });
         } else {
           user.isWatching = true;
+          // пустая панель для наблюдателя
           firstShotData[2] = this._panel.getEmptyPanel();
           firstShotData[6] = 0; // keySet наблюдателя
         }

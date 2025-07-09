@@ -11,10 +11,14 @@ class Panel {
     panel = this;
 
     this._config = config;
+
     this._data = {};
     this._timerManager = null;
+
     this._emptyPanel = Object.values(this._config).map(item => item.key);
     this._defaultPanel = {};
+
+    this._lastSentRoundTime = -1; // кеширование последнего значения времени
 
     for (const key of Object.keys(this._config)) {
       this._defaultPanel[key] = this._config[key].value;
@@ -26,14 +30,14 @@ class Panel {
     this._timerManager = timerManager;
   }
 
-  // сбрасывает данные пользователей
+  // сбрасывает внутреннее состояние пользователей к дефолтному
   reset() {
     for (const gameId in this._data) {
       if (Object.hasOwn(this._data, gameId)) {
         const user = this._data[gameId];
 
         user.values = { ...this._defaultPanel };
-        user.status = true;
+        user.pendingChanges = {}; // очистка, без добавления новых данных
       }
     }
   }
@@ -42,8 +46,7 @@ class Panel {
   addUser(gameId) {
     this._data[gameId] = {
       values: { ...this._defaultPanel },
-      activeWeapon: null,
-      status: true,
+      pendingChanges: {}, // объект для хранения только измененных данных
     };
   }
 
@@ -58,7 +61,8 @@ class Panel {
   // operation: 'set', 'decrement', 'increment'
   updateUser(gameId, param, value, operation = 'decrement') {
     const user = this._data[gameId];
-    const currentValue = user.values[param];
+    const values = user.values;
+    const currentValue = values[param];
     let newValue;
 
     if (operation === 'set') {
@@ -73,16 +77,14 @@ class Panel {
       newValue = 0;
     }
 
-    user.values[param] = newValue;
-    user.status = true;
+    values[param] = newValue;
+    user.pendingChanges[this._config[param].key] = newValue;
   }
 
   // устанавливает активное оружие
   setActiveWeapon(gameId, weaponKey) {
     const user = this._data[gameId];
-
-    user.activeWeapon = weaponKey;
-    user.status = true;
+    user.pendingChanges['wa'] = weaponKey;
   }
 
   // проверяет, достаточно ли у пользователя ресурсов для действия
@@ -100,46 +102,65 @@ class Panel {
     return user.values[param];
   }
 
-  // возвращает данные
-  getPanel(gameId) {
-    const user = this._data[gameId];
-    const data = this.getTime();
+  // вычисляет все обновления панели за один тик
+  processUpdates() {
+    const updates = {};
+    const currentTime = this._timerManager.getRoundTimeLeft();
+    const timeChanged = currentTime !== this._lastSentRoundTime;
 
-    if (user.status === true) {
-      user.status = false;
-      const values = user.values;
-
-      // если активное оружие изменилось
-      if (user.activeWeapon) {
-        data.push(`wa:${user.activeWeapon}`);
-        user.activeWeapon = null; // сброс после отправки
-      }
-
-      // остальные данные игрока
-      for (const param in values) {
-        if (Object.hasOwn(values, param)) {
-          const key = this._config[param].key;
-          const value = values[param];
-
-          data.push(`${key}:${value}`);
-        }
-      }
-    } else {
-      // даже если статус не true, всегда отправляем время
-      return data;
+    if (timeChanged) {
+      this._lastSentRoundTime = currentTime;
     }
 
-    return data;
+    for (const gameId in this._data) {
+      if (Object.hasOwn(this._data, gameId)) {
+        const user = this._data[gameId];
+        const userChanges = user.pendingChanges;
+        const userData = [];
+
+        if (timeChanged) {
+          userData.push(`t:${currentTime}`);
+        }
+
+        for (const key in userChanges) {
+          if (Object.hasOwn(userChanges, key)) {
+            userData.push(`${key}:${userChanges[key]}`);
+          }
+        }
+
+        if (userData.length) {
+          updates[gameId] = userData;
+        }
+
+        user.pendingChanges = {};
+      }
+    }
+
+    return updates;
+  }
+
+  // возвращает полный набор данных для инициализации панели игрока
+  getFullPanel(gameId) {
+    const user = this._data[gameId];
+    user.pendingChanges = {}; // очистка старых изменений
+
+    const panelData = [`t:${this._timerManager.getRoundTimeLeft()}`];
+    const values = user.values;
+
+    for (const param in values) {
+      if (Object.hasOwn(values, param)) {
+        const key = this._config[param].key;
+        const value = values[param];
+
+        panelData.push(`${key}:${value}`);
+      }
+    }
+    return panelData;
   }
 
   // возвращает пустые данные (ключи без значений)
-  // требуется, чтоб скрыть контейнеры этих данных
   getEmptyPanel() {
-    return this.getTime().concat(this._emptyPanel);
-  }
-
-  getTime() {
-    return [`t:${this._timerManager.getRoundTimeLeft()}`];
+    return this._emptyPanel;
   }
 }
 
