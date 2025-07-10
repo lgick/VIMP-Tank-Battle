@@ -106,10 +106,13 @@ class Tank extends BaseModel {
   takeDamage(amount) {
     // если танк уже уничтожен, урон не считать
     if (this._condition === 0) {
-      return;
+      return false;
     }
 
-    const newHealth = this.setHealth(amount);
+    const currentHealth = this.getHealth();
+    const newHealth = Math.max(0, currentHealth - amount);
+
+    this.setHealth(newHealth);
 
     if (newHealth <= 0) {
       this._condition = 0; // танк уничтожен
@@ -117,8 +120,12 @@ class Tank extends BaseModel {
       // остановка танка при уничтожении
       this._body.setLinearVelocity(new Vec2(0, 0));
       this._body.setAngularVelocity(0);
-      // значительные повреждения
-    } else if (newHealth < 35) {
+
+      return true;
+    }
+
+    // значительные повреждения
+    if (newHealth < 35) {
       this._condition = 1;
       // незначительные повреждения
     } else if (newHealth < 70) {
@@ -127,6 +134,8 @@ class Tank extends BaseModel {
     } else {
       this._condition = 3;
     }
+
+    return false;
   }
 
   // получение боковой скорости

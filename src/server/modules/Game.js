@@ -302,7 +302,12 @@ class Game {
     const damage =
       typeof damageValue === 'number' ? damageValue : weaponConfig?.damage || 0;
 
-    player.takeDamage(damage);
+    const wasDestroyed = player.takeDamage(damage);
+
+    // если игрок был уничтожен именно этим уроном, сообщаем VIMP
+    if (wasDestroyed) {
+      this._services.vimp.reportPlayerDestroyed(targetGameId);
+    }
   }
 
   // обрабатывает события контактов, накопленные за шаг физики
