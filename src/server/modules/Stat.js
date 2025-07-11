@@ -95,6 +95,27 @@ class Stat {
     delete this._body[teamId][gameId];
     this._lastBody.set(`${data[0]}|${data[1]}`, [null]);
 
+    // если в команде больше нет игроков, обнуление статистики
+    if (Object.keys(this._body[teamId]).length === 0) {
+      const headStat = this._head[teamId];
+
+      for (const paramName in this._config) {
+        if (Object.hasOwn(this._config, paramName)) {
+          const conf = this._config[paramName];
+
+          // обнуление только несинхронизируемых командных полей,
+          // у которых есть значение по умолчанию
+          // например 'score', 'deaths'
+          if (!conf.headSync && typeof conf.headValue !== 'undefined') {
+            headStat[1][conf.key] = conf.headValue;
+          }
+        }
+      }
+
+      // помечаем, что заголовок обновился
+      this._lastHead.set(headStat[0], headStat.slice(1));
+    }
+
     data = data[2];
 
     // преобразование данных пользователя из массива в объект и
@@ -117,7 +138,13 @@ class Stat {
 
   // перемещает пользователя в новую команду
   moveUser(gameId, teamId, newTeamId) {
-    this.addUser(gameId, newTeamId, this.removeUser(gameId, teamId));
+    const userData = this.removeUser(gameId, teamId);
+
+    // обнуляем личную статистику (score, deaths) при смене команды
+    userData.score = this._config.score.bodyValue;
+    userData.deaths = this._config.deaths.bodyValue;
+
+    this.addUser(gameId, newTeamId, userData);
   }
 
   // обновляет статистику пользователя

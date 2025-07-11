@@ -206,7 +206,7 @@ class VIMP {
     );
   }
 
-  // создаёт карту
+  // создает карту
   createMap() {
     this._currentMapData = this._maps[this._currentMap];
 
@@ -532,31 +532,83 @@ class VIMP {
     }
   }
 
-  // обрабатывает уничтожение игрока, делает его наблюдателем
-  reportPlayerDestroyed(gameId) {
-    const user = this._users[gameId];
-
-    if (!user || user.isWatching) {
+  // проверяет уничтожение всей команды
+  checkTeamWipe(victimTeamId, killerTeamId) {
+    // если команда наблюдателей, проверка не требуется
+    if (victimTeamId === this._spectatorId) {
       return;
     }
 
-    user.isWatching = true;
+    // проверка на живых игроков в команде
+    for (const gameId in this._users) {
+      if (Object.hasOwn(this._users, gameId)) {
+        const user = this._users[gameId];
 
-    this._stat.updateUser(gameId, user.teamId, { deaths: 1, status: 'dead' });
-    // отмена всех запланированных обновлений для панели
-    this._panel.invalidate(gameId);
+        // если нашелся живой игрок, команда не уничтожена
+        if (user.teamId === victimTeamId && !user.isWatching) {
+          return;
+        }
+      }
+    }
+
+    // если живых не осталось, запись поражения команде
+    this._stat.updateHead(victimTeamId, 'deaths', 1);
+
+    // если убийца из другой команды, фраг для команды-победителя
+    if (killerTeamId && killerTeamId !== victimTeamId) {
+      this._stat.updateHead(killerTeamId, 'score', 1);
+    }
+  }
+
+  // обрабатывает уничтожение игрока, обновляет статистику
+  reportKill(victimId, killerId = null) {
+    const victimUser = this._users[victimId];
+
+    if (!victimUser || victimUser.isWatching) {
+      return;
+    }
+
+    victimUser.isWatching = true;
+
+    // обновление статистики уничтоженного игрока
+    this._stat.updateUser(victimId, victimUser.teamId, {
+      deaths: 1,
+      status: 'dead',
+    });
+
+    const killerUser = this._users[killerId];
+
+    // если это не самоубийство и не огонь по своим,
+    // обновление статистики убийцы
+    if (killerUser && victimId !== killerId) {
+      if (victimUser.teamId !== killerUser.teamId) {
+        this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
+        // иначе если это огонь по своим
+      } else {
+        this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
+      }
+    }
+
+    // отмена всех запланированных обновлений панели
+    this._panel.invalidate(victimId);
 
     const shotData = [
-      {},
-      0,
-      this._panel.getEmptyPanel(),
-      0,
-      0,
-      0,
+      {}, // game
+      0, // coords
+      this._panel.getEmptyPanel(), // panel
+      0, // stat
+      0, // chat
+      0, // vote
       0, // keySet = 0 для наблюдателя
     ];
 
-    user.socket.send(this._PORT_SHOT_DATA, shotData);
+    victimUser.socket.send(this._PORT_SHOT_DATA, shotData);
+
+    // проверка на уничтожение всей команды противника
+    this.checkTeamWipe(
+      victimUser.teamId,
+      killerUser ? killerUser.teamId : null,
+    );
   }
 
   // меняет и возвращает gameId наблюдаемого игрока
