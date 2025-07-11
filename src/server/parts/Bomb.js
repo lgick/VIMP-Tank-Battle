@@ -69,9 +69,8 @@ class Bomb {
         if (friendlyFire || shooterData.teamId !== targetUserData.teamId) {
           game.applyDamage(
             targetUserData.gameId,
-            targetUserData.teamId,
+            shooterData.gameId,
             weaponName,
-            shooterData.teamId,
             actualDamage,
           );
         }
