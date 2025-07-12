@@ -245,7 +245,7 @@ class VIMP {
         user.teamId = this._spectatorId;
         user.nextTeam = null;
         user.isWatching = true;
-        user.watchedGameId = null;
+        user.watchedGameId = this._activePlayersList[0] || null;
 
         this._teamSizes[this._spectatorTeam].add(gameId);
 
@@ -381,17 +381,19 @@ class VIMP {
         user.socket.send(this._PORT_SHOT_DATA, shotData);
 
         respId[user.team] = respId[user.team] || 0;
-        const data = respawns[user.team];
+
+        const respArr = respawns[user.team];
 
         // если есть данные для создания модели
-        if (data) {
+        if (respArr) {
           this._game.createPlayer(
             gameId,
             user.model,
             user.name,
             user.teamId,
-            data[respId[user.team]],
+            respArr[respId[user.team]],
           );
+
           respId[user.team] += 1;
         }
       }
@@ -496,9 +498,10 @@ class VIMP {
 
       this._teamSizes[team].add(gameId);
 
-      // если на сервере менее 2-х активных игроков
-      // требуется начать раунд заново
+      // если на сервере 2 или менее активных игроков
+      // требуется обновить статистику и начать раунд заново
       if (this._activePlayersList.filter(id => id !== gameId).length < 2) {
+        this._stat.reset();
         this.restartRound();
       }
     }
