@@ -39,7 +39,8 @@ class VIMP {
     // id команды наблюдателя
     this._spectatorId = this._teams[this._spectatorTeam];
     // количество игроков в командах
-    this._teamSizes = {}; // { team1: 0, team2: 0, spectators: 0 }
+    // { team1: new Set(), team2: new Set(), spectators: new Set() }
+    this._teamSizes = {};
 
     // список gameId активных игроков на полотне
     this._activePlayersList = [];
@@ -245,6 +246,8 @@ class VIMP {
         user.nextTeam = null;
         user.isWatching = true;
         user.watchedGameId = null;
+
+        this._teamSizes[this._spectatorTeam].add(gameId);
 
         this.sendMap(gameId);
       }
@@ -472,7 +475,7 @@ class VIMP {
       if (team !== this._spectatorTeam) {
         // если количество респаунов на карте в выбраной команде
         // равно количеству игроков в этой команде (смена невозможна)
-        if (respawns[team].length === this._teamSizes[team]) {
+        if (respawns[team].length === this._teamSizes[team].size) {
           if (currentTeam !== this._spectatorTeam) {
             this._chat.pushSystem(`s:0:${team},${currentTeam}`, gameId);
           } else {
@@ -487,11 +490,11 @@ class VIMP {
         this._chat.pushSystem('s:5', gameId);
       }
 
-      this._teamSizes[currentTeam] -= 1;
+      this._teamSizes[currentTeam].delete(gameId);
 
       user.nextTeam = team;
 
-      this._teamSizes[team] += 1;
+      this._teamSizes[team].add(gameId);
 
       // если на сервере менее 2-х активных игроков
       // требуется начать раунд заново
@@ -504,7 +507,7 @@ class VIMP {
   // сбрасывает this._teamSizes в нулевые значения
   resetTeamSizes() {
     this._teamSizes = Object.keys(this._teams).reduce((acc, key) => {
-      acc[key] = 0;
+      acc[key] = new Set();
       return acc;
     }, {});
   }
@@ -697,6 +700,8 @@ class VIMP {
     this._stat.addUser(gameId, this._spectatorId, { name });
     this._panel.addUser(gameId);
 
+    this._teamSizes[this._spectatorTeam].add(gameId);
+
     process.nextTick(() => {
       cb(gameId);
       this.sendMap(gameId);
@@ -729,7 +734,7 @@ class VIMP {
     }
 
     // обновляем счетчики команд
-    this._teamSizes[nextTeam !== null ? nextTeam : team] -= 1;
+    this._teamSizes[nextTeam !== null ? nextTeam : team].delete(gameId);
 
     delete this._users[gameId];
   }
