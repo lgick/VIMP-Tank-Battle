@@ -100,9 +100,18 @@ export default class Tank extends Container {
     this.gun.rotation = data[3];
 
     const newCondition = data[6];
-    const needsVisualChange = (this._condition === 0) !== (newCondition === 0);
+    const teamId = data[8];
+    let needsVisualChange = false;
 
-    this._condition = newCondition;
+    if (newCondition !== undefined && newCondition !== this._condition) {
+      this._condition = newCondition;
+      needsVisualChange = true;
+    }
+
+    if (teamId !== undefined && teamId !== this._teamId) {
+      this._teamId = teamId;
+      needsVisualChange = true;
+    }
 
     // если визуальное представление требуется изменить
     if (needsVisualChange) {

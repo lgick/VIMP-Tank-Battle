@@ -74,6 +74,8 @@ class VIMP {
         voteTime: data.voteTime, // время голосования
         timeBlockedRemap: data.timeBlockedRemap, // время ожидания смены карты
         timeStep: data.timeStep, // время обновления кадра игры
+        // время смены команды в текущем раунде
+        teamChangeGracePeriod: data.teamChangeGracePeriod,
       },
       {
         onMapTimeEnd: this.onMapTimeEnd.bind(this),
@@ -96,6 +98,7 @@ class VIMP {
     this.createMap();
   }
 
+  // запускает голосование за смену карты
   onMapTimeEnd() {
     this._timerManager.stopChangeMapTimer();
     this._timerManager.stopBlockedRemapTimer();
@@ -103,6 +106,7 @@ class VIMP {
     this.changeMap();
   }
 
+  // запускает новый раунд
   onRoundTimeEnd() {
     this.startRound();
     this._timerManager.startRoundTimer();
@@ -149,12 +153,12 @@ class VIMP {
             user.watchedGameId = this._activePlayersList[0];
           }
 
-          coords = this._game.getPlayerCoords(user.watchedGameId);
+          coords = this._game.getPosition(user.watchedGameId);
         } else {
           coords = [0, 0];
         }
       } else {
-        coords = this._game.getPlayerCoords(gameId);
+        coords = this._game.getPosition(gameId);
       }
 
       // если у игрока активен эффект тряски камеры
@@ -448,62 +452,141 @@ class VIMP {
   }
 
   // меняет команду игрока
-  changeTeam(gameId, team) {
+  changeTeam(gameId, newTeam) {
     const user = this._users[gameId];
-    let currentTeam = user.team;
+    const currentTeam = user.team;
     const nextTeam = user.nextTeam;
     const respawns = this._currentMapData.respawns;
 
-    // если команда уже была выбрана
-    if (team === nextTeam) {
-      if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:4:${team}`, gameId);
-      } else {
-        this._chat.pushSystem('s:5', gameId);
-      }
+    // если команда уже была выбрана ранее,
+    // то повтороное сообщение о новой команде
+    if (newTeam === nextTeam) {
+      this._chat.pushSystem(`s:3:${newTeam}`, gameId);
+      return;
+    }
 
-      // иначе если команда является текущей и не изменится в следующем раунде
-    } else if (team === currentTeam && nextTeam === null) {
-      if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:2:${team}`, gameId);
-      } else {
-        this._chat.pushSystem('s:3', gameId);
-      }
+    // если игрок выбирает свою текущую команду,
+    // то сообщение о текущей команде
+    if (newTeam === currentTeam && nextTeam === null) {
+      this._chat.pushSystem(`s:1:${newTeam}`, gameId);
+      return;
+    }
 
-      // иначе смена команды
-    } else {
-      currentTeam = nextTeam !== null ? nextTeam : currentTeam;
+    // если новая команда не наблюдатель и
+    // количество респаунов на карте в выбраной команде
+    // равно количеству игроков в этой команде (смена невозможна),
+    // то сообщение о полной команде
+    if (
+      newTeam !== this._spectatorTeam &&
+      respawns[newTeam].length === this._teamSizes[newTeam].size
+    ) {
+      this._chat.pushSystem(`s:0:${newTeam},${currentTeam}`, gameId);
+      return;
+    }
 
-      if (team !== this._spectatorTeam) {
-        // если количество респаунов на карте в выбраной команде
-        // равно количеству игроков в этой команде (смена невозможна)
-        if (respawns[team].length === this._teamSizes[team].size) {
-          if (currentTeam !== this._spectatorTeam) {
-            this._chat.pushSystem(`s:0:${team},${currentTeam}`, gameId);
-          } else {
-            this._chat.pushSystem(`s:1:${team}`, gameId);
-          }
+    // на этом этапе смена команды доступна,
+    // поэтому резервирование места
+    this._teamSizes[currentTeam].delete(gameId);
+    this._teamSizes[newTeam].add(gameId);
 
-          return;
-        }
+    // если с начала раунда прошло много времени,
+    // или если игрок не наблюдатель и уже уничтожен,
+    // то смена команды игрока в следующем раунде
+    if (
+      this._timerManager.canChangeTeamInCurrentRound() === false ||
+      (currentTeam !== this._spectatorTeam &&
+        this._game.isAlive(gameId) === false)
+    ) {
+      user.nextTeam = newTeam;
+      this._chat.pushSystem(`s:3:${newTeam}`, gameId);
+      return;
+    }
 
-        this._chat.pushSystem(`s:4:${team}`, gameId);
-      } else {
-        this._chat.pushSystem('s:5', gameId);
-      }
+    const oldTeamId = user.teamId;
+    const newTeamId = this._teams[newTeam];
 
-      this._teamSizes[currentTeam].delete(gameId);
+    user.nextTeam = null;
+    user.team = newTeam;
+    user.teamId = newTeamId;
 
-      user.nextTeam = team;
+    // перемещение пользователя в статистике
+    this._stat.moveUser(gameId, oldTeamId, newTeamId);
 
-      this._teamSizes[team].add(gameId);
+    // сообщение о смене команды
+    this._chat.pushSystem(`s:2:${newTeam}`, gameId);
 
-      // если на сервере 2 или менее активных игроков
-      // требуется обновить статистику и начать раунд заново
-      if (this._activePlayersList.filter(id => id !== gameId).length < 2) {
-        this._stat.reset();
-        this.restartRound();
-      }
+    // если игрок был наблюдателем и сменил на игровую команду
+    if (oldTeamId === this._spectatorId && newTeamId !== this._spectatorId) {
+      user.isWatching = false;
+      user.watchedGameId = null;
+
+      const respawnIndex = this._teamSizes[newTeam].size - 1;
+      const respawnData = respawns[newTeam][respawnIndex];
+
+      this._game.createPlayer(
+        gameId,
+        user.model,
+        user.name,
+        user.teamId,
+        respawnData,
+      );
+
+      this.addToActivePlayers(gameId);
+
+      user.socket.send(this._PORT_SHOT_DATA, [
+        {}, // game
+        0, // coords
+        this._panel.getFullPanel(gameId), // panel
+        0, // stat
+        0, // chat
+        0, // vote
+        1, // keySet игрока
+      ]);
+
+      return;
+    }
+
+    // если игрок сменил игровую команду на другую игровую команду
+    if (oldTeamId !== this._spectatorId && newTeamId !== this._spectatorId) {
+      const respawnIndex = this._teamSizes[newTeam].size - 1;
+      const respawnData = respawns[newTeam][respawnIndex];
+
+      this._game.changePlayerData(gameId, {
+        respawnData,
+        teamId: this._teams[newTeam],
+        gameId,
+      });
+
+      return;
+    }
+
+    // если игрок сменил игровую команду на наблюдателя
+    if (oldTeamId !== this._spectatorId && newTeamId === this._spectatorId) {
+      user.isWatching = true;
+      user.watchedGameId = this._activePlayersList[0] || null;
+
+      // удаление из активных игроков
+      this.removeFromActivePlayers(gameId);
+
+      // добавление на удаление с полотна
+      this._removedPlayersList.push({
+        gameId,
+        model: user.model,
+      });
+
+      this._game.removePlayer(gameId);
+
+      user.socket.send(this._PORT_SHOT_DATA, [
+        {}, // game
+        0, // coords
+        this._panel.getEmptyPanel(), // panel
+        0, // stat
+        0, // chat
+        0, // vote
+        0, // keySet наблюдателя
+      ]);
+
+      return;
     }
   }
 
