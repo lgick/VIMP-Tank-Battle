@@ -28,6 +28,10 @@ class BaseModel {
     this._services.panel.setActiveWeapon(this._gameId, this._currentWeapon);
   }
 
+  get gameId() {
+    return this._gameId;
+  }
+
   get teamId() {
     return this._teamId;
   }

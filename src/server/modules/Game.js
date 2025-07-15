@@ -207,10 +207,14 @@ class Game {
     this._playersData[gameId].currentKeys = keys;
   }
 
-  // возвращает координаты игрока
-  getPlayerCoords(gameId) {
-    const position = this._playersData[gameId].getBody().getPosition();
-    return [+position.x.toFixed(), +position.y.toFixed()];
+  // возвращает координаты игрока [x, y]
+  getPosition(gameId) {
+    return this._playersData[gameId].getPosition();
+  }
+
+  // меняет данные игрока при переходе из одной команды в другую
+  changePlayerData(gameId, data) {
+    this._playersData[gameId].changePlayerData(data);
   }
 
   // стирает данные игрового мира
@@ -268,12 +272,23 @@ class Game {
     }
   }
 
+  // проверка жив ли игрок
+  isAlive(gameId) {
+    const player = this._playersData[gameId];
+
+    if (player && player.isAlive()) {
+      return true;
+    }
+
+    return false;
+  }
+
   //  применение урона игроку
   applyDamage(targetGameId, shooterGameId, weaponName, damageValue) {
     const player = this._playersData[targetGameId];
 
     // если игрок не существует или уже уничтожен, ничего не делаем
-    if (!player || !player.isAlive()) {
+    if (this.isAlive(targetGameId) === false) {
       return;
     }
 

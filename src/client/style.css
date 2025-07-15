@@ -1,5 +1,9 @@
 @charset "UTF-8";
 
+* {
+  user-select: none;
+}
+
 #panel {
   text-transform: uppercase;
   background-color: #fff;
