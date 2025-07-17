@@ -263,11 +263,11 @@ socketMethods[PS_INFORM_DATA] = data => {
 
     informer.innerHTML = message;
     informer.style.display = 'block';
-    modules.user.setPlayerReady(false);
+    modules.user?.setPlayerReady(false);
   } else {
     informer.innerHTML = '';
     informer.style.display = 'none';
-    modules.user.setPlayerReady(true);
+    modules.user?.setPlayerReady(true);
   }
 };
 

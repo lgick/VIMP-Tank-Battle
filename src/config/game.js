@@ -69,6 +69,7 @@ export default {
   mapTime: 180000, // время карты (180)
   voteTime: 10000, // время ожидания результатов голосования (10)
   timeBlockedRemap: 20000, // время ожидания повторной смены карты (20)
+  teamChangeGracePeriod: 10000, // время смены команды в текущем раунде (10)
 
   stat: {
     name: {
@@ -80,7 +81,7 @@ export default {
     status: {
       key: 1,
       bodyMethod: '=',
-      bodyValue: 'dead',
+      bodyValue: '',
       headValue: '',
     },
     score: {
