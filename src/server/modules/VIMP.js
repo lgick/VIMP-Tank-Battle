@@ -39,7 +39,8 @@ class VIMP {
     // id команды наблюдателя
     this._spectatorId = this._teams[this._spectatorTeam];
     // количество игроков в командах
-    this._teamSizes = {}; // { team1: 0, team2: 0, spectators: 0 }
+    // { team1: new Set(), team2: new Set(), spectators: new Set() }
+    this._teamSizes = {};
 
     // список gameId активных игроков на полотне
     this._activePlayersList = [];
@@ -73,6 +74,8 @@ class VIMP {
         voteTime: data.voteTime, // время голосования
         timeBlockedRemap: data.timeBlockedRemap, // время ожидания смены карты
         timeStep: data.timeStep, // время обновления кадра игры
+        // время смены команды в текущем раунде
+        teamChangeGracePeriod: data.teamChangeGracePeriod,
       },
       {
         onMapTimeEnd: this.onMapTimeEnd.bind(this),
@@ -95,6 +98,7 @@ class VIMP {
     this.createMap();
   }
 
+  // запускает голосование за смену карты
   onMapTimeEnd() {
     this._timerManager.stopChangeMapTimer();
     this._timerManager.stopBlockedRemapTimer();
@@ -102,6 +106,7 @@ class VIMP {
     this.changeMap();
   }
 
+  // запускает новый раунд
   onRoundTimeEnd() {
     this.startRound();
     this._timerManager.startRoundTimer();
@@ -148,12 +153,12 @@ class VIMP {
             user.watchedGameId = this._activePlayersList[0];
           }
 
-          coords = this._game.getPlayerCoords(user.watchedGameId);
+          coords = this._game.getPosition(user.watchedGameId);
         } else {
           coords = [0, 0];
         }
       } else {
-        coords = this._game.getPlayerCoords(gameId);
+        coords = this._game.getPosition(gameId);
       }
 
       // если у игрока активен эффект тряски камеры
@@ -206,7 +211,7 @@ class VIMP {
     );
   }
 
-  // создаёт карту
+  // создает карту
   createMap() {
     this._currentMapData = this._maps[this._currentMap];
 
@@ -244,7 +249,9 @@ class VIMP {
         user.teamId = this._spectatorId;
         user.nextTeam = null;
         user.isWatching = true;
-        user.watchedGameId = null;
+        user.watchedGameId = this._activePlayersList[0] || null;
+
+        this._teamSizes[this._spectatorTeam].add(gameId);
 
         this.sendMap(gameId);
       }
@@ -378,17 +385,19 @@ class VIMP {
         user.socket.send(this._PORT_SHOT_DATA, shotData);
 
         respId[user.team] = respId[user.team] || 0;
-        const data = respawns[user.team];
+
+        const respArr = respawns[user.team];
 
         // если есть данные для создания модели
-        if (data) {
+        if (respArr) {
           this._game.createPlayer(
             gameId,
             user.model,
             user.name,
             user.teamId,
-            data[respId[user.team]],
+            respArr[respId[user.team]],
           );
+
           respId[user.team] += 1;
         }
       }
@@ -443,68 +452,148 @@ class VIMP {
   }
 
   // меняет команду игрока
-  changeTeam(gameId, team) {
+  changeTeam(gameId, newTeam) {
     const user = this._users[gameId];
-    let currentTeam = user.team;
+    const currentTeam = user.team;
     const nextTeam = user.nextTeam;
     const respawns = this._currentMapData.respawns;
 
-    // если команда уже была выбрана
-    if (team === nextTeam) {
-      if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:4:${team}`, gameId);
-      } else {
-        this._chat.pushSystem('s:5', gameId);
-      }
+    // если команда уже была выбрана ранее,
+    // то повтороное сообщение о новой команде
+    if (newTeam === nextTeam) {
+      this._chat.pushSystem(`s:3:${newTeam}`, gameId);
+      return;
+    }
 
-      // иначе если команда является текущей и не изменится в следующем раунде
-    } else if (team === currentTeam && nextTeam === null) {
-      if (team !== this._spectatorTeam) {
-        this._chat.pushSystem(`s:2:${team}`, gameId);
-      } else {
-        this._chat.pushSystem('s:3', gameId);
-      }
+    // если игрок выбирает свою текущую команду,
+    // то сообщение о текущей команде
+    if (newTeam === currentTeam && nextTeam === null) {
+      this._chat.pushSystem(`s:1:${newTeam}`, gameId);
+      return;
+    }
 
-      // иначе смена команды
-    } else {
-      currentTeam = nextTeam !== null ? nextTeam : currentTeam;
+    // если новая команда не наблюдатель и
+    // количество респаунов на карте в выбраной команде
+    // равно количеству игроков в этой команде (смена невозможна),
+    // то сообщение о полной команде
+    if (
+      newTeam !== this._spectatorTeam &&
+      respawns[newTeam].length === this._teamSizes[newTeam].size
+    ) {
+      this._chat.pushSystem(`s:0:${newTeam},${currentTeam}`, gameId);
+      return;
+    }
 
-      if (team !== this._spectatorTeam) {
-        // если количество респаунов на карте в выбраной команде
-        // равно количеству игроков в этой команде (смена невозможна)
-        if (respawns[team].length === this._teamSizes[team]) {
-          if (currentTeam !== this._spectatorTeam) {
-            this._chat.pushSystem(`s:0:${team},${currentTeam}`, gameId);
-          } else {
-            this._chat.pushSystem(`s:1:${team}`, gameId);
-          }
+    // на этом этапе смена команды доступна,
+    // поэтому резервирование места
+    this._teamSizes[currentTeam].delete(gameId);
+    this._teamSizes[newTeam].add(gameId);
 
-          return;
-        }
+    // если с начала раунда прошло много времени,
+    // или если игрок не наблюдатель и уже уничтожен,
+    // то смена команды игрока в следующем раунде
+    if (
+      this._timerManager.canChangeTeamInCurrentRound() === false ||
+      (currentTeam !== this._spectatorTeam &&
+        this._game.isAlive(gameId) === false)
+    ) {
+      user.nextTeam = newTeam;
+      this._chat.pushSystem(`s:3:${newTeam}`, gameId);
+      return;
+    }
 
-        this._chat.pushSystem(`s:4:${team}`, gameId);
-      } else {
-        this._chat.pushSystem('s:5', gameId);
-      }
+    const oldTeamId = user.teamId;
+    const newTeamId = this._teams[newTeam];
 
-      this._teamSizes[currentTeam] -= 1;
+    user.nextTeam = null;
+    user.team = newTeam;
+    user.teamId = newTeamId;
 
-      user.nextTeam = team;
+    // перемещение пользователя в статистике
+    this._stat.moveUser(gameId, oldTeamId, newTeamId);
 
-      this._teamSizes[team] += 1;
+    // сообщение о смене команды
+    this._chat.pushSystem(`s:2:${newTeam}`, gameId);
 
-      // если на сервере менее 2-х активных игроков
-      // требуется начать раунд заново
-      if (this._activePlayersList.filter(id => id !== gameId).length < 2) {
-        this.restartRound();
-      }
+    // если игрок был наблюдателем и сменил на игровую команду
+    if (oldTeamId === this._spectatorId && newTeamId !== this._spectatorId) {
+      user.isWatching = false;
+      user.watchedGameId = null;
+
+      const respawnIndex = this._teamSizes[newTeam].size - 1;
+      const respawnData = respawns[newTeam][respawnIndex];
+
+      this._game.createPlayer(
+        gameId,
+        user.model,
+        user.name,
+        user.teamId,
+        respawnData,
+      );
+
+      this.addToActivePlayers(gameId);
+
+      user.socket.send(this._PORT_SHOT_DATA, [
+        {}, // game
+        0, // coords
+        this._panel.getFullPanel(gameId), // panel
+        0, // stat
+        0, // chat
+        0, // vote
+        1, // keySet игрока
+      ]);
+
+      return;
+    }
+
+    // если игрок сменил игровую команду на другую игровую команду
+    if (oldTeamId !== this._spectatorId && newTeamId !== this._spectatorId) {
+      const respawnIndex = this._teamSizes[newTeam].size - 1;
+      const respawnData = respawns[newTeam][respawnIndex];
+
+      this._game.changePlayerData(gameId, {
+        respawnData,
+        teamId: this._teams[newTeam],
+        gameId,
+      });
+
+      return;
+    }
+
+    // если игрок сменил игровую команду на наблюдателя
+    if (oldTeamId !== this._spectatorId && newTeamId === this._spectatorId) {
+      user.isWatching = true;
+      user.watchedGameId = this._activePlayersList[0] || null;
+
+      // удаление из активных игроков
+      this.removeFromActivePlayers(gameId);
+
+      // добавление на удаление с полотна
+      this._removedPlayersList.push({
+        gameId,
+        model: user.model,
+      });
+
+      this._game.removePlayer(gameId);
+
+      user.socket.send(this._PORT_SHOT_DATA, [
+        {}, // game
+        0, // coords
+        this._panel.getEmptyPanel(), // panel
+        0, // stat
+        0, // chat
+        0, // vote
+        0, // keySet наблюдателя
+      ]);
+
+      return;
     }
   }
 
   // сбрасывает this._teamSizes в нулевые значения
   resetTeamSizes() {
     this._teamSizes = Object.keys(this._teams).reduce((acc, key) => {
-      acc[key] = 0;
+      acc[key] = new Set();
       return acc;
     }, {});
   }
@@ -532,31 +621,83 @@ class VIMP {
     }
   }
 
-  // обрабатывает уничтожение игрока, делает его наблюдателем
-  reportPlayerDestroyed(gameId) {
-    const user = this._users[gameId];
-
-    if (!user || user.isWatching) {
+  // проверяет уничтожение всей команды
+  checkTeamWipe(victimTeamId, killerTeamId) {
+    // если команда наблюдателей, проверка не требуется
+    if (victimTeamId === this._spectatorId) {
       return;
     }
 
-    user.isWatching = true;
+    // проверка на живых игроков в команде
+    for (const gameId in this._users) {
+      if (Object.hasOwn(this._users, gameId)) {
+        const user = this._users[gameId];
 
-    this._stat.updateUser(gameId, user.teamId, { deaths: 1, status: 'dead' });
-    // отмена всех запланированных обновлений для панели
-    this._panel.invalidate(gameId);
+        // если нашелся живой игрок, команда не уничтожена
+        if (user.teamId === victimTeamId && !user.isWatching) {
+          return;
+        }
+      }
+    }
+
+    // если живых не осталось, запись поражения команде
+    this._stat.updateHead(victimTeamId, 'deaths', 1);
+
+    // если убийца из другой команды, фраг для команды-победителя
+    if (killerTeamId && killerTeamId !== victimTeamId) {
+      this._stat.updateHead(killerTeamId, 'score', 1);
+    }
+  }
+
+  // обрабатывает уничтожение игрока, обновляет статистику
+  reportKill(victimId, killerId = null) {
+    const victimUser = this._users[victimId];
+
+    if (!victimUser || victimUser.isWatching) {
+      return;
+    }
+
+    victimUser.isWatching = true;
+
+    // обновление статистики уничтоженного игрока
+    this._stat.updateUser(victimId, victimUser.teamId, {
+      deaths: 1,
+      status: 'dead',
+    });
+
+    const killerUser = this._users[killerId];
+
+    // если это не самоубийство и не огонь по своим,
+    // обновление статистики убийцы
+    if (killerUser && victimId !== killerId) {
+      if (victimUser.teamId !== killerUser.teamId) {
+        this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
+        // иначе если это огонь по своим
+      } else {
+        this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
+      }
+    }
+
+    // отмена всех запланированных обновлений панели
+    this._panel.invalidate(victimId);
 
     const shotData = [
-      {},
-      0,
-      this._panel.getEmptyPanel(),
-      0,
-      0,
-      0,
+      {}, // game
+      0, // coords
+      this._panel.getEmptyPanel(), // panel
+      0, // stat
+      0, // chat
+      0, // vote
       0, // keySet = 0 для наблюдателя
     ];
 
-    user.socket.send(this._PORT_SHOT_DATA, shotData);
+    victimUser.socket.send(this._PORT_SHOT_DATA, shotData);
+
+    // проверка на уничтожение всей команды противника
+    this.checkTeamWipe(
+      victimUser.teamId,
+      killerUser ? killerUser.teamId : null,
+    );
   }
 
   // меняет и возвращает gameId наблюдаемого игрока
@@ -645,6 +786,8 @@ class VIMP {
     this._stat.addUser(gameId, this._spectatorId, { name });
     this._panel.addUser(gameId);
 
+    this._teamSizes[this._spectatorTeam].add(gameId);
+
     process.nextTick(() => {
       cb(gameId);
       this.sendMap(gameId);
@@ -677,7 +820,7 @@ class VIMP {
     }
 
     // обновляем счетчики команд
-    this._teamSizes[nextTeam !== null ? nextTeam : team] -= 1;
+    this._teamSizes[nextTeam !== null ? nextTeam : team].delete(gameId);
 
     delete this._users[gameId];
   }

@@ -207,10 +207,14 @@ class Game {
     this._playersData[gameId].currentKeys = keys;
   }
 
-  // возвращает координаты игрока
-  getPlayerCoords(gameId) {
-    const position = this._playersData[gameId].getBody().getPosition();
-    return [+position.x.toFixed(), +position.y.toFixed()];
+  // возвращает координаты игрока [x, y]
+  getPosition(gameId) {
+    return this._playersData[gameId].getPosition();
+  }
+
+  // меняет данные игрока при переходе из одной команды в другую
+  changePlayerData(gameId, data) {
+    this._playersData[gameId].changePlayerData(data);
   }
 
   // стирает данные игрового мира
@@ -268,23 +272,35 @@ class Game {
     }
   }
 
+  // проверка жив ли игрок
+  isAlive(gameId) {
+    const player = this._playersData[gameId];
+
+    if (player && player.isAlive()) {
+      return true;
+    }
+
+    return false;
+  }
+
   //  применение урона игроку
-  applyDamage(
-    targetGameId,
-    targetTeamId,
-    weaponName,
-    shooterTeamId,
-    damageValue,
-  ) {
+  applyDamage(targetGameId, shooterGameId, weaponName, damageValue) {
     const player = this._playersData[targetGameId];
 
     // если игрок не существует или уже уничтожен, ничего не делаем
-    if (!player || !player.isAlive()) {
+    if (this.isAlive(targetGameId) === false) {
       return;
     }
 
+    const targetTeamId = player.teamId;
+    const shooterTeamId = this._playersData[shooterGameId]?.teamId;
+
     // проверка на дружественный огонь
-    if (!this._friendlyFire && targetTeamId === shooterTeamId) {
+    if (
+      !this._friendlyFire &&
+      shooterTeamId &&
+      targetTeamId === shooterTeamId
+    ) {
       return;
     }
 
@@ -306,7 +322,7 @@ class Game {
 
     // если игрок был уничтожен именно этим уроном, сообщаем VIMP
     if (wasDestroyed) {
-      this._services.vimp.reportPlayerDestroyed(targetGameId);
+      this._services.vimp.reportKill(targetGameId, shooterGameId);
     }
   }
 
@@ -359,12 +375,7 @@ class Game {
         continue;
       }
 
-      this.applyDamage(
-        playerData.gameId,
-        playerData.teamId,
-        shotData.weaponName,
-        shotData.teamId,
-      );
+      this.applyDamage(playerData.gameId, shotData.gameId, shotData.weaponName);
 
       // помечаем снаряд на удаление, а не удаляем сразу
       this._bodiesToDestroy.add(shotFixture.getBody());
@@ -488,7 +499,7 @@ class Game {
           if (weaponConfig.type === 'hitscan') {
             const hitscanParams = {
               shooterBody: shotData.shooterBody,
-              shooterTeamId: player.teamId,
+              shooterGameId: gameId,
               weaponName,
               startPoint: shotData.startPoint,
               direction: shotData.direction,

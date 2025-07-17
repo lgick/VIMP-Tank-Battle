@@ -74,12 +74,12 @@ class Tank extends BaseModel {
 
     this._body.setUserData({
       type: 'player',
-      gameId: data.gameId,
+      gameId: this.gameId,
       teamId: this.teamId,
     });
 
     this._mass = this._body.getMass(); // масса тела
-    this._inertia = this._body.getInertia(); // сохранение момента инерции
+    this._inertia = this._body.getInertia(); // момент инерции
 
     this._centeringGun = false;
     this._gunCenterSpeed = 5.0;
@@ -90,6 +90,8 @@ class Tank extends BaseModel {
     // 1 - значительные повреждения,
     // 0 - танк уничножен
     this._condition = 3;
+
+    this.takeDamage(0);
   }
 
   // линейная интерполяция между x и y, коэффициент a ∈ [0,1]
@@ -103,7 +105,7 @@ class Tank extends BaseModel {
   }
 
   // применяет урон к танку и обновляет его состояние.
-  takeDamage(amount) {
+  takeDamage(amount = 0) {
     // если танк уже уничтожен, урон не считать
     if (this._condition === 0) {
       return false;
@@ -359,6 +361,40 @@ class Tank extends BaseModel {
 
   getBody() {
     return this._body;
+  }
+
+  getPosition() {
+    const position = this.getBody().getPosition();
+
+    return [+position.x.toFixed(), +position.y.toFixed()];
+  }
+
+  // меняет данные игрока (координаты, команду)
+  changePlayerData(data) {
+    const respawnData = data.respawnData;
+    const x = respawnData[0];
+    const y = respawnData[1];
+    const angle = respawnData[2] * (Math.PI / 180);
+    const body = this._body;
+
+    this.teamId = data.teamId;
+
+    this._body.setUserData({
+      type: 'player',
+      gameId: this.gameId,
+      teamId: this.teamId,
+    });
+
+    // остановка танка
+    body.setLinearVelocity(new Vec2(0, 0));
+    body.setAngularVelocity(0);
+
+    body.setPosition(new Vec2(x, y));
+    body.setAngle(angle);
+
+    this._body.gunRotation = 0;
+
+    this.fullUserData = true;
   }
 
   getData() {
