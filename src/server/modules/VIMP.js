@@ -889,17 +889,6 @@ class VIMP {
         // если запрос всех карт
       } else if (data === 'maps') {
         this._vote.pushByUser(gameId, [null, this._mapList]);
-
-        // если запрос пользователей
-      } else if (data === 'users') {
-        const dataArr = [];
-
-        for (const p in this._users) {
-          if (Object.hasOwn(this._users, p)) {
-            dataArr.push(this._users[p].name + ':' + p);
-          }
-        }
-        this._vote.pushByUser(gameId, [null, dataArr]);
       }
 
       // если данные 'объект' (результат голосования)
@@ -972,17 +961,7 @@ class VIMP {
           null,
         ];
 
-        const userList = [];
-
-        for (const p in this._users) {
-          if (Object.hasOwn(this._users, p)) {
-            const id = this._users[p].gameId;
-
-            if (id !== gameId) {
-              userList.push(id);
-            }
-          }
-        }
+        const userList = Object.keys(this._users).filter(id => id !== gameId);
 
         this._vote.createVote([['changeMap'], arr], userList);
         this._vote.addInVote('changeMap', mapName);
