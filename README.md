@@ -347,16 +347,17 @@ menu = [
 
 # Иерархия элементов (z-index)
 
-| Элемент  | z-index |
-| :------: | :-----: |
-|   vimp   |    1    |
-|  radar   |    2    |
-|   chat   |    3    |
-|  panel   |    4    |
-|   vote   |    5    |
-|   stat   |    6    |
-|   auth   |    7    |
-| informer |    8    |
+|    Элемент    | z-index |
+| :-----------: | :-----: |
+|     vimp      |    1    |
+|     radar     |    2    |
+|     chat      |    3    |
+|     panel     |    4    |
+|     vote      |    5    |
+| informer.game |    6    |
+|     stat      |    7    |
+|     auth      |    8    |
+|   informer    |    9    |
 
 # GAME CONFIG
 

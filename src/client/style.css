@@ -116,7 +116,7 @@
   bottom: 40px;
   left: 0;
   right: 0;
-  z-index: 6;
+  z-index: 7;
   margin: auto;
   background: rgba(25, 25, 25, 0.9);
   border-radius: 5px;
@@ -376,7 +376,7 @@
   min-height: 100%;
   top: 0;
   left: 0;
-  z-index: 7;
+  z-index: 8;
 }
 
 #auth-form {
@@ -473,11 +473,40 @@
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 8;
+  z-index: 9;
   width: 100%;
   height: 100%;
   background-color: #000;
   color: #fff;
   font-size: 20px;
   line-height: 24px;
+}
+
+#informer.game {
+  background: transparent;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    2px 2px 4px rgba(0, 0, 0, 0.7);
+  font-size: clamp(24px, 16px + 4vw, 48px);
+  font-weight: bold;
+  padding-top: 30vh;
+  opacity: 0;
+  z-index: 6;
+  animation: appearFromCenter 0.8s ease-out forwards;
+}
+
+@keyframes appearFromCenter {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

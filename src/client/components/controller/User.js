@@ -51,8 +51,13 @@ export default class UserCtrl {
     this._model.resize(data);
   }
 
-  // меняет статус готовности игрока к игре
-  setPlayerReady(isReady) {
-    this._model.setPlayerReady(isReady);
+  // разблокирует возможность нажатия клавиш
+  enableKeys() {
+    this._model.setKeysEnabled(true);
+  }
+
+  // блокирует возможность нажатия клавиш
+  disableKeys() {
+    this._model.setKeysEnabled(false);
   }
 }

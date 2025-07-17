@@ -251,23 +251,29 @@ socketMethods[PS_SHOT_DATA] = shotData;
 // inform data
 socketMethods[PS_INFORM_DATA] = data => {
   if (data) {
-    const [messageKey, dataArr] = data;
-    let message = informList[messageKey];
+    const { key, isGame, arr } = data;
+    let message = informList[key];
 
-    if (message && dataArr) {
-      dataArr.forEach((value, index) => {
+    if (message && arr) {
+      arr.forEach((value, index) => {
         const regExp = new RegExp(`\\{${index}\\}`, 'g');
         message = message.replace(regExp, value);
       });
     }
 
+    if (isGame) {
+      informer.classList.add('game');
+    } else {
+      informer.classList.remove('game');
+    }
+
+    modules.user?.disableKeys();
     informer.innerHTML = message;
     informer.style.display = 'block';
-    modules.user?.setPlayerReady(false);
   } else {
+    modules.user?.enableKeys();
     informer.innerHTML = '';
     informer.style.display = 'none';
-    modules.user?.setPlayerReady(true);
   }
 };
 
@@ -505,7 +511,7 @@ ws.onclose = e => {
     const msg = unpacking(e.reason);
     socketMethods[msg[0]](msg[1]);
   } else {
-    socketMethods[PS_INFORM_DATA]([connectionInterruptedId]);
+    socketMethods[PS_INFORM_DATA]({ key: connectionInterruptedId });
   }
 
   console.log('disconnect');

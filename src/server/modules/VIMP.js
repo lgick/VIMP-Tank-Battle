@@ -264,7 +264,7 @@ class VIMP {
   sendMap(gameId) {
     const user = this._users[gameId];
 
-    user.socket.send(this._PORT_INFORM_DATA, [2]);
+    user.socket.send(this._PORT_INFORM_DATA, { key: 2 });
     user.isReady = false;
     user.currentMap = this._currentMap;
     user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
@@ -404,12 +404,31 @@ class VIMP {
     }
   }
 
-  // принудительно стартует раунд заново
-  restartRound() {
+  // стартует раунд заново
+  restartRound(winnerTeam) {
+    const timer = winnerTeam ? 5000 : 0;
+
     this._timerManager.stopRoundTimer();
-    this.startRound();
-    this._timerManager.startRoundTimer();
-    this._chat.pushSystem('t:1');
+
+    if (winnerTeam) {
+      Object.keys(this._users).forEach(gameId =>
+        this._users[gameId].socket.send(this._PORT_INFORM_DATA, {
+          key: 4,
+          isGame: true,
+          arr: [winnerTeam],
+        }),
+      );
+    }
+
+    setTimeout(() => {
+      Object.keys(this._users).forEach(gameId => {
+        this._users[gameId].socket.send(this._PORT_INFORM_DATA);
+      });
+
+      this.startRound();
+      this._timerManager.startRoundTimer();
+      this._chat.pushSystem('t:1');
+    }, timer);
   }
 
   // проверяет имя
@@ -633,6 +652,8 @@ class VIMP {
 
   // проверяет уничтожение всей команды
   checkTeamWipe(victimTeamId, killerTeamId) {
+    let winnerTeam = null;
+
     // если команда наблюдателей, проверка не требуется
     if (victimTeamId === this._spectatorId) {
       return;
@@ -656,7 +677,13 @@ class VIMP {
     // если убийца из другой команды, фраг для команды-победителя
     if (killerTeamId && killerTeamId !== victimTeamId) {
       this._stat.updateHead(killerTeamId, 'score', 1);
+
+      winnerTeam = Object.keys(this._teams).find(
+        key => this._teams[key] === killerTeamId,
+      );
     }
+
+    this.restartRound(winnerTeam);
   }
 
   // обрабатывает уничтожение игрока, обновляет статистику
