@@ -19,6 +19,7 @@ class TimerManager extends AbstractTimer {
     this._timeStep = config.timeStep;
     this._voteTime = config.voteTime;
     this._timeBlockedRemap = config.timeBlockedRemap;
+    this._teamChangeGracePeriod = config.teamChangeGracePeriod;
 
     this._callbacks = callbacks;
 
@@ -83,6 +84,17 @@ class TimerManager extends AbstractTimer {
     timeLeft = Math.floor(timeLeft / 1000);
 
     return timeLeft < 0 ? 0 : timeLeft;
+  }
+
+  // проверяет возможно сменить команду игроку в текущем раунде
+  canChangeTeamInCurrentRound() {
+    const roundTime = Date.now() - this._startRoundTime;
+
+    if (roundTime <= this._teamChangeGracePeriod) {
+      return true;
+    }
+
+    return false;
   }
 
   // логика одного "тика" игрового цикла

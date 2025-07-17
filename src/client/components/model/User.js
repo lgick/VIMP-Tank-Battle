@@ -26,6 +26,8 @@ export default class UserModel {
     this._keysOneShot = 0; // состояние клавиш одиночного нажатия
     this._keysOneShotData = {}; // данные активности oneShot-клавиш
 
+    this._isReady = false; // статус готовности игрока участвовать в игре
+
     this.publisher = new Publisher();
   }
 
@@ -41,6 +43,10 @@ export default class UserModel {
 
   // добавляет команду
   addKey(event) {
+    if (this._isReady === false) {
+      return;
+    }
+
     const keyCode = event.keyCode;
     const mode = this._modes[keyCode];
     const cmd = this._cmds[keyCode];
@@ -205,5 +211,10 @@ export default class UserModel {
     }
 
     this.publisher.emit('resize', sizes);
+  }
+
+  // задаёт статус игрока
+  setPlayerReady(isReady) {
+    this._isReady = isReady;
   }
 }

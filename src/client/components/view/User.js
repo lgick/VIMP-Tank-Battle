@@ -5,14 +5,14 @@ import Publisher from '../../../lib/Publisher.js';
 let userView;
 
 export default class UserView {
-  constructor(model, data) {
+  constructor(model, displayIdList) {
     if (userView) {
       return userView;
     }
 
     userView = this;
 
-    this._displayId = data.displayId;
+    this._displayIdList = displayIdList;
 
     this.publisher = new Publisher();
 
@@ -39,7 +39,7 @@ export default class UserView {
 
   // инициализация
   init() {
-    for (const id of this._displayId) {
+    for (const id of this._displayIdList) {
       const elem = document.getElementById(id);
 
       if (elem) {

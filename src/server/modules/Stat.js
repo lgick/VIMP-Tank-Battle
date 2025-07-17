@@ -15,8 +15,8 @@ class Stat {
     this._head = {};
     this._body = {};
 
-    this._lastHead = new Map();
-    this._lastBody = new Map();
+    this._lastHead = [];
+    this._lastBody = [];
 
     for (const p in teams) {
       if (Object.hasOwn(teams, p)) {
@@ -36,7 +36,7 @@ class Stat {
           if (Object.hasOwn(bodyStats, gameId)) {
             const stat = bodyStats[gameId];
             stat[2] = this.getDefaultBody(stat[2]);
-            this._lastBody.set(`${stat[0]}|${stat[1]}`, stat.slice(2));
+            this._lastBody.push(stat);
           }
         }
       }
@@ -58,7 +58,7 @@ class Stat {
           }
         }
 
-        this._lastHead.set(stat[0], stat.slice(1));
+        this._lastHead.push(stat);
       }
     }
   }
@@ -80,11 +80,11 @@ class Stat {
 
   // добавляет пользователя
   addUser(gameId, teamId, data) {
+    // добавление данных по умолчанию из конфига
     this._body[teamId][gameId] = [gameId, teamId, this.getDefaultBody()];
 
-    if (typeof data === 'object') {
-      this.updateUser(gameId, teamId, data);
-    }
+    // обновление данных игрока (имя, статус...)
+    this.updateUser(gameId, teamId, data);
   }
 
   // удаляет пользователя и возвращает его данные
@@ -93,7 +93,7 @@ class Stat {
     const stat = {};
 
     delete this._body[teamId][gameId];
-    this._lastBody.set(`${data[0]}|${data[1]}`, [null]);
+    this._lastBody.push([data[0], data[1], null]);
 
     data = data[2];
 
@@ -116,8 +116,10 @@ class Stat {
   }
 
   // перемещает пользователя в новую команду
-  moveUser(gameId, teamId, newTeamId) {
-    this.addUser(gameId, newTeamId, this.removeUser(gameId, teamId));
+  moveUser(gameId, teamId, newTeamId, data = {}) {
+    const userData = this.removeUser(gameId, teamId);
+
+    this.addUser(gameId, newTeamId, { ...userData, ...data });
   }
 
   // обновляет статистику пользователя
@@ -145,7 +147,7 @@ class Stat {
       }
     }
 
-    this._lastBody.set(`${stat[0]}|${stat[1]}`, stat.slice(2));
+    this._lastBody.push(stat);
   }
 
   // обновляет статистику head
@@ -164,7 +166,7 @@ class Stat {
       stat[1][key] = value;
     }
 
-    this._lastHead.set(stat[0], stat.slice(1));
+    this._lastHead.push(stat);
   }
 
   // обновляет статистику head синхронизированную с body
@@ -194,28 +196,16 @@ class Stat {
     stat[1][key] = value;
 
     if (save === true) {
-      this._lastHead.set(stat[0], stat.slice(1));
+      this._lastHead.push(stat);
     }
   }
 
   // возвращает последние изменения
   getLast() {
-    const lastBody = [];
-    const lastHead = [];
+    let stat = [this._lastBody, this._lastHead];
 
-    for (const [key, data] of this._lastBody) {
-      const [k1, k2] = key.split('|');
-      lastBody.push([k1, Number(k2), ...data]);
-    }
-
-    for (const [key, data] of this._lastHead) {
-      lastHead.push([key, ...data]);
-    }
-
-    let stat = [lastBody, lastHead];
-
-    this._lastBody.clear();
-    this._lastHead.clear();
+    this._lastBody = [];
+    this._lastHead = [];
 
     if (!stat[0].length && !stat[1].length) {
       stat = 0;

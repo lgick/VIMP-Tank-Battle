@@ -15,6 +15,7 @@ const PS_INFORM_DATA = config.get('wsports:server:INFORM_DATA');
 const PC_CONFIG_READY = config.get('wsports:client:CONFIG_READY');
 const PC_AUTH_RESPONSE = config.get('wsports:client:AUTH_RESPONSE');
 const PC_MAP_READY = config.get('wsports:client:MAP_READY');
+const PC_FIRST_SHOT_READY = config.get('wsports:client:FIRST_SHOT_READY');
 const PC_KEYS_DATA = config.get('wsports:client:KEYS_DATA');
 const PC_CHAT_DATA = config.get('wsports:client:CHAT_DATA');
 const PC_VOTE_DATA = config.get('wsports:client:VOTE_DATA');
@@ -118,6 +119,7 @@ export default server => {
         if (!err) {
           ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
           ws.socket.socketMethods[PC_MAP_READY] = true;
+          ws.socket.socketMethods[PC_FIRST_SHOT_READY] = true;
           ws.socket.socketMethods[PC_KEYS_DATA] = true;
           ws.socket.socketMethods[PC_CHAT_DATA] = true;
           ws.socket.socketMethods[PC_VOTE_DATA] = true;
@@ -130,25 +132,30 @@ export default server => {
     };
 
     // 2: map ready
-    socketMethods[PC_MAP_READY] = err => {
-      vimp.mapReady(err, gameId);
+    socketMethods[PC_MAP_READY] = () => {
+      vimp.mapReady(gameId);
     };
 
-    // 3: keys data
+    // 3: first shot ready
+    socketMethods[PC_FIRST_SHOT_READY] = () => {
+      vimp.firstShotReady(gameId);
+    };
+
+    // 4: keys data
     socketMethods[PC_KEYS_DATA] = keys => {
       if (keys) {
         vimp.updateKeys(gameId, keys);
       }
     };
 
-    // 4: chat data
+    // 5: chat data
     socketMethods[PC_CHAT_DATA] = message => {
       if (typeof message === 'string') {
         vimp.pushMessage(gameId, message);
       }
     };
 
-    // 5: vote data
+    // 6: vote data
     socketMethods[PC_VOTE_DATA] = data => {
       if (data) {
         vimp.parseVote(gameId, data);

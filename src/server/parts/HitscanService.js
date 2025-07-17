@@ -21,7 +21,7 @@ class HitscanService {
   processShot(params) {
     const {
       shooterBody, // тело стреляющего
-      shooterTeamId, // команда игрока для фильтрации при friendlyFire === true
+      shooterGameId, // id стреляющего
       weaponName, // имя оружия из weaponsConfig
       startPoint, // мировая точка начала луча (например, дуло оружия)
       direction, // нормализованный мировой вектор направления луча
@@ -77,12 +77,7 @@ class HitscanService {
       }
 
       if (hitUserData && hitUserData.type === 'player') {
-        this._game.applyDamage(
-          hitUserData.gameId,
-          hitUserData.teamId,
-          weaponName,
-          shooterTeamId,
-        );
+        this._game.applyDamage(hitUserData.gameId, shooterGameId, weaponName);
       }
     }
 

@@ -1,5 +1,3 @@
-// regExp строкой
-// dependencies пути
 export default {
   // ***** parts ***** //
   parts: {
@@ -132,7 +130,7 @@ export default {
       },
     },
 
-    displayId: ['vimp', 'radar', 'panel', 'chat'],
+    displayIdList: ['vimp', 'radar', 'panel', 'chat'],
 
     // keys
     keys: {
@@ -222,12 +220,10 @@ export default {
         messages: {
           // teams/status
           s: [
-            'Команда {0} полная. Ваша текущая команда: {1}',
-            'Команда {0} полная. Ваш текущий статус: наблюдатель',
-            'Ваша текущая команда: {0}',
-            'Ваш текущий статус: наблюдатель',
-            'Ваша новая команда: {0}',
-            'Ваш новый статус: наблюдатель',
+            'Команда {0} полная. Ваша текущая команда: {1}', // 0
+            'Ваша команда: {0}', // 1
+            'Ваша новая команда: {0}', // 2
+            'Ваша команда в следующем раунде: {0}', // 3
           ],
           // timers
           t: ['Текущая карта {0}', 'Новый раунд'],
@@ -251,10 +247,18 @@ export default {
       elems: {
         time: 'panel-time',
         health: 'panel-health',
-        bullet: 'panel-bullet',
-        bomb: 'panel-bomb',
+        weapons: {
+          bullet: 'panel-bullet',
+          bomb: 'panel-bomb',
+        },
       },
-      panels: ['time', 'health', 'bullet', 'bomb'],
+      keys: {
+        t: 'time',
+        h: 'health',
+        wa: 'activeWeapon',
+        w1: 'bullet',
+        w2: 'bomb',
+      },
     },
 
     // stat
