@@ -5,18 +5,18 @@ import Publisher from '../../../lib/Publisher.js';
 let voteView;
 
 export default class VoteView {
-  constructor(model, data) {
+  constructor(model, elems) {
     if (voteView) {
       return voteView;
     }
 
     voteView = this;
 
-    this._voteId = data.elems.voteId || 'vote';
-    this._titleClass = data.elems.titleClass || 'vote-title';
-    this._listClass = data.elems.listClass || 'vote-list';
-    this._navClass = data.elems.navClass || 'vote-nav';
-    this._navActiveClass = data.elems.navActiveClass || 'active';
+    this._voteId = elems.voteId;
+    this._titleClass = elems.titleClass;
+    this._listClass = elems.listClass;
+    this._navClass = elems.navClass;
+    this._navActiveClass = elems.navActiveClass;
 
     this.publisher = new Publisher();
 

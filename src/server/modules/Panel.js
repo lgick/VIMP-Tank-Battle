@@ -4,8 +4,6 @@ let panel;
 
 class Panel {
   constructor(config) {
-    let counter = 0;
-
     if (panel) {
       return panel;
     }
@@ -13,55 +11,43 @@ class Panel {
     panel = this;
 
     this._config = config;
-    this._emptyPanel = [];
+
     this._data = {};
     this._timerManager = null;
 
-    for (const p in this._config) {
-      if (Object.hasOwn(this._config, p)) {
-        this._emptyPanel[counter] = '';
-        counter += 1;
-      }
+    this._emptyPanel = Object.values(this._config).map(item => item.key);
+    this._defaultPanel = {};
+
+    this._lastSentRoundTime = -1; // кеширование последнего значения времени
+
+    for (const key of Object.keys(this._config)) {
+      this._defaultPanel[key] = this._config[key].value;
     }
   }
 
   // внедряет зависимость TimerManager
   injectTimerManager(timerManager) {
     this._timerManager = timerManager;
+    this._lastSentRoundTime = this._timerManager.getRoundTimeLeft();
   }
 
-  // сбрасывает данные пользователей
+  // сбрасывает внутреннее состояние пользователей к дефолтному
   reset() {
     for (const gameId in this._data) {
       if (Object.hasOwn(this._data, gameId)) {
         const user = this._data[gameId];
 
-        user.values = this.getDefault(user.values);
-        user.status = true;
+        user.values = { ...this._defaultPanel };
+        user.pendingChanges = {}; // очистка, без добавления новых данных
       }
     }
-  }
-
-  // возвращает дефолтные данные
-  getDefault(panel = []) {
-    for (const p in this._config) {
-      if (Object.hasOwn(this._config, p)) {
-        const conf = this._config[p];
-
-        if (typeof conf.value !== 'undefined') {
-          panel[conf.key] = conf.value;
-        }
-      }
-    }
-
-    return panel;
   }
 
   // добавляет пользователя
   addUser(gameId) {
     this._data[gameId] = {
-      values: this.getDefault(),
-      status: true,
+      values: { ...this._defaultPanel },
+      pendingChanges: {}, // объект для хранения только измененных данных
     };
   }
 
@@ -70,15 +56,25 @@ class Panel {
     delete this._data[gameId];
   }
 
+  // очищает ожидающие изменения для пользователя
+  // требуется, когда состояние пользователя резко меняется
+  // (например при уничтожении)
+  invalidate(gameId) {
+    const user = this._data[gameId];
+
+    if (user) {
+      user.pendingChanges = {};
+    }
+  }
+
   // обновляет данные пользователя
-  // param: имя параметра из _config (например, 'health', 'bullet')
+  // param: имя параметра из _config (например, 'health', 'w1')
   // value: значение
   // operation: 'set', 'decrement', 'increment'
   updateUser(gameId, param, value, operation = 'decrement') {
-    const conf = this._config[param];
-    const key = conf.key;
     const user = this._data[gameId];
-    const currentValue = user.values[key];
+    const values = user.values;
+    const currentValue = values[param];
     let newValue;
 
     if (operation === 'set') {
@@ -93,53 +89,90 @@ class Panel {
       newValue = 0;
     }
 
-    user.values[key] = newValue;
-    user.status = true;
+    values[param] = newValue;
+    user.pendingChanges[this._config[param].key] = newValue;
+  }
+
+  // устанавливает активное оружие
+  setActiveWeapon(gameId, weaponKey) {
+    const user = this._data[gameId];
+    user.pendingChanges['wa'] = weaponKey;
   }
 
   // проверяет, достаточно ли у пользователя ресурсов для действия
   hasResources(gameId, param, value) {
     const user = this._data[gameId];
-    const conf = this._config[param];
+    const currentValue = user.values[param];
 
-    if (user && conf) {
-      const currentValue = user.values[conf.key];
-      return currentValue >= value;
-    }
+    return currentValue >= value;
   }
 
   // возвращает текущее значение параметра для пользователя
   getCurrentValue(gameId, param) {
     const user = this._data[gameId];
-    const conf = this._config[param];
 
-    if (user && conf) {
-      return user.values[conf.key];
-    }
+    return user.values[param];
   }
 
-  // возвращает данные
-  getPanel(gameId) {
+  // вычисляет все обновления панели за один тик
+  processUpdates() {
+    const updates = {};
+    const currentTime = this._timerManager.getRoundTimeLeft();
+    const timeChanged = currentTime !== this._lastSentRoundTime;
+
+    if (timeChanged) {
+      this._lastSentRoundTime = currentTime;
+    }
+
+    for (const gameId in this._data) {
+      if (Object.hasOwn(this._data, gameId)) {
+        const user = this._data[gameId];
+        const userChanges = user.pendingChanges;
+        const userData = [];
+
+        if (timeChanged) {
+          userData.push(`t:${currentTime}`);
+        }
+
+        for (const key in userChanges) {
+          if (Object.hasOwn(userChanges, key)) {
+            userData.push(`${key}:${userChanges[key]}`);
+          }
+        }
+
+        if (userData.length) {
+          updates[gameId] = userData;
+        }
+
+        user.pendingChanges = {};
+      }
+    }
+
+    return updates;
+  }
+
+  // возвращает полный набор данных для инициализации панели игрока
+  getFullPanel(gameId) {
     const user = this._data[gameId];
-    let data = [this._timerManager.getRoundTimeLeft()];
+    user.pendingChanges = {}; // очистка старых изменений
 
-    if (user && user.status === true) {
-      user.status = false;
+    const panelData = [`t:${this._lastSentRoundTime}`];
+    const values = user.values;
 
-      data = data.concat(user.values);
+    for (const param in values) {
+      if (Object.hasOwn(values, param)) {
+        const key = this._config[param].key;
+        const value = values[param];
+
+        panelData.push(`${key}:${value}`);
+      }
     }
-
-    return data;
+    return panelData;
   }
 
-  // возвращает пустые данные (пустые строки)
-  // требуется, чтоб скрыть контейнеры этих данных
+  // возвращает пустые данные (ключи без значений)
   getEmptyPanel() {
-    return [this._timerManager.getRoundTimeLeft(), ...this._emptyPanel];
-  }
-
-  getTime() {
-    return [this._timerManager.getRoundTimeLeft()];
+    return [`t:${this._lastSentRoundTime}`].concat(this._emptyPanel);
   }
 }
 

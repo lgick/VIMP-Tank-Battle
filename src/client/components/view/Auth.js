@@ -5,7 +5,7 @@ import Publisher from '../../../lib/Publisher.js';
 let authView;
 
 export default class AuthView {
-  constructor(model, data) {
+  constructor(model, elems) {
     if (authView) {
       return authView;
     }
@@ -13,8 +13,6 @@ export default class AuthView {
     authView = this;
 
     this._mPublic = model.publisher;
-
-    const elems = data.elems;
 
     this._auth = document.getElementById(elems.authId);
     this._form = document.getElementById(elems.formId);

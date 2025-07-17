@@ -1,5 +1,9 @@
 @charset "UTF-8";
 
+* {
+  user-select: none;
+}
+
 #panel {
   text-transform: uppercase;
   background-color: #fff;
@@ -41,6 +45,10 @@
   overflow: hidden;
   width: 25%;
   display: none;
+}
+
+#panel table td.active {
+  background-color: #333;
 }
 
 #panel table td#panel-health div.panel-health-wrapper {

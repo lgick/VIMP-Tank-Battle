@@ -24,6 +24,12 @@ class BaseModel {
         this._weaponRemainingCooldowns[weaponName] = 0;
       }
     }
+
+    this._services.panel.setActiveWeapon(this._gameId, this._currentWeapon);
+  }
+
+  get gameId() {
+    return this._gameId;
   }
 
   get teamId() {
@@ -82,24 +88,18 @@ class BaseModel {
     return this._weapons;
   }
 
-  // задаёт значение здоровья
-  setHealth(amount) {
+  // получает текущее здоровье
+  getHealth() {
     const panel = this._services.panel;
-    const currentHealth = panel.getCurrentValue(this._gameId, 'health');
-    const newHealth = Math.max(0, currentHealth - amount);
 
-    // если здоровья нет
-    if (newHealth <= 0) {
-      const vimp = this._services.vimp;
+    return panel.getCurrentValue(this._gameId, 'health');
+  }
 
-      vimp.reportPlayerDestroyed(this._gameId);
-
-      return 0;
-    }
+  // задаёт значение здоровья
+  setHealth(newHealth) {
+    const panel = this._services.panel;
 
     panel.updateUser(this._gameId, 'health', newHealth, 'set');
-
-    return newHealth;
   }
 
   // проверяет кулдауны и патроны
@@ -157,6 +157,9 @@ class BaseModel {
 
     this._currentWeapon = this._availableWeaponList[key];
     this._weaponConstructorType = this._weapons[this._currentWeapon].type;
+
+    // сообщаем сервису панели, что активное оружие изменилось
+    this._services.panel.setActiveWeapon(this._gameId, this._currentWeapon);
   }
 
   // меняет имя игрока
