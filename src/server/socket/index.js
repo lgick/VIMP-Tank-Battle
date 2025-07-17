@@ -90,7 +90,10 @@ export default server => {
     socketMethods[PC_CONFIG_READY] = err => {
       if (!err) {
         if (oneConnection && ips[address]) {
-          sessions[ips[address]].socket.close(4002, [PS_INFORM_DATA, [1]]);
+          sessions[ips[address]].socket.close(4002, [
+            PS_INFORM_DATA,
+            { key: 1 },
+          ]);
         }
 
         ips[address] = id;
@@ -100,8 +103,8 @@ export default server => {
             ws.socket.socketMethods[PC_AUTH_RESPONSE] = true;
             ws.socket.send(PS_AUTH_DATA, auth);
           } else {
-            waiting.add(id, data => {
-              ws.socket.send(PS_INFORM_DATA, [0, data]);
+            waiting.add(id, arr => {
+              ws.socket.send(PS_INFORM_DATA, { key: 0, arr });
             });
           }
         });
@@ -203,7 +206,10 @@ export default server => {
       waiting.createNotifyObject(notifyObject => {
         for (const p in notifyObject) {
           if (Object.hasOwn(notifyObject, p) && sessions[p]) {
-            sessions[p].socket.send(PS_INFORM_DATA, [0, notifyObject[p]]);
+            sessions[p].socket.send(PS_INFORM_DATA, {
+              key: 0,
+              arr: notifyObject[p],
+            });
           }
         }
       });
