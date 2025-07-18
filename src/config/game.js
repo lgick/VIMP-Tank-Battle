@@ -19,7 +19,7 @@ export default {
       // tank
       m1: {
         // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
-        size: 10,
+        size: 8,
         constructor: 'Tank',
         currentWeapon: 'w1',
       },
@@ -29,9 +29,9 @@ export default {
       w1: {
         type: 'hitscan',
         impulseMagnitude: 50, // сила импульса (кг*м/с)
-        damage: 10, // урон от одного попадания
+        damage: 5, // урон от одного попадания
         range: 1500, // максимальная дальность выстрела (в игровых юнитах)
-        fireRate: 0.2, // кулдаун между выстрелами (5 выстрелов в секунду)
+        fireRate: 0.1, // кулдаун между выстрелами (10 выстрелов в секунду)
         spread: 0.05, // разброс в радианах (0 для идеальной точности)
         consumption: 1, // расход патронов за один выстрел
         cameraShake: {
@@ -46,8 +46,8 @@ export default {
         constructor: 'Bomb',
         time: 5000,
         shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
-        size: 32, // соотношение сторон 1:1
-        fireRate: 0.1, // кулдаун между выстрелами
+        size: 15, // соотношение сторон 1:1
+        fireRate: 1, // кулдаун между выстрелами
         damage: 30, // урон в эпицентре
         radius: 200, // радиус взрыва
         impulseMagnitude: 200000, // сила импульса
@@ -107,7 +107,7 @@ export default {
     },
     w1: {
       key: 'w1',
-      value: 100,
+      value: 200,
     },
     w2: {
       key: 'w2',
