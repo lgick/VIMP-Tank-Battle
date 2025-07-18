@@ -79,7 +79,7 @@ export default {
           component: 'Bomb',
           params: {
             colorOuter: 0xffffff,
-            colorInner: 0x275c2d,
+            colorInner: 0x0f0f0f,
           },
         },
         {

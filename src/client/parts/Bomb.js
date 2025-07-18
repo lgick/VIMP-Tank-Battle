@@ -22,10 +22,9 @@ export default class Bomb extends Container {
     this.body.scale.set(scale);
 
     this.text = new Text({
-      text: '--:--',
       style: {
         fontFamily: 'Arial',
-        fontSize: this._size / 3,
+        fontSize: this._size / 1.2,
         fill: 0xff1010,
         align: 'center',
       },
@@ -37,6 +36,7 @@ export default class Bomb extends Container {
 
     // накопленное время с момента создания
     this._accumulatedTimeMs = 0;
+    this._secondsLeft = '';
 
     this.addChild(this.body, this.text);
     this._updateTimerDisplay(this._totalDurationMs);
@@ -70,20 +70,12 @@ export default class Bomb extends Container {
   // обновление текста таймера на основе оставшегося времени
   // remainingMs - оставшееся время в миллисекундах
   _updateTimerDisplay(remainingMs) {
-    // определение количества целых секунд, оставшихся до конца
-    const wholeSecondsLeft = Math.floor(remainingMs / 1000);
+    const time = Math.round(remainingMs / 1000);
 
-    // определение количества сотых долей секунды, оставшихся в текущей секунде
-    const hundredthsLeftInSecond = Math.floor((remainingMs % 1000) / 10);
-
-    // при remainingMs == 0, сотые тоже должны быть 0
-    const displayHundredths = remainingMs <= 0 ? 0 : hundredthsLeftInSecond;
-
-    // форматирование с ведущими нулями
-    const secondsStr = String(wholeSecondsLeft).padStart(2, '0');
-    const hundredthsStr = String(displayHundredths).padStart(2, '0');
-
-    this.text.text = `${secondsStr}:${hundredthsStr}`;
+    if (this._secondsLeft !== time) {
+      this._secondsLeft = time;
+      this.text.text = `${this._secondsLeft}`;
+    }
   }
 
   update() {}
