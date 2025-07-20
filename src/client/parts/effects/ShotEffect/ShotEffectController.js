@@ -3,7 +3,7 @@ import TracerEffect from './TracerEffect.js';
 import ImpactEffect from './ImpactEffect.js';
 
 export default class ShotEffectController extends Container {
-  constructor(data, assets) {
+  constructor(data, assets, dependencies) {
     super();
 
     this.zIndex = 2;
@@ -15,6 +15,8 @@ export default class ShotEffectController extends Container {
     this.hit = data[4];
 
     this._assets = assets;
+    this._soundManager = dependencies.soundManager;
+
     this.tracer = null;
     this.impact = null;
     this._isDestroyed = false;
@@ -24,6 +26,9 @@ export default class ShotEffectController extends Container {
     if (this._isDestroyed) {
       return;
     }
+
+    // звук выстрела в момент старта эффекта
+    this._soundManager.play('shot');
 
     this.tracer = new TracerEffect(
       this.startPositionX,

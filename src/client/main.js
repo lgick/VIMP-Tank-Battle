@@ -24,6 +24,7 @@ import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
+import SoundManager from './SoundManager.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
@@ -34,7 +35,9 @@ const PS_AUTH_ERRORS = wsports.server.AUTH_ERRORS;
 const PS_MAP_DATA = wsports.server.MAP_DATA;
 const PS_FIRST_SHOT_DATA = wsports.server.FIRST_SHOT_DATA;
 const PS_SHOT_DATA = wsports.server.SHOT_DATA;
-const PS_INFORM_DATA = wsports.server.INFORM_DATA;
+const PS_SOUND_DATA = wsports.server.SOUND_DATA;
+const PS_GAME_INFORM_DATA = wsports.server.GAME_INFORM_DATA;
+const PS_TECH_INFORM_DATA = wsports.server.TECH_INFORM_DATA;
 const PS_MISC = wsports.server.MISC;
 const PS_CLEAR = wsports.server.CLEAR;
 const PS_CONSOLE = wsports.server.CONSOLE;
@@ -48,15 +51,22 @@ const PC_KEYS_DATA = wsports.client.KEYS_DATA;
 const PC_CHAT_DATA = wsports.client.CHAT_DATA;
 const PC_VOTE_DATA = wsports.client.VOTE_DATA;
 
-const informer = document.getElementById('informer');
-
 const ws = new WebSocket(`ws://${location.host}/`);
 ws.binaryType = 'arraybuffer';
 
 const modules = {};
 
+// создание и инициализация SoundManager
+const soundManager = new SoundManager();
+
 let modulesConfig = {};
-let informList = []; // массив системных сообщений
+
+let gameInformer = null;
+let gameInformList = []; // массив игровых сообщений
+
+const techInformer = document.getElementById('tech-informer');
+let techInformList = []; // массив системных сообщений
+
 const CTRL = {}; // контроллеры
 const scale = {}; // масштаб
 let gameSets = {}; // наборы конструкторов (id: [наборы])
@@ -77,11 +87,18 @@ socketMethods[PS_CONFIG_DATA] = async data => {
     Factory.add({ [entity]: parts[entity] });
   }
 
+  gameInformer = document.getElementById(data.gameInform.id);
+  gameInformList = data.gameInform.list;
+
+  techInformList = data.techInformList;
+
   modulesConfig = data.modules;
-  informList = data.informer;
 
   const bakedAssets = data.parts.bakedAssets || {};
   const componentDependencies = data.parts.componentDependencies || {};
+  const soundList = data.parts.sounds || {};
+  // загрузка звуков
+  await soundManager.load(soundList);
 
   // создание полотен игры
   const initPromises = Object.entries(modulesConfig.canvasOptions).map(
@@ -106,6 +123,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       // пул всех доступных сервисов в этом контексте
       const availableServices = {
         renderer: app.renderer,
+        soundManager,
       };
 
       // если есть данные для запекания компонентов
@@ -238,6 +256,7 @@ socketMethods[PS_MAP_DATA] = data => {
   sending(PC_MAP_READY);
 };
 
+// первый shot сразу после загрузки карты
 socketMethods[PS_FIRST_SHOT_DATA] = data => {
   shotData(data);
 
@@ -248,32 +267,38 @@ socketMethods[PS_FIRST_SHOT_DATA] = data => {
 // shot data
 socketMethods[PS_SHOT_DATA] = shotData;
 
-// inform data
-socketMethods[PS_INFORM_DATA] = data => {
+// sound data
+socketMethods[PS_SOUND_DATA] = sample => {
+  soundManager.play(sample);
+};
+
+// game inform data
+socketMethods[PS_GAME_INFORM_DATA] = data => {
   if (data) {
-    const { key, isGame, arr } = data;
-    let message = informList[key];
+    const [key, arr] = data;
 
-    if (message && arr) {
-      arr.forEach((value, index) => {
-        const regExp = new RegExp(`\\{${index}\\}`, 'g');
-        message = message.replace(regExp, value);
-      });
-    }
+    gameInformer.innerHTML = formatMessage(gameInformList[key], arr);
+    gameInformer.style.display = 'block';
 
-    if (isGame) {
-      informer.classList.add('game');
-    } else {
-      informer.classList.remove('game');
-    }
+    setTimeout(() => {
+      gameInformer.innerHTML = '';
+      gameInformer.style.display = 'none';
+    }, 3000);
+  }
+};
+
+// technical inform data
+socketMethods[PS_TECH_INFORM_DATA] = data => {
+  if (data) {
+    const [key, arr] = data;
 
     modules.user?.disableKeys();
-    informer.innerHTML = message;
-    informer.style.display = 'block';
+    techInformer.innerHTML = formatMessage(techInformList[key], arr);
+    techInformer.style.display = 'block';
   } else {
     modules.user?.enableKeys();
-    informer.innerHTML = '';
-    informer.style.display = 'none';
+    techInformer.innerHTML = '';
+    techInformer.style.display = 'none';
   }
 };
 
@@ -359,6 +384,19 @@ function shotData(data) {
   if (typeof keySet === 'number') {
     modules.user.changeKeySet(keySet);
   }
+}
+
+// добавляет в сообщение параметры
+function formatMessage(message = '', arr = []) {
+  if (message && arr.length) {
+    arr.forEach((value, index) => {
+      const regExp = new RegExp(`\\{${index}\\}`, 'g');
+
+      message = message.replace(regExp, value);
+    });
+  }
+
+  return message;
 }
 
 // создает пользователя
@@ -511,7 +549,7 @@ ws.onclose = e => {
     const msg = unpacking(e.reason);
     socketMethods[msg[0]](msg[1]);
   } else {
-    socketMethods[PS_INFORM_DATA]({ key: connectionInterruptedId });
+    socketMethods[PS_TECH_INFORM_DATA]([connectionInterruptedId]);
   }
 
   console.log('disconnect');

@@ -354,10 +354,10 @@ menu = [
 |     chat      |    3    |
 |     panel     |    4    |
 |     vote      |    5    |
-| informer.game |    6    |
+| game-informer |    6    |
 |     stat      |    7    |
 |     auth      |    8    |
-|   informer    |    9    |
+| tech-informer |    9    |
 
 # GAME CONFIG
 

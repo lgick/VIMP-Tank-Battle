@@ -467,9 +467,9 @@
   margin-bottom: 10px;
 }
 
-/*informer*/
+/*informers*/
 
-#informer {
+#tech-informer {
   position: absolute;
   top: 0;
   left: 0;
@@ -482,7 +482,16 @@
   line-height: 24px;
 }
 
-#informer.game {
+#game-informer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-size: clamp(24px, 16px + 4vw, 48px);
+  font-weight: bold;
   background: transparent;
   text-align: center;
   text-transform: uppercase;
@@ -492,8 +501,6 @@
     -1px 1px 0 #000,
     1px 1px 0 #000,
     2px 2px 4px rgba(0, 0, 0, 0.7);
-  font-size: clamp(24px, 16px + 4vw, 48px);
-  font-weight: bold;
   padding-top: 30vh;
   opacity: 0;
   z-index: 6;
