@@ -50,7 +50,9 @@ class VIMP {
     this._PORT_MAP_DATA = ports.MAP_DATA;
     this._PORT_FIRST_SHOT_DATA = ports.FIRST_SHOT_DATA;
     this._PORT_SHOT_DATA = ports.SHOT_DATA;
-    this._PORT_INFORM_DATA = ports.INFORM_DATA;
+    this._PORT_SOUND_DATA = ports.SOUND_DATA;
+    this._PORT_GAME_INFORM_DATA = ports.GAME_INFORM_DATA;
+    this._PORT_TECH_INFORM_DATA = ports.TECH_INFORM_DATA;
     this._PORT_MISC = ports.MISC;
     this._PORT_CLEAR = ports.CLEAR;
     this._PORT_CONSOLE = ports.CONSOLE;
@@ -264,7 +266,7 @@ class VIMP {
   sendMap(gameId) {
     const user = this._users[gameId];
 
-    user.socket.send(this._PORT_INFORM_DATA, { key: 2 });
+    user.socket.send(this._PORT_TECH_INFORM_DATA, [2]);
     user.isReady = false;
     user.currentMap = this._currentMap;
     user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
@@ -303,7 +305,7 @@ class VIMP {
     const user = this._users[gameId];
 
     // скрывает экран загрузки
-    user.socket.send(this._PORT_INFORM_DATA);
+    user.socket.send(this._PORT_TECH_INFORM_DATA);
     user.isReady = true;
   }
 
@@ -383,6 +385,8 @@ class VIMP {
 
         // отправка первого кадра
         user.socket.send(this._PORT_SHOT_DATA, shotData);
+        user.socket.send(this._PORT_SOUND_DATA, 'roundStart');
+        user.socket.send(this._PORT_GAME_INFORM_DATA, [1]);
 
         respId[user.team] = respId[user.team] || 0;
 
@@ -405,30 +409,11 @@ class VIMP {
   }
 
   // стартует раунд заново
-  restartRound(winnerTeam) {
-    const timer = winnerTeam ? 5000 : 0;
-
+  restartRound() {
     this._timerManager.stopRoundTimer();
-
-    if (winnerTeam) {
-      Object.keys(this._users).forEach(gameId =>
-        this._users[gameId].socket.send(this._PORT_INFORM_DATA, {
-          key: 4,
-          isGame: true,
-          arr: [winnerTeam],
-        }),
-      );
-    }
-
-    setTimeout(() => {
-      Object.keys(this._users).forEach(gameId => {
-        this._users[gameId].socket.send(this._PORT_INFORM_DATA);
-      });
-
-      this.startRound();
-      this._timerManager.startRoundTimer();
-      this._chat.pushSystem('t:1');
-    }, timer);
+    this.startRound();
+    this._timerManager.startRoundTimer();
+    this._chat.pushSystem('t:1');
   }
 
   // проверяет имя
@@ -683,7 +668,24 @@ class VIMP {
       );
     }
 
-    this.restartRound(winnerTeam);
+    let informData;
+
+    if (winnerTeam) {
+      informData = [0, [winnerTeam]];
+    } else {
+      informData = [2];
+    }
+
+    Object.keys(this._users).forEach(gameId => {
+      const user = this._users[gameId];
+
+      user.socket.send(this._PORT_SOUND_DATA, 'gameOver');
+      user.socket.send(this._PORT_GAME_INFORM_DATA, informData);
+    });
+
+    setTimeout(() => {
+      this.restartRound();
+    }, 5000);
   }
 
   // обрабатывает уничтожение игрока, обновляет статистику

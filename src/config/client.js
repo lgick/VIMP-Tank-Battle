@@ -1,3 +1,5 @@
+import sounds from '../../public/sounds/index.js';
+
 export default {
   // ***** parts ***** //
   parts: {
@@ -113,7 +115,13 @@ export default {
     // карта зависимостей компонентов
     componentDependencies: {
       Map: ['renderer'], // Map требует сервис с ключом 'renderer'
+      ExplosionEffect: ['soundManager'], // Звуки для бомбы
+      ShotEffect: ['soundManager'], // Звуки для выстрела
+      Bomb: ['soundManager'], // Звуки для выстрела
     },
+
+    // звуковые ассеты
+    sounds,
   },
 
   // ***** modules ***** //
@@ -307,8 +315,14 @@ export default {
     },
   },
 
-  // ***** informer ***** //
-  informer: [
+  // game information
+  gameInform: {
+    id: 'game-informer',
+    list: ['{0} WINS!', 'ROUND START!', 'GAME OVER!'],
+  },
+
+  // technical information
+  techInformList: [
     'Сервер полный! Ждите или зайдите позже.<br>' +
       'Максимум игроков: {0}<br>' +
       'Вы в очереди ожидающих под номером: {1}<br>',
@@ -318,7 +332,5 @@ export default {
     'Загружаю...',
 
     'Соединение прервано!',
-
-    '{0} WIN!',
   ],
 };

@@ -3,7 +3,7 @@ import ExplosionEffect from './ExplosionEffect.js';
 import FunnelEffect from './FunnelEffect.js';
 
 export default class ExplosionEffectController extends Container {
-  constructor(data, assets) {
+  constructor(data, assets, dependencies) {
     super();
 
     this.originX = data[0];
@@ -11,6 +11,8 @@ export default class ExplosionEffectController extends Container {
     this.radius = data[2];
 
     this._assets = assets;
+
+    this._soundManager = dependencies.soundManager;
 
     this.x = this.originX;
     this.y = this.originY;
@@ -26,6 +28,9 @@ export default class ExplosionEffectController extends Container {
     if (this._isDestroyed) {
       return;
     }
+
+    // звук взрыва в момент старта эффекта
+    this._soundManager.play('explosion');
 
     this.funnel = new FunnelEffect(
       this.originX,

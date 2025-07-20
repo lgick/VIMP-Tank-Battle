@@ -7,10 +7,12 @@ export default {
     MAP_DATA: 3,
     FIRST_SHOT_DATA: 4,
     SHOT_DATA: 5,
-    INFORM_DATA: 6,
-    MISC: 7,
-    CLEAR: 8,
-    CONSOLE: 9,
+    SOUND_DATA: 6,
+    GAME_INFORM_DATA: 7,
+    TECH_INFORM_DATA: 8,
+    MISC: 9,
+    CLEAR: 10,
+    CONSOLE: 11,
   },
   // порты получения данных от клиента
   client: {
