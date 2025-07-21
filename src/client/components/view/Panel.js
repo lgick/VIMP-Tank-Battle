@@ -58,6 +58,7 @@ export default class PanelView {
 
       block.className = 'panel-health-block';
       block.style.backgroundColor = this._emptyBlockColor;
+      block.innerHTML = '&nbsp;';
 
       wrapper.appendChild(block);
 

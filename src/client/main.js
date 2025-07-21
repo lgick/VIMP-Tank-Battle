@@ -22,9 +22,9 @@ import VoteModel from './components/model/Vote.js';
 import VoteView from './components/view/Vote.js';
 import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
+import SoundManager from './SoundManager.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
-import SoundManager from './SoundManager.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
@@ -96,9 +96,9 @@ socketMethods[PS_CONFIG_DATA] = async data => {
 
   const bakedAssets = data.parts.bakedAssets || {};
   const componentDependencies = data.parts.componentDependencies || {};
-  const soundList = data.parts.sounds || {};
+  const sounds = data.parts.sounds || {};
   // загрузка звуков
-  await soundManager.load(soundList);
+  await soundManager.load(sounds);
 
   // создание полотен игры
   const initPromises = Object.entries(modulesConfig.canvasOptions).map(
@@ -356,6 +356,7 @@ function shotData(data) {
   if (crds !== 0) {
     coords.x = crds[0];
     coords.y = crds[1];
+    soundManager.setListenerPosition(coords.x, coords.y);
   }
 
   updateGameControllers();

@@ -4,15 +4,14 @@ import BaseEffect from '../BaseEffect.js';
 const EFFECT_BASE_RADIUS_PX = 50; // базовый радиус для расчета масштаба
 
 export default class ExplosionEffect extends BaseEffect {
-  constructor(x, y, radius, onComplete, assets) {
+  constructor(x, y, radius, onComplete, assets, soundManager) {
     super(onComplete); // конструктор BaseEffect
 
     // ассет взрыва
-    this.explosionTexture = assets.explosionTexture;
+    const explosionTexture = assets.explosionTexture;
 
-    this.x = x;
-    this.y = y;
     this._radius = radius;
+    this._soundManager = soundManager;
 
     // сортировка дочерних элементов по zIndex
     this.sortableChildren = true;
@@ -27,20 +26,23 @@ export default class ExplosionEffect extends BaseEffect {
 
     // спрайты
     // основное тело взрыва (голубое)
-    this._mainBody = new Sprite(this.explosionTexture);
+    this._mainBody = new Sprite(explosionTexture);
     this._mainBody.anchor.set(0.5);
     this._mainBody.tint = 0xadd8e6; // светло-голубой
     this._mainBody.scale.set(desiredScale);
     this._mainBody.zIndex = 3; // zIndex должен быть выше, чем у воронки
 
     // коллапсирующее ядро (серое)
-    this._core = new Sprite(this.explosionTexture);
+    this._core = new Sprite(explosionTexture);
     this._core.anchor.set(0.5);
     this._core.tint = 0xd3d3d3; // светло-серый
     this._core.scale.set(desiredScale); // начальный размер тот же
     this._core.zIndex = 4; // zIndex ядра должен быть самым высоким
 
     this.addChild(this._mainBody, this._core);
+
+    // звук взрыва
+    this._soundId = this._soundManager.play('explosion', { x, y });
   }
 
   // обновление анимации
@@ -77,6 +79,8 @@ export default class ExplosionEffect extends BaseEffect {
 
   // уничтожение объекта
   destroy(options) {
+    this._soundManager.stopById('explosion', this._soundId);
+
     // вызов destroy из BaseEffect
     super.destroy(options);
   }

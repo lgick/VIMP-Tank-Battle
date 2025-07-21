@@ -11,19 +11,26 @@ export default class DependencyProvider {
   collectAll(availableServices, dependencyMap) {
     this._collection.clear();
 
-    const componentNames = Object.keys(dependencyMap || {});
+    const services = Object.keys(dependencyMap || {});
 
-    for (const componentName of componentNames) {
-      const requiredKeys = dependencyMap[componentName] || [];
-      const dependenciesForInstance = {};
+    for (const serviceName of services) {
+      // если сервис доступен
+      if (Object.hasOwn(availableServices, serviceName)) {
+        const componentNames = dependencyMap[serviceName] || [];
+        const service = availableServices[serviceName];
 
-      for (const key of requiredKeys) {
-        if (Object.hasOwn(availableServices, key)) {
-          dependenciesForInstance[key] = availableServices[key];
+        for (const componentName of componentNames) {
+          // получение существующего объекта зависимостей для компонента
+          // или создание нового
+          const dependencies = this._collection.get(componentName) || {};
+
+          // добавление текущего сервиса
+          dependencies[serviceName] = service;
+
+          // устанавка объекта зависимостей для компонента
+          this._collection.set(componentName, dependencies);
         }
       }
-
-      this._collection.set(componentName, dependenciesForInstance);
     }
   }
 
