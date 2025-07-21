@@ -69,7 +69,7 @@
 
 @keyframes pulse-effect {
   50% {
-    background: #888;
+    background-color: #888;
   }
 }
 

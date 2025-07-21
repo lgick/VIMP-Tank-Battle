@@ -114,10 +114,10 @@ export default {
 
     // карта зависимостей компонентов
     componentDependencies: {
-      Map: ['renderer'], // Map требует сервис с ключом 'renderer'
-      ExplosionEffect: ['soundManager'], // Звуки для бомбы
-      ShotEffect: ['soundManager'], // Звуки для выстрела
-      Bomb: ['soundManager'], // Звуки для выстрела
+      // Map требует сервис renderer
+      renderer: ['Map'],
+      // компоненты использующие звук
+      soundManager: ['ExplosionEffect', 'ShotEffect', 'Bomb'],
     },
 
     // звуковые ассеты

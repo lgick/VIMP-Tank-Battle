@@ -46,7 +46,7 @@ export default class Bomb extends Container {
     this._tickListener = ticker => this._updateTimer(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
 
-    this._soundManager.play('bombHasBeenPlanted');
+    //this._soundManager.play('bombHasBeenPlanted', { x: this.x, y: this.y });
   }
 
   // обновление таймера

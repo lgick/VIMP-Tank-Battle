@@ -29,9 +29,6 @@ export default class ExplosionEffectController extends Container {
       return;
     }
 
-    // звук взрыва в момент старта эффекта
-    this._soundManager.play('explosion');
-
     this.funnel = new FunnelEffect(
       this.originX,
       this.originY,
@@ -43,11 +40,12 @@ export default class ExplosionEffectController extends Container {
     this.parent.addChild(this.funnel);
 
     this.explosion = new ExplosionEffect(
-      0,
-      0,
+      this.originX,
+      this.originY,
       this.radius,
       this._onExplosionComplete.bind(this),
       this._assets,
+      this._soundManager,
     );
 
     // взрыв в контроллер
