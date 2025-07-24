@@ -357,6 +357,7 @@ function shotData(data) {
     coords.x = crds[0];
     coords.y = crds[1];
     soundManager.setListenerPosition(coords.x, coords.y);
+    soundManager.setListenerOrientation(crds[2]);
   }
 
   updateGameControllers();
