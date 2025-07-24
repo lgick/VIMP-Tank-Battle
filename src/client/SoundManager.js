@@ -2,144 +2,275 @@ import { Howl, Howler } from 'howler';
 
 /**
  * @class SoundManager
- * @description управляет загрузкой,
- * воспроизведением и остановкой звуковых эффектов и музыки в игре
+ * @description Управляет загрузкой, воспроизведением и остановкой звуков с использованием Howler.js.
+ * Поддерживает глобальные настройки и позиционирование звука в 2D-пространстве.
  */
 export default class SoundManager {
+  /**
+   * Хранилище загруженных экземпляров Howl.
+   * @private
+   * @type {Map<string, Howl>}
+   */
+  _sounds = new Map();
+
+  /**
+   * Настройки по умолчанию для пространственного звука.
+   * @private
+   * @readonly
+   */
+  _defaultPannerSettings;
+
+  /**
+   * @constructor
+   */
   constructor() {
-    this._sounds = new Map();
-    this._listenerPos = { x: 0, y: 0 };
-    this._listenerAngle = 0; // направление "взора" в радианах
+    // Глобальные настройки для Howler
+    Howler.autoUnlock = true; // Автоматически разблокирует аудиоконтекст при первом взаимодействии пользователя
+    Howler.usingWebAudio = true; // Предпочитаем Web Audio API для расширенных возможностей
+    Howler.volume(0.7); // Устанавливаем начальную глобальную громкость
 
-    Howler.autoUnlock = true;
-    Howler.usingWebAudio = true;
-    Howler.volume(0.7);
+    // Настройки для пространственного звука (3D-аудио)
+    this._defaultPannerSettings = {
+      panningModel: 'HRTF', // Более качественная модель панорамирования
+      distanceModel: 'inverse', // Модель затухания звука с расстоянием
+      refDistance: 100, // Расстояние (в px), на котором громкость равна 100%
+      maxDistance: 1500, // Максимальное расстояние, дальше которого звук почти не слышен
+      rolloffFactor: 1.5, // Коэффициент затухания (чем больше, тем быстрее затухает)
+      coneInnerAngle: 360, // Звук распространяется во все стороны одинаково
+      coneOuterAngle: 0,
+      coneOuterGain: 0,
+    };
+
+    this._handleVisibilityChange = this._handleVisibilityChange.bind(this);
+    document.addEventListener('visibilitychange', this._handleVisibilityChange);
+  }
+
+  // Новый приватный метод
+  _handleVisibilityChange() {
+    if (document.visibilityState === 'hidden') {
+      this.mute(); // Или Howler.volume(0.1) для тихого фона
+    } else {
+      this.unmute();
+    }
   }
 
   /**
-   * @description обновляет позицию "слушателя" для корректной работы 3D-звука
-   * @param {number} x - X-координата слушателя
-   * @param {number} y - Y-координата слушателя
-   * @returns {void}
-   */
-  setListenerPosition(x, y) {
-    this._listenerPos.x = x;
-    this._listenerPos.y = y;
-    Howler.pos(x, y, 0);
-  }
-
-  /**
-   * @description обновляет угол направления "взора" слушателя
-   * @param {number} angle - угол в радианах (0 — вправо, PI/2 — вверх)
-   */
-  setListenerOrientation(angle) {
-    this._listenerAngle = angle;
-
-    // ориентация слушателя для WebAudio Panner
-    const fx = Math.cos(angle);
-    const fy = Math.sin(angle);
-
-    Howler.orientation(fx, fy, 0, 0, 0, 1);
-  }
-
-  /**
-   * @description асинхронно загружает все звуковые ассеты
-   * @param {object} soundsConfig - объект конфигурации звуков
+   * Асинхронно загружает все звуки, определенные в конфигурации.
+   * @param {SoundConfig} soundsConfig - Объект конфигурации звуков.
+   * @returns {Promise<void>} Promise, который разрешается после загрузки всех звуков.
    */
   async load(soundsConfig) {
     const { codecList, path, sounds } = soundsConfig;
     const supportedCodec = codecList.find(codec => Howler.codecs(codec));
 
     if (!supportedCodec) {
+      console.error(
+        'Не найден поддерживаемый аудиокодек из списка:',
+        codecList,
+      );
       return;
     }
 
     const loadingPromises = Object.entries(sounds).map(
-      ([soundName, fileName]) =>
-        new Promise((resolve, reject) => {
-          const url = `${path}${fileName}.${supportedCodec}`;
+      ([soundName, fileName]) => {
+        const url = `${path}${fileName}.${supportedCodec}`;
+        return new Promise((resolve, reject) => {
           const soundInstance = new Howl({
             src: [url],
             preload: true,
+            html5: false, // Важно для использования Web Audio API и 3D-звука
             onload: () => {
               this._sounds.set(soundName, soundInstance);
+              // console.log(`Звук "${soundName}" успешно загружен.`); // Можно раскомментировать для отладки
               resolve();
             },
             onloaderror: (_id, error) => {
-              console.error(
-                `Error loading sound "${soundName}" from URL ${url}:`,
-                error,
-              );
-              reject(error);
+              const errorMessage = `Ошибка загрузки звука "${soundName}" из ${url}`;
+              console.error(errorMessage, error);
+              reject(new Error(errorMessage));
             },
           });
-        }),
+        });
+      },
     );
 
     try {
       await Promise.all(loadingPromises);
+      console.log('Все звуки успешно загружены.');
     } catch (error) {
-      console.error('Failed to load one or more sounds.', error);
+      console.error('Не удалось загрузить один или несколько звуков.', error);
     }
   }
 
   /**
-   * @description воспроизводит звук по имени с учётом панорамы и затухания
-   * @param {string} name - имя звука
-   * @param {object} options - { x, y, maxDistance }
-   * @returns {number|null} id экземпляра звука
+   * Устанавливает позицию слушателя в 2D-пространстве.
+   * @param {number} x - Координата X.
+   * @param {number} y - Координата Y.
+   */
+  setListenerPosition(x, y) {
+    // Корректное сопоставление координат для вида сверху:
+    // Игровая Y-координата (глубина) -> Звуковая Z-координата
+    // Звуковая Y-координата (высота) фиксируется на 0
+    Howler.pos(x, 0, y);
+  }
+
+  /**
+   * Устанавливает ориентацию (направление взгляда) слушателя.
+   * @param {number} angle - Угол в радианах.
+   */
+  setListenerOrientation(angle) {
+    const fx = Math.cos(angle); // Вектор направления "вперед" по X
+    const fz = Math.sin(angle); // Вектор направления "вперед" по Z (соответствует Y в 2D)
+
+    // Устанавливаем вектор "вперед" (fx, 0, fz) и вектор "вверх" (0, 1, 0)
+    // для корректной ориентации в горизонтальной плоскости (вид сверху)
+    Howler.orientation(fx, 0, fz, 0, 1, 0);
+  }
+
+  /**
+   * Обновляет позицию для уже играющего пространственного звука.
+   * @param {string} name - Имя звука.
+   * @param {number} soundId - ID экземпляра, полученный от метода play().
+   * @param {number} x - Новая координата X.
+   * @param {number} y - Новая координата Y.
+   */
+  updatePosition(name, soundId, x, y) {
+    const sound = this._sounds.get(name);
+    if (sound && typeof soundId === 'number') {
+      // Так же, как в play(), сопоставляем 2D координаты с 3D аудио-пространством
+      sound.pos(x, 0, y, soundId);
+    }
+  }
+
+  /**
+   * Воспроизводит звук по его имени.
+   * @param {string} name - Имя звука (ключ из SoundDefinition).
+   * @param {PlayOptions} [options={}] - Опции воспроизведения.
+   * @returns {number | null} ID воспроизводимого экземпляра звука или null, если звук не найден.
    */
   play(name, options = {}) {
     const sound = this._sounds.get(name);
-
     if (!sound) {
+      console.warn(`Попытка воспроизвести несуществующий звук: "${name}"`);
       return null;
     }
 
+    // Воспроизводим звук и получаем его уникальный ID
     const soundId = sound.play();
-    const { x, y, maxDistance = 1000 } = options;
 
+    // Применяем опции к конкретному экземпляру звука
+    const { x, y, loop, volume } = options;
+
+    if (loop) {
+      sound.loop(true, soundId);
+    }
+    if (typeof volume === 'number') {
+      sound.volume(volume, soundId);
+    }
+
+    // Настраиваем 3D-звук, если переданы координаты
     if (typeof x === 'number' && typeof y === 'number') {
-      // вектор от слушателя к источнику
-      const dx = x - this._listenerPos.x;
-      const dy = y - this._listenerPos.y;
-      const dist = Math.hypot(dx, dy);
-
-      // затухание (линейная)
-      const attenuation = Math.max(0, 1 - dist / maxDistance);
-      sound.volume(attenuation, soundId);
-
-      // панорама
-      const theta = Math.atan2(dy, dx) - this._listenerAngle;
-      const pan = Math.sin(theta);
-      sound.stereo(pan, soundId);
+      sound.pannerAttr(this._defaultPannerSettings, soundId);
+      // Корректное сопоставление координат для источника звука
+      sound.pos(x, 0, y, soundId);
     }
 
     return soundId;
   }
 
   /**
-   * @description останавливает все экземпляры указанного звука
-   * @param {string} name - имя звука
+   * Останавливает все экземпляры указанного звука.
+   * @param {string} name - Имя звука.
    */
   stop(name) {
     const sound = this._sounds.get(name);
-
     if (sound) {
       sound.stop();
     }
   }
 
   /**
-   * @description останавливает конкретный экземпляр звука по id
-   * @param {string} name - имя звука
-   * @param {number} soundId - id экземпляра
+   * Останавливает конкретный экземпляр звука по его ID.
+   * @param {string} name - Имя звука.
+   * @param {number} soundId - ID экземпляра, полученный от метода play().
    */
   stopById(name, soundId) {
     const sound = this._sounds.get(name);
-
     if (sound && typeof soundId === 'number') {
       sound.stop(soundId);
     }
+  }
+
+  /**
+   * Плавно изменяет громкость звука до указанного значения.
+   * @param {string} name - Имя звука.
+   * @param {number} soundId - ID экземпляра звука.
+   * @param {number} toVolume - Конечная громкость (0.0 до 1.0).
+   * @param {number} duration - Длительность перехода в миллисекундах.
+   */
+  fade(name, soundId, toVolume, duration) {
+    const sound = this._sounds.get(name);
+    if (sound && typeof soundId === 'number') {
+      // ИСПРАВЛЕНО: .volume() без аргументов возвращает текущую общую громкость звука (число).
+      const fromVolume = sound.volume();
+      sound.fade(fromVolume, toVolume, duration, soundId);
+    }
+  }
+
+  /**
+   * Плавно останавливает звук, уменьшая его громкость до нуля.
+   * @param {string} name - Имя звука.
+   * @param {number} soundId - ID экземпляра звука.
+   * @param {number} duration - Длительность затухания в миллисекундах.
+   */
+  fadeOutAndStop(name, soundId, duration) {
+    const sound = this._sounds.get(name);
+    if (sound && typeof soundId === 'number') {
+      // ИСПРАВЛЕНО: .volume() без аргументов возвращает текущую общую громкость звука (число).
+      const fromVolume = sound.volume();
+      sound.fade(fromVolume, 0, duration, soundId);
+      // Останавливаем звук после завершения затухания
+      sound.once(
+        'fade',
+        id => {
+          if (id === soundId) {
+            sound.stop(id);
+          }
+        },
+        soundId,
+      );
+    }
+  }
+
+  /**
+   * Устанавливает глобальную громкость для всех звуков.
+   * @param {number} volume - Значение громкости от 0.0 до 1.0.
+   */
+  setGlobalVolume(volume) {
+    Howler.volume(volume);
+  }
+
+  /**
+   * Выключает все звуки.
+   */
+  mute() {
+    Howler.mute(true);
+  }
+
+  /**
+   * Включает все звуки после выключения.
+   */
+  unmute() {
+    Howler.mute(false);
+  }
+
+  // Также неплохо было бы добавить метод для очистки при уничтожении менеджера
+  destroy() {
+    document.removeEventListener(
+      'visibilitychange',
+      this._handleVisibilityChange,
+    );
+
+    Howler.unload(); // Выгружает все звуки
   }
 }
