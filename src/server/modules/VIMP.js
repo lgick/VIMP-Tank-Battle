@@ -63,7 +63,7 @@ class VIMP {
     this._startMapNumber = 0; // номер первой карты в голосовании
 
     // инициализация сервисов
-    const game = new Game(data.parts, data.keys, data.timeStep / 1000);
+    const game = new Game(data.parts, data.playerKeys, data.timeStep / 1000);
     const panel = new Panel(data.panel);
     const stat = new Stat(data.stat, this._teams);
     const chat = new Chat();
@@ -865,20 +865,24 @@ class VIMP {
   }
 
   // обновляет команды
-  updateKeys(gameId, keys) {
+  updateKeys(gameId, keyStr) {
     const user = this._users[gameId];
+    const [action, name] = keyStr.split(':');
 
     if (user.isWatching === true) {
-      // next player
-      if (keys & this._spectatorKeys.nextPlayer) {
-        user.watchedGameId = this.getNextActivePlayerForUser(gameId);
+      // если нажатие
+      if (action === 'down') {
+        // next player
+        if (name === this._spectatorKeys.nextPlayer) {
+          user.watchedGameId = this.getNextActivePlayerForUser(gameId);
 
-        // prev player
-      } else if (keys & this._spectatorKeys.prevPlayer) {
-        user.watchedGameId = this.getNextActivePlayerForUser(gameId, true);
+          // prev player
+        } else if (name === this._spectatorKeys.prevPlayer) {
+          user.watchedGameId = this.getNextActivePlayerForUser(gameId, true);
+        }
       }
     } else {
-      this._game.updateKeys(gameId, keys);
+      this._game.updateKeys(gameId, { action, name });
     }
   }
 

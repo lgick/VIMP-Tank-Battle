@@ -142,9 +142,10 @@ export default server => {
     };
 
     // 4: keys data
-    socketMethods[PC_KEYS_DATA] = keys => {
-      if (keys) {
-        vimp.updateKeys(gameId, keys);
+    // данные в виде строки вида 'down:forward'
+    socketMethods[PC_KEYS_DATA] = keyEventString => {
+      if (typeof keyEventString === 'string') {
+        vimp.updateKeys(gameId, keyEventString);
       }
     };
 

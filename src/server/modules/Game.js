@@ -6,7 +6,7 @@ import Factory from '../../lib/factory.js';
 let game;
 
 class Game {
-  constructor(parts, keys, timeStep) {
+  constructor(parts, playerKeys, timeStep) {
     if (game) {
       return game;
     }
@@ -19,7 +19,25 @@ class Game {
     this._models = parts.models;
     this._weapons = parts.weapons;
 
-    this._keysData = keys;
+    const keys = {};
+    let oneShotMask = 0;
+
+    for (const name in playerKeys) {
+      if (Object.hasOwn(playerKeys, name)) {
+        const keyConfig = playerKeys[name];
+
+        keys[name] = keyConfig.key;
+
+        if (keyConfig.type === 1) {
+          oneShotMask |= keyConfig.key;
+        }
+      }
+    }
+
+    this._playerKeys = {
+      keys,
+      oneShotMask,
+    };
 
     // интервал фиксированного шага физики (в секундах, например 1 / 120)
     this._timeStep = timeStep;
@@ -155,7 +173,7 @@ class Game {
     modelData.angle = data[2];
 
     this._playersData[gameId] = this._Factory(modelData.constructor, {
-      keysData: this._keysData,
+      playerKeys: this._playerKeys,
       modelData,
       world: this._world,
       model,
@@ -203,8 +221,8 @@ class Game {
   }
 
   // обновляет нажатые клавиши
-  updateKeys(gameId, keys) {
-    this._playersData[gameId].currentKeys = keys;
+  updateKeys(gameId, keyData) {
+    this._playersData[gameId].updateKeys(keyData);
   }
 
   // возвращает координаты игрока [x, y, angle]

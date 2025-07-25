@@ -1,5 +1,5 @@
 import './style.css';
-import { Application, Ticker } from 'pixi.js';
+import { Application } from 'pixi.js';
 import AuthModel from './components/model/Auth.js';
 import AuthView from './components/view/Auth.js';
 import AuthCtrl from './components/controller/Auth.js';
@@ -420,7 +420,6 @@ function runModules(data) {
   const userModel = new UserModel({
     sizeOptions: canvasOptions,
     keys,
-    Ticker,
   });
 
   const userView = new UserView(userModel, displayIdList);
