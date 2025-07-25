@@ -7,13 +7,21 @@ class BaseModel {
     this._currentWeapon = data.currentWeapon;
     this._weapons = data.weapons;
     this._availableWeaponList = Object.keys(this._weapons);
-    this._keysData = data.keysData;
+    this._keysData = data.playerKeys.keys;
     this._services = data.services;
 
     this._weaponConstructorType =
       this._weapons[this._currentWeapon].type || null;
     this._fullUserData = true;
-    this._currentKeys = null;
+
+    // битмаска текущего состояния нажатых клавиш
+    this._currentKeys = 0;
+
+    // битмаска команд, которые нужно обработать один раз в этом тике
+    this._oneShotEvents = 0;
+
+    // одноразовые команды
+    this._oneShotKeysMask = data.playerKeys.oneShotMask;
 
     // инициализация кулдаунов оружия
     this._weaponRemainingCooldowns = {};
@@ -56,14 +64,6 @@ class BaseModel {
     this._name = name;
   }
 
-  get currentKeys() {
-    return this._currentKeys;
-  }
-
-  set currentKeys(keys) {
-    this._currentKeys = keys;
-  }
-
   get keysData() {
     return this._keysData;
   }
@@ -88,7 +88,50 @@ class BaseModel {
     return this._weapons;
   }
 
-  // получает текущее здоровье
+  // обновляет состояние клавиш
+  // принимает данные: { action: 'down' | 'up', name: 'fire' }
+  updateKeys(data) {
+    const { name, action } = data;
+    const keyBit = this._keysData[name];
+
+    // если клавиши не найдено
+    if (keyBit === undefined) {
+      return;
+    }
+
+    if (action === 'down') {
+      // если one-shot клавиша, добавление в очередь событий для текущего тика
+      if (this._oneShotKeysMask & keyBit) {
+        this._oneShotEvents |= keyBit;
+        // иначе просто обновление состояния
+      } else {
+        this._currentKeys |= keyBit;
+      }
+      // если отпускание, обновить состояние
+    } else if (action === 'up') {
+      this._currentKeys &= ~keyBit;
+    }
+  }
+
+  // возвращает клавиши для обработки
+  getKeysForProcessing() {
+    // комбинация всех клавиш
+    const keys = this._currentKeys | this._oneShotEvents;
+
+    // сброс одноразовых событий,
+    // т.к. они будут обработаны в этом тике
+    this._oneShotEvents = 0;
+
+    return keys;
+  }
+
+  // сброс нажатых клавиш
+  resetKeys() {
+    this._currentKeys = 0;
+    this._oneShotEvents = 0;
+  }
+
+  // возвращает текущее здоровье
   getHealth() {
     const panel = this._services.panel;
 

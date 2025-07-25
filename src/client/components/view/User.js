@@ -33,12 +33,11 @@ export default class UserView {
 
     this._mPublic = model.publisher;
 
-    this._mPublic.on('init', 'init', this);
     this._mPublic.on('resize', 'resize', this);
   }
 
-  // инициализация
-  init() {
+  // отображает элементы
+  show() {
     for (const id of this._displayIdList) {
       const elem = document.getElementById(id);
 

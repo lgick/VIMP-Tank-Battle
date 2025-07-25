@@ -119,9 +119,11 @@ class Tank extends BaseModel {
     if (newHealth <= 0) {
       this._condition = 0; // танк уничтожен
 
-      // остановка танка при уничтожении
+      // остановка танка при уничтожении,
+      // сброс нажатых клавиш
       this._body.setLinearVelocity(new Vec2(0, 0));
       this._body.setAngularVelocity(0);
+      this.resetKeys();
 
       return true;
     }
@@ -150,16 +152,18 @@ class Tank extends BaseModel {
   }
 
   updateData(dt) {
-    const forward = Boolean(this.currentKeys & this.keysData.forward);
-    const back = Boolean(this.currentKeys & this.keysData.back);
-    const left = Boolean(this.currentKeys & this.keysData.left);
-    const right = Boolean(this.currentKeys & this.keysData.right);
-    const fire = Boolean(this.currentKeys & this.keysData.fire);
-    const gLeft = Boolean(this.currentKeys & this.keysData.gLeft);
-    const gRight = Boolean(this.currentKeys & this.keysData.gRight);
-    const gCenter = Boolean(this.currentKeys & this.keysData.gCenter);
-    const nextWeapon = Boolean(this.currentKeys & this.keysData.nextWeapon);
-    const prevWeapon = Boolean(this.currentKeys & this.keysData.prevWeapon);
+    const keys = this.getKeysForProcessing();
+
+    const forward = Boolean(keys & this.keysData.forward);
+    const back = Boolean(keys & this.keysData.back);
+    const left = Boolean(keys & this.keysData.left);
+    const right = Boolean(keys & this.keysData.right);
+    const gCenter = Boolean(keys & this.keysData.gunCenter);
+    const gLeft = Boolean(keys & this.keysData.gunLeft);
+    const gRight = Boolean(keys & this.keysData.gunRight);
+    const fire = Boolean(keys & this.keysData.fire);
+    const nextWeapon = Boolean(keys & this.keysData.nextWeapon);
+    const prevWeapon = Boolean(keys & this.keysData.prevWeapon);
 
     const body = this._body;
 
@@ -323,9 +327,6 @@ class Tank extends BaseModel {
     if (prevWeapon) {
       this.turnUserWeapon(true);
     }
-
-    // обнуление клавиш в конце
-    this.currentKeys = null;
   }
 
   getMuzzlePosition() {

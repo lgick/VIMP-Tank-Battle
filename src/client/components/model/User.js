@@ -18,27 +18,12 @@ export default class UserModel {
     this._modes = data.keys.modes;
     this._cmds = data.keys.cmds;
 
-    this._ticker = data.Ticker;
-
     this._currentKeySet = this._keySetList[0]; // текущий набор клавиш
     this._currentModes = {}; // статусы режимов
-    this._keys = 0; // состояние клавиш
-    this._keysOneShot = 0; // состояние клавиш одиночного нажатия
-    this._keysOneShotData = {}; // данные активности oneShot-клавиш
-
+    this._pressedKeys = {}; // объект для хранения состояния зажатых клавиш
     this._areKeysEnabled = false; // статус возможности нажатия клавиш
 
     this.publisher = new Publisher();
-  }
-
-  // инициализация
-  init() {
-    // запуск счетчика игры
-    this._ticker.shared.add(() => {
-      this.sendKeys();
-    });
-
-    this.publisher.emit('init');
   }
 
   // добавляет команду
@@ -63,12 +48,21 @@ export default class UserModel {
       if (cmd) {
         this.publisher.emit('chat', cmd);
       }
+
       if (mode === 'stat') {
         event.preventDefault();
         this.publisher.emit('mode', mode);
       }
     } else {
-      this.updateKeysState(keyCode, true);
+      // если клавиша ещё не зажата
+      if (!this._pressedKeys[keyCode]) {
+        const name = this._currentKeySet[keyCode];
+
+        if (name) {
+          this._pressedKeys[keyCode] = true;
+          this.publisher.emit('socket', `down:${name}`);
+        }
+      }
 
       if (this._currentModes.vote) {
         this.publisher.emit('vote', keyCode);
@@ -90,7 +84,15 @@ export default class UserModel {
     const keyCode = event.keyCode;
     const mode = this._modes[keyCode];
 
-    this.updateKeysState(keyCode, false);
+    // если клавиша была зажата
+    if (this._pressedKeys[keyCode]) {
+      const name = this._currentKeySet[keyCode];
+
+      if (name) {
+        this._pressedKeys[keyCode] = false;
+        this.publisher.emit('socket', `up:${name}`);
+      }
+    }
 
     if (this._currentModes.stat && mode === 'stat') {
       this.publisher.emit('stat');
@@ -107,65 +109,9 @@ export default class UserModel {
   }
 
   // меняет набор клавиш
-  changeKeySet(keySet) {
-    this._currentKeySet = this._keySetList[keySet];
-    this._keys = 0;
-    this._keysOneShot = 0;
-  }
-
-  // обновляет набор состояния клавиш
-  // Данные объекта нажатой клавиши:
-  // - key- число клавиши
-  // - type- тип отработки нажатия на клавишу
-  // 0 : многократное нажатие (начинается на keyDown, завершается на keyUp)
-  // 1 : выполняется один раз на keyDown
-  // 2 : выполняется один раз на keyUp
-  updateKeysState(keyCode, press) {
-    const keyData = this._currentKeySet[keyCode];
-
-    if (keyData) {
-      const key = keyData.key;
-      const type = keyData.type;
-
-      // если нажатие
-      if (press) {
-        // если тип не назначен (либо тип 0)
-        if (!type) {
-          this._keys = this._keys | key;
-
-          // иначе если одна команда (первый тип) и она еще не была активирована
-        } else if (type === 1 && this._keysOneShotData[key] !== true) {
-          this._keysOneShot = this._keysOneShot | key;
-          this._keysOneShotData[key] = true;
-        }
-
-        // иначе отжатие
-      } else {
-        // если тип не назначен (либо тип 0)
-        if (!type) {
-          this._keys = this._keys & ~key;
-
-          // иначе если одна команда (первый тип)
-        } else if (type === 1) {
-          this._keysOneShotData[key] = false;
-
-          // иначе если команда на отжатие (второй тип)
-        } else if (type === 2) {
-          this._keysOneShot = this._keysOneShot | key;
-        }
-      }
-    }
-  }
-
-  // отправляет информацию о клавишах на сервер
-  sendKeys() {
-    const keys = this._keys | this._keysOneShot;
-
-    // если есть команды, то отправка данных
-    if (keys !== 0) {
-      this.publisher.emit('socket', keys);
-      this._keysOneShot = 0;
-    }
+  changeKeySet(key) {
+    this._currentKeySet = this._keySetList[key];
+    this._pressedKeys = {};
   }
 
   // рассчитывает размеры элементов с учетом пропорций
