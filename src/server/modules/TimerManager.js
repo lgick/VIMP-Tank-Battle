@@ -30,6 +30,10 @@ class TimerManager extends AbstractTimer {
     // переменные для самокорректирующегося игрового цикла
     this._lastShotTime = 0;
     this._expectedTickTime = 0;
+
+    // максимально допустимая дельта времени в секундах,
+    // для предотвращения "прыжков" в симуляции после долгих пауз
+    this._maxDeltaTime = 0.1;
   }
 
   // запускает все основные игровые таймеры (карта, игровой цикл, раунд)
@@ -100,8 +104,15 @@ class TimerManager extends AbstractTimer {
   // логика одного "тика" игрового цикла
   _loopTick() {
     const now = Date.now();
-    const dt = (now - this._lastShotTime) / 1000;
+    let dt = (now - this._lastShotTime) / 1000;
     this._lastShotTime = now;
+
+    // если dt аномально большой (система "спала"), ограничить его
+    // и сбросить ожидаемое время, чтобы цикл не пытался "наверстать".
+    if (dt > this._maxDeltaTime) {
+      dt = this._maxDeltaTime;
+      this._expectedTickTime = now; // сброс базы для расчета дрейфа
+    }
 
     this._callbacks.onShotTick(dt);
 

@@ -44,6 +44,7 @@ class Game {
     this._velocityIterations = 10;
     this._positionIterations = 8;
     this._accumulator = 0;
+    this._maxAccumulatedTime = 0.1;
 
     this._services = {}; // объект для хранения внедренных сервисов
 
@@ -266,6 +267,13 @@ class Game {
 
     // накапливаем прошедшее время
     this._accumulator += dt;
+
+    // защита от "спирали смерти":
+    // если накопилось слишком много времени (сильный лаг),
+    // ограничение, чтобы не выполнять слишком много шагов физики за раз
+    if (this._accumulator > this._maxAccumulatedTime) {
+      this._accumulator = this._maxAccumulatedTime;
+    }
 
     // делаем столько фиксированных шагов, сколько нужно
     while (this._accumulator >= this._timeStep) {
