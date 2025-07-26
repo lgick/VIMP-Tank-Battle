@@ -160,7 +160,6 @@ socketMethods[PS_CONFIG_DATA] = async data => {
 // auth data
 socketMethods[PS_AUTH_DATA] = data => {
   if (typeof data !== 'object' || data === null) {
-    console.log('authorization error');
     return;
   }
 
@@ -539,9 +538,7 @@ function unpacking(pack) {
 
 // ДАННЫЕ С СЕРВЕРА
 
-ws.onopen = () => {
-  console.log('open');
-};
+ws.onopen = () => {};
 
 ws.onclose = e => {
   const connectionInterruptedId = 3;
@@ -552,8 +549,6 @@ ws.onclose = e => {
   } else {
     socketMethods[PS_TECH_INFORM_DATA]([connectionInterruptedId]);
   }
-
-  console.log('disconnect');
 };
 
 ws.onmessage = e => {

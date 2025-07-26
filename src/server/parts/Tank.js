@@ -81,6 +81,9 @@ class Tank extends BaseModel {
     this._mass = this._body.getMass(); // масса тела
     this._inertia = this._body.getInertia(); // момент инерции
 
+    // базовый фактор инерцией
+    this._effectiveTurnTorque = this._baseTurnTorqueFactor * this._inertia;
+
     this._centeringGun = false;
     this._gunCenterSpeed = 5.0;
 
@@ -304,15 +307,12 @@ class Tank extends BaseModel {
     // определяем направление руля по клавише "назад"
     const turnDirection = back ? -1 : 1;
 
-    // масштабируем базовый фактор инерцией
-    const effectiveTurnTorque = this._baseTurnTorqueFactor * this._inertia;
-
     if (left) {
-      torque = -effectiveTurnTorque * turnFactor * turnDirection;
+      torque = -this._effectiveTurnTorque * turnFactor * turnDirection;
     }
 
     if (right) {
-      torque = effectiveTurnTorque * turnFactor * turnDirection;
+      torque = this._effectiveTurnTorque * turnFactor * turnDirection;
     }
 
     if (torque !== 0) {
