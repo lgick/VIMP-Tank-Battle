@@ -17,6 +17,8 @@ class VIMP {
 
     vimp = this;
 
+    this._isDevMode = data.isDevMode || false; // флаг режима разработки
+
     this._maps = data.maps; // карты
     this._mapList = Object.keys(this._maps); // список карт массивом
     this._mapsInVote = data.mapsInVote; // карт в голосовании
@@ -85,7 +87,7 @@ class VIMP {
       },
       {
         onMapTimeEnd: this.onMapTimeEnd.bind(this),
-        onRoundTimeEnd: this.onRoundTimeEnd.bind(this),
+        onRoundTimeEnd: this.initiateNewRound.bind(this),
         onShotTick: this.onShotTick.bind(this),
       },
     );
@@ -110,13 +112,6 @@ class VIMP {
     this._timerManager.stopBlockedRemapTimer();
     this._blockedRemap = false;
     this.changeMap();
-  }
-
-  // запускает новый раунд
-  onRoundTimeEnd() {
-    this.startRound();
-    this._timerManager.startRoundTimer();
-    this._chat.pushSystem('t:1');
   }
 
   // создает кадр игры
@@ -313,6 +308,14 @@ class VIMP {
     user.isReady = true;
   }
 
+  // запуск нового раунда
+  initiateNewRound() {
+    this._timerManager.stopRoundTimer();
+    this.startRound();
+    this._timerManager.startRoundTimer();
+    this._chat.pushSystem('t:1');
+  }
+
   // начало раунда: перемещаем игроков и отправляем первый кадр
   startRound() {
     const respawns = this._currentMapData.respawns;
@@ -412,14 +415,6 @@ class VIMP {
     }
   }
 
-  // стартует раунд заново
-  restartRound() {
-    this._timerManager.stopRoundTimer();
-    this.startRound();
-    this._timerManager.startRoundTimer();
-    this._chat.pushSystem('t:1');
-  }
-
   // проверяет имя
   checkName(name, number = 1) {
     for (const p in this._users) {
@@ -502,7 +497,7 @@ class VIMP {
     if (this._activePlayersList.filter(id => id !== gameId).length < 2) {
       user.nextTeam = newTeam;
       this._stat.reset();
-      this.restartRound();
+      this.initiateNewRound();
       this._chat.pushSystem(`s:2:${newTeam}`, gameId);
       return;
     }
@@ -691,7 +686,7 @@ class VIMP {
 
     // запускаем отложенный перезапуск раунда через TimerManager
     this._timerManager.startRoundRestartDelay(() => {
-      this.restartRound();
+      this.initiateNewRound();
     });
   }
 
@@ -1067,7 +1062,11 @@ class VIMP {
 
       // новый раунд
       case '/nr':
-        this.restartRound();
+        if (this._isDevMode) {
+          this.initiateNewRound();
+        } else {
+          this._chat.pushSystem(['Command not found'], gameId);
+        }
         break;
 
       // время карты

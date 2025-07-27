@@ -40,6 +40,11 @@ if (argv.players) {
 // game config
 config.set('game', (await import('../config/game.js')).default);
 
+// если режим разработки
+if (process.env.NODE_ENV === 'development') {
+  config.set('game:isDevMode', true);
+}
+
 // если задана карта
 if (argv.map) {
   // если карта существует
