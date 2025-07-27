@@ -78,6 +78,10 @@ class VIMP {
         timeStep: data.timeStep, // время обновления кадра игры
         // время смены команды в текущем раунде
         teamChangeGracePeriod: data.teamChangeGracePeriod,
+        // задержка рестарта раунда после победы/поражения
+        roundRestartDelay: data.roundRestartDelay,
+        // задержка смены карты после голосования
+        mapChangeDelay: data.mapChangeDelay,
       },
       {
         onMapTimeEnd: this.onMapTimeEnd.bind(this),
@@ -222,7 +226,7 @@ class VIMP {
       this._currentMapData.setId = this._mapSetId;
     }
 
-    // остановка таймеров игры
+    // остановка всех игровых таймеров и отложенных вызовов
     this._timerManager.stopGameTimers();
 
     this.resetTeamSizes();
@@ -683,9 +687,12 @@ class VIMP {
       user.socket.send(this._PORT_GAME_INFORM_DATA, informData);
     });
 
-    setTimeout(() => {
+    this._timerManager.stopRoundTimer();
+
+    // запускаем отложенный перезапуск раунда через TimerManager
+    this._timerManager.startRoundRestartDelay(() => {
       this.restartRound();
-    }, 5000);
+    });
   }
 
   // обрабатывает уничтожение игрока, обновляет статистику
@@ -1025,10 +1032,11 @@ class VIMP {
         } else if (this._maps[mapName]) {
           this._chat.pushSystem('v:4:' + mapName);
 
-          setTimeout(() => {
+          // запускаем отложенную смену карты через TimerManager
+          this._timerManager.startMapChangeDelay(() => {
             this._currentMap = mapName;
             this.createMap();
-          }, 2000);
+          });
         }
 
         // снимает блокировку смены карты

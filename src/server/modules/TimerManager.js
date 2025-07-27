@@ -20,6 +20,8 @@ class TimerManager extends AbstractTimer {
     this._voteTime = config.voteTime;
     this._timeBlockedRemap = config.timeBlockedRemap;
     this._teamChangeGracePeriod = config.teamChangeGracePeriod;
+    this._roundRestartDelay = config.roundRestartDelay;
+    this._mapChangeDelay = config.mapChangeDelay;
 
     this._callbacks = callbacks;
 
@@ -48,6 +50,8 @@ class TimerManager extends AbstractTimer {
     this.stopGameLoop();
     this.stopRoundTimer();
     this.stopMapTimer();
+    this.stopRoundRestartDelay();
+    this.stopMapChangeDelay();
   }
 
   // запускает таймер до конца текущей карты
@@ -164,6 +168,30 @@ class TimerManager extends AbstractTimer {
   // останавливает таймер блокировки голосования
   stopBlockedRemapTimer() {
     this._stopTimer('blockedRemap');
+  }
+
+  // запускает отложенный перезапуск раунда (после победы команды)
+  startRoundRestartDelay(onEndCallback) {
+    this._startTimer(
+      'roundRestartDelay',
+      onEndCallback,
+      this._roundRestartDelay,
+    );
+  }
+
+  // останавливает отложенный перезапуск раунда
+  stopRoundRestartDelay() {
+    this._stopTimer('roundRestartDelay');
+  }
+
+  // запускает отложенную смену карты (после голосования)
+  startMapChangeDelay(onEndCallback) {
+    this._startTimer('mapChangeDelay', onEndCallback, this._mapChangeDelay);
+  }
+
+  // останавливает отложенную смену карты
+  stopMapChangeDelay() {
+    this._stopTimer('mapChangeDelay');
   }
 }
 
