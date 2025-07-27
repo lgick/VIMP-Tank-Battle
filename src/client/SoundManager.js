@@ -21,6 +21,13 @@ export default class SoundManager {
   _defaultPannerSettings;
 
   /**
+   * Имя звука, указанное в конфигурации для "прогрева" AudioContext.
+   * @private
+   * @type {string | null}
+   */
+  _warmupSoundName = null;
+
+  /**
    * @constructor
    */
   constructor() {
@@ -43,6 +50,11 @@ export default class SoundManager {
 
     this._handleVisibilityChange = this._handleVisibilityChange.bind(this);
     document.addEventListener('visibilitychange', this._handleVisibilityChange);
+
+    // привязка и добавление слушателя для "пробуждения" аудиоконтекста
+    // при нажатии клавиш
+    this._resumeAudioContext = this._resumeAudioContext.bind(this);
+    document.addEventListener('keydown', this._resumeAudioContext, true);
   }
 
   // Новый приватный метод
@@ -54,13 +66,31 @@ export default class SoundManager {
     }
   }
 
+  // проверяет и возобновляет AudioContext, если он был приостановлен браузером
+  _resumeAudioContext() {
+    if (Howler.ctx && Howler.ctx.state === 'suspended') {
+      Howler.ctx
+        .resume()
+        .then(() => {
+          // после успешного возобновления, проигрывается очень тихий звук,
+          // чтобы "прогреть" аудио-движок safari
+          if (this._warmupSoundName) {
+            this.play(this._warmupSoundName, { volume: 0.001, loop: false });
+          }
+        })
+        .catch(e => console.error('Не удалось возобновить аудиоконтекст:', e));
+    }
+  }
+
   /**
    * Асинхронно загружает все звуки, определенные в конфигурации.
    * @param {SoundConfig} soundsConfig - Объект конфигурации звуков.
    * @returns {Promise<void>} Promise, который разрешается после загрузки всех звуков.
    */
   async load(soundsConfig) {
-    const { codecList, path, sounds } = soundsConfig;
+    const { codecList, path, sounds, warmupSoundName } = soundsConfig;
+    this._warmupSoundName = warmupSoundName;
+
     const supportedCodec = codecList.find(codec => Howler.codecs(codec));
 
     if (!supportedCodec) {
@@ -74,6 +104,7 @@ export default class SoundManager {
     const loadingPromises = Object.entries(sounds).map(
       ([soundName, fileName]) => {
         const url = `${path}${fileName}.${supportedCodec}`;
+
         return new Promise((resolve, reject) => {
           const soundInstance = new Howl({
             src: [url],
@@ -270,6 +301,8 @@ export default class SoundManager {
       'visibilitychange',
       this._handleVisibilityChange,
     );
+
+    document.removeEventListener('keydown', this._resumeAudioContext, true);
 
     Howler.unload(); // Выгружает все звуки
   }

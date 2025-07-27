@@ -9,5 +9,6 @@ const sounds = {
 export default {
   codecList: ['webm', 'mp3'],
   path: '/sounds/',
+  warmupSoundName: 'shot',
   sounds,
 };
