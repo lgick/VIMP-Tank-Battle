@@ -2,6 +2,8 @@ import maps from '../../public/maps/index.js';
 import constructors from '../server/parts/index.js';
 
 export default {
+  isDevMode: false, // флаг режима разработки
+
   expressions: {
     name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
     message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-',
