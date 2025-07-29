@@ -64,6 +64,8 @@ class VIMP {
     this._blockedRemap = false; // флаг блокировки голосования за новую карту
     this._startMapNumber = 0; // номер первой карты в голосовании
 
+    this._isRoundEnding = false; // флаг, если раунд процессе завершения
+
     // инициализация сервисов
     const game = new Game(data.parts, data.playerKeys, data.timeStep / 1000);
     const panel = new Panel(data.panel);
@@ -318,6 +320,8 @@ class VIMP {
 
   // начало раунда: перемещаем игроков и отправляем первый кадр
   startRound() {
+    this._isRoundEnding = false; // сброс флага завершения раунда
+
     const respawns = this._currentMapData.respawns;
     const respId = {};
     const fullStatData = this._stat.getFull();
@@ -636,6 +640,11 @@ class VIMP {
 
   // проверяет уничтожение всей команды
   checkTeamWipe(victimTeamId, killerTeamId) {
+    // если раунд уже в процессе завершения
+    if (this._isRoundEnding) {
+      return;
+    }
+
     let winnerTeam = null;
 
     // если команда наблюдателей, проверка не требуется
@@ -655,7 +664,10 @@ class VIMP {
       }
     }
 
-    // если живых не осталось, запись поражения команде
+    // активация флага завершения раунда
+    this._isRoundEnding = true;
+
+    // запись поражения команде
     this._stat.updateHead(victimTeamId, 'deaths', 1);
 
     // если убийца из другой команды, фраг для команды-победителя
