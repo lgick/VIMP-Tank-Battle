@@ -40,11 +40,6 @@ if (argv.players) {
 // game config
 config.set('game', (await import('../config/game.js')).default);
 
-// если режим разработки
-if (process.env.NODE_ENV === 'development') {
-  config.set('game:isDevMode', true);
-}
-
 // если задана карта
 if (argv.map) {
   // если карта существует
@@ -92,6 +87,13 @@ config.set(
   'client:modules:chat:params:messageExp',
   config.get('game:expressions:message'),
 );
+
+// если задан режим разработки
+if (process.env.NODE_ENV === 'development') {
+  config.set('server:oneConnection', false);
+  config.set('game:isDevMode', true);
+  config.set('client:inactiveReloadDelay', null);
+}
 
 // EXPRESS
 const app = express();

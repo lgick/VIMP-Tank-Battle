@@ -59,6 +59,9 @@ const modules = {};
 // создание и инициализация SoundManager
 const soundManager = new SoundManager();
 
+let inactiveReloadDelay = null; // время до перезагрузки при неактивной вкладке
+let inactiveReloadTimer = null; // таймер перезагрузки
+
 let modulesConfig = {};
 
 let gameInformer = null;
@@ -93,6 +96,8 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   techInformList = data.techInformList;
 
   modulesConfig = data.modules;
+
+  inactiveReloadDelay = data.inactiveReloadDelay;
 
   const bakedAssets = data.parts.bakedAssets || {};
   const componentDependencies = data.parts.componentDependencies || {};
@@ -192,6 +197,8 @@ socketMethods[PS_AUTH_ERRORS] = err => {
 
   if (!err) {
     runModules(modulesConfig);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
   }
 };
 
@@ -536,12 +543,59 @@ function unpacking(pack) {
   return JSON.parse(pack);
 }
 
+// обработчик видимости вкладки
+function handleVisibilityChange() {
+  // если вкладка неактивна
+  if (document.visibilityState === 'hidden') {
+    // выключение звука
+    soundManager.mute();
+
+    if (inactiveReloadDelay === null) {
+      return;
+    }
+
+    // таймер, который перезагрузит страницу,
+    // если вкладка неактивна слишком долго
+    const hiddenTimestamp = Date.now();
+
+    if (inactiveReloadTimer) {
+      clearInterval(inactiveReloadTimer);
+    }
+
+    inactiveReloadTimer = setInterval(() => {
+      if (
+        document.visibilityState === 'hidden' &&
+        Date.now() - hiddenTimestamp > inactiveReloadDelay
+      ) {
+        location.reload();
+      }
+    }, 10000); // проверка каждые 10 секунд
+  } else {
+    // включение звука при возвращении
+    soundManager.unmute();
+
+    // отмена запланированной перезагрузки
+    if (inactiveReloadTimer) {
+      clearInterval(inactiveReloadTimer);
+      inactiveReloadTimer = null;
+    }
+  }
+}
+
 // ДАННЫЕ С СЕРВЕРА
 
 ws.onopen = () => {};
 
 ws.onclose = e => {
   const connectionInterruptedId = 3;
+
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+  // удаление таймера, если он был активен
+  if (inactiveReloadTimer) {
+    clearInterval(inactiveReloadTimer);
+    inactiveReloadTimer = null;
+  }
 
   if (e.reason) {
     const msg = unpacking(e.reason);
