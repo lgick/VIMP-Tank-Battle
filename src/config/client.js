@@ -1,6 +1,8 @@
 import sounds from '../../public/sounds/index.js';
 
 export default {
+  inactiveReloadDelay: 30000, // время ожидания до перезагрузки
+
   // ***** parts ***** //
   parts: {
     // распределение данных в заданные классы

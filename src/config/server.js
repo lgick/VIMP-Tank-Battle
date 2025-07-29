@@ -5,7 +5,7 @@ export default {
   protocol: 'http:',
   domain: 'localhost',
   port: 3000,
-  oneConnection: false,
+  oneConnection: true,
   maxPlayers: 10,
   VIMP,
 };
