@@ -17,6 +17,8 @@ class VIMP {
 
     vimp = this;
 
+    this._isDevMode = data.isDevMode || false; // флаг режима разработки
+
     this._maps = data.maps; // карты
     this._mapList = Object.keys(this._maps); // список карт массивом
     this._mapsInVote = data.mapsInVote; // карт в голосовании
@@ -50,7 +52,9 @@ class VIMP {
     this._PORT_MAP_DATA = ports.MAP_DATA;
     this._PORT_FIRST_SHOT_DATA = ports.FIRST_SHOT_DATA;
     this._PORT_SHOT_DATA = ports.SHOT_DATA;
-    this._PORT_INFORM_DATA = ports.INFORM_DATA;
+    this._PORT_SOUND_DATA = ports.SOUND_DATA;
+    this._PORT_GAME_INFORM_DATA = ports.GAME_INFORM_DATA;
+    this._PORT_TECH_INFORM_DATA = ports.TECH_INFORM_DATA;
     this._PORT_MISC = ports.MISC;
     this._PORT_CLEAR = ports.CLEAR;
     this._PORT_CONSOLE = ports.CONSOLE;
@@ -60,8 +64,10 @@ class VIMP {
     this._blockedRemap = false; // флаг блокировки голосования за новую карту
     this._startMapNumber = 0; // номер первой карты в голосовании
 
+    this._isRoundEnding = false; // флаг, если раунд процессе завершения
+
     // инициализация сервисов
-    const game = new Game(data.parts, data.keys, data.timeStep / 1000);
+    const game = new Game(data.parts, data.playerKeys, data.timeStep / 1000);
     const panel = new Panel(data.panel);
     const stat = new Stat(data.stat, this._teams);
     const chat = new Chat();
@@ -76,10 +82,14 @@ class VIMP {
         timeStep: data.timeStep, // время обновления кадра игры
         // время смены команды в текущем раунде
         teamChangeGracePeriod: data.teamChangeGracePeriod,
+        // задержка рестарта раунда после победы/поражения
+        roundRestartDelay: data.roundRestartDelay,
+        // задержка смены карты после голосования
+        mapChangeDelay: data.mapChangeDelay,
       },
       {
         onMapTimeEnd: this.onMapTimeEnd.bind(this),
-        onRoundTimeEnd: this.onRoundTimeEnd.bind(this),
+        onRoundTimeEnd: this.initiateNewRound.bind(this),
         onShotTick: this.onShotTick.bind(this),
       },
     );
@@ -104,13 +114,6 @@ class VIMP {
     this._timerManager.stopBlockedRemapTimer();
     this._blockedRemap = false;
     this.changeMap();
-  }
-
-  // запускает новый раунд
-  onRoundTimeEnd() {
-    this.startRound();
-    this._timerManager.startRoundTimer();
-    this._chat.pushSystem('t:1');
   }
 
   // создает кадр игры
@@ -155,7 +158,7 @@ class VIMP {
 
           coords = this._game.getPosition(user.watchedGameId);
         } else {
-          coords = [0, 0];
+          coords = [0, 0, 0];
         }
       } else {
         coords = this._game.getPosition(gameId);
@@ -220,7 +223,7 @@ class VIMP {
       this._currentMapData.setId = this._mapSetId;
     }
 
-    // остановка таймеров игры
+    // остановка всех игровых таймеров и отложенных вызовов
     this._timerManager.stopGameTimers();
 
     this.resetTeamSizes();
@@ -264,7 +267,7 @@ class VIMP {
   sendMap(gameId) {
     const user = this._users[gameId];
 
-    user.socket.send(this._PORT_INFORM_DATA, { key: 2 });
+    user.socket.send(this._PORT_TECH_INFORM_DATA, [2]);
     user.isReady = false;
     user.currentMap = this._currentMap;
     user.socket.send(this._PORT_MAP_DATA, this._currentMapData);
@@ -303,12 +306,22 @@ class VIMP {
     const user = this._users[gameId];
 
     // скрывает экран загрузки
-    user.socket.send(this._PORT_INFORM_DATA);
+    user.socket.send(this._PORT_TECH_INFORM_DATA);
     user.isReady = true;
+  }
+
+  // запуск нового раунда
+  initiateNewRound() {
+    this._timerManager.stopRoundTimer();
+    this.startRound();
+    this._timerManager.startRoundTimer();
+    this._chat.pushSystem('t:1');
   }
 
   // начало раунда: перемещаем игроков и отправляем первый кадр
   startRound() {
+    this._isRoundEnding = false; // сброс флага завершения раунда
+
     const respawns = this._currentMapData.respawns;
     const respId = {};
     const fullStatData = this._stat.getFull();
@@ -383,6 +396,8 @@ class VIMP {
 
         // отправка первого кадра
         user.socket.send(this._PORT_SHOT_DATA, shotData);
+        user.socket.send(this._PORT_SOUND_DATA, 'roundStart');
+        user.socket.send(this._PORT_GAME_INFORM_DATA, [1]);
 
         respId[user.team] = respId[user.team] || 0;
 
@@ -402,33 +417,6 @@ class VIMP {
         }
       }
     }
-  }
-
-  // стартует раунд заново
-  restartRound(winnerTeam) {
-    const timer = winnerTeam ? 5000 : 0;
-
-    this._timerManager.stopRoundTimer();
-
-    if (winnerTeam) {
-      Object.keys(this._users).forEach(gameId =>
-        this._users[gameId].socket.send(this._PORT_INFORM_DATA, {
-          key: 4,
-          isGame: true,
-          arr: [winnerTeam],
-        }),
-      );
-    }
-
-    setTimeout(() => {
-      Object.keys(this._users).forEach(gameId => {
-        this._users[gameId].socket.send(this._PORT_INFORM_DATA);
-      });
-
-      this.startRound();
-      this._timerManager.startRoundTimer();
-      this._chat.pushSystem('t:1');
-    }, timer);
   }
 
   // проверяет имя
@@ -513,7 +501,7 @@ class VIMP {
     if (this._activePlayersList.filter(id => id !== gameId).length < 2) {
       user.nextTeam = newTeam;
       this._stat.reset();
-      this.restartRound();
+      this.initiateNewRound();
       this._chat.pushSystem(`s:2:${newTeam}`, gameId);
       return;
     }
@@ -652,6 +640,11 @@ class VIMP {
 
   // проверяет уничтожение всей команды
   checkTeamWipe(victimTeamId, killerTeamId) {
+    // если раунд уже в процессе завершения
+    if (this._isRoundEnding) {
+      return;
+    }
+
     let winnerTeam = null;
 
     // если команда наблюдателей, проверка не требуется
@@ -671,7 +664,10 @@ class VIMP {
       }
     }
 
-    // если живых не осталось, запись поражения команде
+    // активация флага завершения раунда
+    this._isRoundEnding = true;
+
+    // запись поражения команде
     this._stat.updateHead(victimTeamId, 'deaths', 1);
 
     // если убийца из другой команды, фраг для команды-победителя
@@ -683,7 +679,27 @@ class VIMP {
       );
     }
 
-    this.restartRound(winnerTeam);
+    let informData;
+
+    if (winnerTeam) {
+      informData = [0, [winnerTeam]];
+    } else {
+      informData = [2];
+    }
+
+    Object.keys(this._users).forEach(gameId => {
+      const user = this._users[gameId];
+
+      user.socket.send(this._PORT_SOUND_DATA, 'gameOver');
+      user.socket.send(this._PORT_GAME_INFORM_DATA, informData);
+    });
+
+    this._timerManager.stopRoundTimer();
+
+    // запускаем отложенный перезапуск раунда через TimerManager
+    this._timerManager.startRoundRestartDelay(() => {
+      this.initiateNewRound();
+    });
   }
 
   // обрабатывает уничтожение игрока, обновляет статистику
@@ -863,20 +879,24 @@ class VIMP {
   }
 
   // обновляет команды
-  updateKeys(gameId, keys) {
+  updateKeys(gameId, keyStr) {
     const user = this._users[gameId];
+    const [action, name] = keyStr.split(':');
 
     if (user.isWatching === true) {
-      // next player
-      if (keys & this._spectatorKeys.nextPlayer) {
-        user.watchedGameId = this.getNextActivePlayerForUser(gameId);
+      // если нажатие
+      if (action === 'down') {
+        // next player
+        if (name === this._spectatorKeys.nextPlayer) {
+          user.watchedGameId = this.getNextActivePlayerForUser(gameId);
 
-        // prev player
-      } else if (keys & this._spectatorKeys.prevPlayer) {
-        user.watchedGameId = this.getNextActivePlayerForUser(gameId, true);
+          // prev player
+        } else if (name === this._spectatorKeys.prevPlayer) {
+          user.watchedGameId = this.getNextActivePlayerForUser(gameId, true);
+        }
       }
     } else {
-      this._game.updateKeys(gameId, keys);
+      this._game.updateKeys(gameId, { action, name });
     }
   }
 
@@ -1019,10 +1039,11 @@ class VIMP {
         } else if (this._maps[mapName]) {
           this._chat.pushSystem('v:4:' + mapName);
 
-          setTimeout(() => {
+          // запускаем отложенную смену карты через TimerManager
+          this._timerManager.startMapChangeDelay(() => {
             this._currentMap = mapName;
             this.createMap();
-          }, 2000);
+          });
         }
 
         // снимает блокировку смены карты
@@ -1053,7 +1074,11 @@ class VIMP {
 
       // новый раунд
       case '/nr':
-        this.restartRound();
+        if (this._isDevMode) {
+          this.initiateNewRound();
+        } else {
+          this._chat.pushSystem(['Command not found'], gameId);
+        }
         break;
 
       // время карты

@@ -88,6 +88,13 @@ config.set(
   config.get('game:expressions:message'),
 );
 
+// если задан режим разработки
+if (process.env.NODE_ENV === 'development') {
+  config.set('server:oneConnection', false);
+  config.set('game:isDevMode', true);
+  config.set('client:inactiveReloadDelay', null);
+}
+
 // EXPRESS
 const app = express();
 

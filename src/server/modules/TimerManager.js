@@ -20,6 +20,8 @@ class TimerManager extends AbstractTimer {
     this._voteTime = config.voteTime;
     this._timeBlockedRemap = config.timeBlockedRemap;
     this._teamChangeGracePeriod = config.teamChangeGracePeriod;
+    this._roundRestartDelay = config.roundRestartDelay;
+    this._mapChangeDelay = config.mapChangeDelay;
 
     this._callbacks = callbacks;
 
@@ -30,6 +32,10 @@ class TimerManager extends AbstractTimer {
     // переменные для самокорректирующегося игрового цикла
     this._lastShotTime = 0;
     this._expectedTickTime = 0;
+
+    // максимально допустимая дельта времени в секундах,
+    // для предотвращения "прыжков" в симуляции после долгих пауз
+    this._maxDeltaTime = 0.1;
   }
 
   // запускает все основные игровые таймеры (карта, игровой цикл, раунд)
@@ -44,6 +50,8 @@ class TimerManager extends AbstractTimer {
     this.stopGameLoop();
     this.stopRoundTimer();
     this.stopMapTimer();
+    this.stopRoundRestartDelay();
+    this.stopMapChangeDelay();
   }
 
   // запускает таймер до конца текущей карты
@@ -100,8 +108,15 @@ class TimerManager extends AbstractTimer {
   // логика одного "тика" игрового цикла
   _loopTick() {
     const now = Date.now();
-    const dt = (now - this._lastShotTime) / 1000;
+    let dt = (now - this._lastShotTime) / 1000;
     this._lastShotTime = now;
+
+    // если dt аномально большой (система "спала"), ограничить его
+    // и сбросить ожидаемое время, чтобы цикл не пытался "наверстать".
+    if (dt > this._maxDeltaTime) {
+      dt = this._maxDeltaTime;
+      this._expectedTickTime = now; // сброс базы для расчета дрейфа
+    }
 
     this._callbacks.onShotTick(dt);
 
@@ -153,6 +168,30 @@ class TimerManager extends AbstractTimer {
   // останавливает таймер блокировки голосования
   stopBlockedRemapTimer() {
     this._stopTimer('blockedRemap');
+  }
+
+  // запускает отложенный перезапуск раунда (после победы команды)
+  startRoundRestartDelay(onEndCallback) {
+    this._startTimer(
+      'roundRestartDelay',
+      onEndCallback,
+      this._roundRestartDelay,
+    );
+  }
+
+  // останавливает отложенный перезапуск раунда
+  stopRoundRestartDelay() {
+    this._stopTimer('roundRestartDelay');
+  }
+
+  // запускает отложенную смену карты (после голосования)
+  startMapChangeDelay(onEndCallback) {
+    this._startTimer('mapChangeDelay', onEndCallback, this._mapChangeDelay);
+  }
+
+  // останавливает отложенную смену карты
+  stopMapChangeDelay() {
+    this._stopTimer('mapChangeDelay');
   }
 }
 

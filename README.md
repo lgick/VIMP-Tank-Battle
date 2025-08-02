@@ -354,10 +354,10 @@ menu = [
 |     chat      |    3    |
 |     panel     |    4    |
 |     vote      |    5    |
-| informer.game |    6    |
+| game-informer |    6    |
 |     stat      |    7    |
 |     auth      |    8    |
-|   informer    |    9    |
+| tech-informer |    9    |
 
 # GAME CONFIG
 
@@ -443,83 +443,56 @@ canvasOptions: {
 
 ### keys
 
-Данные о клавишах игры. Пример:
+Данные о клавишах игры. Клиент:
 
 ```js
 keys: {
   keySetList: [
     // spectator keyset
     {
-      // next player (n)
-      78: {
-        key: 1 << 0,
-        type: 1
-      },
-      // prev player (p)
-      80: {
-        key: 1 << 1,
-        type: 2
-      }
+      78: 'nextPlayer', // next player (n)
+      80: 'prevPlayer', // prev player (p)
     },
-    // game keyset
+    // player keyset
     {
-      // forward (w)
-      87: {
-        key: 1 << 0
-      },
-      // back (s)
-      83: {
-        key: 1 << 1
-      },
-      // left (a)
-      65: {
-        key: 1 << 2
-      },
-      // right (d)
-      68: {
-        key: 1 << 3
-      },
-      // gCenter (u)
-      85: {
-        key: 1 << 4
-      },
-      // gLeft (k)
-      75: {
-        key: 1 << 5
-      },
-      // gRight (l)
-      76: {
-        key: 1 << 6
-      },
-      // fire (j)
-      74: {
-        key: 1 << 7,
-        type: 1
-      }
-    }
+      87: 'forward', // forward (w)
+      83: 'back', // back (s)
+      65: 'left', // left (a)
+      68: 'right', // right (d)
+      85: 'gunCenter', // gun center (u)
+      75: 'gunLeft', // gun left (k)
+      76: 'gunRight', // gun right (l)
+      74: 'fire', // fire (j)
+      78: 'nextWeapon', // next weapon (n)
+      80: 'prevWeapon', // prev weapon (p)
+    },
   ],
   modes: {
-    67: 'chat',      // чат (c)
-    77: 'vote',      // опрос (m)
-    9: 'stat'        // статистика (tab)
+    67: 'chat', // чат (c)
+    77: 'vote', // опрос (m)
+    9: 'stat', // статистика (tab)
   },
   cmds: {
-    27: 'escape',    // отмена (escape)
-    13: 'enter'      // ввод (enter)
-  }
+    27: 'escape', // отмена (escape)
+    13: 'enter', // ввод (enter)
+  },
 }
 ```
 
 #### keySetList
 
 Клавиши игры. Массив из 2-х наборов (наблюдатель и играющий).
-Клавиша - это объект, где помимо самой клавиши `key`, есть еще параметр `type`, который отвечает за тип обработки клавиши при нажатии.
+Данные: `keyCode: 'команда'`.
+
+На сервер отправляются команды формата: `down:forward`, `up:forward`.
+
+На сервере команда имеет параметр `type`,
+который отвечает за тип обработки клавиши при нажатии.
 
 `type` может иметь значение:
 
 - 0 (по умолчанию): многократное нажатие (начинается на keyDown, завершается на keyUp)
 - 1 : выполняется один раз на keyDown
-- 2 : выполняется один раз на keyUp
 
 #### modes
 

@@ -1,35 +1,52 @@
 const config = {};
 
 // добавляет новое значение в config
-// keys:
-// может иметь несколько вложенностей
-// вложенности разделять ':', например:
+//
+// keys - может иметь несколько вложенностей,
+// вложенности разделены ':', например:
 // key1:key2:key3 будет значением config[key1][key2][key3]
-// value:
-// может быть значением любого типа
+//
+// если структура вложенностей изменилась,
+// новые пути перезапишут старый вариант
+//
+// value - может быть значением любого типа
 function set(keys, value) {
   if (!keys) {
+    console.error(`Error: The "keys" argument cannot be empty.`);
     return;
   }
 
   const arr = keys.split(':');
 
-  function getProperty(arr, stack, value) {
-    const key = arr.shift();
-
-    if (arr.length) {
-      stack[key] = stack[key] ? stack[key] : {};
-      getProperty(arr, stack[key], value);
-    } else {
-      stack[key] = value;
-    }
+  // проверка на пустые сегменты
+  if (arr.includes('')) {
+    console.error(
+      `Error: The path '${keys}' is invalid (contains empty segments).`,
+    );
+    return;
   }
-  getProperty(arr, config, value);
+
+  const lastKey = arr.pop(); // последний ключ для записи значения
+  let currentLevel = config;
+
+  for (const key of arr) {
+    // если не является объектом, создание пустого объекта,
+    // стирая вложенность, если она была
+    if (typeof currentLevel[key] !== 'object' || currentLevel[key] === null) {
+      currentLevel[key] = {};
+    }
+
+    currentLevel = currentLevel[key];
+  }
+
+  // запись финального значения
+  currentLevel[lastKey] = value;
 }
 
-// возвращает значение по ключу, ключ может иметь несколько вложенностей
-// вложенности разделять ':', например:
-// key1:key2:key3 вернет значение config[key1][key2][key3]
+// возвращает значение по ключу или undefined
+// ключ может иметь несколько вложенностей
+// вложенности разделены ':',
+// например: key1:key2:key3 вернет значение config[key1][key2][key3]
 // вызов без аргументов вернет весь конфиг
 function get(keys) {
   if (!keys) {
@@ -37,29 +54,27 @@ function get(keys) {
   }
 
   const arr = keys.split(':');
-  let value;
+  let currentLevel = config;
 
   for (let i = 0, len = arr.length; i < len; i += 1) {
-    const stack = value || config;
+    const key = arr[i];
 
     // если поиск свойства не в объекте
-    if (typeof stack !== 'object') {
-      value = stack + ' is not object';
-      console.log(value);
-      return value;
+    if (typeof currentLevel !== 'object' || currentLevel === null) {
+      console.error(keys, `${currentLevel} is not object`);
+      return;
     }
 
     // если свойство есть в объекте
-    if (arr[i] in stack) {
-      value = stack[arr[i]];
+    if (key in currentLevel) {
+      currentLevel = currentLevel[key];
     } else {
-      value = arr[i] + ' is not property';
-      console.log(value);
-      return value;
+      console.error(keys, `${key} is not property`);
+      return;
     }
   }
 
-  return value;
+  return currentLevel;
 }
 
 export default {

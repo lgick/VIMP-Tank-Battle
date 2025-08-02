@@ -1,4 +1,8 @@
+import sounds from '../../public/sounds/index.js';
+
 export default {
+  inactiveReloadDelay: 30000, // время ожидания до перезагрузки
+
   // ***** parts ***** //
   parts: {
     // распределение данных в заданные классы
@@ -112,8 +116,14 @@ export default {
 
     // карта зависимостей компонентов
     componentDependencies: {
-      Map: ['renderer'], // Map требует сервис с ключом 'renderer'
+      // Map требует сервис renderer
+      renderer: ['Map'],
+      // компоненты использующие звук
+      soundManager: ['ExplosionEffect', 'ShotEffect', 'Bomb'],
     },
+
+    // звуковые ассеты
+    sounds,
   },
 
   // ***** modules ***** //
@@ -137,62 +147,21 @@ export default {
       keySetList: [
         // spectator keyset
         {
-          // next player (n)
-          78: {
-            key: 1 << 0,
-            type: 1,
-          },
-          // prev player (p)
-          80: {
-            key: 1 << 1,
-            type: 1,
-          },
+          78: 'nextPlayer', // next player (n)
+          80: 'prevPlayer', // prev player (p)
         },
-        // game keyset
+        // player keyset
         {
-          // forward (w)
-          87: {
-            key: 1 << 0,
-          },
-          // back (s)
-          83: {
-            key: 1 << 1,
-          },
-          // left (a)
-          65: {
-            key: 1 << 2,
-          },
-          // right (d)
-          68: {
-            key: 1 << 3,
-          },
-          // gCenter (u)
-          85: {
-            key: 1 << 4,
-          },
-          // gLeft (k)
-          75: {
-            key: 1 << 5,
-          },
-          // gRight (l)
-          76: {
-            key: 1 << 6,
-          },
-          // fire (j)
-          74: {
-            key: 1 << 7,
-            type: 1,
-          },
-          // next weapon (n)
-          78: {
-            key: 1 << 8,
-            type: 1,
-          },
-          // prev weapon (p)
-          80: {
-            key: 1 << 9,
-            type: 1,
-          },
+          87: 'forward', // forward (w)
+          83: 'back', // back (s)
+          65: 'left', // left (a)
+          68: 'right', // right (d)
+          85: 'gunCenter', // gun center (u)
+          75: 'gunLeft', // gun left (k)
+          76: 'gunRight', // gun right (l)
+          74: 'fire', // fire (j)
+          78: 'nextWeapon', // next weapon (n)
+          80: 'prevWeapon', // prev weapon (p)
         },
       ],
       modes: {
@@ -307,8 +276,14 @@ export default {
     },
   },
 
-  // ***** informer ***** //
-  informer: [
+  // game information
+  gameInform: {
+    id: 'game-informer',
+    list: ['{0} WINS!', 'ROUND START!', 'GAME OVER!'],
+  },
+
+  // technical information
+  techInformList: [
     'Сервер полный! Ждите или зайдите позже.<br>' +
       'Максимум игроков: {0}<br>' +
       'Вы в очереди ожидающих под номером: {1}<br>',
@@ -318,7 +293,5 @@ export default {
     'Загружаю...',
 
     'Соединение прервано!',
-
-    '{0} WIN!',
   ],
 };
