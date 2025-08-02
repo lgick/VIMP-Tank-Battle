@@ -2,6 +2,8 @@ import maps from '../../public/maps/index.js';
 import constructors from '../server/parts/index.js';
 
 export default {
+  isDevMode: false, // флаг режима разработки
+
   expressions: {
     name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
     message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-',
@@ -47,7 +49,7 @@ export default {
         time: 5000,
         shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
         size: 15, // соотношение сторон 1:1
-        fireRate: 1, // кулдаун между выстрелами
+        fireRate: 1, // кулдаун (1 бомба в секунду)
         damage: 30, // урон в эпицентре
         radius: 200, // радиус взрыва
         impulseMagnitude: 200000, // сила импульса
@@ -70,6 +72,8 @@ export default {
   voteTime: 10000, // время ожидания результатов голосования (10)
   timeBlockedRemap: 20000, // время ожидания повторной смены карты (20)
   teamChangeGracePeriod: 10000, // время смены команды в текущем раунде (10)
+  roundRestartDelay: 5000, // время ожидания рестарта раунда после победы (5)
+  mapChangeDelay: 2000, // время ожидания смены карты после голосования (2)
 
   stat: {
     name: {
@@ -123,21 +127,60 @@ export default {
     spectators: 3,
   },
 
+  // конфигурация клавиш наблюдателя и неактивного игрока
   spectatorKeys: {
-    nextPlayer: 1 << 0,
-    prevPlayer: 1 << 1,
+    nextPlayer: 'nextPlayer', // next player (n)
+    prevPlayer: 'prevPlayer', // prev player (p)
   },
 
-  keys: {
-    forward: 1 << 0,
-    back: 1 << 1,
-    left: 1 << 2,
-    right: 1 << 3,
-    gCenter: 1 << 4,
-    gLeft: 1 << 5,
-    gRight: 1 << 6,
-    fire: 1 << 7,
-    nextWeapon: 1 << 8,
-    prevWeapon: 1 << 9,
+  // конфигурация клавиш активного игрока
+  // type - тип отработки нажатия на клавишу (по умолчанию 0):
+  // 0 : многократное нажатие (начинается на keyDown, завершается на keyUp)
+  // 1 : выполняется один раз на keyDown
+  playerKeys: {
+    // forward (w)
+    forward: {
+      key: 1 << 0,
+    },
+    // back (s)
+    back: {
+      key: 1 << 1,
+    },
+    // left (a)
+    left: {
+      key: 1 << 2,
+    },
+    // right (d)
+    right: {
+      key: 1 << 3,
+    },
+    // gun center (u)
+    gunCenter: {
+      key: 1 << 4,
+      type: 1,
+    },
+    // gun left (k)
+    gunLeft: {
+      key: 1 << 5,
+    },
+    // gun right (l)
+    gunRight: {
+      key: 1 << 6,
+    },
+    // fire (j)
+    fire: {
+      key: 1 << 7,
+      type: 1,
+    },
+    // next weapon (n)
+    nextWeapon: {
+      key: 1 << 8,
+      type: 1,
+    },
+    // prev weapon (p)
+    prevWeapon: {
+      key: 1 << 9,
+      type: 1,
+    },
   },
 };

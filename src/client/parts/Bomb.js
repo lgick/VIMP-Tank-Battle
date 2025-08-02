@@ -1,7 +1,7 @@
 import { Text, Ticker, Container, Sprite } from 'pixi.js';
 
 export default class Bomb extends Container {
-  constructor(params, assets) {
+  constructor(params, assets, dependencies) {
     super();
 
     this.zIndex = 2;
@@ -14,6 +14,8 @@ export default class Bomb extends Container {
     this.rotation = params[2];
     this._size = params[3]; // соотношение сторон 1:1
     this._totalDurationMs = params[4];
+
+    this._soundManager = dependencies.soundManager;
 
     // Масштабируем спрайт под нужный размер
     // предполагаем, что текстура квадратная
@@ -43,6 +45,8 @@ export default class Bomb extends Container {
 
     this._tickListener = ticker => this._updateTimer(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
+
+    //this._soundManager.play('bombHasBeenPlanted', { x: this.x, y: this.y });
   }
 
   // обновление таймера
@@ -89,6 +93,7 @@ export default class Bomb extends Container {
 
   destroy(options) {
     this._stopTimer();
+    this._soundManager.stop('bombHasBeenPlanted');
 
     super.destroy({
       children: true,

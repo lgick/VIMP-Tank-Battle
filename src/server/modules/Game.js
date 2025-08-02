@@ -6,7 +6,7 @@ import Factory from '../../lib/factory.js';
 let game;
 
 class Game {
-  constructor(parts, keys, timeStep) {
+  constructor(parts, playerKeys, timeStep) {
     if (game) {
       return game;
     }
@@ -19,13 +19,32 @@ class Game {
     this._models = parts.models;
     this._weapons = parts.weapons;
 
-    this._keysData = keys;
+    const keys = {};
+    let oneShotMask = 0;
+
+    for (const name in playerKeys) {
+      if (Object.hasOwn(playerKeys, name)) {
+        const keyConfig = playerKeys[name];
+
+        keys[name] = keyConfig.key;
+
+        if (keyConfig.type === 1) {
+          oneShotMask |= keyConfig.key;
+        }
+      }
+    }
+
+    this._playerKeys = {
+      keys,
+      oneShotMask,
+    };
 
     // интервал фиксированного шага физики (в секундах, например 1 / 120)
     this._timeStep = timeStep;
     this._velocityIterations = 10;
     this._positionIterations = 8;
     this._accumulator = 0;
+    this._maxAccumulatedTime = 0.1;
 
     this._services = {}; // объект для хранения внедренных сервисов
 
@@ -155,7 +174,7 @@ class Game {
     modelData.angle = data[2];
 
     this._playersData[gameId] = this._Factory(modelData.constructor, {
-      keysData: this._keysData,
+      playerKeys: this._playerKeys,
       modelData,
       world: this._world,
       model,
@@ -203,11 +222,11 @@ class Game {
   }
 
   // обновляет нажатые клавиши
-  updateKeys(gameId, keys) {
-    this._playersData[gameId].currentKeys = keys;
+  updateKeys(gameId, keyData) {
+    this._playersData[gameId].updateKeys(keyData);
   }
 
-  // возвращает координаты игрока [x, y]
+  // возвращает координаты игрока [x, y, angle]
   getPosition(gameId) {
     return this._playersData[gameId].getPosition();
   }
@@ -248,6 +267,13 @@ class Game {
 
     // накапливаем прошедшее время
     this._accumulator += dt;
+
+    // защита от "спирали смерти":
+    // если накопилось слишком много времени (сильный лаг),
+    // ограничение, чтобы не выполнять слишком много шагов физики за раз
+    if (this._accumulator > this._maxAccumulatedTime) {
+      this._accumulator = this._maxAccumulatedTime;
+    }
 
     // делаем столько фиксированных шагов, сколько нужно
     while (this._accumulator >= this._timeStep) {

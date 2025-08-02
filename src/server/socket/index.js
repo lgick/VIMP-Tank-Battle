@@ -9,7 +9,7 @@ import config from '../../lib/config.js';
 const PS_CONFIG_DATA = config.get('wsports:server:CONFIG_DATA');
 const PS_AUTH_DATA = config.get('wsports:server:AUTH_DATA');
 const PS_AUTH_ERRORS = config.get('wsports:server:AUTH_ERRORS');
-const PS_INFORM_DATA = config.get('wsports:server:INFORM_DATA');
+const PS_TECH_INFORM_DATA = config.get('wsports:server:TECH_INFORM_DATA');
 
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = config.get('wsports:client:CONFIG_READY');
@@ -90,10 +90,7 @@ export default server => {
     socketMethods[PC_CONFIG_READY] = err => {
       if (!err) {
         if (oneConnection && ips[address]) {
-          sessions[ips[address]].socket.close(4002, [
-            PS_INFORM_DATA,
-            { key: 1 },
-          ]);
+          sessions[ips[address]].socket.close(4002, [PS_TECH_INFORM_DATA, [1]]);
         }
 
         ips[address] = id;
@@ -104,7 +101,7 @@ export default server => {
             ws.socket.send(PS_AUTH_DATA, auth);
           } else {
             waiting.add(id, arr => {
-              ws.socket.send(PS_INFORM_DATA, { key: 0, arr });
+              ws.socket.send(PS_TECH_INFORM_DATA, [0, arr]);
             });
           }
         });
@@ -145,9 +142,10 @@ export default server => {
     };
 
     // 4: keys data
-    socketMethods[PC_KEYS_DATA] = keys => {
-      if (keys) {
-        vimp.updateKeys(gameId, keys);
+    // данные в виде строки вида 'down:forward'
+    socketMethods[PC_KEYS_DATA] = keyEventString => {
+      if (typeof keyEventString === 'string') {
+        vimp.updateKeys(gameId, keyEventString);
       }
     };
 
@@ -199,17 +197,14 @@ export default server => {
         if (nextId && sessions[nextId]) {
           sessions[nextId].socket.socketMethods[PC_AUTH_RESPONSE] = true;
           sessions[nextId].socket.send(PS_AUTH_DATA, auth);
-          sessions[nextId].socket.send(PS_INFORM_DATA);
+          sessions[nextId].socket.send(PS_TECH_INFORM_DATA);
         }
       });
 
       waiting.createNotifyObject(notifyObject => {
         for (const p in notifyObject) {
           if (Object.hasOwn(notifyObject, p) && sessions[p]) {
-            sessions[p].socket.send(PS_INFORM_DATA, {
-              key: 0,
-              arr: notifyObject[p],
-            });
+            sessions[p].socket.send(PS_TECH_INFORM_DATA, [0, notifyObject[p]]);
           }
         }
       });
