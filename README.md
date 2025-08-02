@@ -1,4 +1,4 @@
-![poster](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/poster2.png?raw=true)
+![poster](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/poster2.png?raw=true)
 
 # VIMP Tank Battle (в работе)
 
@@ -103,7 +103,7 @@ panel: {
 
 Статистика игры.
 
-![stat](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/stat/stat.png?raw=true)
+![stat](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/stat.png?raw=true)
 
 ## Правила формирования статистики:
 
@@ -262,7 +262,7 @@ statArray = [
 
 По умолчанию при вызове модуля отображается меню.
 
-![vote-menu](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/img/vote/vote-menu.png?raw=true)
+![vote-menu](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/vote-menu.png?raw=true)
 
 ```
 menu = [
