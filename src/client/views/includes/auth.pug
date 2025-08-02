@@ -1,0 +1,63 @@
+div#auth
+
+  div#auth-form
+
+    h2= 'VIMP Tank Battle'
+
+    div#auth-name.auth-field
+      span= 'Name:'
+      input#auth-name-input(type='text', name='name' maxlength='15', placeholder='Vanya')
+
+    div#auth-error
+
+    input#auth-enter(type='button', autofocus, value='Enter')
+
+    div.auth-inform
+      h4= 'Управление'
+      p
+        b= 'W, A, S, D'
+        = ' - перемещение танка'
+      p
+        b= 'K, L'
+        = ' - поворот пушки'
+      p
+        b= 'U'
+        = ' - пушка по центру'
+      p
+        b= 'J'
+        = ' - огонь'
+      p.last
+        b= 'N, P'
+        = ' -  переключение оружия/игрока'
+      p
+        b= 'C'
+        = ' - чат/командная строка'
+      p
+        b= 'M'
+        = ' - меню игры'
+      p.last
+        b= 'TAB'
+        = ' - статистика игры'
+      p
+        b= 'ESC'
+        = ' - сброс'
+      p
+        b= 'ENTER'
+        = ' - ввод'
+
+    div.auth-inform
+      h4= 'Команды'
+      p
+        b= '/name <name>'
+        = ' - смена ника'
+      p
+        b= '/mapname'
+        = ' - название карты'
+      p
+        b= '/timeleft'
+        = ' - время до конца карты'
+
+    div#auth-link
+      p
+        a(href='https://github.com/lgick/VIMP-Tank-Battle', target='_blank', rel='noopener') GitHub
+      p &copy; VIMP
