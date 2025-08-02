@@ -4,4 +4,8 @@ node_modules/
 .TRASH
 /public/tests/
 /public/js/vendor/
-run.sh
+/client/dist/
+dist
+logs
+*.log
+npm-debug.log*
