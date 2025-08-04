@@ -13,49 +13,43 @@ div#auth
     input#auth-enter(type='button', autofocus, value='Enter')
 
     div.auth-inform
-      h4= 'Управление'
+      h4= 'Controls'
       p
         b= 'W, A, S, D'
-        = ' - перемещение танка'
+        = ' - move the tank'
       p
         b= 'K, L'
-        = ' - поворот пушки'
+        = ' - turn the gun'
       p
         b= 'U'
-        = ' - пушка по центру'
+        = ' - center the gun'
       p
         b= 'J'
-        = ' - огонь'
+        = ' - fire'
       p.last
         b= 'N, P'
-        = ' -  переключение оружия/игрока'
+        = ' - switch weapon/player'
       p
         b= 'C'
-        = ' - чат/командная строка'
+        = ' - chat/command line'
       p
         b= 'M'
-        = ' - меню игры'
+        = ' - menu'
       p.last
         b= 'TAB'
-        = ' - статистика игры'
-      p
-        b= 'ESC'
-        = ' - сброс'
-      p
-        b= 'ENTER'
-        = ' - ввод'
+        = ' - stats'
 
     div.auth-inform
-      h4= 'Команды'
+      h4= 'Command line'
       p
         b= '/name <name>'
-        = ' - смена ника'
+        = ' - change nickname'
       p
         b= '/mapname'
-        = ' - название карты'
+        = ' - show current map name'
       p
         b= '/timeleft'
-        = ' - время до конца карты'
+        = ' - time left on current map'
 
     div#auth-link
       p

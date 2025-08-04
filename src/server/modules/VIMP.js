@@ -294,7 +294,7 @@ class VIMP {
         0, // chat
         [
           ['team', true],
-          ['Выберите команду', Object.keys(this._teams), null],
+          ['Choose a team', Object.keys(this._teams), null],
         ], // vote: опрос выбора команды
         0, // keySet: 0 (наблюдатель)
       ]);
@@ -1003,8 +1003,8 @@ class VIMP {
       // если есть gameId и карта (голосование создает пользователь)
       if (typeof gameId !== 'undefined' && typeof mapName === 'string') {
         const arr = [
-          this._users[gameId].name + ' предложил карту: ' + mapName,
-          ['Сменить:' + mapName, 'Не менять:'],
+          this._users[gameId].name + ' suggested the map: ' + mapName,
+          ['Yes: ' + mapName, 'No:'],
           null,
         ];
 
@@ -1016,7 +1016,7 @@ class VIMP {
 
         // иначе голосование создает игра
       } else {
-        const arr = ['Выберете следующую карту', getMapList(), null];
+        const arr = ['Choose the next map', getMapList(), null];
         this._vote.createVote([['changeMap'], arr]);
       }
 

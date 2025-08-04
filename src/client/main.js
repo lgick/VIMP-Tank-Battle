@@ -158,7 +158,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
     })
 
     .catch(err => {
-      console.error('Ошибка инициализации:', err);
+      console.error('Initialization error:', err);
     });
 };
 
