@@ -189,24 +189,24 @@ export default {
         messages: {
           // teams/status
           s: [
-            'Команда {0} полная. Ваша текущая команда: {1}', // 0
-            'Ваша команда: {0}', // 1
-            'Ваша новая команда: {0}', // 2
-            'Ваша команда в следующем раунде: {0}', // 3
+            'Team {0} is full. Your current team: {1}', // 0
+            'Your team: {0}', // 1
+            'Your new team: {0}', // 2
+            'Your team in the next round: {0}', // 3
           ],
           // timers
-          t: ['Текущая карта {0}', 'Новый раунд'],
+          t: ['Current map: {0}', 'New round'],
           // vote
           v: [
-            'Ваш голос принят!',
-            'Карта {0} является текущей',
-            'Голосование за новую карту запущено',
-            'Смена карты временно недоступна',
-            'Голосование завершено! Следующая карта: {0}',
-            'Голосование за новую карту завершилось без результата',
+            'Your vote has been accepted!',
+            'Map {0} is now active',
+            'Vote for a new map has started',
+            'Map change is temporarily unavailable',
+            'Vote finished! Next map: {0}',
+            'Vote ended with no result',
           ],
           // name
-          n: ['Имя некорректно', '{0} сменил имя на {1}'],
+          n: ['Invalid name', '{0} changed name to {1}'],
         },
       },
     },
@@ -269,8 +269,8 @@ export default {
       },
       params: {
         menu: [
-          [['team'], ['Выбрать команду, статус', 'teams', null]],
-          [['mapUser'], ['Предложить новую карту', 'maps', null]],
+          [['team'], ['Switch team', 'teams', null]],
+          [['mapUser'], ['Suggest map', 'maps', null]],
         ],
       },
     },
@@ -284,14 +284,14 @@ export default {
 
   // technical information
   techInformList: [
-    'Сервер полный! Ждите или зайдите позже.<br>' +
-      'Максимум игроков: {0}<br>' +
-      'Вы в очереди ожидающих под номером: {1}<br>',
+    'Server is full! Please wait or try again later.<br>' +
+      'Max players: {0}<br>' +
+      'You are #{1} in the queue.<br>',
 
-    'Соединение прервано по причине нового подключения к серверу!',
+    'Connection closed due to a new login from another device!',
 
-    'Загружаю...',
+    'Loading...',
 
-    'Соединение прервано!',
+    'Connection lost!',
   ],
 };
