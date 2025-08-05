@@ -92,7 +92,6 @@ config.set(
 if (process.env.NODE_ENV === 'development') {
   config.set('server:oneConnection', false);
   config.set('game:isDevMode', true);
-  config.set('client:inactiveReloadDelay', null);
 }
 
 // EXPRESS
