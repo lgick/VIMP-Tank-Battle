@@ -86,11 +86,16 @@ class VIMP {
         roundRestartDelay: data.roundRestartDelay,
         // задержка смены карты после голосования
         mapChangeDelay: data.mapChangeDelay,
+        // периодичность проверки AFK-кика
+        idleCheckInterval: data.idleCheckInterval,
+        // таймауты бездействия перед киком
+        idleKickTimeout: data.idleKickTimeout,
       },
       {
         onMapTimeEnd: this.onMapTimeEnd.bind(this),
         onRoundTimeEnd: this.initiateNewRound.bind(this),
         onShotTick: this.onShotTick.bind(this),
+        onIdleCheck: this.kickIdleUsers.bind(this),
       },
     );
 
@@ -104,6 +109,8 @@ class VIMP {
     this._chat = chat;
     this._vote = vote;
     this._timerManager = timerManager;
+
+    this._timerManager.startIdleCheckTimer();
 
     this.createMap();
   }
@@ -697,9 +704,7 @@ class VIMP {
     this._timerManager.stopRoundTimer();
 
     // запускаем отложенный перезапуск раунда через TimerManager
-    this._timerManager.startRoundRestartDelay(() => {
-      this.initiateNewRound();
-    });
+    this._timerManager.startRoundRestartDelay();
   }
 
   // обрабатывает уничтожение игрока, обновляет статистику
@@ -832,6 +837,8 @@ class VIMP {
       shakeDuration: 0,
       // общая длительность тряски для расчета затухания
       shakeTotalDuration: 0,
+      // фиксация времени активности пользователя
+      lastActionTime: Date.now(),
     };
 
     this._chat.addUser(gameId);
@@ -883,6 +890,8 @@ class VIMP {
     const user = this._users[gameId];
     const [action, name] = keyStr.split(':');
 
+    user.lastActionTime = Date.now();
+
     if (user.isWatching === true) {
       // если нажатие
       if (action === 'down') {
@@ -908,6 +917,8 @@ class VIMP {
       return;
     }
 
+    user.lastActionTime = Date.now();
+
     message = message.replace(this._expressions.message, '');
 
     if (message) {
@@ -926,6 +937,8 @@ class VIMP {
     if (user.isReady === false) {
       return;
     }
+
+    user.lastActionTime = Date.now();
 
     // если данные 'строка' (запрос данных)
     if (typeof data === 'string') {
@@ -1114,6 +1127,41 @@ class VIMP {
       default:
         this._chat.pushSystem(['Command not found'], gameId);
     }
+  }
+
+  // проверяет игроков на бездействие и кикает, если превышен порог
+  kickIdleUsers(idleTimeoutForPlayer, idleTimeoutForSpectator) {
+    const now = Date.now();
+    const usersToKick = [];
+
+    for (const user of Object.values(this._users)) {
+      if (user.isReady !== true) {
+        continue;
+      }
+
+      const idleThreshold =
+        user.teamId === this._spectatorId
+          ? idleTimeoutForSpectator
+          : idleTimeoutForPlayer;
+
+      if (idleThreshold !== null) {
+        const idleTime = now - user.lastActionTime;
+
+        if (idleTime > idleThreshold) {
+          usersToKick.push(user);
+        }
+      }
+    }
+
+    // кик неактивных пользователей
+    usersToKick.forEach(user => {
+      if (user && user.socket) {
+        // отправка сообщения о причине кика
+        user.socket.send(this._PORT_TECH_INFORM_DATA, [4]);
+        // закрытие соединения
+        user.socket.close(4003);
+      }
+    });
   }
 }
 

@@ -291,5 +291,7 @@ export default {
     'Loading...',
 
     'Connection lost!',
+
+    'Kicked for inactivity.',
   ],
 };

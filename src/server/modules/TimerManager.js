@@ -23,6 +23,11 @@ class TimerManager extends AbstractTimer {
     this._roundRestartDelay = config.roundRestartDelay;
     this._mapChangeDelay = config.mapChangeDelay;
 
+    // конфигурация для AFK-кика
+    this._idleCheckInterval = config.idleCheckInterval;
+    this._idleTimeoutForPlayer = config.idleKickTimeout?.player || null;
+    this._idleTimeoutForSpectator = config.idleKickTimeout?.spectator || null;
+
     this._callbacks = callbacks;
 
     // временные метки для расчетов оставшегося времени
@@ -170,11 +175,11 @@ class TimerManager extends AbstractTimer {
     this._stopTimer('blockedRemap');
   }
 
-  // запускает отложенный перезапуск раунда (после победы команды)
-  startRoundRestartDelay(onEndCallback) {
+  // запускает отложенный перезапуск раунда
+  startRoundRestartDelay() {
     this._startTimer(
       'roundRestartDelay',
-      onEndCallback,
+      this._callbacks.onRoundTimeEnd,
       this._roundRestartDelay,
     );
   }
@@ -192,6 +197,35 @@ class TimerManager extends AbstractTimer {
   // останавливает отложенную смену карты
   stopMapChangeDelay() {
     this._stopTimer('mapChangeDelay');
+  }
+
+  // логика одного "тика" для проверки на бездействие
+  _idleCheckTick() {
+    this._callbacks.onIdleCheck(
+      this._idleTimeoutForPlayer,
+      this._idleTimeoutForSpectator,
+    );
+
+    // перезапуск таймера для следующей проверки
+    this._startTimer(
+      'idleCheck',
+      () => this._idleCheckTick(),
+      this._idleCheckInterval,
+    );
+  }
+
+  // запускает периодическую проверку на бездействие
+  startIdleCheckTimer() {
+    // если есть интервал и callback
+    if (this._idleCheckInterval && this._callbacks.onIdleCheck) {
+      this.stopIdleCheckTimer();
+      this._idleCheckTick();
+    }
+  }
+
+  // останавливает проверку на бездействие
+  stopIdleCheckTimer() {
+    this._stopTimer('idleCheck');
   }
 }
 

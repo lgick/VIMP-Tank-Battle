@@ -169,7 +169,7 @@ export default server => {
       if (msg) {
         const socketMethod = socketMethods[msg[0]];
 
-        if (ws.socket.socketMethods[msg[0]]) {
+        if (socketMethod) {
           socketMethod(msg[1]);
         }
       }
