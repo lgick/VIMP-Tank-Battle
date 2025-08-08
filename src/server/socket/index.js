@@ -35,14 +35,16 @@ export default server => {
   const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws, req) => {
-    const address = req.socket.remoteAddress;
-    const origin = req.headers.origin;
+    const ipHeader = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const address = ipHeader.split(',')[0].trim();
+    const requestOrigin = req.headers.origin;
     const socketMethods = [];
     let id;
     let gameId;
 
-    security.origin(origin, err => {
+    security.origin(requestOrigin, err => {
       if (err) {
+        console.warn(err);
         ws.close(4001);
       } else {
         ws.socket = {

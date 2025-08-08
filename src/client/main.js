@@ -51,7 +51,8 @@ const PC_KEYS_DATA = wsports.client.KEYS_DATA;
 const PC_CHAT_DATA = wsports.client.CHAT_DATA;
 const PC_VOTE_DATA = wsports.client.VOTE_DATA;
 
-const ws = new WebSocket(`ws://${location.host}/`);
+const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const ws = new WebSocket(`${wsProtocol}//${location.host}/`);
 ws.binaryType = 'arraybuffer';
 
 const modules = {};
@@ -292,9 +293,10 @@ socketMethods[PS_GAME_INFORM_DATA] = data => {
 socketMethods[PS_TECH_INFORM_DATA] = data => {
   if (data) {
     const [key, arr] = data;
+    const message = techInformList[key] || 'Unknown error';
 
     modules.user?.disableKeys();
-    techInformer.innerHTML = formatMessage(techInformList[key], arr);
+    techInformer.innerHTML = formatMessage(message, arr);
     techInformer.style.display = 'block';
   } else {
     modules.user?.enableKeys();

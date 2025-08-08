@@ -1,3 +1,6 @@
+import fs from 'fs';
+import http from 'http';
+import https from 'https';
 import express from 'express';
 import minimist from 'minimist';
 import config from '../lib/config.js';
@@ -15,13 +18,17 @@ config.set('server', (await import('../config/server.js')).default);
 // wsports config
 config.set('wsports', (await import('../config/wsports.js')).default);
 
-// если задан домен
+// домен при запуске на продакшене для проверки
+// Cross-Site WebSocket Hijacking
 if (argv.domain) {
   config.set('server:domain', argv.domain);
   console.info('Domain: ' + argv.domain);
 }
 
-// если задан порт
+// переопределение порта через аргумент командной строки:
+// полезно для локальной разработки, если порт 3000 занят
+// в продакшене порт должен быть постоянным
+// и совпадать с настройками прокси-сервера
 if (argv.port) {
   config.set('server:port', argv.port);
   console.info('Port: ' + argv.port);
@@ -88,17 +95,53 @@ config.set(
   config.get('game:expressions:message'),
 );
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // если задан режим разработки
-if (process.env.NODE_ENV === 'development') {
+if (!isProduction) {
   config.set('server:oneConnection', false);
   config.set('game:isDevMode', true);
 }
 
 // EXPRESS
 const app = express();
+let server;
 
-const server = app.listen(config.get('server:port'), () => {
-  console.info(`Server is running on port ${config.get('server:port')}`);
+const port = config.get('server:port');
+
+// в продакшене обычный HTTP сервер, Nginx будет обрабатывать HTTPS
+// для разработки HTTPS сервер с локальными сертификатами
+if (isProduction) {
+  server = http.createServer(app);
+} else {
+  try {
+    const options = {
+      key: fs.readFileSync(config.get('server:httpsOptions:key')),
+      cert: fs.readFileSync(config.get('server:httpsOptions:cert')),
+    };
+    server = https.createServer(options, app);
+  } catch (err) {
+    console.error(`
+      Error creating HTTPS server: ${err.message}.
+      Ensure that the paths to the certificate and
+      key files in config/server.js are correct and the files exist.
+    `);
+
+    process.exit(1);
+  }
+}
+
+// для продакшена localhost, чтобы сервер не был доступен извне напрямую
+const host = isProduction ? '127.0.0.1' : undefined;
+
+server.listen(port, host, () => {
+  const protocol = isProduction ? 'http:' : 'https:';
+  const displayHost = host || 'localhost';
+
+  console.info(`
+    Server is running for ${process.env.NODE_ENV || 'development'} mode.
+    Listening on ${protocol}//${displayHost}:${port}
+  `);
 });
 
 const socket = (await import('./socket/index.js')).default;
