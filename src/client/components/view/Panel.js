@@ -45,7 +45,7 @@ export default class PanelView {
   initHealthBar() {
     const healthContainer = this._panels.health;
 
-    healthContainer.innerHTML = '';
+    healthContainer.textContent = '';
 
     const wrapper = document.createElement('div');
 
@@ -58,7 +58,7 @@ export default class PanelView {
 
       block.className = 'panel-health-block';
       block.style.backgroundColor = this._emptyBlockColor;
-      block.innerHTML = '&nbsp;';
+      block.textContent = '\u00A0'; // неразрывный пробел
 
       wrapper.appendChild(block);
 
@@ -133,7 +133,7 @@ export default class PanelView {
         );
       }
     } else {
-      elem.innerHTML = value;
+      elem.textContent = value;
     }
 
     elem.style.display = 'table-cell';

@@ -56,7 +56,7 @@ export default class ChatView {
     line.id = `line_${id}`;
     line.className = `line${type}`;
     line.setAttribute('data-name', `${name}: `);
-    line.innerHTML = text;
+    line.textContent = text;
 
     this._chat.appendChild(line);
   }

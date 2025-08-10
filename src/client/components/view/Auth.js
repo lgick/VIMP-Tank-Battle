@@ -64,7 +64,7 @@ export default class AuthView {
     const { name, value } = data;
     const inputs = this._form.querySelectorAll('input');
 
-    this._error.innerHTML = '';
+    this._error.textContent = '';
 
     // делает активным нужный инпут
     inputs.forEach(input => {
@@ -80,19 +80,16 @@ export default class AuthView {
 
   // отображает ошибки
   renderError(data) {
-    let message = '';
+    this._error.textContent = '';
 
     data.forEach(item => {
       const name = item.name.toUpperCase();
       const err = item.error;
+      const line = document.createElement('div');
 
-      if (err) {
-        message += `${name}: ${err}<br>`;
-      } else {
-        message += `${name} is not correctly!<br>`;
-      }
+      line.textContent = err ? `${name}: ${err}` : `${name} is not correctly!`;
+
+      this._error.appendChild(line);
     });
-
-    this._error.innerHTML = message;
   }
 }

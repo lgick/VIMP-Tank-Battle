@@ -41,13 +41,13 @@ export default class VoteView {
     vote.setAttribute('id', this._voteId);
 
     p.setAttribute('class', this._titleClass);
-    p.innerHTML = title;
+    p.textContent = title;
 
     ol.setAttribute('class', this._listClass);
 
     list.forEach(item => {
       const li = document.createElement('li');
-      li.innerHTML = item;
+      li.textContent = item;
       ol.appendChild(li);
     });
 
@@ -66,9 +66,9 @@ export default class VoteView {
 
     exitElem.setAttribute('class', this._navActiveClass);
 
-    backElem.innerHTML = '8. Back';
-    moreElem.innerHTML = '9. More';
-    exitElem.innerHTML = '0. Exit';
+    backElem.textContent = '8. Back';
+    moreElem.textContent = '9. More';
+    exitElem.textContent = '0. Exit';
 
     navContainer.appendChild(backElem);
     navContainer.appendChild(moreElem);

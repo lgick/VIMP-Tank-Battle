@@ -282,9 +282,10 @@ export default {
 
   // technical information
   techInformList: [
-    'Server is full! Please wait or try again later.<br>' +
-      'Max players: {0}<br>' +
-      'You are #{1} in the queue.<br>',
+    `Server is full! Please wait or try again later.
+     Max players: {0}
+     You are #{1} in the queue.
+    `,
 
     'Connection closed due to a new login from another device!',
 
