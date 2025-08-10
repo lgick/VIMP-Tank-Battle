@@ -42,7 +42,7 @@ export default class StatView {
       const tBodies = table.tBodies;
 
       for (let i2 = 0, len2 = tBodies.length; i2 < len2; i2 += 1) {
-        tBodies[i2].innerHTML = '';
+        tBodies[i2].textContent = '';
       }
     }
   }
@@ -54,7 +54,7 @@ export default class StatView {
     const cellsData = data.cellsData;
 
     for (let i = 0, len = cells.length; i < len; i += 1) {
-      cells[i].innerHTML = cellsData[i];
+      cells[i].textContent = cellsData[i];
     }
   }
 
@@ -76,8 +76,8 @@ export default class StatView {
         for (let i = 0, len = sortData.length; i < len; i += 1) {
           const number = sortData[i][0];
           const type = sortData[i][1];
-          const value = ~~row.cells[number].innerHTML;
-          const prevValue = ~~prevRow.cells[number].innerHTML;
+          const value = ~~row.cells[number].textContent;
+          const prevValue = ~~prevRow.cells[number].textContent;
 
           // если type == true, значит сортировка по убыванию
           if (type) {
@@ -113,8 +113,8 @@ export default class StatView {
         for (let i = 0, len = sortData.length; i < len; i += 1) {
           const number = sortData[i][0];
           const type = sortData[i][1];
-          const value = ~~row.cells[number].innerHTML;
-          const nextValue = ~~nextRow.cells[number].innerHTML;
+          const value = ~~row.cells[number].textContent;
+          const nextValue = ~~nextRow.cells[number].textContent;
 
           // если type == true, значит сортировка по убыванию
           if (type) {
@@ -155,7 +155,7 @@ export default class StatView {
 
         for (let i = 0, len = cellsData.length; i < len; i += 1) {
           const cell = row.insertCell(i);
-          cell.innerHTML = cellsData[i];
+          cell.textContent = cellsData[i];
         }
 
         if (sortData) {
@@ -174,7 +174,7 @@ export default class StatView {
         const cells = row.cells;
 
         for (let i = 0, len = cells.length; i < len; i += 1) {
-          cells[i].innerHTML = cellsData[i];
+          cells[i].textContent = cellsData[i];
         }
 
         if (sortData) {

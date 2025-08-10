@@ -280,11 +280,11 @@ socketMethods[PS_GAME_INFORM_DATA] = data => {
   if (data) {
     const [key, arr] = data;
 
-    gameInformer.innerHTML = formatMessage(gameInformList[key], arr);
+    gameInformer.textContent = formatMessage(gameInformList[key], arr);
     gameInformer.style.display = 'block';
 
     setTimeout(() => {
-      gameInformer.innerHTML = '';
+      gameInformer.textContent = '';
       gameInformer.style.display = 'none';
     }, 3000);
   }
@@ -297,11 +297,11 @@ socketMethods[PS_TECH_INFORM_DATA] = data => {
     const message = techInformList[key] || 'Unknown error';
 
     modules.user?.disableKeys();
-    techInformer.innerHTML = formatMessage(message, arr);
+    techInformer.textContent = formatMessage(message, arr);
     techInformer.style.display = 'block';
   } else {
     modules.user?.enableKeys();
-    techInformer.innerHTML = '';
+    techInformer.textContent = '';
     techInformer.style.display = 'none';
   }
 };
