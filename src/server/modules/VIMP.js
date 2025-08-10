@@ -1157,9 +1157,7 @@ class VIMP {
     usersToKick.forEach(user => {
       if (user && user.socket) {
         // отправка сообщения о причине кика
-        user.socket.send(this._PORT_TECH_INFORM_DATA, [4]);
-        // закрытие соединения
-        user.socket.close(4003);
+        user.socket.close(4003, [this._PORT_TECH_INFORM_DATA, [4]]);
       }
     });
   }

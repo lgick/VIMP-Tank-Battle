@@ -38,180 +38,186 @@ export default server => {
     const ipHeader = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const address = ipHeader.split(',')[0].trim();
     const requestOrigin = req.headers.origin;
-    const socketMethods = [];
-    let id;
-    let gameId;
 
     security.origin(requestOrigin, err => {
       if (err) {
         console.warn(err);
         ws.close(4001);
-      } else {
-        ws.socket = {
-          // отправляет данные
-          send: (port, data) => {
-            if (ws.readyState === ws.OPEN) {
-              ws.send(JSON.stringify([port, data]));
-            }
-          },
-
-          // распаковывает данные
-          unpack: pack => {
-            try {
-              return JSON.parse(pack);
-            } catch (e) {
-              return undefined;
-            }
-          },
-
-          // закрывает соединение
-          close: (code, data) => {
-            ws.close(code, JSON.stringify(data));
-          },
-        };
-
-        id = ws.socket.id = uuidv1();
-        ws.socket.socketMethods = [
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-          false,
-        ];
-
-        sessions[id] = ws;
-
-        ws.socket.socketMethods[PC_CONFIG_READY] = true;
-        ws.socket.send(PS_CONFIG_DATA, cConf);
+        return;
       }
-    });
 
-    // 0: config ready
-    socketMethods[PC_CONFIG_READY] = err => {
-      if (!err) {
-        if (oneConnection && ips[address]) {
-          sessions[ips[address]].socket.close(4002, [PS_TECH_INFORM_DATA, [1]]);
-        }
+      const socketMethods = [];
+      let gameId;
 
-        ips[address] = id;
-
-        waiting.check(id, empty => {
-          if (empty) {
-            ws.socket.socketMethods[PC_AUTH_RESPONSE] = true;
-            ws.socket.send(PS_AUTH_DATA, auth);
-          } else {
-            waiting.add(id, arr => {
-              ws.socket.send(PS_TECH_INFORM_DATA, [0, arr]);
-            });
+      ws.socket = {
+        // отправляет данные
+        send: (port, data) => {
+          if (ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify([port, data]));
           }
-        });
-      }
-      ws.socket.socketMethods[PC_CONFIG_READY] = false;
-    };
+        },
 
-    // 1: auth response
-    socketMethods[PC_AUTH_RESPONSE] = data => {
-      if (data && typeof data === 'object') {
-        const err = validator.auth(data);
+        // распаковывает данные
+        unpack: pack => {
+          try {
+            return JSON.parse(pack);
+          } catch (e) {
+            return undefined;
+          }
+        },
 
-        ws.socket.send(PS_AUTH_ERRORS, err);
+        // закрывает соединение
+        close: (code, data) => {
+          ws.close(code, JSON.stringify(data));
+        },
+      };
 
+      const id = (ws.socket.id = uuidv1());
+
+      ws.socket.socketMethods = [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ];
+
+      sessions[id] = ws;
+
+      ws.socket.socketMethods[PC_CONFIG_READY] = true;
+      ws.socket.send(PS_CONFIG_DATA, cConf);
+
+      // 0: config ready
+      socketMethods[PC_CONFIG_READY] = err => {
         if (!err) {
-          ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
-          ws.socket.socketMethods[PC_MAP_READY] = true;
-          ws.socket.socketMethods[PC_FIRST_SHOT_READY] = true;
-          ws.socket.socketMethods[PC_KEYS_DATA] = true;
-          ws.socket.socketMethods[PC_CHAT_DATA] = true;
-          ws.socket.socketMethods[PC_VOTE_DATA] = true;
+          if (oneConnection && ips[address]) {
+            sessions[ips[address]].socket.close(4002, [
+              PS_TECH_INFORM_DATA,
+              [1],
+            ]);
+          }
 
-          vimp.createUser(data, ws.socket, createdId => {
-            gameId = createdId;
+          ips[address] = id;
+
+          waiting.check(id, empty => {
+            if (empty) {
+              ws.socket.socketMethods[PC_AUTH_RESPONSE] = true;
+              ws.socket.send(PS_AUTH_DATA, auth);
+            } else {
+              waiting.add(id, arr => {
+                ws.socket.send(PS_TECH_INFORM_DATA, [0, arr]);
+              });
+            }
           });
         }
-      }
-    };
 
-    // 2: map ready
-    socketMethods[PC_MAP_READY] = () => {
-      vimp.mapReady(gameId);
-    };
+        ws.socket.socketMethods[PC_CONFIG_READY] = false;
+      };
 
-    // 3: first shot ready
-    socketMethods[PC_FIRST_SHOT_READY] = () => {
-      vimp.firstShotReady(gameId);
-    };
+      // 1: auth response
+      socketMethods[PC_AUTH_RESPONSE] = data => {
+        if (data && typeof data === 'object') {
+          const err = validator.auth(data);
 
-    // 4: keys data
-    // данные в виде строки вида 'down:forward'
-    socketMethods[PC_KEYS_DATA] = keyEventString => {
-      if (typeof keyEventString === 'string') {
-        vimp.updateKeys(gameId, keyEventString);
-      }
-    };
+          ws.socket.send(PS_AUTH_ERRORS, err);
 
-    // 5: chat data
-    socketMethods[PC_CHAT_DATA] = message => {
-      if (typeof message === 'string') {
-        vimp.pushMessage(gameId, message);
-      }
-    };
+          if (!err) {
+            ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
+            ws.socket.socketMethods[PC_MAP_READY] = true;
+            ws.socket.socketMethods[PC_FIRST_SHOT_READY] = true;
+            ws.socket.socketMethods[PC_KEYS_DATA] = true;
+            ws.socket.socketMethods[PC_CHAT_DATA] = true;
+            ws.socket.socketMethods[PC_VOTE_DATA] = true;
 
-    // 6: vote data
-    socketMethods[PC_VOTE_DATA] = data => {
-      if (data) {
-        vimp.parseVote(gameId, data);
-      }
-    };
-
-    ws.on('message', data => {
-      const msg = ws.socket.unpack(data);
-
-      if (msg) {
-        const socketMethod = socketMethods[msg[0]];
-
-        if (socketMethod) {
-          socketMethod(msg[1]);
+            vimp.createUser(data, ws.socket, createdId => {
+              gameId = createdId;
+            });
+          }
         }
-      }
-    });
+      };
 
-    // обработчик закрытия соединения принимает (code, reason)
-    ws.on('close', (code, _reason) => {
-      // Коды закрытия:
-      // 4001 - origin conflict
-      // 4002 - oneConnection
+      // 2: map ready
+      socketMethods[PC_MAP_READY] = () => {
+        vimp.mapReady(gameId);
+      };
 
-      if (code !== 4002) {
-        delete ips[address];
-      }
+      // 3: first shot ready
+      socketMethods[PC_FIRST_SHOT_READY] = () => {
+        vimp.firstShotReady(gameId);
+      };
 
-      delete sessions[id];
-
-      if (gameId) {
-        vimp.removeUser(gameId);
-      }
-
-      waiting.remove(id);
-
-      waiting.getNext(nextId => {
-        if (nextId && sessions[nextId]) {
-          sessions[nextId].socket.socketMethods[PC_AUTH_RESPONSE] = true;
-          sessions[nextId].socket.send(PS_AUTH_DATA, auth);
-          sessions[nextId].socket.send(PS_TECH_INFORM_DATA);
+      // 4: keys data
+      socketMethods[PC_KEYS_DATA] = keyEventString => {
+        if (typeof keyEventString === 'string') {
+          vimp.updateKeys(gameId, keyEventString);
         }
-      });
+      };
 
-      waiting.createNotifyObject(notifyObject => {
-        for (const p in notifyObject) {
-          if (Object.hasOwn(notifyObject, p) && sessions[p]) {
-            sessions[p].socket.send(PS_TECH_INFORM_DATA, [0, notifyObject[p]]);
+      // 5: chat data
+      socketMethods[PC_CHAT_DATA] = message => {
+        if (typeof message === 'string') {
+          vimp.pushMessage(gameId, message);
+        }
+      };
+
+      // 6: vote data
+      socketMethods[PC_VOTE_DATA] = data => {
+        if (data) {
+          vimp.parseVote(gameId, data);
+        }
+      };
+
+      // обработчик сообщения
+      ws.on('message', data => {
+        const msg = ws.socket.unpack(data);
+
+        if (msg) {
+          const socketMethod = socketMethods[msg[0]];
+
+          if (socketMethod) {
+            socketMethod(msg[1]);
           }
         }
       });
+
+      // обработчик закрытия
+      ws.on('close', (code, _reason) => {
+        if (code !== 4002) {
+          delete ips[address];
+        }
+
+        delete sessions[id];
+
+        if (gameId) {
+          vimp.removeUser(gameId);
+        }
+
+        waiting.remove(id);
+
+        waiting.getNext(nextId => {
+          if (nextId && sessions[nextId]) {
+            sessions[nextId].socket.socketMethods[PC_AUTH_RESPONSE] = true;
+            sessions[nextId].socket.send(PS_AUTH_DATA, auth);
+            sessions[nextId].socket.send(PS_TECH_INFORM_DATA);
+          }
+        });
+
+        waiting.createNotifyObject(notifyObject => {
+          for (const p in notifyObject) {
+            if (Object.hasOwn(notifyObject, p) && sessions[p]) {
+              sessions[p].socket.send(PS_TECH_INFORM_DATA, [
+                0,
+                notifyObject[p],
+              ]);
+            }
+          }
+        });
+      });
     });
 
+    // общий обработчик
     ws.on('error', error => {
       console.error('WebSocket error:', error);
     });
