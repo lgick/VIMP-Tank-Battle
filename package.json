@@ -16,7 +16,7 @@
   "main": "src/server/main.js",
   "scripts": {
     "dev": "NODE_ENV=development nodemon src/server/main.js -w src/server -w src/lib -w src/config",
-    "start": "NODE_ENV=production node src/server/main.js",
+    "start": "NODE_ENV=production node src/server/main.js --domain=vimp.lgick.space",
     "build": "vite build"
   },
   "dependencies": {
