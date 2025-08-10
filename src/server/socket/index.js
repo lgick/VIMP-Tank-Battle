@@ -39,6 +39,12 @@ export default server => {
     const address = ipHeader.split(',')[0].trim();
     const requestOrigin = req.headers.origin;
 
+    // если origin вообще не пришел (это скорее всего бот)
+    if (!requestOrigin) {
+      ws.terminate();
+      return;
+    }
+
     security.origin(requestOrigin, err => {
       if (err) {
         console.warn(err);
