@@ -40,8 +40,9 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git && cd VIMP-Tank-Battle &
 |  7   | game inform data | Игровые сообщения на экране (начало раунда, завершение раунда)                                   |
 |  8   | tech inform data | Технические сообщения "черного экрана"                                                           |
 |  9   |       misc       | Присылает разнообразные данные, не имеющие определенного формата                                 |
-|  10  |      clear       | Удаляет данные игры                                                                              |
-|  11  |     console      | Данные в console.log()                                                                           |
+|  10  |       ping       | RTT (round trip time)                                                                            |
+|  11  |      clear       | Удаляет данные игры                                                                              |
+|  12  |     console      | Данные в console.log()                                                                           |
 
 ## Client: порты получения данные от клиента
 
@@ -54,6 +55,7 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git && cd VIMP-Tank-Battle &
 |  4   |    keys data     | Данные нажатых клавиш                             |
 |  5   |    chat data     | Данные чата/командной строки                      |
 |  6   |    vote data     | Данные опроса                                     |
+|  7   |       pong       | RTT (round trip time)                             |
 
 # Модуль PANEL
 

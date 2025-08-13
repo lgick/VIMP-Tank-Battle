@@ -40,6 +40,7 @@ const PS_SOUND_DATA = wsports.server.SOUND_DATA;
 const PS_GAME_INFORM_DATA = wsports.server.GAME_INFORM_DATA;
 const PS_TECH_INFORM_DATA = wsports.server.TECH_INFORM_DATA;
 const PS_MISC = wsports.server.MISC;
+const PS_PING = wsports.server.PING;
 const PS_CLEAR = wsports.server.CLEAR;
 const PS_CONSOLE = wsports.server.CONSOLE;
 
@@ -51,6 +52,7 @@ const PC_FIRST_SHOT_READY = wsports.client.FIRST_SHOT_READY;
 const PC_KEYS_DATA = wsports.client.KEYS_DATA;
 const PC_CHAT_DATA = wsports.client.CHAT_DATA;
 const PC_VOTE_DATA = wsports.client.VOTE_DATA;
+const PC_PONG = wsports.client.PONG;
 
 const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
 const ws = new WebSocket(`${wsProtocol}//${location.host}/`);
@@ -313,6 +315,11 @@ socketMethods[PS_MISC] = data => {
   if (key === 'localstorageNameReplace') {
     localStorage['userName'] = value;
   }
+};
+
+// ping
+socketMethods[PS_PING] = pingId => {
+  sending(PC_PONG, pingId);
 };
 
 // clear

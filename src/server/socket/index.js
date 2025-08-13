@@ -19,6 +19,7 @@ const PC_FIRST_SHOT_READY = config.get('wsports:client:FIRST_SHOT_READY');
 const PC_KEYS_DATA = config.get('wsports:client:KEYS_DATA');
 const PC_CHAT_DATA = config.get('wsports:client:CHAT_DATA');
 const PC_VOTE_DATA = config.get('wsports:client:VOTE_DATA');
+const PC_PONG = config.get('wsports:client:PONG');
 
 const oneConnection = config.get('server:oneConnection');
 
@@ -88,6 +89,7 @@ export default server => {
         false,
         false,
         false,
+        false,
       ];
 
       sessions[id] = ws;
@@ -136,6 +138,7 @@ export default server => {
             ws.socket.socketMethods[PC_KEYS_DATA] = true;
             ws.socket.socketMethods[PC_CHAT_DATA] = true;
             ws.socket.socketMethods[PC_VOTE_DATA] = true;
+            ws.socket.socketMethods[PC_PONG] = true;
 
             vimp.createUser(data, ws.socket, createdId => {
               gameId = createdId;
@@ -173,6 +176,11 @@ export default server => {
         if (data) {
           vimp.parseVote(gameId, data);
         }
+      };
+
+      // 7: pong
+      socketMethods[PC_PONG] = pingId => {
+        vimp.updateRTT(gameId, pingId);
       };
 
       // обработчик сообщения
