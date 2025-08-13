@@ -5,7 +5,7 @@ import AbstractTimer from '../../lib/AbstractTimer.js';
 let timerManager;
 
 class TimerManager extends AbstractTimer {
-  constructor(config, callbacks) {
+  constructor(timers, callbacks) {
     super();
 
     if (timerManager) {
@@ -14,19 +14,16 @@ class TimerManager extends AbstractTimer {
 
     timerManager = this;
 
-    this._mapTime = config.mapTime;
-    this._roundTime = config.roundTime;
-    this._timeStep = config.timeStep;
-    this._voteTime = config.voteTime;
-    this._timeBlockedRemap = config.timeBlockedRemap;
-    this._teamChangeGracePeriod = config.teamChangeGracePeriod;
-    this._roundRestartDelay = config.roundRestartDelay;
-    this._mapChangeDelay = config.mapChangeDelay;
-
-    // конфигурация для AFK-кика
-    this._idleCheckInterval = config.idleCheckInterval;
-    this._idleTimeoutForPlayer = config.idleKickTimeout?.player || null;
-    this._idleTimeoutForSpectator = config.idleKickTimeout?.spectator || null;
+    this._mapTime = timers.mapTime;
+    this._roundTime = timers.roundTime;
+    this._timeStep = timers.timeStep;
+    this._voteTime = timers.voteTime;
+    this._timeBlockedRemap = timers.timeBlockedRemap;
+    this._teamChangeGracePeriod = timers.teamChangeGracePeriod;
+    this._roundRestartDelay = timers.roundRestartDelay;
+    this._mapChangeDelay = timers.mapChangeDelay;
+    this._idleCheckInterval = timers.idleCheckInterval;
+    this._rttPingInterval = timers.rttPingInterval;
 
     this._callbacks = callbacks;
 
@@ -48,6 +45,7 @@ class TimerManager extends AbstractTimer {
     this.startMapTimer();
     this.startGameLoop();
     this.startRoundTimer();
+    this.startRttPingTimer();
   }
 
   // останавливает все основные игровые таймеры
@@ -57,6 +55,7 @@ class TimerManager extends AbstractTimer {
     this.stopMapTimer();
     this.stopRoundRestartDelay();
     this.stopMapChangeDelay();
+    this.stopRttPingTimer();
   }
 
   // запускает таймер до конца текущей карты
@@ -201,10 +200,7 @@ class TimerManager extends AbstractTimer {
 
   // логика одного "тика" для проверки на бездействие
   _idleCheckTick() {
-    this._callbacks.onIdleCheck(
-      this._idleTimeoutForPlayer,
-      this._idleTimeoutForSpectator,
-    );
+    this._callbacks.onIdleCheck();
 
     // перезапуск таймера для следующей проверки
     this._startTimer(
@@ -226,6 +222,32 @@ class TimerManager extends AbstractTimer {
   // останавливает проверку на бездействие
   stopIdleCheckTimer() {
     this._stopTimer('idleCheck');
+  }
+
+  // логика одного "тика" для отправки пингов
+  _rttPingTick() {
+    this._callbacks.onSendPing();
+
+    // перезапуск таймера для следующего пинга
+    this._startTimer(
+      'rttPing',
+      () => this._rttPingTick(),
+      this._rttPingInterval,
+    );
+  }
+
+  // запускает отправку пингов
+  startRttPingTimer() {
+    // если есть интервал и callback
+    if (this._rttPingInterval && this._callbacks.onSendPing) {
+      this.stopRttPingTimer();
+      this._rttPingTick();
+    }
+  }
+
+  // останавливает отправку пингов
+  stopRttPingTimer() {
+    this._stopTimer('rttPing');
   }
 }
 

@@ -110,7 +110,7 @@ export default [
       // плагин с запретом на caps в названиях
       'no-consecutive-caps/no-consecutive-caps': [
         'error',
-        { exceptions: ['VX', 'VY'] }, // исключения в названиях
+        { exceptions: ['VX', 'VY', 'RTT'] }, // исключения в названиях
       ],
     },
   },

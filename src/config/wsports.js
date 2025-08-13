@@ -11,8 +11,9 @@ export default {
     GAME_INFORM_DATA: 7,
     TECH_INFORM_DATA: 8,
     MISC: 9,
-    CLEAR: 10,
-    CONSOLE: 11,
+    PING: 10,
+    CLEAR: 11,
+    CONSOLE: 12,
   },
   // порты получения данных от клиента
   client: {
@@ -23,5 +24,6 @@ export default {
     KEYS_DATA: 4,
     CHAT_DATA: 5,
     VOTE_DATA: 6,
+    PONG: 7,
   },
 };

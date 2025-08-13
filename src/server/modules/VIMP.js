@@ -3,6 +3,7 @@ import Stat from './Stat.js';
 import Chat from './Chat.js';
 import Vote from './Vote.js';
 import Game from './Game.js';
+import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
 
 // Singleton VIMP
@@ -25,6 +26,9 @@ class VIMP {
     this._mapSetId = data.mapSetId; // дефолтный id конструктора карт
     this._currentMap = data.currentMap; // название текущей карты
     this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
+
+    this._idleTimeoutForPlayer = data.idleKickTimeout?.player || null;
+    this._idleTimeoutForSpectator = data.idleKickTimeout?.spectator || null;
 
     this._expressions = {
       name: new RegExp(data.expressions.name),
@@ -56,6 +60,7 @@ class VIMP {
     this._PORT_GAME_INFORM_DATA = ports.GAME_INFORM_DATA;
     this._PORT_TECH_INFORM_DATA = ports.TECH_INFORM_DATA;
     this._PORT_MISC = ports.MISC;
+    this._PORT_PING = ports.PING;
     this._PORT_CLEAR = ports.CLEAR;
     this._PORT_CONSOLE = ports.CONSOLE;
 
@@ -67,52 +72,68 @@ class VIMP {
     this._isRoundEnding = false; // флаг, если раунд процессе завершения
 
     // инициализация сервисов
-    const game = new Game(data.parts, data.playerKeys, data.timeStep / 1000);
+    const game = new Game(
+      data.parts,
+      data.playerKeys,
+      data.timers.timeStep / 1000,
+    );
     const panel = new Panel(data.panel);
     const stat = new Stat(data.stat, this._teams);
     const chat = new Chat();
     const vote = new Vote();
 
-    const timerManager = new TimerManager(
-      {
-        mapTime: data.mapTime, // продолжительность карты
-        roundTime: data.roundTime, // продолжительность раунда
-        voteTime: data.voteTime, // время голосования
-        timeBlockedRemap: data.timeBlockedRemap, // время ожидания смены карты
-        timeStep: data.timeStep, // время обновления кадра игры
-        // время смены команды в текущем раунде
-        teamChangeGracePeriod: data.teamChangeGracePeriod,
-        // задержка рестарта раунда после победы/поражения
-        roundRestartDelay: data.roundRestartDelay,
-        // задержка смены карты после голосования
-        mapChangeDelay: data.mapChangeDelay,
-        // периодичность проверки AFK-кика
-        idleCheckInterval: data.idleCheckInterval,
-        // таймауты бездействия перед киком
-        idleKickTimeout: data.idleKickTimeout,
-      },
-      {
-        onMapTimeEnd: this.onMapTimeEnd.bind(this),
-        onRoundTimeEnd: this.initiateNewRound.bind(this),
-        onShotTick: this.onShotTick.bind(this),
-        onIdleCheck: this.kickIdleUsers.bind(this),
-      },
-    );
+    this._RTTManager = new RTTManager(data.rtt, {
+      onKickForMissedPings: gameId => this.kickForMissedPings(gameId),
+      onKickForMaxLatency: gameId => this.kickForMaxLatency(gameId),
+    });
+
+    this._timerManager = new TimerManager(data.timers, {
+      onMapTimeEnd: () => this.onMapTimeEnd(),
+      onRoundTimeEnd: () => this.initiateNewRound(),
+      onShotTick: dt => this.onShotTick(dt),
+      onIdleCheck: () => this.kickIdleUsers(),
+      onSendPing: () => this.sendPing(),
+    });
 
     // внедрение зависимостей
     game.injectServices({ vimp: this, panel });
-    panel.injectTimerManager(timerManager);
+    panel.injectTimerManager(this._timerManager);
 
     this._game = game;
     this._panel = panel;
     this._stat = stat;
     this._chat = chat;
     this._vote = vote;
-    this._timerManager = timerManager;
 
     this._timerManager.startIdleCheckTimer();
 
     this.createMap();
+  }
+
+  // кикает за задержку в ответе на ping
+  kickForMaxLatency(gameId) {
+    const user = this._users[gameId];
+
+    if (user) {
+      console.warn(`[RTT] Kick ${gameId} — pong latency exceeded`);
+      user.socket.close(4003, [this._PORT_TECH_INFORM_DATA, [5]]);
+
+      // принудительное удаление, не дожидаясь закрытия соединения
+      this.removeUser(gameId);
+    }
+  }
+
+  // кикает за превышение прокусков ответа на ping
+  kickForMissedPings(gameId) {
+    const user = this._users[gameId];
+
+    if (user) {
+      console.warn(`[RTT] Kick ${gameId} — no response to pings`);
+      user.socket.close(4004, [this._PORT_TECH_INFORM_DATA, [6]]);
+
+      // принудительное удаление, не дожидаясь закрытия соединения
+      this.removeUser(gameId);
+    }
   }
 
   // запускает голосование за смену карты
@@ -219,6 +240,52 @@ class VIMP {
         getUserData(gameId),
       ),
     );
+  }
+
+  // проверяет игроков на бездействие и кикает, если превышен порог
+  kickIdleUsers() {
+    const now = Date.now();
+    const usersToKick = [];
+
+    for (const user of Object.values(this._users)) {
+      if (user.isReady !== true) {
+        continue;
+      }
+
+      const idleThreshold =
+        user.teamId === this._spectatorId
+          ? this._idleTimeoutForSpectator
+          : this._idleTimeoutForPlayer;
+
+      if (idleThreshold !== null) {
+        const idleTime = now - user.lastActionTime;
+
+        if (idleTime > idleThreshold) {
+          usersToKick.push(user);
+        }
+      }
+    }
+
+    // кик неактивных пользователей
+    usersToKick.forEach(user => {
+      user.socket.close(4003, [this._PORT_TECH_INFORM_DATA, [4]]);
+
+      // принудительное удаление, не дожидаясь закрытия соединения
+      this.removeUser(user.gameId);
+    });
+  }
+
+  // отправляет ping всем пользователям
+  sendPing() {
+    const users = this._RTTManager.scheduleNextPing();
+
+    for (const [gameId, { pingIdCounter }] of users) {
+      const user = this._users[gameId];
+
+      if (user?.socket) {
+        user.socket.send(this._PORT_PING, pingIdCounter);
+      }
+    }
   }
 
   // создает карту
@@ -845,6 +912,7 @@ class VIMP {
     this._vote.addUser(gameId);
     this._stat.addUser(gameId, this._spectatorId, { name });
     this._panel.addUser(gameId);
+    this._RTTManager.addUser(gameId);
 
     this._teamSizes[this._spectatorTeam].add(gameId);
 
@@ -857,8 +925,14 @@ class VIMP {
   // удаляет игрока полностью из игры
   removeUser(gameId) {
     const user = this._users[gameId];
+
+    if (!user) {
+      return;
+    }
+
     const { team, teamId, model, nextTeam } = user;
 
+    this._RTTManager.removeUser(gameId);
     this._stat.removeUser(gameId, teamId);
     this._chat.removeUser(gameId);
     this._vote.removeUser(gameId);
@@ -1129,37 +1203,17 @@ class VIMP {
     }
   }
 
-  // проверяет игроков на бездействие и кикает, если превышен порог
-  kickIdleUsers(idleTimeoutForPlayer, idleTimeoutForSpectator) {
-    const now = Date.now();
-    const usersToKick = [];
+  // обновляет значение round trip time
+  updateRTT(gameId, pingId) {
+    const latency = this._RTTManager.handlePong(gameId, pingId);
 
-    for (const user of Object.values(this._users)) {
-      if (user.isReady !== true) {
-        continue;
-      }
+    if (latency !== null) {
+      const user = this._users[gameId];
 
-      const idleThreshold =
-        user.teamId === this._spectatorId
-          ? idleTimeoutForSpectator
-          : idleTimeoutForPlayer;
-
-      if (idleThreshold !== null) {
-        const idleTime = now - user.lastActionTime;
-
-        if (idleTime > idleThreshold) {
-          usersToKick.push(user);
-        }
+      if (user) {
+        this._stat.updateUser(gameId, user.teamId, { latency });
       }
     }
-
-    // кик неактивных пользователей
-    usersToKick.forEach(user => {
-      if (user && user.socket) {
-        // отправка сообщения о причине кика
-        user.socket.close(4003, [this._PORT_TECH_INFORM_DATA, [4]]);
-      }
-    });
   }
 }
 

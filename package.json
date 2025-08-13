@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "NODE_ENV=development nodemon src/server/main.js -w src/server -w src/lib -w src/config",
     "start": "NODE_ENV=production node src/server/main.js --domain=vimp.lgick.space",
+    "restart": "npm run build && pm2 stop vimp-game && pm2 delete  vimp-game && pm2 start npm --name vimp-game -- run start",
     "build": "vite build"
   },
   "dependencies": {

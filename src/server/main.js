@@ -61,20 +61,20 @@ if (argv.map) {
 // если задано время раунда
 if (argv.rtime) {
   if (typeof argv.rtime === 'number') {
-    config.set('game:roundTime', argv.rtime);
+    config.set('game:timers:roundTime', argv.rtime);
     console.info('Round time: ' + argv.rtime);
   } else {
-    console.info('Round time: ' + config.get('game:roundTime'));
+    console.info('Round time: ' + config.get('game:timers:roundTime'));
   }
 }
 
 // если задано время карты
 if (argv.mtime) {
   if (typeof argv.mtime === 'number') {
-    config.set('game:mapTime', argv.mtime);
+    config.set('game:timers:mapTime', argv.mtime);
     console.info('Map time: ' + argv.mtime);
   } else {
-    console.info('Map time: ' + config.get('game:mapTime'));
+    console.info('Map time: ' + config.get('game:timers:mapTime'));
   }
 }
 
@@ -87,7 +87,10 @@ if (argv.friendlyfire) {
 config.set('client', (await import('../config/client.js')).default);
 
 // время ожидания vote-модуля
-config.set('client:modules:vote:params:time', config.get('game:voteTime'));
+config.set(
+  'client:modules:vote:params:time',
+  config.get('game:timers:voteTime'),
+);
 
 // регулярное выражение для сообщений
 config.set(

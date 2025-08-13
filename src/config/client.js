@@ -294,5 +294,9 @@ export default {
     'Connection lost!',
 
     'Kicked for inactivity.',
+
+    'Connection terminated due to high network latency.',
+
+    'Connection terminated due to missed network pings.',
   ],
 };
