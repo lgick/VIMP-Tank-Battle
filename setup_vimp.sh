@@ -6,8 +6,12 @@ usage() {
   echo "Использование: $0 -d <домен> -e <email>"
   echo "  -d  Домен для сайта и SSL сертификата"
   echo "  -e  Email для регистрации SSL сертификата Let's Encrypt"
+  echo "  -p  Порт, на котором будет работать Node.js приложение (необязательно, по умолчанию 3000)"
   exit 1
 }
+
+
+PORT=3000 # Порт по умолчанию
 
 # ====== Парсинг аргументов командной строки ======
 while getopts ":d:e:" opt; do
@@ -17,6 +21,8 @@ while getopts ":d:e:" opt; do
       ;;
     e )
       EMAIL=$OPTARG
+      ;;
+    p ) PORT=$OPTARG
       ;;
     \? )
       echo "Неверный флаг: -$OPTARG" 1>&2
@@ -82,7 +88,7 @@ npm install
 
 # Динамически обновляем скрипт "start" в package.json
 echo "Обновление start-скрипта в package.json..."
-npm pkg set scripts.start="NODE_ENV=production node src/server/main.js --domain=$DOMAIN"
+npm pkg set scripts.start="NODE_ENV=production node src/server/main.js --domain=$DOMAIN --port=$PORT"
 
 npm run build
 
@@ -113,8 +119,10 @@ echo "Настройка Nginx..."
 NGINX_CONF_PATH="/etc/nginx/sites-available/$DOMAIN.conf"
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo curl -o "$NGINX_CONF_PATH" "$NGINX_TEMPLATE_URL"
-# Заменяем плейсхолдер __DOMAIN__ на реальный домен
+
 sudo sed -i "s/__DOMAIN__/$DOMAIN/g" "$NGINX_CONF_PATH"
+sudo sed -i "s/__PORT__/$PORT/g" "$NGINX_CONF_PATH"
+
 sudo ln -sf "$NGINX_CONF_PATH" "/etc/nginx/sites-enabled/"
 sudo nginx -t
 sudo systemctl restart nginx
