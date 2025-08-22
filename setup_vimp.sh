@@ -36,6 +36,7 @@ if [ -z "${DOMAIN}" ] || [ -z "${EMAIL}" ]; then
 fi
 
 # ====== Настройки из параметров ======
+PM2_APP_NAME=$(echo "$DOMAIN" | tr '.' '-')
 PROJECT_DIR="/var/www/$DOMAIN"       # Путь до проекта теперь динамический
 GIT_REPO="https://github.com/lgick/VIMP-Tank-Battle.git"  # Репозиторий проекта
 NGINX_TEMPLATE_URL="https://raw.githubusercontent.com/lgick/VIMP-Tank-Battle/master/nginx/nginx.conf" # URL к шаблону
@@ -90,12 +91,12 @@ echo "Установка pm2..."
 sudo npm install -g pm2@latest
 
 # Проверка, существует ли уже vimp-game
-if pm2 describe vimp-game > /dev/null 2>&1; then
-  echo "Приложение vimp-game уже существует, обновляем его без простоя..."
-  pm2 reload vimp-game
+if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
+  echo "Приложение '$PM2_APP_NAME' уже существует, обновляем его без простоя..."
+  pm2 reload "$PM2_APP_NAME"
 else
-  echo "Приложение vimp-game не найдено, запускаем впервые..."
-  pm2 start npm --name vimp-game -- run start
+  echo "Приложение '$PM2_APP_NAME' не найдено, запускаем впервые..."
+  pm2 start npm --name "$PM2_APP_NAME" -- run start
 fi
 
 pm2 save
