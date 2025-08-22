@@ -6,13 +6,14 @@
 
 # Запуск сервера (Ubuntu 24.04)
 
-### Обязательные параметры:
+### Параметры:
 
 - `-d` - домен (настройка Nginx, получение SSL-сертификата)
 - `-e` - email (регистрация Let's Encrypt)
+- `-p` - порт, на котором будет работать Node.js приложение (необязательно, по умолчанию 3000)
 
 ```
-curl -sSL https://raw.githubusercontent.com/lgick/VIMP-Tank-Battle/master/setup_vimp.sh | bash -s -- -d vimp.lgick.space -e mail@lgick.space
+curl -sSL https://raw.githubusercontent.com/lgick/VIMP-Tank-Battle/master/setup_vimp.sh | bash -s -- -d vimp.lgick.space -e mail@lgick.space -p 3000
 ```
 
 # Установка
