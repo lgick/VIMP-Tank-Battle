@@ -4,6 +4,17 @@
 
 Многопользовательская 2D онлайн реалтайм игра.
 
+# Запуск сервера (Ubuntu 24.04)
+
+### Обязательные параметры:
+
+- `-d` - домен (настройка Nginx, получение SSL-сертификата)
+- `-e` - email (регистрация Let's Encrypt)
+
+```
+curl -sSL https://raw.githubusercontent.com/lgick/VIMP-Tank-Battle/master/setup_vimp.sh | bash -s -- -d vimp.lgick.space -e mail@lgick.space
+```
+
 # Установка
 
 ```
