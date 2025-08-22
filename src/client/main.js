@@ -29,6 +29,8 @@ import DependencyProvider from './providers/DependencyProvider.js';
 import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
+alert(1);
+
 // PS (server ports): порты получения данные от сервера
 const PS_CONFIG_DATA = wsports.server.CONFIG_DATA;
 const PS_AUTH_DATA = wsports.server.AUTH_DATA;
