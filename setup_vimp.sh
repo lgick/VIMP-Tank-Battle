@@ -105,7 +105,7 @@ sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -
 
 # ====== Получение SSL-сертификата ======
 echo "Получение SSL..."
-sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL"
+sudo certbot certonly --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL"
 
 # ====== Настройка Nginx ======
 echo "Настройка Nginx..."
