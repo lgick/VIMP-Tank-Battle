@@ -61,7 +61,7 @@ sudo apt upgrade -y
 
 # ====== Установка Nginx, Brotli и Git ======
 echo "Установка Nginx, Brotli и Git..."
-sudo apt install -y nginx-full libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static git curl certbot python3-certbot-nginx
+sudo apt install -y nginx-full libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static git curl certbot python3-certbot-nginx ffmpeg
 
 # ====== Установка Node.js 22 ======
 echo "Установка Node.js 22..."
