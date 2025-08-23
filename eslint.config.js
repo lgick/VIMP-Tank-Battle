@@ -70,7 +70,7 @@ export default [
     },
   },
   {
-    files: ['src/lib/**/*.js', 'src/config/**/*.js'],
+    files: ['src/lib/**/*.js', 'src/config/**/*.js', 'scripts/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

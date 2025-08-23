@@ -18,7 +18,8 @@
     "dev": "NODE_ENV=development nodemon src/server/main.js -w src/server -w src/lib -w src/config",
     "start": "NODE_ENV=production node src/server/main.js --domain=your-domain.com",
     "deploy": "npm run build && pm2 reload vimp-game",
-    "build": "vite build"
+    "build": "npm run audio:process && vite build",
+    "audio:process": "node scripts/process-audio.js"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -32,7 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
-    "eslint": "^9.20.1",
+    "eslint": "^9.34.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-no-consecutive-caps": "^1.2.0",
     "globals": "^16.2.0",
