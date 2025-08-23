@@ -2,9 +2,7 @@
 _*
 node_modules/
 .TRASH
-/public/tests/
-/public/js/vendor/
-/client/dist/
+public/sounds/
 dist
 logs
 *.log

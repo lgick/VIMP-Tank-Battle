@@ -1,4 +1,4 @@
-import sounds from '../../public/sounds/index.js';
+import sounds from './sounds.js';
 
 export default {
   // ***** parts ***** //
