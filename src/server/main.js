@@ -2,89 +2,76 @@ import fs from 'fs';
 import http from 'http';
 import https from 'https';
 import express from 'express';
-import minimist from 'minimist';
 import config from '../lib/config.js';
 import ViteExpress from 'vite-express';
 
-// Парсинг аргументов командной строки
-const argv = minimist(process.argv.slice(2));
-
-// auth config
 config.set('auth', (await import('../config/auth.js')).default);
-
-// server config
 config.set('server', (await import('../config/server.js')).default);
-
-// wsports config
 config.set('wsports', (await import('../config/wsports.js')).default);
-
-// домен при запуске на продакшене для проверки
-// Cross-Site WebSocket Hijacking
-if (argv.domain) {
-  config.set('server:domain', argv.domain);
-  console.info('Domain: ' + argv.domain);
-}
-
-// переопределение порта через аргумент командной строки:
-// полезно для локальной разработки, если порт 3000 занят
-// в продакшене порт должен быть постоянным
-// и совпадать с настройками прокси-сервера
-if (argv.port) {
-  config.set('server:port', argv.port);
-  console.info('Port: ' + argv.port);
-}
-
-// если задано количество игроков
-if (argv.players) {
-  if (typeof argv.players === 'number') {
-    config.set('server:maxPlayers', argv.players);
-    console.info('Limit players in server: ' + argv.players);
-  } else {
-    console.info('Limit players in server: ' + config.get('server:maxPlayers'));
-  }
-}
-
-// game config
 config.set('game', (await import('../config/game.js')).default);
-
-// если задана карта
-if (argv.map) {
-  // если карта существует
-  if (config.get('game:maps')[argv.map]) {
-    config.set('game:currentMap', argv.map);
-    console.info('Current map: ' + argv.map);
-  } else {
-    console.info('Map ' + argv.map + ': not found');
-  }
-}
-
-// если задано время раунда
-if (argv.rtime) {
-  if (typeof argv.rtime === 'number') {
-    config.set('game:timers:roundTime', argv.rtime);
-    console.info('Round time: ' + argv.rtime);
-  } else {
-    console.info('Round time: ' + config.get('game:timers:roundTime'));
-  }
-}
-
-// если задано время карты
-if (argv.mtime) {
-  if (typeof argv.mtime === 'number') {
-    config.set('game:timers:mapTime', argv.mtime);
-    console.info('Map time: ' + argv.mtime);
-  } else {
-    console.info('Map time: ' + config.get('game:timers:mapTime'));
-  }
-}
-
-// если задан параметр "огонь по команде"
-if (argv.friendlyfire) {
-  config.set('game:parts:friendlyFire', true);
-}
-
-// client config
 config.set('client', (await import('../config/client.js')).default);
+
+const env = process.env;
+const isProduction = env.NODE_ENV === 'production';
+
+// если продакшн
+if (isProduction) {
+  // если не указан домен
+  if (!env.VIMP_DOMAIN) {
+    console.error(`
+      ERROR: VIMP_DOMAIN must be set in the .env file for production.
+    `);
+    process.exit(1);
+  }
+
+  config.set('server:domain', env.VIMP_DOMAIN);
+
+  // порт для Node.js приложения
+  if (env.VIMP_PORT) {
+    config.set('server:port', Number(env.VIMP_PORT));
+  }
+
+  // максимальное количество игроков
+  if (env.VIMP_PLAYERS) {
+    config.set('server:maxPlayers', Number(env.VIMP_PLAYERS));
+  }
+
+  // стартовая карта
+  if (env.VIMP_MAP && config.get('game:maps')[env.VIMP_MAP]) {
+    config.set('game:currentMap', env.VIMP_MAP);
+  }
+
+  // время раунда
+  if (env.VIMP_ROUND_TIME) {
+    config.set('game:timers:roundTime', Number(env.VIMP_ROUND_TIME));
+  }
+
+  // время карты
+  if (env.VIMP_MAP_TIME) {
+    config.set('game:timers:mapTime', Number(env.VIMP_MAP_TIME));
+  }
+
+  // "огонь по своим" (friendly fire)
+  if (env.VIMP_FRIENDLY_FIRE) {
+    config.set('game:parts:friendlyFire', env.VIMP_FRIENDLY_FIRE === 'true');
+  }
+
+  // если задан режим разработки
+} else {
+  config.set('server:oneConnection', false);
+  config.set('game:isDevMode', true);
+}
+
+console.info('------------------------------------------');
+console.info('Server Settings:');
+console.info(`-> Domain: ${config.get('server:domain')}`);
+console.info(`-> Port: ${config.get('server:port')}`);
+console.info(`-> Player limit: ${config.get('server:maxPlayers')}`);
+console.info(`-> Current map: ${config.get('game:currentMap')}`);
+console.info(`-> Round time: ${config.get('game:timers:roundTime')}`);
+console.info(`-> Map time: ${config.get('game:timers:mapTime')}`);
+console.info(`-> Friendly fire: ${config.get('game:parts:friendlyFire')}`);
+console.info('------------------------------------------');
 
 // время ожидания vote-модуля
 config.set(
@@ -97,14 +84,6 @@ config.set(
   'client:modules:chat:params:messageExp',
   config.get('game:expressions:message'),
 );
-
-const isProduction = process.env.NODE_ENV === 'production';
-
-// если задан режим разработки
-if (!isProduction) {
-  config.set('server:oneConnection', false);
-  config.set('game:isDevMode', true);
-}
 
 // EXPRESS
 const app = express();
@@ -122,6 +101,7 @@ if (isProduction) {
       key: fs.readFileSync(config.get('server:httpsOptions:key')),
       cert: fs.readFileSync(config.get('server:httpsOptions:cert')),
     };
+
     server = https.createServer(options, app);
   } catch (err) {
     console.error(`
@@ -142,7 +122,7 @@ server.listen(port, host, () => {
   const displayHost = host || 'localhost';
 
   console.info(`
-    Server is running for ${process.env.NODE_ENV || 'development'} mode.
+    Server is running for ${env.NODE_ENV || 'development'} mode.
     Listening on ${protocol}//${displayHost}:${port}
   `);
 });
