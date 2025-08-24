@@ -6,35 +6,39 @@
 
 # Запуск сервера (Ubuntu 24.04)
 
+### Требования:
+
+- Чистый сервер под управлением Ubuntu 24.04 LTS.
+- Доменное имя, A-запись которого указывает на IP-адрес вашего сервера.
+
+#### Команда для установки:
+
+```
+curl -sSL https://raw.githubusercontent.com/lgick/VIMP-Tank-Battle/master/setup_vimp.sh | bash -s -- -d vimp.lgick.space -e mail@lgick.space -p 3000
+```
+
 ### Параметры:
 
 - `-d` - домен (настройка Nginx, получение SSL-сертификата)
 - `-e` - email (регистрация Let's Encrypt)
 - `-p` - порт, на котором будет работать Node.js приложение (необязательно, по умолчанию 3000)
 
-```
-curl -sSL https://raw.githubusercontent.com/lgick/VIMP-Tank-Battle/master/setup_vimp.sh | bash -s -- -d vimp.lgick.space -e mail@lgick.space -p 3000
-```
+### Скрипт автоматически:
 
-# Установка
+- Обновит систему.
+- Установит Nginx, Node.js (v22+), Git, Certbot и pm2.
+- Склонирует последнюю версию репозитория.
+- Создаст .env файл с вашим доменом.
+- Соберет проект и запустит сервер через pm2.
+- Настроит Nginx как обратный прокси-сервер.
+- Получит и установит SSL-сертификат от Let's Encrypt.
+- Настроит базовые правила файрвола ufw.
+
+# Установка для Разработки (Development)
 
 ```
 git clone https://github.com/lgick/VIMP-Tank-Battle.git && cd VIMP-Tank-Battle && npm install && npm run dev
 ```
-
-# Параметры при запуске сервера
-
-- `domain` - домен (по умолчанию `localhost`)
-- `port` - порт (по умолчанию `3000`)
-- `map` - карта при запуске (по умолчанию `arena`)
-- `players` - лимит игроков на сервере (по умолчанию `10`)
-- `rtime` - время раунда (по умолчанию `60000`)
-- `mtime` - время карты (по умолчанию `180000`)
-- `friendlyfire` - флаг включения огня по своей команде (по умолчанию: отключен)
-
-Пример запуска:
-
-`node server.js --friendlyfire --players=20 --domain=192.33.44.55 --port=3000 --map=mini --rtime=50000 --mtime=150000`
 
 # WebSocket ports (message-IDs)
 
