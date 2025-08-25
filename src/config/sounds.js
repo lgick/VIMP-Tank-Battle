@@ -4,6 +4,7 @@ const sounds = {
   roundStart: 'round-start',
   bombHasBeenPlanted: 'bomb-has-been-planted',
   gameOver: 'game-over',
+  tankEngine: 'tank-engine',
 };
 
 export default {

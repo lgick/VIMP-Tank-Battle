@@ -26,13 +26,13 @@ export default class ImpactEffect extends BaseEffect {
     this._particleTexture = this._assets.impactParticleTexture;
 
     this.config = {
-      particleCount: randomRange(2, 6), // количество осколков
-      particleMinSize: 1, // минимальный размер осколка
-      particleMaxSize: 3, // максимальный размер осколка
+      particleCount: randomRange(1, 10), // количество осколков
+      particleMinSize: 3, // минимальный размер осколка
+      particleMaxSize: 10, // максимальный размер осколка
 
       // начальная скорость разлета
-      minInitialSpeed: 1, // пикселей в секунду
-      maxInitialSpeed: 200, // пикселей в секунду
+      minInitialSpeed: 10, // пикселей в секунду
+      maxInitialSpeed: 400, // пикселей в секунду
 
       // жизненный цикл осколков
       minLifetime: 8000, // мс
