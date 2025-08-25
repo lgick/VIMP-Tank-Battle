@@ -134,8 +134,8 @@ class Map {
         type: 'dynamic',
         position: new Vec2(posX, posY),
         angle,
-        linearDamping: 0,
-        angularDamping: 0.01,
+        linearDamping: data.linearDamping ?? 0,
+        angularDamping: data.angularDamping ?? 0.01,
         allowSleep: true,
       });
 

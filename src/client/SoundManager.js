@@ -26,6 +26,19 @@ export default class SoundManager {
 
     // хранение загруженных звуков, ключ - имя звука, значение - экземпляр Howl
     this._sounds = new Map();
+
+    // позиция слушателя
+    this._listenerX = 0;
+    this._listenerY = 0;
+
+    // радиус, в котором звук становится не пространственным
+    this._SPATIAL_THRESHOLD = 200;
+
+    // предварительно рассчитанная громкость
+    // на границе порога для модели 'inverse'
+    // Формула: ref / (ref + rolloff * (distance - ref))
+    // 100 / (100 + 1.5 * (200 - 100)) = 100 / 250 = 0.4
+    this._VOLUME_AT_THRESHOLD = 0.4;
   }
 
   /**
@@ -84,6 +97,9 @@ export default class SoundManager {
    * @param {number} y - Координата Y.
    */
   setListenerPosition(x, y) {
+    this._listenerX = x;
+    this._listenerY = y;
+
     // Корректное сопоставление координат для вида сверху:
     // Игровая Y-координата (глубина) -> Звуковая Z-координата
     // Звуковая Y-координата (высота) фиксируется на 0
@@ -92,22 +108,17 @@ export default class SoundManager {
 
   /**
    * Устанавливает ориентацию (направление взгляда) слушателя.
-   * @param {number} angle - Угол в радианах, куда смотрит слушатель.
+   * Для 2D вида сверху ориентация всегда фиксирована - "вперед" к верху экрана.
    */
-  setListenerOrientation(angle) {
-    // Вектор направления "вперед" по X
-    const fx = Math.cos(angle);
-
-    // Вектор направления "вперед" по Z (соответствует Y в 2D)
-    const fz = Math.sin(angle);
-
-    // Устанавливаем вектор "вперед" (fx, 0, fz) и вектор "вверх" (0, 1, 0)
-    // для корректной ориентации в горизонтальной плоскости (вид сверху)
-    Howler.orientation(fx, 0, fz, 0, 1, 0);
+  setListenerOrientation() {
+    // вектор "вперед" (0, 0, -1) - соответствует верху экрана
+    // вектор "вверх" (0, 1, 0) - вектор "вверх" для аудиосистемы
+    Howler.orientation(0, 0, -1, 0, 1, 0);
   }
 
   /**
-   * Обновляет позицию для уже играющего пространственного звука.
+   * Обновляет позицию для простого пространственного звука
+   * (без смешивания громкости).
    * @param {string} name - Имя звука.
    * @param {number} soundId - ID экземпляра, полученный от метода play().
    * @param {number} x - Новая координата X.
@@ -117,6 +128,60 @@ export default class SoundManager {
     const sound = this._sounds.get(name);
     if (sound && typeof soundId === 'number') {
       sound.pos(x, 0, y, soundId);
+    }
+  }
+
+  /**
+   * Обновляет громкость, позицию и панорамирование звука
+   * с учетом близости к слушателю.
+   * @param {string} name - Имя звука.
+   * @param {number} soundId - ID экземпляра.
+   * @param {number} x - Координата X источника звука.
+   * @param {number} y - Координата Y источника звука.
+   * @param {number} baseVolume - Базовая громкость (0-1),
+   * рассчитанная игровой логикой (например, по скорости).
+   */
+  updateSpatialSound(name, soundId, x, y, baseVolume) {
+    const sound = this._sounds.get(name);
+
+    if (!sound || typeof soundId !== 'number') {
+      return;
+    }
+
+    const distance = Math.hypot(x - this._listenerX, y - this._listenerY);
+
+    if (distance <= this._SPATIAL_THRESHOLD) {
+      // ближняя зона: центрированное стерео и ручная громкость
+      sound.stereo(0, soundId);
+
+      // рассчитываем множитель громкости
+      // от 1 (в центре) до _VOLUME_AT_THRESHOLD (на границе)
+      const proximity = 1 - distance / this._SPATIAL_THRESHOLD; // 0..1
+      const volumeMultiplier =
+        this._VOLUME_AT_THRESHOLD + (1 - this._VOLUME_AT_THRESHOLD) * proximity;
+      const finalVolume = baseVolume * volumeMultiplier;
+
+      sound.volume(finalVolume, soundId);
+    } else {
+      // дальняя зона: 3D-звук Howler
+      sound.pannerAttr(this._defaultPannerSettings, soundId);
+      sound.pos(x, 0, y, soundId);
+
+      // базовая громкость, Howler сам рассчитает затухание
+      sound.volume(baseVolume, soundId);
+    }
+  }
+
+  /**
+   * Обновляет скорость воспроизведения (pitch) для уже играющего звука.
+   * @param {string} name - Имя звука.
+   * @param {number} soundId - ID экземпляра, полученный от метода play().
+   * @param {number} rate - Новая скорость воспроизведения (1.0 - нормальная).
+   */
+  updateRate(name, soundId, rate) {
+    const sound = this._sounds.get(name);
+    if (sound && typeof soundId === 'number') {
+      sound.rate(rate, soundId);
     }
   }
 
@@ -151,6 +216,8 @@ export default class SoundManager {
     }
 
     if (typeof x === 'number' && typeof y === 'number') {
+      // для первого воспроизведения более простая логика,
+      // т.к. updateSpatialSound будет вызван в следующем кадре.
       sound.pannerAttr(this._defaultPannerSettings, soundId);
       sound.pos(x, 0, y, soundId);
     }
@@ -180,51 +247,6 @@ export default class SoundManager {
 
     if (sound && typeof soundId === 'number') {
       sound.stop(soundId);
-    }
-  }
-
-  /**
-   * Плавно изменяет громкость звука до указанного значения.
-   * @param {string} name - Имя звука.
-   * @param {number} soundId - ID экземпляра звука.
-   * @param {number} toVolume - Конечная громкость (от 0.0 до 1.0).
-   * @param {number} duration - Длительность перехода в миллисекундах.
-   */
-  fade(name, soundId, toVolume, duration) {
-    const sound = this._sounds.get(name);
-
-    if (sound && typeof soundId === 'number') {
-      const fromVolume = sound.volume(); // общая громкость звука
-
-      sound.fade(fromVolume, toVolume, duration, soundId);
-    }
-  }
-
-  /**
-   * Плавно останавливает звук, уменьшая его громкость до нуля,
-   * после чего останавливает воспроизведение.
-   * @param {string} name - Имя звука.
-   * @param {number} soundId - ID экземпляра звука.
-   * @param {number} duration - Длительность затухания в миллисекундах.
-   */
-  fadeOutAndStop(name, soundId, duration) {
-    const sound = this._sounds.get(name);
-
-    if (sound && typeof soundId === 'number') {
-      const fromVolume = sound.volume(); // общая громкость звука
-
-      sound.fade(fromVolume, 0, duration, soundId);
-
-      // остановка звука после завершения затухания
-      sound.once(
-        'fade',
-        id => {
-          if (id === soundId) {
-            sound.stop(id);
-          }
-        },
-        soundId,
-      );
     }
   }
 

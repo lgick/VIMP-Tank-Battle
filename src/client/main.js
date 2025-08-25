@@ -147,7 +147,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       const [w, h] = (options.scale || '1:1')
         .split(':')
         .map(value => Number(value));
-      scale[canvasId] = w / h;
+      scale[canvasId] = Number((w / h).toFixed(2));
     },
   );
 
@@ -368,7 +368,7 @@ function shotData(data) {
     coords.x = crds[0];
     coords.y = crds[1];
     soundManager.setListenerPosition(coords.x, coords.y);
-    soundManager.setListenerOrientation(crds[2]);
+    soundManager.setListenerOrientation();
   }
 
   updateGameControllers();

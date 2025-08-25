@@ -117,7 +117,7 @@ export default {
       // Map требует сервис renderer
       renderer: ['Map'],
       // компоненты использующие звук
-      soundManager: ['ExplosionEffect', 'ShotEffect', 'Bomb'],
+      soundManager: ['ExplosionEffect', 'ShotEffect', 'Bomb', 'Tank'],
     },
 
     // звуковые ассеты
@@ -130,11 +130,11 @@ export default {
       vimp: {
         aspectRatio: '3:2',
         screenRatio: 1,
-        scale: '1:1',
+        scale: '1:3',
       },
       radar: {
         fixSize: '150',
-        scale: '1:13',
+        scale: '1:40',
       },
     },
 
