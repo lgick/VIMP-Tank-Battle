@@ -11,14 +11,16 @@ export default class Bomb extends Container {
 
     this.x = params[0];
     this.y = params[1];
+
     this.rotation = params[2];
     this._size = params[3]; // соотношение сторон 1:1
     this._totalDurationMs = params[4];
 
     this._soundManager = dependencies.soundManager;
+    this._soundId = null;
 
-    // Масштабируем спрайт под нужный размер
-    // предполагаем, что текстура квадратная
+    // спрайт под нужный размер
+    // текстура квадратная
     const textureSize = assets.bombTexture.width;
     const scale = this._size / textureSize;
     this.body.scale.set(scale);
@@ -46,33 +48,38 @@ export default class Bomb extends Container {
     this._tickListener = ticker => this._updateTimer(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
 
-    //this._soundManager.play('bombHasBeenPlanted', { x: this.x, y: this.y });
+    this._soundId = this._soundManager.play('bombHasBeenPlanted', {
+      x: this.x,
+      y: this.y,
+    });
   }
 
-  // обновление таймера
-  // deltaMs - время в миллисекундах, прошедшее с прошлого кадра
+  // обновление таймера и звука
   _updateTimer(deltaMs) {
-    // накопление прошедшего времени
     this._accumulatedTimeMs += deltaMs;
 
-    // вычисление оставшегося времени
     const remainingMs = Math.max(
       0,
       this._totalDurationMs - this._accumulatedTimeMs,
     );
 
-    // обновление текста на экране
     this._updateTimerDisplay(remainingMs);
 
-    // если вышло ли время, требуется завершить анимацию
+    if (this._soundId !== null) {
+      this._soundManager.updateSpatialSound(
+        'bombHasBeenPlanted',
+        this._soundId,
+        this.x,
+        this.y,
+      );
+    }
+
     if (remainingMs <= 0) {
       this._stopTimer();
       this._updateTimerDisplay(0);
     }
   }
 
-  // обновление текста таймера на основе оставшегося времени
-  // remainingMs - оставшееся время в миллисекундах
   _updateTimerDisplay(remainingMs) {
     const time = Math.round(remainingMs / 1000);
 
@@ -93,7 +100,7 @@ export default class Bomb extends Container {
 
   destroy(options) {
     this._stopTimer();
-    this._soundManager.stop('bombHasBeenPlanted');
+    this._soundManager.stopById('bombHasBeenPlanted', this._soundId);
 
     super.destroy({
       children: true,
