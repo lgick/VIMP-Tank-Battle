@@ -12,7 +12,9 @@ export default class ShotEffectController extends Container {
     this.startPositionY = data[1];
     this.endPositionX = data[2];
     this.endPositionY = data[3];
-    this.hit = data[4];
+    this.soundPositionX = data[4];
+    this.soundPositionY = data[5];
+    this.hit = data[6];
 
     this._assets = assets;
     this._soundManager = dependencies.soundManager;
@@ -20,15 +22,34 @@ export default class ShotEffectController extends Container {
     this.tracer = null;
     this.impact = null;
     this._isDestroyed = false;
+
+    // флаги для управления жизненным циклом
+    this._visualsComplete = false;
+    this._soundComplete = false;
+
+    // звук выстрела в момент старта эффекта
+    this._soundId = this._soundManager.playSpatialOneShot('shot', {
+      x: this.soundPositionX,
+      y: this.soundPositionY,
+      // callback, который будет вызван, когда звук закончится
+      onend: () => {
+        this._soundComplete = true;
+        this._soundId = null;
+        this._tryDestroy();
+      },
+    });
+
+    // если по какой-то причине звук не запустился,
+    // сразу считаем его "завершенным"
+    if (!this._soundId) {
+      this._soundComplete = true;
+    }
   }
 
   run() {
     if (this._isDestroyed) {
       return;
     }
-
-    // звук выстрела в момент старта эффекта
-    this._soundManager.play('shot');
 
     this.tracer = new TracerEffect(
       this.startPositionX,
@@ -77,7 +98,9 @@ export default class ShotEffectController extends Container {
       // иначе, если попадания не было,
       // то после завершения трассера эффект считается завершенным
     } else {
-      this.destroy();
+      // визуальная часть завершена, попытка уничтожить объект
+      this._visualsComplete = true;
+      this._tryDestroy();
     }
   }
 
@@ -86,11 +109,16 @@ export default class ShotEffectController extends Container {
       return;
     }
 
-    // ImpactEffect завершил свою работу,
-    // его флаг isComplete уже должен быть true
-    // трассер к этому моменту также должен быть завершен
-    // это финальная стадия эффекта, если было попадание
-    this.destroy();
+    // визуальная часть завершена, попытка уничтожить объект
+    this._visualsComplete = true;
+    this._tryDestroy();
+  }
+
+  // проверяет, завершены ли звук и визуал, и если да, уничтожает объект
+  _tryDestroy() {
+    if (this._visualsComplete && this._soundComplete) {
+      this.destroy();
+    }
   }
 
   destroy() {
@@ -99,6 +127,13 @@ export default class ShotEffectController extends Container {
     }
 
     this._isDestroyed = true;
+
+    // этот вызов остается на случай, если эффект уничтожат принудительно,
+    // до того как звук закончится сам
+    if (this._soundId) {
+      this._soundManager.stopById(this._soundId);
+      this._soundId = null;
+    }
 
     if (this.tracer) {
       this.tracer.destroy();
