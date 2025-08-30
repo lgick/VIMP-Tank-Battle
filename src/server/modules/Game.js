@@ -523,15 +523,11 @@ class Game {
           const weaponConfig = this._weapons[weaponName];
 
           if (weaponConfig.type === 'hitscan') {
-            const hitscanParams = {
-              shooterBody: shotData.shooterBody,
-              shooterGameId: gameId,
+            const shot = this._hitscanService.processShot({
+              ...shotData,
+              gameId,
               weaponName,
-              startPoint: shotData.startPoint,
-              direction: shotData.direction,
-            };
-
-            const shot = this._hitscanService.processShot(hitscanParams);
+            });
 
             gameData[weaponName] = gameData[weaponName] || [];
             gameData[weaponName].push(shot);

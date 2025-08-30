@@ -41,8 +41,10 @@ export default class ExplosionEffect extends BaseEffect {
 
     this.addChild(this._mainBody, this._core);
 
-    // звук взрыва
-    this._soundId = this._soundManager.play('explosion', { x, y });
+    this._soundId = this._soundManager.playSpatialOneShot('explosion', {
+      x,
+      y,
+    });
   }
 
   // обновление анимации
@@ -79,7 +81,9 @@ export default class ExplosionEffect extends BaseEffect {
 
   // уничтожение объекта
   destroy(options) {
-    this._soundManager.stopById('explosion', this._soundId);
+    if (this._soundId) {
+      this._soundManager.stopById('explosion', this._soundId);
+    }
 
     // вызов destroy из BaseEffect
     super.destroy(options);
