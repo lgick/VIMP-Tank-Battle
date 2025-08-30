@@ -243,6 +243,7 @@ class Tank extends BaseModel {
         } else if (this.weaponConstructorType === 'hitscan') {
           this._shotData = {
             shooterBody: body,
+            soundPoint: body.getPosition(),
             startPoint: this.getMuzzlePosition(this.currentWeapon),
             direction: this.getFireDirection(this.currentWeapon),
           };

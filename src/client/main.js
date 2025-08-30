@@ -341,6 +341,7 @@ socketMethods[PS_CLEAR] = function (setIdList) {
     }
   }
 
+  soundManager.reset();
   updateGameControllers();
 };
 
@@ -371,6 +372,7 @@ function shotData(data) {
     soundManager.setListenerOrientation();
   }
 
+  soundManager.updateAllSpatialSounds();
   updateGameControllers();
 
   // панель
@@ -567,6 +569,7 @@ ws.onclose = e => {
   const connectionInterruptedId = 3;
 
   document.removeEventListener('visibilitychange', handleVisibilityChange);
+  soundManager.destroy();
 
   if (e.reason) {
     const msg = unpacking(e.reason);
