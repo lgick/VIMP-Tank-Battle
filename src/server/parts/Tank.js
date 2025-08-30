@@ -48,7 +48,7 @@ class Tank extends BaseModel {
 
     // параметры орудия
     this._maxGunAngle = 1.4;
-    this._gunRotationSpeed = 5; // скорость поворота башни
+    this._gunRotationSpeed = 1; // скорость поворота башни
 
     this._shotData = null;
 
@@ -243,6 +243,7 @@ class Tank extends BaseModel {
         } else if (this.weaponConstructorType === 'hitscan') {
           this._shotData = {
             shooterBody: body,
+            soundPoint: body.getPosition(),
             startPoint: this.getMuzzlePosition(this.currentWeapon),
             direction: this.getFireDirection(this.currentWeapon),
           };

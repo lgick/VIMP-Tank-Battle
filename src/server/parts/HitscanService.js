@@ -21,10 +21,11 @@ class HitscanService {
   processShot(params) {
     const {
       shooterBody, // тело стреляющего
-      shooterGameId, // id стреляющего
+      gameId, // id стреляющего
       weaponName, // имя оружия из weaponsConfig
       startPoint, // мировая точка начала луча (например, дуло оружия)
       direction, // нормализованный мировой вектор направления луча
+      soundPoint,
     } = params;
 
     const weaponConfig = this._weapons[weaponName];
@@ -77,7 +78,7 @@ class HitscanService {
       }
 
       if (hitUserData && hitUserData.type === 'player') {
-        this._game.applyDamage(hitUserData.gameId, shooterGameId, weaponName);
+        this._game.applyDamage(hitUserData.gameId, gameId, weaponName);
       }
     }
 
@@ -94,6 +95,8 @@ class HitscanService {
       +startPoint.y.toFixed(1),
       +endPoint.x,
       +endPoint.y,
+      +soundPoint.x.toFixed(1),
+      +soundPoint.y.toFixed(1),
       wasHit,
     ];
   }

@@ -4,14 +4,13 @@ import BaseEffect from '../BaseEffect.js';
 const EFFECT_BASE_RADIUS_PX = 50; // базовый радиус для расчета масштаба
 
 export default class ExplosionEffect extends BaseEffect {
-  constructor(x, y, radius, onComplete, assets, soundManager) {
+  constructor(x, y, radius, onComplete, assets) {
     super(onComplete); // конструктор BaseEffect
 
     // ассет взрыва
     const explosionTexture = assets.explosionTexture;
 
     this._radius = radius;
-    this._soundManager = soundManager;
 
     // сортировка дочерних элементов по zIndex
     this.sortableChildren = true;
@@ -40,9 +39,6 @@ export default class ExplosionEffect extends BaseEffect {
     this._core.zIndex = 4; // zIndex ядра должен быть самым высоким
 
     this.addChild(this._mainBody, this._core);
-
-    // звук взрыва
-    this._soundId = this._soundManager.play('explosion', { x, y });
   }
 
   // обновление анимации
@@ -79,8 +75,6 @@ export default class ExplosionEffect extends BaseEffect {
 
   // уничтожение объекта
   destroy(options) {
-    this._soundManager.stopById('explosion', this._soundId);
-
     // вызов destroy из BaseEffect
     super.destroy(options);
   }
