@@ -48,10 +48,13 @@ export default class Bomb extends Container {
     this._tickListener = ticker => this._updateTimer(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
 
-    this._soundId = this._soundManager.play('bombHasBeenPlanted', {
-      x: this.x,
-      y: this.y,
-    });
+    this._soundId = this._soundManager.playSpatialOneShot(
+      'bombHasBeenPlanted',
+      {
+        x: this.x,
+        y: this.y,
+      },
+    );
   }
 
   // обновление таймера и звука
@@ -64,15 +67,6 @@ export default class Bomb extends Container {
     );
 
     this._updateTimerDisplay(remainingMs);
-
-    if (this._soundId !== null) {
-      this._soundManager.updateSpatialSound(
-        'bombHasBeenPlanted',
-        this._soundId,
-        this.x,
-        this.y,
-      );
-    }
 
     if (remainingMs <= 0) {
       this._stopTimer();
@@ -100,7 +94,11 @@ export default class Bomb extends Container {
 
   destroy(options) {
     this._stopTimer();
-    this._soundManager.stopById('bombHasBeenPlanted', this._soundId);
+
+    if (this._soundId) {
+      this._soundManager.stopById(this._soundId);
+      this._soundId = null;
+    }
 
     super.destroy({
       children: true,
