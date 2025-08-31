@@ -45,6 +45,10 @@ class HitscanService {
       startPoint,
       endPointRay,
       (fixture, point, _normal, fraction) => {
+        if (fixture.isSensor()) {
+          return -1.0;
+        }
+
         const body = fixture.getBody();
 
         // если сам стрелок, игнорировать эту фикстуру и продолжить луч
