@@ -20,57 +20,40 @@ class Tank extends BaseModel {
     super(data);
 
     this._modelData = data.modelData;
+
     this._width = this._modelData.size * 4;
     this._height = this._modelData.size * 3;
 
-    // коэффициент тяги (вперед)
-    this._baseForwardForceFactor = 700;
-    // коэффициент тяги (назад)
-    this._baseReverseForceFactor = 500;
-    // коэффициент желаемой интенсивности поворота (зависит от инерции)
-    this._baseTurnTorqueFactor = 45;
-    // целевая макс. скорость вперед (м/с или юнитов/с)
-    this._maxForwardSpeed = 240;
-    // целевая макс. скорость назад (м/с или юнитов/с)
-    this._maxReverseSpeed = -200;
+    this._baseForwardForceFactor = this._modelData.baseForwardForceFactor;
+    this._baseReverseForceFactor = this._modelData.baseReverseForceFactor;
+    this._baseTurnTorqueFactor = this._modelData.baseTurnTorqueFactor;
+    this._maxForwardSpeed = this._modelData.maxForwardSpeed;
+    this._maxReverseSpeed = this._modelData.maxReverseSpeed;
 
-    // затухание (Damping) контролирует, как быстро танк замедляется естественно
-    // или прекращает поворачиваться.
-    // большие значения = большее затухание (замедляется быстрее).
-    // сопротивление при движении (как сопротивление воздуха/трение)
-    this._linearDamping = 3.0;
-    // сопротивление при повороте
-    this._angularDamping = 10.0;
+    this._lateralGrip = this._modelData.lateralGrip;
 
-    // сила бокового сцепления
-    // больше значение = меньше занос/скольжение
-    this._lateralGrip = 9.0;
-
-    // параметры орудия
-    this._maxGunAngle = 1.4;
-    this._gunRotationSpeed = 1; // скорость поворота башни
+    this._maxGunAngle = this._modelData.maxGunAngle;
+    this._gunRotationSpeed = this._modelData.gunRotationSpeed;
+    this._gunCenterSpeed = this._modelData.gunCenterSpeed;
 
     this._shotData = null;
 
     this._body = data.world.createBody({
       type: 'dynamic',
-      position: new Vec2(
-        this._modelData.position[0],
-        this._modelData.position[1],
-      ),
-      angle: this._modelData.angle * (Math.PI / 180),
-      angularDamping: this._angularDamping,
-      linearDamping: this._linearDamping,
+      position: new Vec2(data.position[0], data.position[1]),
+      angle: data.angle * (Math.PI / 180),
+      angularDamping: this._modelData.damping.angular,
+      linearDamping: this._modelData.damping.linear,
       allowSleep: false,
     });
 
     this._body.gunRotation = 0;
+    this._centeringGun = false;
 
-    this._body.createFixture(new BoxShape(this._width / 2, this._height / 2), {
-      density: 0.3, // плотность
-      friction: 0.01, // трение
-      restitution: 0.0, // упругость
-    });
+    this._body.createFixture(
+      new BoxShape(this._width / 2, this._height / 2),
+      this._modelData.fixture,
+    );
 
     this._body.setUserData({
       type: 'player',
@@ -83,9 +66,6 @@ class Tank extends BaseModel {
 
     // базовый фактор инерцией
     this._effectiveTurnTorque = this._baseTurnTorqueFactor * this._inertia;
-
-    this._centeringGun = false;
-    this._gunCenterSpeed = 5.0;
 
     // состояние танка:
     // 3 - норма,
