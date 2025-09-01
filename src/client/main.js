@@ -203,7 +203,7 @@ socketMethods[PS_AUTH_ERRORS] = err => {
 
 // map data
 socketMethods[PS_MAP_DATA] = data => {
-  const { layers, map, step, setId, spriteSheet, physicsStatic } = data;
+  const { scale, layers, map, step, setId, spriteSheet, physicsStatic } = data;
 
   // удаление данных карт
   const removeMap = setId => {
@@ -222,7 +222,7 @@ socketMethods[PS_MAP_DATA] = data => {
 
     dynamicArr.forEach((item, index) => {
       const key = `d${index}`;
-      dynamicData[key] = { ...item, type: 'dynamic' };
+      dynamicData[key] = { ...item, type: 'dynamic', scale };
     });
 
     nameArr.forEach(name => {
@@ -248,6 +248,7 @@ socketMethods[PS_MAP_DATA] = data => {
         layer,
         tiles,
         physicsStatic,
+        scale,
       };
 
       return acc;

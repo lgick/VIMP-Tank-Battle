@@ -9,6 +9,7 @@ export default class Map extends Container {
     this._assetUrl = null; // URL для возможной выгрузки
 
     this._renderer = dependencies.renderer;
+    this.scale = data.scale;
 
     this.sprite = null;
     this.mapSprite = null; // спрайт для "запеченной" карты
@@ -145,8 +146,8 @@ export default class Map extends Container {
 
   update(data) {
     if (this.sprite) {
-      this.sprite.x = data[0];
-      this.sprite.y = data[1];
+      this.sprite.x = data[0] / this.scale.x;
+      this.sprite.y = data[1] / this.scale.y;
       this.sprite.rotation = data[2];
     }
   }

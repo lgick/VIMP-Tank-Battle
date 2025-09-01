@@ -21,6 +21,7 @@ class VIMP {
     this._isDevMode = data.isDevMode || false; // флаг режима разработки
 
     this._maps = data.maps; // карты
+    this._mapScale = data.mapScale;
     this._mapList = Object.keys(this._maps); // список карт массивом
     this._mapsInVote = data.mapsInVote; // карт в голосовании
     this._mapSetId = data.mapSetId; // дефолтный id конструктора карт
@@ -65,6 +66,7 @@ class VIMP {
     this._PORT_CONSOLE = ports.CONSOLE;
 
     this._currentMapData = null; // данные текущей карты
+    this._scaledMapData = null; // масштабированные данные текущей карты
 
     this._blockedRemap = false; // флаг блокировки голосования за новую карту
     this._startMapNumber = 0; // номер первой карты в голосовании
@@ -290,7 +292,40 @@ class VIMP {
 
   // создает карту
   createMap() {
-    this._currentMapData = this._maps[this._currentMap];
+    this._currentMapData = {
+      scale: this._mapScale,
+      ...this._maps[this._currentMap],
+    };
+
+    // масштабирование
+    function scaleMapData(mapData) {
+      const scale = mapData.scale;
+      const step = mapData.step * scale;
+
+      const physicsDynamic = (mapData.physicsDynamic || []).map(item => ({
+        ...item,
+        position: item.position.map(v => v * scale),
+        width: item.width * scale,
+        height: item.height * scale,
+      }));
+
+      const respawns = Object.fromEntries(
+        Object.entries(mapData.respawns || {}).map(([team, arr]) => [
+          team,
+          arr.map(([x, y, angle]) => [x * scale, y * scale, angle]),
+        ]),
+      );
+
+      return {
+        ...mapData,
+        step,
+        physicsDynamic,
+        respawns,
+        scale,
+      };
+    }
+
+    this._scaledMapData = scaleMapData(this._currentMapData);
 
     // если нет индивидуального конструктора для создания карты
     if (!this._currentMapData.setId) {
@@ -310,7 +345,7 @@ class VIMP {
     this._vote.reset();
 
     this._game.clear();
-    this._game.createMap(this._currentMapData);
+    this._game.createMap(this._scaledMapData);
 
     for (const gameId in this._users) {
       if (Object.hasOwn(this._users, gameId)) {
@@ -396,7 +431,7 @@ class VIMP {
   startRound() {
     this._isRoundEnding = false; // сброс флага завершения раунда
 
-    const respawns = this._currentMapData.respawns;
+    const respawns = this._scaledMapData.respawns;
     const respId = {};
     const fullStatData = this._stat.getFull();
 
@@ -407,7 +442,7 @@ class VIMP {
 
     const setIdList = this._game.removePlayersAndShots();
 
-    this._game.createMap(this._currentMapData);
+    this._game.createMap(this._scaledMapData);
 
     for (const gameId in this._users) {
       if (Object.hasOwn(this._users, gameId)) {
@@ -537,7 +572,7 @@ class VIMP {
     const user = this._users[gameId];
     const currentTeam = user.team;
     const nextTeam = user.nextTeam;
-    const respawns = this._currentMapData.respawns;
+    const respawns = this._scaledMapData.respawns;
 
     // если команда уже была выбрана ранее,
     // то повтороное сообщение о новой команде

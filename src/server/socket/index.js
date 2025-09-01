@@ -75,6 +75,11 @@ export default server => {
 
         // закрывает соединение
         close: (code, data) => {
+          // отключение всех портов
+          if (ws.socket.socketMethods) {
+            ws.socket.socketMethods = ws.socket.socketMethods.map(() => false);
+          }
+
           ws.close(code, JSON.stringify(data));
         },
       };
