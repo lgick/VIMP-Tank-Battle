@@ -12,7 +12,6 @@ export default {
   parts: {
     constructors, // конструкторы частей игры
 
-    mapScale: 0.3,
     mapConstructor: 'Map', // название конструктора карт
     hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan
 
@@ -30,9 +29,9 @@ export default {
         // коэффициент тяги (назад)
         baseReverseForceFactor: 500,
         // коэффициент желаемой интенсивности поворота (зависит от инерции)
-        baseTurnTorqueFactor: 45,
+        baseTurnTorqueFactor: 55,
         // целевая макс. скорость вперед (м/с или юнитов/с)
-        maxForwardSpeed: 240,
+        maxForwardSpeed: 400,
         // целевая макс. скорость назад (м/с или юнитов/с)
         maxReverseSpeed: -200,
         // сопротивление движению
@@ -41,31 +40,31 @@ export default {
           // сопротивление при движении
           linear: 3.0,
           // сопротивление вращению (при повороте)
-          angular: 20.0,
+          angular: 15.0,
         },
         // физические свойства
         fixture: {
-          density: 0.3, // масса танка
-          friction: 0.01, // сцепление гусениц
-          restitution: 0.0, // отскок при столкновении
+          density: 100, // плотность (0+)
+          friction: 0.1, // трение (0 - 1)
+          restitution: 0, // отскок при столкновении (0 - 1)
         },
         // сила бокового сцепления (сопротивление заносу)
         // чем выше значение, тем меньше занос/скольжение
-        lateralGrip: 9.0,
+        lateralGrip: 1.0,
         // максимальный угол поворота башни
         maxGunAngle: 1.4,
         // скорость поворота башни
-        gunRotationSpeed: 1,
+        gunRotationSpeed: 3.0,
         // скорость поворота башни в центр
-        gunCenterSpeed: 5.0,
+        gunCenterSpeed: 3.0,
       },
     },
     weapons: {
       // bullet
       w1: {
         type: 'hitscan',
-        impulseMagnitude: 50, // сила импульса (кг*м/с)
-        damage: 7, // урон от одного попадания
+        impulseMagnitude: 500000, // сила импульса (кг*м/с)
+        damage: 13, // урон от одного попадания
         range: 1500, // максимальная дальность выстрела (в игровых юнитах)
         fireRate: 0, // кулдаун между выстрелами (0 - отсутствует)
         spread: 0.05, // разброс в радианах (0 для идеальной точности)
@@ -83,8 +82,8 @@ export default {
         time: 5000,
         shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
         size: 10, // соотношение сторон 1:1
-        fireRate: 1, // кулдаун (1 бомба в секунду)
-        damage: 50, // урон в эпицентре
+        fireRate: 0, // кулдаун (0 - отсутствует)
+        damage: 20, // урон в эпицентре
         radius: 400, // радиус взрыва
         impulseMagnitude: 200000, // сила импульса
         cameraShake: {
@@ -96,6 +95,7 @@ export default {
   },
 
   maps, // карты
+  mapScale: 0.3, // масштаб карт
   currentMap: 'garden', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
   mapSetId: 'c1', // дефолтный id конструкторов создания карт
@@ -186,11 +186,11 @@ export default {
     },
     w1: {
       key: 'w1',
-      value: 200,
+      value: 500,
     },
     w2: {
       key: 'w2',
-      value: 50,
+      value: 200,
     },
   },
 
