@@ -16,8 +16,8 @@ const createDefenseLine = (startX, startY, count, isVertical) => {
       img: 'b1.png',
       width: 32,
       height: 32,
-      linearDamping: 10.0,
-      angularDamping: 50.0,
+      linearDamping: 5.0,
+      angularDamping: 14.0,
     });
   }
 };

@@ -170,13 +170,9 @@ class Game {
   createPlayer(gameId, model, name, teamId, data) {
     const modelData = this._models[model];
 
-    modelData.position = [data[0], data[1]];
-    modelData.angle = data[2];
-
     this._playersData[gameId] = this._Factory(modelData.constructor, {
-      playerKeys: this._playerKeys,
-      modelData,
       world: this._world,
+      playerKeys: this._playerKeys,
       model,
       name,
       gameId,
@@ -184,6 +180,9 @@ class Game {
       currentWeapon: modelData.currentWeapon,
       weapons: this._weapons,
       services: this._services,
+      modelData,
+      position: [data[0], data[1]],
+      angle: data[2],
     });
   }
 
@@ -595,7 +594,7 @@ class Game {
       weaponData,
       shotData,
       userData: {
-        type: 'shot',
+        type: weaponData.type,
         weaponName,
         shotId,
         gameId,
