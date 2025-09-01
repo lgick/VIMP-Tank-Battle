@@ -1,9 +1,9 @@
 import canopy from './canopy.js';
 import garden from './garden.js';
-import mini from './mini.js';
+import pool_mini from './pool_mini.js';
 
 export default {
-  mini,
+  pool_mini,
   canopy,
   garden,
 };

@@ -1,6 +1,8 @@
 export default {
   setId: 'c1',
 
+  scale: 0.9,
+
   spriteSheet: {
     img: 'tiles.png',
     frames: [

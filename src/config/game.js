@@ -12,6 +12,7 @@ export default {
   parts: {
     constructors, // конструкторы частей игры
 
+    mapScale: 0.3,
     mapConstructor: 'Map', // название конструктора карт
     hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan
 
@@ -23,7 +24,7 @@ export default {
         constructor: 'Tank',
         currentWeapon: 'w1',
         // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
-        size: 20,
+        size: 5,
         // коэффициент тяги (вперед)
         baseForwardForceFactor: 700,
         // коэффициент тяги (назад)
@@ -81,7 +82,7 @@ export default {
         constructor: 'Bomb',
         time: 5000,
         shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
-        size: 46, // соотношение сторон 1:1
+        size: 10, // соотношение сторон 1:1
         fireRate: 1, // кулдаун (1 бомба в секунду)
         damage: 50, // урон в эпицентре
         radius: 400, // радиус взрыва
