@@ -134,7 +134,7 @@ export default {
       },
       radar: {
         fixSize: '150',
-        scale: '1:30',
+        scale: '1:13',
       },
     },
 

@@ -26,19 +26,19 @@ export default class ImpactEffect extends BaseEffect {
     this._particleTexture = this._assets.impactParticleTexture;
 
     this.config = {
-      particleCount: randomRange(1, 10), // количество осколков
-      particleMinSize: 3, // минимальный размер осколка
-      particleMaxSize: 10, // максимальный размер осколка
+      particleCount: randomRange(2, 4), // количество осколков
+      particleMinSize: 1, // минимальный размер осколка
+      particleMaxSize: 3, // максимальный размер осколка
 
       // начальная скорость разлета
       minInitialSpeed: 10, // пикселей в секунду
-      maxInitialSpeed: 400, // пикселей в секунду
+      maxInitialSpeed: 200, // пикселей в секунду
 
       // жизненный цикл осколков
       minLifetime: 8000, // мс
       maxLifetime: 15000, // мс
 
-      color: [0x666666, 0x444444], // массив цветов для осколков
+      color: [0x333333, 0x222222, 0x444444], // массив цветов для осколков
 
       fadeOutStart: 0.8, // начинать угасание, когда прошло 70% времени жизни
 
@@ -49,7 +49,7 @@ export default class ImpactEffect extends BaseEffect {
 
       // параметры для управления движением и остановкой
       // коэффициент сопротивления (чем выше, тем быстрее остановка)
-      dragCoefficient: 5,
+      dragCoefficient: 13,
       // порог скорости, ниже которого частица считается "остановившейся"
       minSpeedThreshold: 1.0,
       // сколько времени частица лежит неподвижно перед угасанием (мс)

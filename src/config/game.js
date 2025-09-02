@@ -81,11 +81,11 @@ export default {
         constructor: 'Bomb',
         time: 5000,
         shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
-        size: 10, // соотношение сторон 1:1
+        size: 13, // соотношение сторон 1:1
         fireRate: 0, // кулдаун (0 - отсутствует)
         damage: 20, // урон в эпицентре
-        radius: 400, // радиус взрыва
-        impulseMagnitude: 200000, // сила импульса
+        radius: 200, // радиус взрыва
+        impulseMagnitude: 20000000, // сила импульса
         cameraShake: {
           intensity: 30, // сила тряски (в пикселях)
           duration: 400, // продолжительность (в миллисекундах)
