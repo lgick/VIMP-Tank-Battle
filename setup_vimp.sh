@@ -98,6 +98,7 @@ echo ".env файл успешно создан."
 # ====== Установка и настройка pm2 ======
 echo "Установка pm2..."
 sudo npm install -g pm2@latest
+pm2 update
 
 # Проверка, существует ли уже vimp-game
 if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
