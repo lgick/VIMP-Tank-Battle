@@ -9,9 +9,7 @@ export default class MapRadar extends Container {
     this._physicsStatic = data.physicsStatic;
     this._step = data.step;
     this.zIndex = 2;
-
-    // масштаб
-    this.scale.set(1, 1);
+    this.scale = data.scale;
 
     this.radarGraphics = new Graphics();
     this.addChild(this.radarGraphics);

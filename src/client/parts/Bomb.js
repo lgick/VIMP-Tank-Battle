@@ -35,7 +35,7 @@ export default class Bomb extends Container {
     });
 
     this.text.anchor.set(0.5);
-    this.text.x = 0; // центр текста относительно родительского контейнера
+    this.text.x = 0.5; // центр текста относительно родительского контейнера
     this.text.y = 0;
 
     // накопленное время с момента создания
