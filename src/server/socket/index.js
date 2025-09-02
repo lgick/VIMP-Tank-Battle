@@ -76,10 +76,7 @@ export default server => {
         // закрывает соединение
         close: (code, data) => {
           // отключение всех портов
-          if (ws.socket.socketMethods) {
-            ws.socket.socketMethods = ws.socket.socketMethods.map(() => false);
-          }
-
+          ws.socket.socketMethods = ws.socket.socketMethods.map(() => false);
           ws.close(code, JSON.stringify(data));
         },
       };
@@ -192,12 +189,8 @@ export default server => {
       ws.on('message', data => {
         const msg = ws.socket.unpack(data);
 
-        if (msg) {
-          const socketMethod = socketMethods[msg[0]];
-
-          if (socketMethod) {
-            socketMethod(msg[1]);
-          }
+        if (msg && ws.socket.socketMethods[msg[0]]) {
+          socketMethods[msg[0]](msg[1]);
         }
       });
 
