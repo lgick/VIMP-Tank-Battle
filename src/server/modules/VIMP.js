@@ -117,7 +117,7 @@ class VIMP {
     const user = this._users[gameId];
 
     if (user) {
-      console.warn(`[RTT] Kick ${gameId} — pong latency exceeded`);
+      console.warn(`[RTT] Kick ${user.name} — pong latency exceeded`);
       user.socket.close(4003, [this._PORT_TECH_INFORM_DATA, [5]]);
 
       // принудительное удаление, не дожидаясь закрытия соединения
@@ -130,7 +130,7 @@ class VIMP {
     const user = this._users[gameId];
 
     if (user) {
-      console.warn(`[RTT] Kick ${gameId} — no response to pings`);
+      console.warn(`[RTT] Kick ${user.name} — no response to pings`);
       user.socket.close(4004, [this._PORT_TECH_INFORM_DATA, [6]]);
 
       // принудительное удаление, не дожидаясь закрытия соединения
