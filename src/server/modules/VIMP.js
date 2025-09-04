@@ -799,7 +799,20 @@ class VIMP {
     Object.keys(this._users).forEach(gameId => {
       const user = this._users[gameId];
 
-      user.socket.send(this._PORT_SOUND_DATA, 'gameOver');
+      // если есть победитель
+      if (winnerTeam) {
+        if (user.teamId === killerTeamId) {
+          user.socket.send(this._PORT_SOUND_DATA, 'victory');
+        } else if (user.teamId === victimTeamId) {
+          user.socket.send(this._PORT_SOUND_DATA, 'defeat');
+        } else {
+          user.socket.send(this._PORT_SOUND_DATA, 'victory');
+        }
+        // если победителя нет
+      } else {
+        user.socket.send(this._PORT_SOUND_DATA, 'defeat');
+      }
+
       user.socket.send(this._PORT_GAME_INFORM_DATA, informData);
     });
 
@@ -827,15 +840,17 @@ class VIMP {
 
     const killerUser = this._users[killerId];
 
-    // если это не самоубийство и не огонь по своим,
-    // обновление статистики убийцы
+    // если это не самоубийство
     if (killerUser && victimId !== killerId) {
+      // если это не убийство игрока своей команды
       if (victimUser.teamId !== killerUser.teamId) {
         this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
         // иначе если это огонь по своим
       } else {
         this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
       }
+
+      killerUser.socket.send(this._PORT_SOUND_DATA, 'frag');
     }
 
     // отмена всех запланированных обновлений панели

@@ -54,9 +54,9 @@ export default {
         // максимальный угол поворота башни
         maxGunAngle: 1.4,
         // скорость поворота башни
-        gunRotationSpeed: 3.0,
+        gunRotationSpeed: 5.0,
         // скорость поворота башни в центр
-        gunCenterSpeed: 3.0,
+        gunCenterSpeed: 10.0,
       },
     },
     weapons: {
@@ -64,7 +64,7 @@ export default {
       w1: {
         type: 'hitscan',
         impulseMagnitude: 500000, // сила импульса (кг*м/с)
-        damage: 13, // урон от одного попадания
+        damage: 40, // урон от одного попадания
         range: 1500, // максимальная дальность выстрела (в игровых юнитах)
         fireRate: 0, // кулдаун между выстрелами (0 - отсутствует)
         spread: 0.05, // разброс в радианах (0 для идеальной точности)
@@ -186,11 +186,11 @@ export default {
     },
     w1: {
       key: 'w1',
-      value: 500,
+      value: 200,
     },
     w2: {
       key: 'w2',
-      value: 200,
+      value: 50,
     },
   },
 
