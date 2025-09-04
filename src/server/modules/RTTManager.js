@@ -142,19 +142,18 @@ export default class RTTManager {
 
     if (time) {
       const newRttSample = Date.now() - time;
-
-      // если замер RTT превышает установленный порог
-      if (this._maxLatency && newRttSample > this._maxLatency) {
-        this._callbacks.onKickForMaxLatency(gameId);
-        return null; // не возвращается RTT, т.к. игрок будет кикнут
-      }
-
       const oldRtt = user.rtt;
 
       // сглаживание значения RTT
       // с помощью экспоненциального скользящего среднего (EMA)
       // (предотвращает резкие скачки RTT из-за единичных сетевых флуктуаций)
       user.rtt = oldRtt * (1 - this._alpha) + newRttSample * this._alpha;
+
+      // если замер RTT превышает установленный порог
+      if (this._maxLatency && user.rtt > this._maxLatency) {
+        this._callbacks.onKickForMaxLatency(gameId);
+        return null; // не возвращается RTT, т.к. игрок будет кикнут
+      }
 
       // сброс счетчика пропущенных пингов, т.к. игрок ответил
       user.missedPings = 0;
