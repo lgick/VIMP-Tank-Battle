@@ -49,7 +49,8 @@ class VIMP {
     // { team1: new Set(), team2: new Set(), spectators: new Set() }
     this._teamSizes = {};
 
-    // список gameId активных игроков на полотне
+    // список gameId активных игроков на полотне для наблюдения
+    // (кроме убитых игроков)
     this._activePlayersList = [];
     // список gameId игроков для удаления с полотна
     this._removedPlayersList = [];
@@ -607,7 +608,11 @@ class VIMP {
 
     // если на сервере менее 2-х активных игроков (кроме user),
     // требуется сбросить статистику и начать раунд заново
-    if (this._activePlayersList.filter(id => id !== gameId).length < 2) {
+    if (
+      Object.keys(this._users).filter(
+        id => this._users[id].teamId !== this._spectatorId && id !== gameId,
+      ).length < 2
+    ) {
       user.nextTeam = newTeam;
       this._stat.reset();
       this.initiateNewRound();
@@ -831,6 +836,7 @@ class VIMP {
     }
 
     victimUser.isWatching = true;
+    this.removeFromActivePlayers(victimId);
 
     // обновление статистики уничтоженного игрока
     this._stat.updateUser(victimId, victimUser.teamId, {
