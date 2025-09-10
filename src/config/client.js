@@ -190,7 +190,7 @@ export default {
             'Team {0} is full. Your current team: {1}', // 0
             'Your team: {0}', // 1
             'Your new team: {0}', // 2
-            'Your team in the next round: {0}', // 3
+            'Your new status: spectator', // 3
           ],
           // timers
           t: ['Current map: {0}', 'New round'],
@@ -203,6 +203,7 @@ export default {
             'Vote finished! Next map: {0}',
             'Vote ended with no result',
           ],
+          c: ['Command not found'],
           // name
           n: ['Invalid name', '{0} changed name to {1}'],
         },
@@ -266,6 +267,12 @@ export default {
         navActiveClass: 'active',
       },
       params: {
+        templates: {
+          firstVote: [
+            ['team', true],
+            ['Choose a team', 'teams', null],
+          ],
+        },
         menu: [
           [['team'], ['Switch team', 'teams', null]],
           [['mapUser'], ['Suggest map', 'maps', null]],
