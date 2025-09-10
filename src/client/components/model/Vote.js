@@ -13,6 +13,7 @@ export default class VoteModel {
     voteModel = this;
 
     this._menu = data.menu; // меню
+    this._templates = data.templates; // шаблоны голосований
 
     this._currentVote = null; // текущее голосование
     this._type = ''; // тип ('menu', 'vote')
@@ -40,6 +41,10 @@ export default class VoteModel {
   // открывает голосование
   open() {
     this.publisher.emit('mode', { name: 'vote', status: 'opened' });
+  }
+
+  createWithTemplate(name) {
+    this.createVote(this._templates[name]);
   }
 
   // создает голосование
