@@ -1,3 +1,1 @@
-import Tracks from './Tracks.js';
-
-export default Tracks;
+export { default } from './Tracks.js';

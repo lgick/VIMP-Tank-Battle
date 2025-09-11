@@ -1,6 +1,6 @@
 import Panel from './Panel.js';
 import Stat from './Stat.js';
-import Chat from './Chat.js';
+import Chat from './chat/index.js';
 import Vote from './Vote.js';
 import Game from './Game.js';
 import RTTManager from './RTTManager.js';
@@ -112,8 +112,6 @@ class VIMP {
       console.warn(`[RTT] Kick ${user.name} — pong latency exceeded`);
       this._socketManager.sendTechInform(gameId, 'kickForMaxLatency');
       this._socketManager.close(gameId, 4003);
-
-      // принудительное удаление, не дожидаясь закрытия соединения
       this.removeUser(gameId);
     }
   }
@@ -126,8 +124,6 @@ class VIMP {
       console.warn(`[RTT] Kick ${user.name} — no response to pings`);
       this._socketManager.sendTechInform(gameId, 'kickForMissedPings');
       this._socketManager.close(gameId, 4004);
-
-      // принудительное удаление, не дожидаясь закрытия соединения
       this.removeUser(gameId);
     }
   }
@@ -267,7 +263,7 @@ class VIMP {
     usersToKick.forEach(gameId => {
       this._socketManager.sendTechInform(gameId, 'kickIdle');
       this._socketManager.close(gameId, 4005);
-      this.removeUser(gameId); // принудительное удаление, не дожидаясь закрытия соединения
+      this.removeUser(gameId);
     });
   }
 
@@ -402,7 +398,7 @@ class VIMP {
     this._timerManager.stopRoundTimer();
     this.startRound();
     this._timerManager.startRoundTimer();
-    this._chat.pushSystem('t:1');
+    this._chat.pushSystem('TIMERS_NEW_ROUND');
   }
 
   // начало раунда
@@ -480,10 +476,10 @@ class VIMP {
       user.name = name;
       this._game.changeName(gameId, name);
       this._stat.updateUser(gameId, user.teamId, { name });
-      this._chat.pushSystem(`n:1:${oldName},${name}`);
+      this._chat.pushSystem('NAME_CHANGED', [oldName, name]);
       this._socketManager.sendName(gameId, name);
     } else {
-      this._chat.pushSystem('n:0', gameId);
+      this._chat.pushSystemByUser(gameId, 'NAME_INVALID');
     }
   }
 
@@ -495,7 +491,7 @@ class VIMP {
 
     // если игрок выбирает свою текущую команду
     if (newTeam === currentTeam) {
-      this._chat.pushSystem(`s:1:${newTeam}`, gameId);
+      this._chat.pushSystemByUser(gameId, 'TEAMS_YOUR_TEAM', [newTeam]);
       return;
     }
 
@@ -504,7 +500,11 @@ class VIMP {
       newTeam !== this._spectatorTeam &&
       respawns[newTeam].length === this._teamSizes[newTeam].size
     ) {
-      this._chat.pushSystem(`s:0:${newTeam},${currentTeam}`, gameId);
+      this._chat.pushSystemByUser(gameId, 'TEAMS_TEAM_FULL', [
+        newTeam,
+        currentTeam,
+      ]);
+
       return;
     }
 
@@ -528,19 +528,19 @@ class VIMP {
     ) {
       this._stat.reset();
       this.initiateNewRound();
-      this._chat.pushSystem(`s:2:${newTeam}`, gameId);
+      this._chat.pushSystemByUser(gameId, 'TEAMS_NEW_TEAM', [newTeam]);
       return;
     }
 
     // если переход из активного игрока в наблюдатели
     if (newTeamId === this._spectatorId) {
       this._setSpectatorFromActivePlayer(user);
-      this._chat.pushSystem('s:3', gameId);
+      this._chat.pushSystemByUser(gameId, 'TEAMS_NOW_SPECTATOR');
       return;
     }
 
     // сообщение о смене команды
-    this._chat.pushSystem(`s:2:${newTeam}`, gameId);
+    this._chat.pushSystemByUser(gameId, 'TEAMS_NEW_TEAM', [newTeam]);
 
     // если игра активным игроком невозможна в текущем раунде
     if (!this._timerManager.canChangeTeamInCurrentRound()) {
@@ -947,7 +947,7 @@ class VIMP {
       if (type === 'changeMap') {
         value = value[0];
         this._vote.addInVote(type, value);
-        this._chat.pushSystem('v:0', gameId);
+        this._chat.pushSystemByUser(gameId, 'VOTE_ACCEPTED');
 
         // иначе если пользователь захотел сменить карту
       } else if (type === 'mapUser') {
@@ -955,7 +955,7 @@ class VIMP {
 
         // если карта является текущей
         if (value === this._currentMap) {
-          this._chat.pushSystem('v:1:' + value, gameId);
+          this._chat.pushSystemByUser(gameId, 'VOTE_MAP_IS_ACTIVE', [value]);
         } else {
           // если пользователь один в игре (смена карты)
           if (Object.keys(this._users).length === 1) {
@@ -1012,7 +1012,7 @@ class VIMP {
 
         this._vote.createVote([['changeMap'], arr], userList);
         this._vote.addInVote('changeMap', mapName);
-        this._chat.pushSystem('v:2', gameId);
+        this._chat.pushSystemByUser(gameId, 'VOTE_STARTED');
 
         // иначе голосование создает игра
       } else {
@@ -1032,12 +1032,12 @@ class VIMP {
             this._timerManager.startMapTimer();
           }
 
-          this._chat.pushSystem('v:5');
-          this._chat.pushSystem('t:0:' + this._currentMap);
+          this._chat.pushSystem('VOTE_NO_RESULT');
+          this._chat.pushSystem('TIMERS_CURRENT_MAP', [this._currentMap]);
 
           // если есть результат и карта существует
         } else if (this._maps[mapName]) {
-          this._chat.pushSystem('v:4:' + mapName);
+          this._chat.pushSystem('VOTE_FINISHED', [mapName]);
 
           // запускаем отложенную смену карты через TimerManager
           this._timerManager.startMapChangeDelay(() => {
@@ -1053,7 +1053,7 @@ class VIMP {
       });
     } else {
       if (typeof gameId !== 'undefined') {
-        this._chat.pushSystem('v:3', gameId);
+        this._chat.pushSystemByUser(gameId, 'VOTE_UNAVAILABLE');
       }
     }
   }
@@ -1076,7 +1076,7 @@ class VIMP {
         if (this._isDevMode) {
           this.initiateNewRound();
         } else {
-          this._chat.pushSystem('c:1', gameId);
+          this._chat.pushSystemByUser(gameId, 'COMMANDS_NOT_FOUND');
         }
         break;
 
@@ -1098,20 +1098,19 @@ class VIMP {
           return `${minutes}:${seconds}`;
         }
 
-        this._chat.pushSystem(
-          [getTime(this._timerManager.getMapTimeLeft())],
-          gameId,
-        );
+        this._chat.pushSystemByUser(gameId, [
+          getTime(this._timerManager.getMapTimeLeft()),
+        ]);
         break;
       }
 
       // название текущей карты
       case '/mapname':
-        this._chat.pushSystem([this._currentMap], gameId);
+        this._chat.pushSystemByUser(gameId, [this._currentMap]);
         break;
 
       default:
-        this._chat.pushSystem('c:1', gameId);
+        this._chat.pushSystemByUser(gameId, 'COMMANDS_NOT_FOUND');
     }
   }
 
