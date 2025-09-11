@@ -424,7 +424,7 @@ class VIMP {
     for (const gameId in this._users) {
       if (Object.hasOwn(this._users, gameId)) {
         const user = this._users[gameId];
-        const teamId = user.teamId;
+        const team = user.team;
 
         if (user.isReady === false) {
           continue;
@@ -432,28 +432,18 @@ class VIMP {
 
         this._socketManager.sendClear(gameId, setIdList);
 
-        if (teamId === this._spectatorId) {
+        if (team === this._spectatorTeam) {
           user.isWatching = true;
           this._socketManager.sendSpectatorDefaultShot(gameId);
         } else {
-          user.isWatching = false;
-          this._socketManager.sendPlayerDefaultShot(gameId);
-          this.addToActivePlayers(gameId);
-          this._stat.updateUser(gameId, teamId, { status: '' });
+          respId[team] = respId[team] || 0;
 
-          respId[user.team] = respId[user.team] || 0;
+          const respArr = respawns[team];
+          const respawnData = respArr[respId[team]];
 
-          const respArr = respawns[user.team];
+          this._setActivePlayer(user, respawnData);
 
-          this._game.createPlayer(
-            gameId,
-            user.model,
-            user.name,
-            user.teamId,
-            respArr[respId[user.team]],
-          );
-
-          respId[user.team] += 1;
+          respId[team] += 1;
         }
       }
     }
@@ -503,17 +493,13 @@ class VIMP {
     const currentTeam = user.team;
     const respawns = this._scaledMapData.respawns;
 
-    // если игрок выбирает свою текущую команду,
-    // то сообщение о текущей команде
+    // если игрок выбирает свою текущую команду
     if (newTeam === currentTeam) {
       this._chat.pushSystem(`s:1:${newTeam}`, gameId);
       return;
     }
 
-    // если новая команда не наблюдатель и
-    // количество респаунов на карте в выбраной команде
-    // равно количеству игроков в этой команде (смена невозможна),
-    // то сообщение о полной команде
+    // если новая команда не наблюдатель и нет свободных респаунов
     if (
       newTeam !== this._spectatorTeam &&
       respawns[newTeam].length === this._teamSizes[newTeam].size
@@ -532,11 +518,9 @@ class VIMP {
     user.team = newTeam;
     user.teamId = newTeamId;
 
-    // перемещение пользователя в статистике
     this._stat.moveUser(gameId, oldTeamId, newTeamId);
 
-    // если на сервере менее 2-х активных игроков (кроме user),
-    // требуется сбросить статистику и начать раунд заново
+    // если активных игроков меньше 2-х, рестарт раунда
     if (
       Object.keys(this._users).filter(
         id => this._users[id].teamId !== this._spectatorId && id !== gameId,
@@ -548,95 +532,74 @@ class VIMP {
       return;
     }
 
-    // если игрок стал наблюдателем
-    if (oldTeamId !== this._spectatorId && newTeamId === this._spectatorId) {
-      user.isWatching = true;
-      user.watchedGameId = this._activePlayersList[0] || null;
-
-      // удаление из активных игроков
-      this.removeFromActivePlayers(gameId);
-
-      // добавление на удаление с полотна
-      this._removedPlayersList.push({
-        gameId,
-        model: user.model,
-      });
-
-      this._game.removePlayer(gameId);
-      this._socketManager.sendSpectatorDefaultShot(gameId);
+    // если переход из активного игрока в наблюдатели
+    if (newTeamId === this._spectatorId) {
+      this._setSpectatorFromActivePlayer(user);
       this._chat.pushSystem('s:3', gameId);
-
-      return;
-    }
-
-    // на этом этапе игрок не наблюдатель
-    // если с начала раунда прошло много времени
-    // и игра в текущем раунде невозможна
-    if (this._timerManager.canChangeTeamInCurrentRound() === false) {
-      this._stat.updateUser(gameId, newTeamId, {
-        status: 'dead',
-      });
-
-      user.isWatching = true;
-      user.watchedGameId = this._activePlayersList[0] || null;
-
-      this._socketManager.sendSpectatorDefaultShot(gameId);
-
-      // если пользователь был активным игроком
-      if (oldTeamId !== this._spectatorId) {
-        this.removeFromActivePlayers(gameId);
-
-        // добавление на удаление с полотна
-        this._removedPlayersList.push({
-          gameId,
-          model: user.model,
-        });
-
-        this._game.removePlayer(gameId);
-      }
-
-      this._chat.pushSystem(`s:2:${newTeam}`, gameId);
       return;
     }
 
     // сообщение о смене команды
     this._chat.pushSystem(`s:2:${newTeam}`, gameId);
 
-    // если игрок был наблюдателем и сменил на игровую команду
-    if (oldTeamId === this._spectatorId && newTeamId !== this._spectatorId) {
-      user.isWatching = false;
-      user.watchedGameId = null;
-
-      const respawnIndex = this._teamSizes[newTeam].size - 1;
-      const respawnData = respawns[newTeam][respawnIndex];
-
-      this._game.createPlayer(
-        gameId,
-        user.model,
-        user.name,
-        user.teamId,
-        respawnData,
-      );
-
-      this.addToActivePlayers(gameId);
-      this._socketManager.sendPlayerDefaultShot(gameId);
-
-      return;
-    }
-
-    // если игрок сменил игровую команду на другую игровую команду
-    if (oldTeamId !== this._spectatorId && newTeamId !== this._spectatorId) {
-      const respawnIndex = this._teamSizes[newTeam].size - 1;
-      const respawnData = respawns[newTeam][respawnIndex];
-
-      this._game.changePlayerData(gameId, {
-        respawnData,
-        teamId: this._teams[newTeam],
-        gameId,
+    // если игра активным игроком невозможна в текущем раунде
+    if (!this._timerManager.canChangeTeamInCurrentRound()) {
+      this._stat.updateUser(gameId, newTeamId, {
+        status: 'dead',
       });
 
-      return;
+      // если пользователь был активным игроком,
+      // перевести его в наблюдатели до следующего раунда
+      if (oldTeamId !== this._spectatorId) {
+        this._setSpectatorFromActivePlayer(user);
+      }
+      // игра активным игроком возможна в текущем раунде
+    } else {
+      const respawnIndex = this._teamSizes[newTeam].size - 1;
+      const respawnData = respawns[newTeam][respawnIndex];
+
+      // переход из наблюдателя в игрока
+      if (oldTeamId === this._spectatorId) {
+        this._setActivePlayer(user, respawnData);
+        // смена игровой команды
+      } else {
+        this._game.changePlayerData(gameId, {
+          respawnData,
+          teamId: newTeamId,
+          gameId,
+        });
+      }
     }
+  }
+
+  // перевод активного игрока в наблюдатели
+  _setSpectatorFromActivePlayer(user) {
+    const gameId = user.gameId;
+    const model = user.model;
+
+    user.isWatching = true;
+    user.watchedGameId = this._activePlayersList[0] || null;
+
+    this.removeFromActivePlayers(gameId);
+    this._removedPlayersList.push({ gameId, model });
+    this._game.removePlayer(gameId);
+    this._socketManager.sendSpectatorDefaultShot(gameId);
+  }
+
+  // перевод игрока в активные игроки
+  _setActivePlayer(user, respawnData) {
+    const gameId = user.gameId;
+    const teamId = user.teamId;
+    const name = user.name;
+    const model = user.model;
+
+    user.isWatching = false;
+    user.watchedGameId = null;
+
+    this._stat.updateUser(gameId, teamId, { status: '' });
+    this._game.createPlayer(gameId, model, name, teamId, respawnData);
+    this.addToActivePlayers(gameId);
+    this._socketManager.sendPlayerDefaultShot(gameId);
   }
 
   // сбрасывает this._teamSizes в нулевые значения
