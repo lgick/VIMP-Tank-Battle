@@ -5,14 +5,13 @@ import Vote from './Vote.js';
 import Game from './Game.js';
 import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
-import SocketManager from './SocketManager.js';
 
 // Singleton VIMP
 
 let vimp;
 
 class VIMP {
-  constructor(data, ports) {
+  constructor(data, socketManager) {
     if (vimp) {
       return vimp;
     }
@@ -75,12 +74,7 @@ class VIMP {
     this._chat = new Chat();
     this._vote = new Vote();
 
-    this._socketManager = new SocketManager(
-      ports,
-      this._game,
-      this._panel,
-      this._stat,
-    );
+    this._socketManager = socketManager;
 
     this._RTTManager = new RTTManager(data.rtt, {
       onKickForMissedPings: gameId => this.kickForMissedPings(gameId),
@@ -96,6 +90,7 @@ class VIMP {
     });
 
     // внедрение зависимостей
+    this._socketManager.injectServices(this._game, this._panel, this._stat);
     this._game.injectServices({ vimp: this, panel: this._panel });
     this._panel.injectTimerManager(this._timerManager);
 
@@ -110,8 +105,7 @@ class VIMP {
 
     if (user) {
       console.warn(`[RTT] Kick ${user.name} — pong latency exceeded`);
-      this._socketManager.sendTechInform(gameId, 'kickForMaxLatency');
-      this._socketManager.close(gameId, 4003);
+      this._socketManager.close(user.socketId, 4003, 'kickForMaxLatency');
       this.removeUser(gameId);
     }
   }
@@ -122,8 +116,7 @@ class VIMP {
 
     if (user) {
       console.warn(`[RTT] Kick ${user.name} — no response to pings`);
-      this._socketManager.sendTechInform(gameId, 'kickForMissedPings');
-      this._socketManager.close(gameId, 4004);
+      this._socketManager.close(user.socketId, 4004, 'kickForMissedPings');
       this.removeUser(gameId);
     }
   }
@@ -142,8 +135,8 @@ class VIMP {
     this._game.updateData(dt);
 
     // список пользователей готовых к игре
-    const userList = Object.keys(this._users).filter(
-      gameId => this._users[gameId].isReady === true,
+    const userList = Object.values(this._users).filter(
+      user => user.isReady === true,
     );
 
     const game = this._game.getGameData();
@@ -226,8 +219,8 @@ class VIMP {
     };
 
     // отправка данных
-    userList.forEach(gameId =>
-      this._socketManager.sendShot(gameId, getUserData(gameId)),
+    userList.forEach(user =>
+      this._socketManager.sendShot(user.socketId, getUserData(user.gameId)),
     );
   }
 
@@ -253,17 +246,16 @@ class VIMP {
           const idleTime = now - user.lastActionTime;
 
           if (idleTime > idleThreshold) {
-            usersToKick.push(gameId);
+            usersToKick.push(user);
           }
         }
       }
     }
 
     // кик неактивных пользователей
-    usersToKick.forEach(gameId => {
-      this._socketManager.sendTechInform(gameId, 'kickIdle');
-      this._socketManager.close(gameId, 4005);
-      this.removeUser(gameId);
+    usersToKick.forEach(user => {
+      this._socketManager.close(user.socketId, 4005, 'kickIdle');
+      this.removeUser(user.gameId);
     });
   }
 
@@ -272,7 +264,9 @@ class VIMP {
     const users = this._RTTManager.scheduleNextPing();
 
     for (const [gameId, { pingIdCounter }] of users) {
-      this._socketManager.sendPing(gameId, pingIdCounter);
+      const user = this._users[gameId];
+
+      this._socketManager.sendPing(user.socketId, pingIdCounter);
     }
   }
 
@@ -337,7 +331,7 @@ class VIMP {
       if (Object.hasOwn(this._users, gameId)) {
         const user = this._users[gameId];
 
-        this._socketManager.sendClear(gameId);
+        this._socketManager.sendClear(user.socketId);
 
         // перемещение пользователя в наблюдатели
         this._stat.moveUser(gameId, user.teamId, this._spectatorId);
@@ -360,11 +354,12 @@ class VIMP {
   // отправляет карту
   sendMap(gameId) {
     const user = this._users[gameId];
+    const socketId = user.socketId;
 
     user.isReady = false;
     user.currentMap = this._currentMap;
-    this._socketManager.sendTechInform(gameId, 'sendMap');
-    this._socketManager.sendMap(gameId, this._currentMapData);
+    this._socketManager.sendTechInform(socketId, 'sendMap');
+    this._socketManager.sendMap(socketId, this._currentMapData);
   }
 
   // сообщает о загрузке карты
@@ -380,17 +375,18 @@ class VIMP {
     // если игрок ещё не готов
     if (user.isReady === false) {
       // отправка первого shot
-      this._socketManager.sendFirstShot(gameId);
+      this._socketManager.sendFirstShot(user.socketId);
     }
   }
 
   // сообщает о готовности игрока к игре
   firstShotReady(gameId) {
     const user = this._users[gameId];
+    const socketId = user.socketId;
 
     user.isReady = true;
-    this._socketManager.sendTechInform(gameId); // скрывает экран загрузки
-    this._socketManager.sendFirstVote(gameId);
+    this._socketManager.sendTechInform(socketId); // скрывает экран загрузки
+    this._socketManager.sendFirstVote(socketId);
   }
 
   // запуск нового раунда
@@ -420,17 +416,19 @@ class VIMP {
     for (const gameId in this._users) {
       if (Object.hasOwn(this._users, gameId)) {
         const user = this._users[gameId];
-        const team = user.team;
 
         if (user.isReady === false) {
           continue;
         }
 
-        this._socketManager.sendClear(gameId, setIdList);
+        const socketId = user.socketId;
+        const team = user.team;
+
+        this._socketManager.sendClear(socketId, setIdList);
 
         if (team === this._spectatorTeam) {
           user.isWatching = true;
-          this._socketManager.sendSpectatorDefaultShot(gameId);
+          this._socketManager.sendSpectatorDefaultShot(socketId);
         } else {
           respId[team] = respId[team] || 0;
 
@@ -441,10 +439,10 @@ class VIMP {
 
           respId[team] += 1;
         }
+
+        this._socketManager.sendRoundStart(socketId);
       }
     }
-
-    this._socketManager.sendRoundStart();
   }
 
   // проверяет имя
@@ -477,7 +475,7 @@ class VIMP {
       this._game.changeName(gameId, name);
       this._stat.updateUser(gameId, user.teamId, { name });
       this._chat.pushSystem('NAME_CHANGED', [oldName, name]);
-      this._socketManager.sendName(gameId, name);
+      this._socketManager.sendName(user.socketId, name);
     } else {
       this._chat.pushSystemByUser(gameId, 'NAME_INVALID');
     }
@@ -583,7 +581,7 @@ class VIMP {
     this.removeFromActivePlayers(gameId);
     this._removedPlayersList.push({ gameId, model });
     this._game.removePlayer(gameId);
-    this._socketManager.sendSpectatorDefaultShot(gameId);
+    this._socketManager.sendSpectatorDefaultShot(user.socketId);
   }
 
   // перевод игрока в активные игроки
@@ -599,7 +597,7 @@ class VIMP {
     this._stat.updateUser(gameId, teamId, { status: '' });
     this._game.createPlayer(gameId, model, name, teamId, respawnData);
     this.addToActivePlayers(gameId);
-    this._socketManager.sendPlayerDefaultShot(gameId);
+    this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
   }
 
   // сбрасывает this._teamSizes в нулевые значения
@@ -677,20 +675,25 @@ class VIMP {
     if (winnerTeam) {
       Object.keys(this._users).forEach(gameId => {
         const user = this._users[gameId];
+        const socketId = user.socketId;
 
         if (user.teamId === victimTeamId) {
-          this._socketManager.sendDefeat(gameId);
+          this._socketManager.sendDefeat(socketId);
         } else {
-          this._socketManager.sendVictory(gameId);
+          this._socketManager.sendVictory(socketId);
         }
+
+        this._socketManager.sendRoundEnd(socketId, winnerTeam);
       });
     } else {
-      Object.keys(this._users).forEach(gameId => {
-        this._socketManager.sendDefeat(gameId);
+      Object.values(this._users).forEach(user => {
+        const socketId = user.socketId;
+
+        this._socketManager.sendDefeat(socketId);
+        this._socketManager.sendRoundEnd(socketId);
       });
     }
 
-    this._socketManager.sendRoundEnd(winnerTeam);
     this._timerManager.stopRoundTimer();
     this._timerManager.startRoundRestartDelay(); // отложенный перезапуск раунда
   }
@@ -724,13 +727,13 @@ class VIMP {
         this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
       }
 
-      this._socketManager.sendFragSound(killerId);
+      this._socketManager.sendFragSound(killerUser.socketId);
     }
 
     // отмена всех запланированных обновлений панели
     this._panel.invalidate(victimId);
 
-    this._socketManager.sendSpectatorDefaultShot(victimId);
+    this._socketManager.sendSpectatorDefaultShot(victimUser.socketId);
 
     // проверка на уничтожение всей команды противника
     this.checkTeamWipe(
@@ -773,7 +776,7 @@ class VIMP {
   }
 
   // создает нового игрока
-  createUser(params, socket, cb) {
+  createUser(params, socketId, cb) {
     // подбирает gameId
     const getGameId = () => {
       let counter = 0;
@@ -791,6 +794,8 @@ class VIMP {
     this._users[gameId] = {
       // gameId игрока
       gameId,
+      // socketId игрока, для ws коммуникации
+      socketId,
       // флаг готовности игрока
       isReady: false,
       // текущая карта игры
@@ -822,7 +827,6 @@ class VIMP {
     this._vote.addUser(gameId);
     this._stat.addUser(gameId, this._spectatorId, { name });
     this._panel.addUser(gameId);
-    this._socketManager.addUser(gameId, socket);
     this._RTTManager.addUser(gameId);
 
     this._teamSizes[this._spectatorTeam].add(gameId);
@@ -866,8 +870,6 @@ class VIMP {
 
     // обновляем счетчики команд
     this._teamSizes[team].delete(gameId);
-
-    this._socketManager.removeUser(gameId);
 
     delete this._users[gameId];
   }
