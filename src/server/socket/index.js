@@ -4,12 +4,7 @@ import security from '../../lib/security.js';
 import waiting from '../../lib/waiting.js';
 import validator from '../../lib/validator.js';
 import config from '../../lib/config.js';
-
-// PS (server ports): порты получения данные от сервера
-const PS_CONFIG_DATA = config.get('wsports:server:CONFIG_DATA');
-const PS_AUTH_DATA = config.get('wsports:server:AUTH_DATA');
-const PS_AUTH_ERRORS = config.get('wsports:server:AUTH_ERRORS');
-const PS_TECH_INFORM_DATA = config.get('wsports:server:TECH_INFORM_DATA');
+import SocketManager from './SocketManager.js';
 
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = config.get('wsports:client:CONFIG_READY');
@@ -24,7 +19,8 @@ const PC_PONG = config.get('wsports:client:PONG');
 const oneConnection = config.get('server:oneConnection');
 
 const VIMP = config.get('server:VIMP');
-const vimp = new VIMP(config.get('game'), config.get('wsports:server'));
+const socketManager = new SocketManager(config.get('wsports:server'));
+const vimp = new VIMP(config.get('game'), socketManager);
 
 const auth = config.get('auth');
 const cConf = config.get('client');
@@ -49,7 +45,7 @@ export default server => {
     security.origin(requestOrigin, err => {
       if (err) {
         console.warn(err);
-        ws.close(4001);
+        ws.close(4001, JSON.stringify(err));
         return;
       }
 
@@ -94,19 +90,20 @@ export default server => {
         false,
       ];
 
+      socketManager.addUser(id, ws.socket);
+
       sessions[id] = ws;
 
       ws.socket.socketMethods[PC_CONFIG_READY] = true;
-      ws.socket.send(PS_CONFIG_DATA, cConf);
+      socketManager.sendConfig(id, cConf);
 
       // 0: config ready
       socketMethods[PC_CONFIG_READY] = err => {
         if (!err) {
-          if (oneConnection && ips[address]) {
-            sessions[ips[address]].socket.close(4002, [
-              PS_TECH_INFORM_DATA,
-              [1],
-            ]);
+          const oldId = ips[address];
+
+          if (oneConnection && oldId) {
+            socketManager.close(oldId, 4002, 'anotherDevice');
           }
 
           ips[address] = id;
@@ -114,10 +111,10 @@ export default server => {
           waiting.check(id, empty => {
             if (empty) {
               ws.socket.socketMethods[PC_AUTH_RESPONSE] = true;
-              ws.socket.send(PS_AUTH_DATA, auth);
+              socketManager.sendAuthData(id, auth);
             } else {
               waiting.add(id, arr => {
-                ws.socket.send(PS_TECH_INFORM_DATA, [0, arr]);
+                socketManager.sendTechInform(id, 'fullServer', arr);
               });
             }
           });
@@ -131,7 +128,7 @@ export default server => {
         if (data && typeof data === 'object') {
           const err = validator.auth(data);
 
-          ws.socket.send(PS_AUTH_ERRORS, err);
+          socketManager.sendAuthResult(id, err);
 
           if (!err) {
             ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
@@ -142,7 +139,7 @@ export default server => {
             ws.socket.socketMethods[PC_VOTE_DATA] = true;
             ws.socket.socketMethods[PC_PONG] = true;
 
-            vimp.createUser(data, ws.socket, createdId => {
+            vimp.createUser(data, id, createdId => {
               gameId = createdId;
             });
           }
@@ -200,6 +197,7 @@ export default server => {
           delete ips[address];
         }
 
+        socketManager.removeUser(id, ws.socket);
         delete sessions[id];
 
         if (gameId) {
@@ -211,18 +209,15 @@ export default server => {
         waiting.getNext(nextId => {
           if (nextId && sessions[nextId]) {
             sessions[nextId].socket.socketMethods[PC_AUTH_RESPONSE] = true;
-            sessions[nextId].socket.send(PS_AUTH_DATA, auth);
-            sessions[nextId].socket.send(PS_TECH_INFORM_DATA);
+            socketManager.sendAuthData(nextId, auth);
+            socketManager.sendTechInform(nextId);
           }
         });
 
         waiting.createNotifyObject(notifyObject => {
-          for (const p in notifyObject) {
-            if (Object.hasOwn(notifyObject, p) && sessions[p]) {
-              sessions[p].socket.send(PS_TECH_INFORM_DATA, [
-                0,
-                notifyObject[p],
-              ]);
+          for (const id in notifyObject) {
+            if (Object.hasOwn(notifyObject, id) && sessions[id]) {
+              socketManager.sendTechInform(id, 'fullServer', notifyObject[id]);
             }
           }
         });

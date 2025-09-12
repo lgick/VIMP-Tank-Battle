@@ -298,8 +298,6 @@ export default {
 
     'Loading...',
 
-    'Connection lost!',
-
     'Kicked for inactivity.',
 
     'Connection terminated due to high network latency.',
