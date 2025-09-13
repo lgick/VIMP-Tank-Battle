@@ -96,7 +96,7 @@ export default {
 
   maps, // карты
   mapScale: 0.3, // масштаб карт
-  currentMap: 'garden', // название карты по умолчанию
+  currentMap: 'pool_mini', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
   mapSetId: 'c1', // дефолтный id конструкторов создания карт
 
