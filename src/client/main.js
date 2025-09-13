@@ -32,7 +32,7 @@ import parts from './parts/index.js';
 // PS (server ports): порты получения данные от сервера
 const PS_CONFIG_DATA = wsports.server.CONFIG_DATA;
 const PS_AUTH_DATA = wsports.server.AUTH_DATA;
-const PS_AUTH_ERRORS = wsports.server.AUTH_ERRORS;
+const PS_AUTH_RESULT = wsports.server.AUTH_RESULT;
 const PS_MAP_DATA = wsports.server.MAP_DATA;
 const PS_FIRST_SHOT_DATA = wsports.server.FIRST_SHOT_DATA;
 const PS_SHOT_DATA = wsports.server.SHOT_DATA;
@@ -191,7 +191,7 @@ socketMethods[PS_AUTH_DATA] = data => {
 };
 
 // auth errors
-socketMethods[PS_AUTH_ERRORS] = err => {
+socketMethods[PS_AUTH_RESULT] = err => {
   modules.auth.parseRes(err);
 
   if (!err) {
@@ -296,11 +296,18 @@ socketMethods[PS_GAME_INFORM_DATA] = data => {
 // technical inform data
 socketMethods[PS_TECH_INFORM_DATA] = data => {
   if (data) {
-    const [key, arr] = data;
-    const message = techInformList[key] || 'Unknown error';
+    let message;
+
+    if (Array.isArray(data)) {
+      const [key, arr] = data;
+
+      message = formatMessage(techInformList[key], arr) || 'Unknown error';
+    } else {
+      message = data;
+    }
 
     modules.user?.disableKeys();
-    techInformer.textContent = formatMessage(message, arr);
+    techInformer.textContent = message;
     techInformer.style.display = 'block';
   } else {
     modules.user?.enableKeys();
@@ -485,11 +492,7 @@ function runModules(data) {
   // Vote Module
   //==========================================//
 
-  const voteModel = new VoteModel({
-    menu: voteData.params.menu,
-    time: voteData.params.time,
-  });
-
+  const voteModel = new VoteModel(voteData.params);
   const voteView = new VoteView(voteModel, voteData.elems);
 
   modules.vote = new VoteCtrl(voteModel, voteView);
@@ -567,16 +570,14 @@ function handleVisibilityChange() {
 ws.onopen = () => {};
 
 ws.onclose = e => {
-  const connectionInterruptedId = 3;
-
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   soundManager.destroy();
 
   if (e.reason) {
     const msg = unpacking(e.reason);
-    socketMethods[msg[0]](msg[1]);
+    socketMethods[PS_TECH_INFORM_DATA](msg);
   } else {
-    socketMethods[PS_TECH_INFORM_DATA]([connectionInterruptedId]);
+    socketMethods[PS_TECH_INFORM_DATA]('Connection lost...');
   }
 };
 

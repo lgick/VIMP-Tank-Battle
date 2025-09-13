@@ -1,3 +1,5 @@
+import { buildSystemMessage } from './systemMessages.js';
+
 // Singleton Chat
 
 let chat;
@@ -29,15 +31,24 @@ class Chat {
     this._list.push([message, name, teamId]);
   }
 
-  // добавляет системное сообщение
+  // добавляет системное сообщение для всех
   // message может быть:
   // - шаблонным сообщением '<группа шаблонов>:<номер шаблона>:<параметры>'
   // - сообщением в виде массива [<текст сообщения>]
-  pushSystem(message, gameId) {
-    if (gameId) {
-      this._userList[gameId].push(message);
+  pushSystem(message, params) {
+    if (typeof message === 'string') {
+      this._list.push(buildSystemMessage(message, params));
     } else {
       this._list.push(message);
+    }
+  }
+
+  // добавляет системное сообщение для пользователя
+  pushSystemByUser(gameId, message, params) {
+    if (typeof message === 'string') {
+      this._userList[gameId].push(buildSystemMessage(message, params));
+    } else {
+      this._userList[gameId].push(message);
     }
   }
 

@@ -3,7 +3,7 @@ export default {
   server: {
     CONFIG_DATA: 0,
     AUTH_DATA: 1,
-    AUTH_ERRORS: 2,
+    AUTH_RESULT: 2,
     MAP_DATA: 3,
     FIRST_SHOT_DATA: 4,
     SHOT_DATA: 5,
