@@ -134,7 +134,7 @@ export default {
       },
       radar: {
         fixSize: '150',
-        scale: '1:13',
+        scale: '1:15',
       },
     },
 
@@ -203,9 +203,19 @@ export default {
             'Vote finished! Next map: {0}',
             'Vote ended with no result',
           ],
+          // command
           c: ['Command not found'],
           // name
           n: ['Invalid name', '{0} changed name to {1}'],
+          // bots
+          b: [
+            'Invalid bot count',
+            'Invalid team name',
+            '{0} created {1} bot(s) for {2}',
+            '{0} removed all bots from {1}',
+            '{0} created {1} bot(s)',
+            '{0} removed all bots',
+          ],
         },
       },
     },
