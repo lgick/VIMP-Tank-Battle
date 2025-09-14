@@ -27,12 +27,12 @@ export default class ImpactEffect extends BaseEffect {
 
     this.config = {
       particleCount: randomRange(2, 4), // количество осколков
-      particleMinSize: 1, // минимальный размер осколка
-      particleMaxSize: 3, // максимальный размер осколка
+      particleMinSize: 3, // минимальный размер осколка
+      particleMaxSize: 8, // максимальный размер осколка
 
       // начальная скорость разлета
       minInitialSpeed: 10, // пикселей в секунду
-      maxInitialSpeed: 200, // пикселей в секунду
+      maxInitialSpeed: 300, // пикселей в секунду
 
       // жизненный цикл осколков
       minLifetime: 8000, // мс

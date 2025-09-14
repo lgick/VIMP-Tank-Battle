@@ -18,6 +18,13 @@ const MESSAGE_CODES = {
 
   NAME_INVALID: 'n:0', // 'Invalid name'
   NAME_CHANGED: 'n:1', // '{0} changed name to {1}'
+
+  BOT_INVALID_COUNT: 'b:0', // Invalid bot count
+  BOT_INVALID_TEAM: 'b:1', // Invalid team name
+  BOT_CREATED_FOR_TEAM: 'b:2', // {0} created {1} bot(s) for {2}
+  BOT_REMOVED_FROM_TEAM: 'b:3', // {0} removed all bots from {1}
+  BOT_CREATED: 'b:4', // {0} created {1} bot(s)
+  BOT_REMOVED: 'b:5', // {0} removed all bots
 };
 
 /**

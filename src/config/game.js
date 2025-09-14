@@ -15,7 +15,7 @@ export default {
     mapConstructor: 'Map', // название конструктора карт
     hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan
 
-    friendlyFire: true, // огонь по своей команде
+    friendlyFire: false, // огонь по своей команде
 
     models: {
       // tank
@@ -67,7 +67,7 @@ export default {
         damage: 40, // урон от одного попадания
         range: 1500, // максимальная дальность выстрела (в игровых юнитах)
         fireRate: 0, // кулдаун между выстрелами (0 - отсутствует)
-        spread: 0.05, // разброс в радианах (0 для идеальной точности)
+        spread: 0, // разброс в радианах (0 для идеальной точности)
         consumption: 1, // расход патронов за один выстрел
         cameraShake: {
           intensity: 5, // сила тряски (в пикселях)
@@ -175,7 +175,6 @@ export default {
     latency: {
       key: 4,
       bodyMethod: '=',
-      bodyValue: '',
     },
   },
 

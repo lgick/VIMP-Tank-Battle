@@ -5,6 +5,7 @@ import Vote from './Vote.js';
 import Game from './Game.js';
 import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
+import BotManager from './BotManager.js';
 
 // Singleton VIMP
 
@@ -75,6 +76,13 @@ class VIMP {
     this._vote = new Vote();
 
     this._socketManager = socketManager;
+
+    this._botManager = new BotManager(
+      this,
+      this._game,
+      this._panel,
+      this._stat,
+    );
 
     this._RTTManager = new RTTManager(data.rtt, {
       onKickForMissedPings: gameId => this.kickForMissedPings(gameId),
@@ -306,6 +314,7 @@ class VIMP {
     }
 
     this._scaledMapData = scaleMapData(this._currentMapData);
+    this._botManager.createMap(this._scaledMapData);
 
     // если нет индивидуального конструктора для создания карты
     if (!this._currentMapData.setId) {
@@ -443,6 +452,26 @@ class VIMP {
         this._socketManager.sendRoundStart(socketId);
       }
     }
+
+    // создание ботов на карте
+    for (const [botId, botData] of this._botManager.getBots()) {
+      const team = botData.team;
+      const respArr = respawns[team];
+
+      respId[team] = respId[team] || 0;
+
+      if (respArr && respId[team] < respArr.length) {
+        this._game.createPlayer(
+          botId,
+          botData.model,
+          botData.name,
+          botData.teamId,
+          respArr[respId[team]],
+        );
+
+        respId[team] += 1;
+      }
+    }
   }
 
   // проверяет имя
@@ -498,12 +527,17 @@ class VIMP {
       newTeam !== this._spectatorTeam &&
       respawns[newTeam].length === this._teamSizes[newTeam].size
     ) {
-      this._chat.pushSystemByUser(gameId, 'TEAMS_TEAM_FULL', [
-        newTeam,
-        currentTeam,
-      ]);
+      // попытка удалить одного бота, чтобы освободить место
+      const botRemoved = this._botManager.removeOneBotForPlayer(newTeam);
 
-      return;
+      if (!botRemoved) {
+        this._chat.pushSystemByUser(gameId, 'TEAMS_TEAM_FULL', [
+          newTeam,
+          currentTeam,
+        ]);
+
+        return;
+      }
     }
 
     // на этом этапе смена команды доступна
@@ -1110,6 +1144,55 @@ class VIMP {
       case '/mapname':
         this._chat.pushSystemByUser(gameId, [this._currentMap]);
         break;
+
+      // управление ботами
+      // /bot 5 team1     # создаёт 5 ботов в team1
+      // /bot 3 team2     # создаёт 3 бота в team2
+      // /bot 10          # создаёт 10 ботов, распределив их равномерно
+      // /bot 0           # удаляет всех ботов
+      case '/bot': {
+        const userName = this._users[gameId].name;
+        let count = parseInt(arr[0], 10);
+        const team = arr[1] || null;
+
+        if (isNaN(count) || count < 0) {
+          this._chat.pushSystemByUser(gameId, 'BOT_INVALID_COUNT');
+          break;
+        }
+
+        // если команда не соответствует
+        if (team && (!this._teams[team] || team === this._spectatorTeam)) {
+          this._chat.pushSystemByUser(gameId, 'BOT_INVALID_TEAM');
+          break;
+        }
+
+        if (team) {
+          this._botManager.removeBots(team);
+
+          if (count > 0) {
+            count = this._botManager.createBots(count, team);
+            this._chat.pushSystem('BOT_CREATED_FOR_TEAM', [
+              userName,
+              count,
+              team,
+            ]);
+          } else {
+            this._chat.pushSystem('BOT_REMOVED_FROM_TEAM', [userName, team]);
+          }
+        } else {
+          this._botManager.removeBots();
+
+          if (count > 0) {
+            count = this._botManager.createBots(count, null);
+            this._chat.pushSystem('BOT_CREATED', [userName, count]);
+          } else {
+            this._chat.pushSystem('BOT_REMOVED', [userName]);
+          }
+        }
+
+        this.initiateNewRound();
+        break;
+      }
 
       default:
         this._chat.pushSystemByUser(gameId, 'COMMANDS_NOT_FOUND');
