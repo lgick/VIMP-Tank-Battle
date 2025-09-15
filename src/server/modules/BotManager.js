@@ -176,6 +176,21 @@ class BotManager {
   getBots() {
     return this._bots.entries();
   }
+
+  /**
+   * @description Подсчитывает текущее количество ботов в каждой команде.
+   * @returns {object} Объект, где ключ - название команды,
+   * значение - количество ботов.
+   */
+  getBotCountsPerTeam() {
+    const counts = {};
+
+    for (const botData of this._bots.values()) {
+      counts[botData.team] = (counts[botData.team] || 0) + 1;
+    }
+
+    return counts;
+  }
 }
 
 export default BotManager;
