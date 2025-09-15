@@ -315,6 +315,8 @@ class VIMP {
 
     this._scaledMapData = scaleMapData(this._currentMapData);
     this._botManager.createMap(this._scaledMapData);
+    const botCounts = this._botManager.getBotCountsPerTeam();
+    this._botManager.removeBots();
 
     // если нет индивидуального конструктора для создания карты
     if (!this._currentMapData.setId) {
@@ -354,6 +356,13 @@ class VIMP {
         this._teamSizes[this._spectatorTeam].add(gameId);
 
         this.sendMap(gameId);
+      }
+    }
+
+    // воссоздание ботов на новой карте
+    for (const [team, count] of Object.entries(botCounts)) {
+      if (count > 0) {
+        this._botManager.createBots(count, team);
       }
     }
 
@@ -525,7 +534,7 @@ class VIMP {
     // если новая команда не наблюдатель и нет свободных респаунов
     if (
       newTeam !== this._spectatorTeam &&
-      respawns[newTeam].length === this._teamSizes[newTeam].size
+      respawns[newTeam].length <= this._teamSizes[newTeam].size
     ) {
       // попытка удалить одного бота, чтобы освободить место
       const botRemoved = this._botManager.removeOneBotForPlayer(newTeam);
