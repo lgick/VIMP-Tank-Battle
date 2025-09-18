@@ -6,6 +6,8 @@ import Game from './Game.js';
 import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
 import BotManager from './BotManager.js';
+import { sanitizeMessage } from '../../lib/sanitizers.js';
+import { isValidName } from '../../lib/validators.js';
 
 // Singleton VIMP
 
@@ -31,11 +33,6 @@ class VIMP {
 
     this._idleTimeoutForPlayer = data.idleKickTimeout?.player || null;
     this._idleTimeoutForSpectator = data.idleKickTimeout?.spectator || null;
-
-    this._expressions = {
-      name: new RegExp(data.expressions.name),
-      message: new RegExp(data.expressions.message, 'g'),
-    };
 
     this._users = {}; // игроки
 
@@ -507,7 +504,7 @@ class VIMP {
     const user = this._users[gameId];
     const oldName = user.name;
 
-    if (this._expressions.name.test(name)) {
+    if (isValidName(name)) {
       name = this.checkName(name);
       user.name = name;
       this._game.changeName(gameId, name);
@@ -951,7 +948,7 @@ class VIMP {
 
     user.lastActionTime = Date.now();
 
-    message = message.replace(this._expressions.message, '');
+    message = sanitizeMessage(message);
 
     if (message) {
       if (message.charAt(0) === '/') {
@@ -1020,27 +1017,27 @@ class VIMP {
     }
   }
 
+  // возвращает список карт для голосования
+  _getMapList() {
+    if (this._mapList.length <= this._mapsInVote) {
+      return this._mapList;
+    }
+
+    let endNumber = this._startMapNumber + this._mapsInVote;
+    let maps = this._mapList.slice(this._startMapNumber, endNumber);
+
+    if (maps.length < this._mapsInVote) {
+      endNumber = this._mapsInVote - maps.length;
+      maps = maps.concat(this._mapList.slice(0, endNumber));
+    }
+
+    this._startMapNumber = endNumber;
+
+    return maps;
+  }
+
   // отправляет голосование за новую карту
   changeMap(gameId, mapName) {
-    // возвращает список карт для голосования
-    const getMapList = () => {
-      if (this._mapList.length <= this._mapsInVote) {
-        return this._mapList;
-      }
-
-      let endNumber = this._startMapNumber + this._mapsInVote;
-      let maps = this._mapList.slice(this._startMapNumber, endNumber);
-
-      if (maps.length < this._mapsInVote) {
-        endNumber = this._mapsInVote - maps.length;
-        maps = maps.concat(this._mapList.slice(0, endNumber));
-      }
-
-      this._startMapNumber = endNumber;
-
-      return maps;
-    };
-
     // если смена карты возможна
     if (this._blockedRemap === false) {
       this._blockedRemap = true;
@@ -1061,7 +1058,7 @@ class VIMP {
 
         // иначе голосование создает игра
       } else {
-        const arr = ['Choose the next map', getMapList(), null];
+        const arr = ['Choose the next map', this._getMapList(), null];
         this._vote.createVote([['changeMap'], arr]);
       }
 
