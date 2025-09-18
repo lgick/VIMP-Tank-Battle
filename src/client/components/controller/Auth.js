@@ -34,7 +34,6 @@ export default class AuthCtrl {
 
   // отправка данных
   send() {
-    this._model.validate();
     this._model.send();
   }
 

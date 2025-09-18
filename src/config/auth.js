@@ -1,4 +1,3 @@
-// regExp строкой
 export default {
   elems: {
     authId: 'auth',
@@ -11,7 +10,7 @@ export default {
       name: 'name',
       value: '',
       options: {
-        regExp: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
+        validator: 'isValidName',
         storage: 'userName',
       },
     },
@@ -19,7 +18,7 @@ export default {
       name: 'model',
       value: 'm1',
       options: {
-        regExp: 'm1',
+        validator: 'isValidModel',
         storage: 'model',
       },
     },
