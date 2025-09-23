@@ -108,6 +108,14 @@ if (isProduction) {
       Error creating HTTPS server: ${err.message}.
       Ensure that the paths to the certificate and
       key files in config/server.js are correct and the files exist.
+
+      For local development, creating certificates with mkcert:
+
+      brew install mkcert
+      brew install nss
+      mkcert -install
+      mkdir .certs && cd .certs
+      mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1
     `);
 
     process.exit(1);
