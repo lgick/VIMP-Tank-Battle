@@ -192,23 +192,24 @@ export default {
             'Your new team: {0}', // 2
             'Your new status: spectator', // 3
           ],
-          // timers
-          t: ['Current map: {0}', 'New round'],
           // vote
           v: [
-            'Your vote has been accepted!',
-            'Map {0} is now active',
-            'Vote for a new map has started',
-            'Map change is temporarily unavailable',
-            'Vote finished! Next map: {0}',
-            'Vote ended with no result',
+            'A vote has been created',
+            'Voting has started',
+            'Your vote has been accepted',
+            'Voting is temporarily unavailable',
+            'Vote passed',
+            'Vote failed',
           ],
+          // map
+          m: ['Current map: {0}', 'Next map: {0}'],
           // command
           c: ['Command not found'],
           // name
           n: ['Invalid name', '{0} changed name to {1}'],
           // bots
           b: [
+            'Only active players can use /bot',
             'Invalid bot count',
             'Invalid team name',
             '{0} created {1} bot(s) for {2}',
@@ -278,14 +279,29 @@ export default {
       },
       params: {
         templates: {
-          firstVote: [
-            ['team', true],
-            ['Choose a team', 'teams', null],
+          teamChange: ['Choose a team', 'teams', true],
+          mapChangeBySystem: ['Choose the next map'],
+          mapChangeByUser: ['{0} suggested the map: {1}', ['Yes', 'No']],
+          addBotsForTeam: [
+            '{0} suggests adding {1} bot(s) to {2}. Vote?',
+            ['Yes', 'No'],
+          ],
+          removeBotsForTeam: [
+            '{0} suggests removing all bots from {1}. Vote?',
+            ['Yes', 'No'],
+          ],
+          addBots: [
+            '{0} suggests adding {1} bot(s) to the game. Vote?',
+            ['Yes', 'No'],
+          ],
+          removeBots: [
+            '{0} suggests removing all bots from the game. Vote?',
+            ['Yes', 'No'],
           ],
         },
         menu: [
-          [['team'], ['Switch team', 'teams', null]],
-          [['mapUser'], ['Suggest map', 'maps', null]],
+          ['teamChange', ['Switch team', 'teams']],
+          ['mapChange', ['Suggest map', 'maps']],
         ],
       },
     },

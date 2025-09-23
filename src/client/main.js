@@ -481,7 +481,7 @@ function runModules(data) {
   // Vote Module
   //==========================================//
 
-  const voteModel = new VoteModel(voteData.params);
+  const voteModel = new VoteModel({ ...voteData.params, formatMessage });
   const voteView = new VoteView(voteModel, voteData.elems);
 
   modules.vote = new VoteCtrl(voteModel, voteView);
