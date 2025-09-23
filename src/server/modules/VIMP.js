@@ -61,6 +61,8 @@ class VIMP {
 
     this._isRoundEnding = false; // флаг, если раунд процессе завершения
 
+    this._blockedBotVote = false; // флаг блокировки голосования за ботов
+
     // инициализация сервисов
     this._game = new Game(
       data.parts,
@@ -634,10 +636,10 @@ class VIMP {
     user.isWatching = false;
     user.watchedGameId = null;
 
+    this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
     this._stat.updateUser(gameId, teamId, { status: '' });
     this._game.createPlayer(gameId, model, name, teamId, respawnData);
     this.addToActivePlayers(gameId);
-    this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
   }
 
   // сбрасывает this._teamSizes в нулевые значения
@@ -1157,7 +1159,13 @@ class VIMP {
       // /bot 10          # создаёт 10 ботов, распределив их равномерно
       // /bot 0           # удаляет всех ботов
       case '/bot': {
-        const userName = this._users[gameId].name;
+        const user = this._users[gameId];
+
+        if (user.teamId === this._spectatorId) {
+          this._chat.pushSystemByUser(gameId, 'BOT_PLAYERS_ONLY');
+          break;
+        }
+
         let count = parseInt(arr[0], 10);
         const team = arr[1] || null;
 
@@ -1172,37 +1180,105 @@ class VIMP {
           break;
         }
 
-        if (team) {
-          this._botManager.removeBots(team);
+        // проверка количества активных игроков
+        const activePlayerCount = Object.values(this._users).filter(
+          user => user.teamId !== this._spectatorId,
+        ).length;
 
-          if (count > 0) {
-            count = this._botManager.createBots(count, team);
-            this._chat.pushSystem('BOT_CREATED_FOR_TEAM', [
-              userName,
-              count,
-              team,
-            ]);
-          } else {
-            this._chat.pushSystem('BOT_REMOVED_FROM_TEAM', [userName, team]);
-          }
+        // если игрок один, выполнение команды
+        if (activePlayerCount <= 1) {
+          this._executeBotCommand(user.name, count, team);
+          // иначе игроков больше, запуск голосования
         } else {
-          this._botManager.removeBots();
-
-          if (count > 0) {
-            count = this._botManager.createBots(count, null);
-            this._chat.pushSystem('BOT_CREATED', [userName, count]);
-          } else {
-            this._chat.pushSystem('BOT_REMOVED', [userName]);
-          }
+          this._initiateBotVote(gameId, count, team);
         }
-
-        this.initiateNewRound();
         break;
       }
 
       default:
         this._chat.pushSystemByUser(gameId, 'COMMANDS_NOT_FOUND');
     }
+  }
+
+  // исполняет команду /bot
+  _executeBotCommand(userName, count, team) {
+    if (team) {
+      this._botManager.removeBots(team);
+
+      if (count > 0) {
+        count = this._botManager.createBots(count, team);
+        this._chat.pushSystem('BOT_CREATED_FOR_TEAM', [userName, count, team]);
+      } else {
+        this._chat.pushSystem('BOT_REMOVED_FROM_TEAM', [userName, team]);
+      }
+    } else {
+      this._botManager.removeBots();
+
+      if (count > 0) {
+        count = this._botManager.createBots(count, null);
+        this._chat.pushSystem('BOT_CREATED', [userName, count]);
+      } else {
+        this._chat.pushSystem('BOT_REMOVED', [userName]);
+      }
+    }
+
+    this.initiateNewRound();
+  }
+
+  // инициирует голосование за ботов
+  _initiateBotVote(gameId, count, team) {
+    if (this._blockedBotVote) {
+      this._chat.pushSystemByUser(gameId, 'VOTE_UNAVAILABLE');
+      return;
+    }
+
+    this._blockedBotVote = true;
+
+    const userName = this._users[gameId].name;
+    let voteName;
+    let voteArgs;
+
+    if (team) {
+      if (count > 0) {
+        voteName = 'addBotsForTeam';
+        voteArgs = [userName, count, team];
+      } else {
+        voteName = 'removeBotsForTeam';
+        voteArgs = [userName, team];
+      }
+    } else {
+      if (count > 0) {
+        voteName = 'addBots';
+        voteArgs = [userName, count];
+      } else {
+        voteName = 'removeBots';
+        voteArgs = [userName];
+      }
+    }
+
+    const payload = { template: voteName, data: voteArgs };
+    const userList = Object.keys(this._users).filter(id => id !== gameId);
+
+    this._vote.createVoteWithTemplate(voteName, payload, userList);
+    this._vote.addInVote(voteName, 'Yes'); // голос инициатора
+    this._chat.pushSystemByUser(gameId, 'VOTE_STARTED');
+
+    // таймер на сбор результатов
+    this._timerManager.startBotVoteTimer(() => {
+      const result = this._vote.getResult(voteName);
+
+      if (result === 'Yes') {
+        this._chat.pushSystem('VOTE_FINISHED', ['The proposal was accepted.']);
+        this._executeBotCommand(userName, count, team);
+      } else {
+        this._chat.pushSystem('VOTE_NO_RESULT');
+      }
+
+      // Снятие блокировки голосования
+      this._timerManager.startBlockedBotVoteTimer(() => {
+        this._blockedBotVote = false;
+      });
+    });
   }
 
   // обновляет значение round trip time

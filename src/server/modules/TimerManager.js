@@ -18,7 +18,7 @@ class TimerManager extends AbstractTimer {
     this._roundTime = timers.roundTime;
     this._timeStep = timers.timeStep;
     this._voteTime = timers.voteTime;
-    this._timeBlockedRemap = timers.timeBlockedRemap;
+    this._timeBlockedVote = timers.timeBlockedVote;
     this._teamChangeGracePeriod = timers.teamChangeGracePeriod;
     this._roundRestartDelay = timers.roundRestartDelay;
     this._mapChangeDelay = timers.mapChangeDelay;
@@ -74,7 +74,7 @@ class TimerManager extends AbstractTimer {
   getMapTimeLeft() {
     const timeLeft = this._mapTime - (Date.now() - this._startMapTime);
 
-    return timeLeft < 0 ? 0 : timeLeft;
+    return Math.max(0, timeLeft);
   }
 
   // запускает таймер до конца текущего раунда
@@ -91,27 +91,21 @@ class TimerManager extends AbstractTimer {
 
   // возвращает оставшееся время до конца раунда в секундах
   getRoundTimeLeft() {
-    let timeLeft = this._roundTime - (Date.now() - this._startRoundTime);
+    const timeLeft = this._roundTime - (Date.now() - this._startRoundTime);
 
-    timeLeft = Math.floor(timeLeft / 1000);
-
-    return timeLeft < 0 ? 0 : timeLeft;
+    return Math.max(0, Math.floor(timeLeft / 1000));
   }
 
   // проверяет возможно сменить команду игроку в текущем раунде
   canChangeTeamInCurrentRound() {
     const roundTime = Date.now() - this._startRoundTime;
 
-    if (roundTime <= this._teamChangeGracePeriod) {
-      return true;
-    }
-
-    return false;
+    return roundTime <= this._teamChangeGracePeriod;
   }
 
   // логика одного "тика" игрового цикла
   _loopTick() {
-    const now = Date.now();
+    const now = performance.now();
     let dt = (now - this._lastShotTime) / 1000;
     this._lastShotTime = now;
 
@@ -125,24 +119,20 @@ class TimerManager extends AbstractTimer {
     this._callbacks.onShotTick(dt);
 
     const drift = now - this._expectedTickTime;
-    const nextTimeout = this._timeStep - drift;
+    const nextTimeout = Math.max(0, this._timeStep - drift);
     this._expectedTickTime += this._timeStep;
 
     // регистрация следующего шага цикла через _startTimer,
     // чтобы его можно было остановить по ключу 'gameLoop'
-    this._startTimer(
-      'gameLoop',
-      () => this._loopTick(),
-      Math.max(0, nextTimeout),
-    );
+    this._startTimer('gameLoop', () => this._loopTick(), nextTimeout);
   }
 
   // инициализирует и запускает игровой цикл (обновление кадров)
   startGameLoop() {
     this.stopGameLoop();
 
-    this._lastShotTime = Date.now();
-    this._expectedTickTime = Date.now() + this._timeStep;
+    this._lastShotTime = performance.now();
+    this._expectedTickTime = this._lastShotTime + this._timeStep;
 
     // запуск первого таймаута, который инициирует цикл
     this._startTimer('gameLoop', () => this._loopTick(), this._timeStep);
@@ -153,25 +143,29 @@ class TimerManager extends AbstractTimer {
     this._stopTimer('gameLoop');
   }
 
-  // запускает таймер для голосования за смену карты
-  startChangeMapTimer(onEndCallback) {
-    this._startTimer('changeMap', onEndCallback, this._voteTime);
+  // запускает таймер голосования
+  startVoteTimer(onEndCallback) {
+    this._startTimer('vote', onEndCallback, this._voteTime);
   }
 
-  // останавливает таймер голосования за смену карты
-  stopChangeMapTimer() {
-    this._stopTimer('changeMap');
+  // останавливает таймер голосования
+  stopVoteTimer() {
+    this._stopTimer('vote');
   }
 
   // запускает таймер, блокирующий возможность инициировать новое голосование
-  // в течение некоторого времени после предыдущего
-  startBlockedRemapTimer(onEndCallback) {
-    this._startTimer('blockedRemap', onEndCallback, this._timeBlockedRemap);
+  startVoteBlockTimer(name, onEndCallback) {
+    this._startTimer(name, onEndCallback, this._timeBlockedVote);
   }
 
   // останавливает таймер блокировки голосования
-  stopBlockedRemapTimer() {
-    this._stopTimer('blockedRemap');
+  stopVoteBlockTimer(name) {
+    this._stopTimer(name);
+  }
+
+  // проверяет наличие блокирующего таймера
+  isVoteBlocked(name) {
+    return this._hasTimer(name);
   }
 
   // запускает отложенный перезапуск раунда
