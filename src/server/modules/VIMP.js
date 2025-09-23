@@ -594,10 +594,10 @@ class VIMP {
     user.isWatching = false;
     user.watchedGameId = null;
 
+    this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
     this._stat.updateUser(gameId, teamId, { status: '' });
     this._game.createPlayer(gameId, model, name, teamId, respawnData);
     this.addToActivePlayers(gameId);
-    this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
   }
 
   // сбрасывает this._teamSizes в нулевые значения

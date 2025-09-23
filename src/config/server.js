@@ -6,14 +6,8 @@ export default {
   domain: 'localhost',
   port: 3000,
 
-  // для локальной разработки сертификаты mkcert:
-  // brew install mkcert
-  // brew install nss
-  // mkcert -install
-  // mkdir .certs && cd .certs
-  // mkcert -key-file key.pem -cert-file cert.pem localhost 127.0.0.1 ::1
-  //
-  // для продакшена сертификаты от Let's Encrypt
+  // сертификаты для локальной разработки
+  // (для продакшена сертификаты от Let's Encrypt)
   httpsOptions: {
     key: './.certs/key.pem', // ключ
     cert: './.certs/cert.pem', // сертификат
