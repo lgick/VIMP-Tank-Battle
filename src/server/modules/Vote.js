@@ -11,7 +11,6 @@ class Vote {
 
     this._list = []; // данные для всех игроков
     this._userList = {}; // данные для игрока
-    this._blockList = new Set(); // заблокированные голосования
 
     this._activeVote = null; // активное голосование
     this._activeVoteData = null; // данные активного голосования
@@ -28,7 +27,6 @@ class Vote {
       }
     }
 
-    this._blockList.clear();
     this._activeVote = null;
     this._activeVoteData = null;
     this._voteQueue = [];
@@ -64,21 +62,6 @@ class Vote {
     return this._userList[gameId].shift();
   }
 
-  // проверяет блокировку голосования
-  hasBlocking(name) {
-    return this._blockList.has(name);
-  }
-
-  // блокирует голосование
-  blockingVote(name) {
-    this._blockList.add(name);
-  }
-
-  // разблокирует голосование
-  unblockingVote(name) {
-    this._blockList.delete(name);
-  }
-
   // запуск голосования и рассылки данных
   _startVote({ name, payload, userList, onStartCallback }) {
     this._activeVote = name;
@@ -95,6 +78,18 @@ class Vote {
     if (onStartCallback) {
       onStartCallback();
     }
+  }
+
+  // проверяет, активно ли голосование с таким именем
+  // или находится ли в очереди
+  hasVote(name) {
+    if (this._activeVote === name) {
+      return true;
+    }
+
+    return (
+      this._voteQueue.find(voteData => voteData.name === name) !== undefined
+    );
   }
 
   // создает голосование или ставит его в очередь
@@ -124,7 +119,6 @@ class Vote {
   }
 
   // возвращает результат голосования, обрабатывает ничью и запускает следующее
-  // TODO name вроде как не нужен
   getResult(name) {
     // если голосование не активное
     if (name !== this._activeVote) {
