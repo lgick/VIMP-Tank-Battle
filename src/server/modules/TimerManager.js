@@ -144,28 +144,40 @@ class TimerManager extends AbstractTimer {
   }
 
   // запускает таймер голосования
-  startVoteTimer(onEndCallback) {
-    this._startTimer('vote', onEndCallback, this._voteTime);
+  startVoteTimer(voteName, onEndCallback) {
+    this._startTimer(`vote:${voteName}`, onEndCallback, this._voteTime);
   }
 
-  // останавливает таймер голосования
-  stopVoteTimer() {
-    this._stopTimer('vote');
+  // останавливает все активные таймеры голосования
+  stopAllVoteTimers() {
+    for (const key of this._timers.keys()) {
+      if (key.startsWith('vote:')) {
+        this._stopTimer(key);
+      }
+    }
   }
 
   // запускает таймер, блокирующий возможность инициировать новое голосование
-  startVoteBlockTimer(name, onEndCallback) {
-    this._startTimer(name, onEndCallback, this._timeBlockedVote);
+  startVoteBlockTimer(voteName, onEndCallback) {
+    this._startTimer(
+      `voteBlock:${voteName}`,
+      onEndCallback,
+      this._timeBlockedVote,
+    );
   }
 
-  // останавливает таймер блокировки голосования
-  stopVoteBlockTimer(name) {
-    this._stopTimer(name);
+  // останавливает все таймеры блокировки
+  stopAllBlockedVoteTimers() {
+    for (const key of this._timers.keys()) {
+      if (key.startsWith('voteBlock:')) {
+        this._stopTimer(key);
+      }
+    }
   }
 
   // проверяет наличие блокирующего таймера
   isVoteBlocked(name) {
-    return this._hasTimer(name);
+    return this._hasTimer(`voteBlock:${name}`);
   }
 
   // запускает отложенный перезапуск раунда
