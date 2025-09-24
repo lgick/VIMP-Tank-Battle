@@ -1026,15 +1026,23 @@ class VIMP {
 
   // отправляет голосование за новую карту
   changeMap(gameId, mapName) {
+    const voteCategory = 'mapChange';
+
+    if (!this._canCreateVote(voteCategory, gameId)) {
+      return;
+    }
+
     // если есть gameId и карта (голосование создает пользователь)
     if (typeof gameId !== 'undefined' && typeof mapName === 'string') {
       const voteName = 'mapChangeByUser';
+
       const userName = this._users[gameId].name;
       const userList = Object.keys(this._users).filter(id => id !== gameId);
       const payload = { name: voteName, params: [userName, mapName] };
 
       this._createVote({
         voteName,
+        voteCategory,
         payload,
         resultFunc: result => {
           if (result === 'Yes' && this._maps[mapName]) {
@@ -1055,12 +1063,14 @@ class VIMP {
       // иначе голосование создает игра
     } else {
       const voteName = 'mapChangeBySystem';
+
       const mapList = this._getMapList(); // список карт
 
       const payload = { name: voteName, values: mapList };
 
       this._createVote({
         voteName,
+        voteCategory,
         payload,
         resultFunc: resultingMapName => {
           if (resultingMapName && this._maps[resultingMapName]) {
@@ -1208,8 +1218,13 @@ class VIMP {
   // инициирует голосование за ботов
   _initiateBotVote(gameId, count, team) {
     const userName = this._users[gameId].name;
+    const voteCategory = 'botManagement';
     let voteName;
     let voteArgs;
+
+    if (!this._canCreateVote(voteCategory, gameId)) {
+      return;
+    }
 
     if (team) {
       if (count > 0) {
@@ -1234,6 +1249,7 @@ class VIMP {
 
     this._createVote({
       voteName,
+      voteCategory,
       payload,
       resultFunc: result => {
         if (result === 'Yes') {
@@ -1248,20 +1264,27 @@ class VIMP {
     });
   }
 
-  _createVote(data) {
-    const { voteName, payload, resultFunc, userList, gameId } = data;
-
-    // если голосование заблокировано или уже было создано в vote
+  // проверяет возможность создать голосование
+  _canCreateVote(voteCategory, gameId) {
+    // если голосование в данной категории заблокировано
+    // или уже было создано в vote
     if (
-      this._timerManager.isVoteBlocked(voteName) ||
-      this._vote.hasVote(voteName)
+      this._timerManager.isVoteBlocked(voteCategory) ||
+      this._vote.hasVoteCategory(voteCategory)
     ) {
       if (gameId) {
         this._chat.pushSystemByUser(gameId, 'VOTE_UNAVAILABLE');
       }
 
-      return;
+      return false;
     }
+
+    return true;
+  }
+
+  _createVote(data) {
+    const { voteName, voteCategory, payload, resultFunc, userList, gameId } =
+      data;
 
     // если голосование инициировано пользователем
     if (gameId) {
@@ -1277,7 +1300,7 @@ class VIMP {
       // таймер на сбор результатов
       this._timerManager.startVoteTimer(voteName, () => {
         // таймер временной блокировки повторного голосования
-        this._timerManager.startVoteBlockTimer(voteName, () => {});
+        this._timerManager.startVoteBlockTimer(voteCategory, () => {});
 
         const result = this._vote.getResult(voteName);
 
@@ -1287,6 +1310,7 @@ class VIMP {
 
     this._vote.createVote({
       name: voteName,
+      category: voteCategory,
       payload,
       userList,
       onStartCallback: onStart,
