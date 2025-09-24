@@ -157,10 +157,11 @@ class TimerManager extends AbstractTimer {
     }
   }
 
-  // запускает таймер, блокирующий возможность инициировать новое голосование
-  startVoteBlockTimer(voteName, onEndCallback) {
+  // запускает таймер, блокирующий возможность инициировать
+  // новое голосование в заданной категории
+  startVoteBlockTimer(voteCategory, onEndCallback) {
     this._startTimer(
-      `voteBlock:${voteName}`,
+      `voteBlock:${voteCategory}`,
       onEndCallback,
       this._timeBlockedVote,
     );
@@ -176,8 +177,8 @@ class TimerManager extends AbstractTimer {
   }
 
   // проверяет наличие блокирующего таймера
-  isVoteBlocked(name) {
-    return this._hasTimer(`voteBlock:${name}`);
+  isVoteBlocked(voteCategory) {
+    return this._hasTimer(`voteBlock:${voteCategory}`);
   }
 
   // запускает отложенный перезапуск раунда
