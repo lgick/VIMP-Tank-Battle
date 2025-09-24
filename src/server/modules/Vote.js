@@ -12,7 +12,8 @@ class Vote {
     this._list = []; // данные для всех игроков
     this._userList = {}; // данные для игрока
 
-    this._activeVote = null; // активное голосование
+    this._activeVoteName = null; // имя активного голосования
+    this._activeVoteCategory = null; // категория активного голосования
     this._activeVoteData = null; // данные активного голосования
     this._voteQueue = []; // очередь для голосований
   }
@@ -27,7 +28,8 @@ class Vote {
       }
     }
 
-    this._activeVote = null;
+    this._activeVoteName = null;
+    this._activeVoteCategory = null;
     this._activeVoteData = null;
     this._voteQueue = [];
   }
@@ -63,8 +65,9 @@ class Vote {
   }
 
   // запуск голосования и рассылки данных
-  _startVote({ name, payload, userList, onStartCallback }) {
-    this._activeVote = name;
+  _startVote({ name, category, payload, userList, onStartCallback }) {
+    this._activeVoteName = name;
+    this._activeVoteCategory = category;
     this._activeVoteData = {};
 
     if (userList) {
@@ -80,22 +83,22 @@ class Vote {
     }
   }
 
-  // проверяет, активно ли голосование с таким именем
-  // или находится ли в очереди
-  hasVote(name) {
-    if (this._activeVote === name) {
+  // проверяет использование категории голосования
+  hasVoteCategory(categoryName) {
+    if (this._activeVoteCategory === categoryName) {
       return true;
     }
 
     return (
-      this._voteQueue.find(voteData => voteData.name === name) !== undefined
+      this._voteQueue.find(voteData => voteData.category === categoryName) !==
+      undefined
     );
   }
 
   // создает голосование или ставит его в очередь
   createVote(data) {
     // если есть активное голосование, добавляем новое в очередь
-    if (this._activeVote) {
+    if (this._activeVoteName) {
       this._voteQueue.push(data);
       return;
     }
@@ -107,7 +110,7 @@ class Vote {
   // добавляет голос в голосование
   addInVote(name, value) {
     // если голосование не активное
-    if (name !== this._activeVote || !this._activeVoteData) {
+    if (this._activeVoteName !== name) {
       return;
     }
 
@@ -121,7 +124,7 @@ class Vote {
   // возвращает результат голосования, обрабатывает ничью и запускает следующее
   getResult(name) {
     // если голосование не активное
-    if (name !== this._activeVote) {
+    if (this._activeVoteName !== name) {
       return;
     }
 
@@ -130,7 +133,8 @@ class Vote {
     let winners = []; // массив для хранения победителей
 
     // удаление завершенного голосования перед подсчетом
-    this._activeVote = null;
+    this._activeVoteName = null;
+    this._activeVoteCategory = null;
     this._activeVoteData = null;
 
     // если есть следующее голосование из очереди
