@@ -118,7 +118,7 @@ export default class VoteModel {
 
   // обновляет голосование
   update(keyCode) {
-    let number, value;
+    let number;
 
     if (this._waitingValues) {
       return;
@@ -162,10 +162,9 @@ export default class VoteModel {
 
           // иначе, если тип данных для голосования это объект
         } else if (this._type === 'vote') {
-          // если число есть в массиве значений
-          if (this._currentValues[number]) {
-            value = this._currentValues[number];
+          const value = this._currentValues[number];
 
+          if (value) {
             this.publisher.emit('socket', [this._voteName, value]);
             this.complete();
           }
