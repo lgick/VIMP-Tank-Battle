@@ -49,7 +49,20 @@ div#auth
         = ' - show current map name'
       p
         b= '/timeleft'
-        = ' - time left on current map'
+        = ' - map time left'
+      hr
+      p
+        b= '/bot <count>'
+        = ' - add bot(s)'
+      p
+        b= '/bot <count> <team>'
+        = ' - add to team'
+      p
+        b= '/bot 0'
+        = ' - remove all bots'
+      p
+        b= '/bot 0 <team>'
+        = ' - remove from team'
 
     div#auth-link
       p

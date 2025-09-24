@@ -23,6 +23,9 @@ import VoteModel from './components/model/Vote.js';
 import VoteView from './components/view/Vote.js';
 import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
+import { formatMessage } from '../lib/formatters.js';
+import { sanitizeMessage } from '../lib/sanitizers.js';
+import { validateAuth } from '../lib/validators.js';
 import SoundManager from './SoundManager.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
@@ -170,18 +173,16 @@ socketMethods[PS_AUTH_DATA] = data => {
   const { elems, params } = data;
 
   params.forEach(param => {
-    const { storage, regExp } = param.options;
+    const { storage } = param.options;
 
     if (storage) {
       param.value = localStorage[storage] || param.value || '';
     }
-
-    if (regExp) {
-      param.options.regExp = new RegExp(regExp);
-    }
   });
 
-  const authModel = new AuthModel();
+  const clientValidator = authData => validateAuth(authData, params);
+
+  const authModel = new AuthModel(clientValidator);
   const authView = new AuthView(authModel, elems);
   modules.auth = new AuthCtrl(authModel, authView);
 
@@ -409,19 +410,6 @@ function shotData(data) {
   }
 }
 
-// добавляет в сообщение параметры
-function formatMessage(message = '', arr = []) {
-  if (message && arr.length) {
-    arr.forEach((value, index) => {
-      const regExp = new RegExp(`\\{${index}\\}`, 'g');
-
-      message = message.replace(regExp, value);
-    });
-  }
-
-  return message;
-}
-
 // создает пользователя
 function runModules(data) {
   const {
@@ -463,7 +451,8 @@ function runModules(data) {
     cacheMin: chatData.params.cacheMin,
     cacheMax: chatData.params.cacheMax,
     messages: chatData.params.messages,
-    messageExp: chatData.params.messageExp,
+    sanitizeMessage,
+    formatMessage,
   });
 
   const chatView = new ChatView(chatModel, chatData.elems);
@@ -492,7 +481,7 @@ function runModules(data) {
   // Vote Module
   //==========================================//
 
-  const voteModel = new VoteModel(voteData.params);
+  const voteModel = new VoteModel({ ...voteData.params, formatMessage });
   const voteView = new VoteView(voteModel, voteData.elems);
 
   modules.vote = new VoteCtrl(voteModel, voteView);

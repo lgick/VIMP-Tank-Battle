@@ -258,7 +258,7 @@ export default class SocketManager {
       0, // panel
       0, // stat
       0, // chat
-      'firstVote', // vote: опрос выбора команды
+      { name: 'teamChange' }, // vote: выбор команды
     ]);
   }
 

@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import { v1 as uuidv1 } from 'uuid';
 import security from '../../lib/security.js';
 import waiting from '../../lib/waiting.js';
-import validator from '../../lib/validator.js';
+import { validateAuth } from '../../lib/validators.js';
 import config from '../../lib/config.js';
 import SocketManager from './SocketManager.js';
 
@@ -126,7 +126,7 @@ export default server => {
       // 1: auth response
       socketMethods[PC_AUTH_RESPONSE] = data => {
         if (data && typeof data === 'object') {
-          const err = validator.auth(data);
+          const err = validateAuth(data, auth.params);
 
           socketManager.sendAuthResult(id, err);
 
@@ -165,9 +165,7 @@ export default server => {
 
       // 5: chat data
       socketMethods[PC_CHAT_DATA] = message => {
-        if (typeof message === 'string') {
-          vimp.pushMessage(gameId, message);
-        }
+        vimp.pushMessage(gameId, message);
       };
 
       // 6: vote data

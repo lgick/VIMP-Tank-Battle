@@ -17,7 +17,9 @@ export default class ChatModel {
     this._cacheMin = data.cacheMin || 200;
     this._cacheMax = data.cacheMax || 300;
     this._messages = data.messages || {};
-    this._messageExp = new RegExp(data.messageExp, 'g');
+
+    this._formatMessage = data.formatMessage;
+    this._sanitizeMessage = data.sanitizeMessage;
 
     this._cache = []; // хранилище сообщений
     this._list = []; // активный чат-лист
@@ -40,7 +42,7 @@ export default class ChatModel {
 
   // отправляет сообщение на сервер
   sendMessage(message) {
-    message = message.replace(this._messageExp, '');
+    message = this._sanitizeMessage(message);
 
     if (message) {
       this.publisher.emit('socket', message);
@@ -61,16 +63,11 @@ export default class ChatModel {
       }
 
       let message = this._messages[arr[0]][arr[1]];
-      let params = arr[2];
+      const params = arr[2];
 
       // если есть параметры
       if (params) {
-        params = params.split(',');
-
-        for (let i = 0, len = params.length; i < len; i += 1) {
-          const regExp = new RegExp('\\{' + i + '\\}', 'g');
-          message = message.replace(regExp, params[i]);
-        }
+        message = this._formatMessage(message, params.split(','));
       }
 
       arr = [message];

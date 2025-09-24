@@ -1,100 +1,19 @@
-import maps from '../../public/maps/index.js';
-import constructors from '../server/parts/index.js';
+import maps from '../data/maps/index.js';
+import models from '../data/models.js';
+import weapons from '../data/weapons.js';
 
 export default {
   isDevMode: false, // флаг режима разработки
 
-  expressions: {
-    name: '^[a-zA-Z]([\\w\\s#]{0,13})[\\w]{1}$',
-    message: '<|>|"|\'|%|;|\\(|\\)|&|\\+|-',
-  },
-
   parts: {
-    constructors, // конструкторы частей игры
-
+    models,
+    weapons,
     mapConstructor: 'Map', // название конструктора карт
     hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan
-
-    friendlyFire: true, // огонь по своей команде
-
-    models: {
-      // tank
-      m1: {
-        constructor: 'Tank',
-        currentWeapon: 'w1',
-        // соотношение сторон танка 4:3, то есть widht: size*4, height: size*3
-        size: 5,
-        // коэффициент тяги (вперед)
-        baseForwardForceFactor: 700,
-        // коэффициент тяги (назад)
-        baseReverseForceFactor: 500,
-        // коэффициент желаемой интенсивности поворота (зависит от инерции)
-        baseTurnTorqueFactor: 55,
-        // целевая макс. скорость вперед (м/с или юнитов/с)
-        maxForwardSpeed: 400,
-        // целевая макс. скорость назад (м/с или юнитов/с)
-        maxReverseSpeed: -200,
-        // сопротивление движению
-        // (чем выше значение, тем больше сопротивление)
-        damping: {
-          // сопротивление при движении
-          linear: 3.0,
-          // сопротивление вращению (при повороте)
-          angular: 15.0,
-        },
-        // физические свойства
-        fixture: {
-          density: 100, // плотность (0+)
-          friction: 0.1, // трение (0 - 1)
-          restitution: 0, // отскок при столкновении (0 - 1)
-        },
-        // сила бокового сцепления (сопротивление заносу)
-        // чем выше значение, тем меньше занос/скольжение
-        lateralGrip: 1.0,
-        // максимальный угол поворота башни
-        maxGunAngle: 1.4,
-        // скорость поворота башни
-        gunRotationSpeed: 5.0,
-        // скорость поворота башни в центр
-        gunCenterSpeed: 10.0,
-      },
-    },
-    weapons: {
-      // bullet
-      w1: {
-        type: 'hitscan',
-        impulseMagnitude: 500000, // сила импульса (кг*м/с)
-        damage: 40, // урон от одного попадания
-        range: 1500, // максимальная дальность выстрела (в игровых юнитах)
-        fireRate: 0, // кулдаун между выстрелами (0 - отсутствует)
-        spread: 0.05, // разброс в радианах (0 для идеальной точности)
-        consumption: 1, // расход патронов за один выстрел
-        cameraShake: {
-          intensity: 5, // сила тряски (в пикселях)
-          duration: 150, // продолжительность (в миллисекундах)
-        },
-      },
-
-      // bomb
-      w2: {
-        type: 'explosive',
-        constructor: 'Bomb',
-        time: 5000,
-        shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
-        size: 13, // соотношение сторон 1:1
-        fireRate: 0, // кулдаун (0 - отсутствует)
-        damage: 20, // урон в эпицентре
-        radius: 200, // радиус взрыва
-        impulseMagnitude: 20000000, // сила импульса
-        cameraShake: {
-          intensity: 30, // сила тряски (в пикселях)
-          duration: 400, // продолжительность (в миллисекундах)
-        },
-      },
-    },
+    friendlyFire: false, // огонь по своей команде
   },
 
-  maps, // карты
+  maps, // карты игры
   mapScale: 0.3, // масштаб карт
   currentMap: 'pool_mini', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
@@ -114,8 +33,8 @@ export default {
     // время голосования (10 секунд)
     voteTime: 10000,
 
-    // время ожидания для запуска нового голосования смены карты (30 секунд)
-    timeBlockedRemap: 30000,
+    // время ожидания для запуска нового голосования (30 секунд)
+    timeBlockedVote: 30000,
 
     // время возможности сменить команду в начале раунда (10 секунд)
     teamChangeGracePeriod: 10000,
@@ -175,7 +94,6 @@ export default {
     latency: {
       key: 4,
       bodyMethod: '=',
-      bodyValue: '',
     },
   },
 
