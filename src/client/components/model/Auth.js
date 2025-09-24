@@ -5,16 +5,17 @@ import Publisher from '../../../lib/Publisher.js';
 let authModel;
 
 export default class AuthModel {
-  constructor() {
+  constructor(validateAuth) {
     if (authModel) {
       return authModel;
     }
 
     authModel = this;
 
+    this._validateAuth = validateAuth;
+
     this._data = {};
     this._options = {};
-    this._errors = [];
     this._sendStatus = false;
 
     this.publisher = new Publisher();
@@ -49,22 +50,12 @@ export default class AuthModel {
     this.publisher.emit('form', { name, value });
   }
 
-  // валидация всех данных
-  validate() {
-    Object.keys(this._data).forEach(key => {
-      const { regExp } = this._options[key];
-
-      if (regExp && !regExp.test(this._data[key])) {
-        this._errors.push({ name: key, value: this._data[key] });
-      }
-    });
-  }
-
   // отправка данных на сервер
   send() {
-    if (this._errors.length) {
-      this.publisher.emit('error', this._errors);
-      this._errors = [];
+    const errors = this._validateAuth(this._data);
+
+    if (errors) {
+      this.parseRes(errors);
     } else {
       if (this._sendStatus) {
         return;

@@ -20,19 +20,15 @@ export default class VoteCtrl {
   }
 
   // включить
+  // data может быть:
+  // {name: 'templateName', params: ['p1',..], values: ['v1',..] || 'values'}
+  // ['val1', 'val2'];
   open(data) {
-    // если данные - массив (данные голосования)
+    // если данные - массив (values для созданного голосования)
     if (Array.isArray(data)) {
-      // если первый элемент массива null, значит это values
-      if (data[0] === null) {
-        this._model.updateValues(data[1]);
-        // иначе создать голосование
-      } else {
-        this._model.createVote(data);
-        this._model.open();
-      }
-      // если данные - строка (данные для шаблона)
-    } else if (typeof data === 'string') {
+      this._model.updateValues(data);
+      // если данные - объект (данные для создания голосования)
+    } else if (typeof data === 'object' && data !== null) {
       this._model.createWithTemplate(data);
       this._model.open();
       // иначе открыть меню

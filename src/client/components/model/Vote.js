@@ -12,10 +12,11 @@ export default class VoteModel {
 
     voteModel = this;
 
+    this._formatMessage = data.formatMessage;
+
     this._menu = data.menu; // меню
     this._templates = data.templates; // шаблоны голосований
 
-    this._currentVote = null; // текущее голосование
     this._type = ''; // тип ('menu', 'vote')
     this._waitingValues = false; // ожидания значений
 
@@ -25,7 +26,6 @@ export default class VoteModel {
     this._timeOff = false; // флаг отключения времени жизни голосования
 
     this._voteName = ''; // название голосования
-    this._data = []; // данные голосования
 
     this._title = null; // заголовок голосования
     this._values = []; // все значения голосования
@@ -43,12 +43,24 @@ export default class VoteModel {
     this.publisher.emit('mode', { name: 'vote', status: 'opened' });
   }
 
-  createWithTemplate(name) {
-    this.createVote(this._templates[name]);
+  createWithTemplate({ name, params, values }) {
+    const templateArr = this._templates[name];
+
+    if (templateArr) {
+      let title = templateArr[0];
+      values = values || templateArr[1];
+      const timeOff = templateArr[2] ? true : false;
+
+      if (params) {
+        title = this._formatMessage(title, params);
+      }
+
+      this.createVote(name, title, values, timeOff);
+    }
   }
 
   // создает голосование
-  createVote(data) {
+  createVote(name, title, values, timeOff) {
     if (this._waitingValues) {
       return;
     }
@@ -58,23 +70,9 @@ export default class VoteModel {
     this._more = false;
     this._currentPage = 0;
 
-    // если данные имеют вид:
-    // [[name:string, timeOff: boolean],
-    // [title: string, value: array, next: array || null]]
-    if (data.length === 2) {
-      this._voteName = data[0][0];
-      this._timeOff = data[0][1] ? true : false;
-
-      this._currentVote = data[1];
-
-      // если данные: ['title', 'value', 'next']
-    } else if (data.length === 3) {
-      this._currentVote = data;
-    }
-
-    this._title = this._currentVote[0];
-
-    const values = this._currentVote[1];
+    this._voteName = name;
+    this._timeOff = timeOff;
+    this._title = title;
 
     if (typeof values === 'string') {
       this._waitingValues = true;
@@ -91,7 +89,6 @@ export default class VoteModel {
       return;
     }
 
-    this._currentVote = this._menu;
     this._timeOff = false;
 
     this._type = 'menu';
@@ -99,13 +96,12 @@ export default class VoteModel {
     this._more = false;
     this._currentPage = 0;
 
-    this._data = [];
     this._title = 'Menu';
     this._values = [];
     this._voteName = '';
 
-    for (let i = 0, len = this._currentVote.length; i < len; i += 1) {
-      this._values.push(this._currentVote[i][1][0]);
+    for (let i = 0, len = this._menu.length; i < len; i += 1) {
+      this._values.push(this._menu[i][1][0]);
     }
 
     this.show();
@@ -122,7 +118,7 @@ export default class VoteModel {
 
   // обновляет голосование
   update(keyCode) {
-    let number, value;
+    let number;
 
     if (this._waitingValues) {
       return;
@@ -155,29 +151,22 @@ export default class VoteModel {
 
         // если тип данных для голосования это массив
         if (this._type === 'menu') {
+          const data = this._menu[number];
+
           // если число есть в массиве значений
-          if (this._currentVote[number]) {
-            this.createVote(this._currentVote[number]);
+          if (data) {
+            const [name, [title, values, timeOff]] = data;
+
+            this.createVote(name, title, values, timeOff);
           }
 
           // иначе, если тип данных для голосования это объект
         } else if (this._type === 'vote') {
-          // если число есть в массиве значений
-          if (this._currentValues[number]) {
-            value = this._currentValues[number].split(':');
-            value = value.length === 2 ? value[1] : value[0];
+          const value = this._currentValues[number];
 
-            this._data.push(value);
-
-            // если есть вложенный опрос, то создаем новое голосование
-            if (this._currentVote[2]) {
-              this.createVote(this._currentVote[2]);
-
-              // иначе, отправляет результат на сервер и завершаем голосование
-            } else {
-              this.publisher.emit('socket', [this._voteName, this._data]);
-              this.complete();
-            }
+          if (value) {
+            this.publisher.emit('socket', [this._voteName, value]);
+            this.complete();
           }
         }
       }
@@ -196,7 +185,7 @@ export default class VoteModel {
 
     if (this._type === 'vote') {
       for (let i = 0, len = this._currentValues.length; i < len; i += 1) {
-        currentValues.push(this._currentValues[i].split(':')[0]);
+        currentValues.push(this._currentValues[i]);
       }
     } else {
       currentValues = this._currentValues;
@@ -215,7 +204,6 @@ export default class VoteModel {
 
   // завершает голосование
   complete() {
-    this._data = [];
     this._waitingValues = false;
     this.publisher.emit('clear', this._timerId);
     this.publisher.emit('mode', { name: 'vote', status: 'closed' });

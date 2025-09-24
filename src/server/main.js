@@ -79,12 +79,6 @@ config.set(
   config.get('game:timers:voteTime'),
 );
 
-// регулярное выражение для сообщений
-config.set(
-  'client:modules:chat:params:messageExp',
-  config.get('game:expressions:message'),
-);
-
 // EXPRESS
 const app = express();
 let server;

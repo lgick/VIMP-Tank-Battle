@@ -1,5 +1,6 @@
 import planck from 'planck';
 import Factory from '../../lib/factory.js';
+import constructors from '../parts/index.js';
 
 // Singleton Game
 
@@ -14,7 +15,7 @@ class Game {
     game = this;
 
     this._Factory = Factory;
-    this._Factory.add(parts.constructors);
+    this._Factory.add(constructors);
 
     this._models = parts.models;
     this._weapons = parts.weapons;

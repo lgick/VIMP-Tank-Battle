@@ -11,7 +11,11 @@ class Vote {
 
     this._list = []; // данные для всех игроков
     this._userList = {}; // данные для игрока
-    this._votes = {}; // данные голосований
+
+    this._activeVoteName = null; // имя активного голосования
+    this._activeVoteCategory = null; // категория активного голосования
+    this._activeVoteData = null; // данные активного голосования
+    this._voteQueue = []; // очередь для голосований
   }
 
   // сбрасывает данные
@@ -24,7 +28,10 @@ class Vote {
       }
     }
 
-    this._votes = {};
+    this._activeVoteName = null;
+    this._activeVoteCategory = null;
+    this._activeVoteData = null;
+    this._voteQueue = [];
   }
 
   // добавляет пользователя
@@ -57,40 +64,87 @@ class Vote {
     return this._userList[gameId].shift();
   }
 
-  // создает голосование со сбором голосов
-  createVote(arr, userList) {
-    this._votes[arr[0][0]] = {};
+  // запуск голосования и рассылки данных
+  _startVote({ name, category, payload, userList, onStartCallback }) {
+    this._activeVoteName = name;
+    this._activeVoteCategory = category;
+    this._activeVoteData = {};
 
     if (userList) {
       for (let i = 0, len = userList.length; i < len; i += 1) {
-        this.pushByUser(userList[i], arr);
+        this.pushByUser(userList[i], payload);
       }
     } else {
-      this.push(arr);
+      this.push(payload);
     }
+
+    if (onStartCallback) {
+      onStartCallback();
+    }
+  }
+
+  // проверяет использование категории голосования
+  hasVoteCategory(categoryName) {
+    if (this._activeVoteCategory === categoryName) {
+      return true;
+    }
+
+    return (
+      this._voteQueue.find(voteData => voteData.category === categoryName) !==
+      undefined
+    );
+  }
+
+  // создает голосование или ставит его в очередь
+  createVote(data) {
+    // если есть активное голосование, добавляем новое в очередь
+    if (this._activeVoteName) {
+      this._voteQueue.push(data);
+      return;
+    }
+
+    // если активного голосования нет, запускаем это
+    this._startVote(data);
   }
 
   // добавляет голос в голосование
   addInVote(name, value) {
-    const vote = this._votes[name];
+    // если голосование не активное
+    if (this._activeVoteName !== name) {
+      return;
+    }
 
-    if (vote) {
-      if (vote[value]) {
-        vote[value] += 1;
-      } else {
-        vote[value] = 1;
-      }
+    if (this._activeVoteData[value]) {
+      this._activeVoteData[value] += 1;
+    } else {
+      this._activeVoteData[value] = 1;
     }
   }
 
-  // возвращает результат голосования с обработкой ничьей
+  // возвращает результат голосования, обрабатывает ничью и запускает следующее
   getResult(name) {
-    const results = this._votes[name];
+    // если голосование не активное
+    if (this._activeVoteName !== name) {
+      return;
+    }
+
+    const results = this._activeVoteData;
     let maxVotes = 0;
     let winners = []; // массив для хранения победителей
 
+    // удаление завершенного голосования перед подсчетом
+    this._activeVoteName = null;
+    this._activeVoteCategory = null;
+    this._activeVoteData = null;
+
+    // если есть следующее голосование из очереди
+    if (this._voteQueue.length > 0) {
+      const nextVote = this._voteQueue.shift();
+      this._startVote(nextVote);
+    }
+
+    // если никто не проголосовал
     if (!results || Object.keys(results).length === 0) {
-      delete this._votes[name];
       return;
     }
 
@@ -111,13 +165,6 @@ class Vote {
       }
     }
 
-    delete this._votes[name];
-
-    // если никто не проголосовал
-    if (winners.length === 0) {
-      return;
-    }
-
     // если победитель один
     if (winners.length === 1) {
       return winners[0];
@@ -125,7 +172,6 @@ class Vote {
 
     // случайный выбор, если победителей несколько
     const randomIndex = Math.floor(Math.random() * winners.length);
-
     return winners[randomIndex];
   }
 }
