@@ -17,7 +17,7 @@ class BotManager {
     this._stat = stat;
 
     this._model = 'm1'; // модель танка для ботов
-    this._bots = new Map(); // { botId: { name, team, teamId, model } }
+    this._bots = new Map();
     this._scaledMapData = null; // данные карты для респаунов
   }
 
@@ -92,22 +92,24 @@ class BotManager {
         continue;
       }
 
-      const botId = this._getGameId();
-      const name = this._vimp.checkName(botId);
+      const gameId = this._getGameId();
+      const name = this._vimp.checkName(gameId);
       const teamId = this._vimp._teams[targetTeam];
       const botData = {
         name,
+        gameId,
         team: targetTeam,
         teamId,
         model: this._model,
+        isBot: true,
       };
 
-      this._bots.set(botId, botData);
+      this._bots.set(gameId, botData);
 
       // регистрация бота в системах игры
-      this._stat.addUser(botId, teamId, { name, latency: 'BOT' });
-      this._panel.addUser(botId);
-      this._vimp._teamSizes[targetTeam].add(botId);
+      this._stat.addUser(gameId, teamId, { name, latency: 'BOT' });
+      this._panel.addUser(gameId);
+      this._vimp._teamSizes[targetTeam].add(gameId);
 
       createdCount += 1;
     }
@@ -121,35 +123,33 @@ class BotManager {
    * только из этой команды. Иначе удаляет всех.
    */
   removeBots(teamName = null) {
-    const botsToRemove = [];
+    const botsToRemove = teamName
+      ? [...this._bots.keys()].filter(
+          gameId => this._bots.get(gameId).team === teamName,
+        )
+      : [...this._bots.keys()];
 
-    for (const [botId, botData] of this._bots.entries()) {
-      if (!teamName || botData.team === teamName) {
-        botsToRemove.push(botId);
-      }
-    }
-
-    botsToRemove.forEach(botId => this.removeBotById(botId));
+    botsToRemove.forEach(gameId => this.removeBotById(gameId));
   }
 
   /**
    * @description Удаляет конкретного бота по его ID.
-   * @param {string} botId - Идентификатор бота для удаления.
+   * @param {string} gameId - Идентификатор бота для удаления.
    */
-  removeBotById(botId) {
-    const botData = this._bots.get(botId);
+  removeBotById(gameId) {
+    const botData = this._bots.get(gameId);
 
     if (!botData) {
       return;
     }
 
     // удаление бота из систем игры
-    this._stat.removeUser(botId, botData.teamId);
-    this._panel.removeUser(botId);
-    this._vimp._teamSizes[botData.team].delete(botId);
-    this._game.removePlayer(botId);
+    this._stat.removeUser(gameId, botData.teamId);
+    this._panel.removeUser(gameId);
+    this._vimp._teamSizes[botData.team].delete(gameId);
+    this._game.removePlayer(gameId);
 
-    this._bots.delete(botId);
+    this._bots.delete(gameId);
   }
 
   /**
@@ -159,9 +159,9 @@ class BotManager {
    * @returns {boolean} - true, если бот был удален, иначе false.
    */
   removeOneBotForPlayer(teamName) {
-    for (const [botId, botData] of this._bots.entries()) {
+    for (const botData of this._bots.values()) {
       if (botData.team === teamName) {
-        this.removeBotById(botId);
+        this.removeBotById(botData.gameId);
         return true;
       }
     }
@@ -170,11 +170,20 @@ class BotManager {
   }
 
   /**
+   * @description Возвращает botData по gameId
+   * @param {string} gameId
+   * @returns {object | undefined} - botData или undefined, если нет такого gameId
+   */
+  getBotById(gameId) {
+    return this._bots.get(gameId);
+  }
+
+  /**
    * @description Возвращает итератор для перебора всех ботов.
-   * @returns {Iterator<[string, object]>}
+   * @returns {Iterator<object>}
    */
   getBots() {
-    return this._bots.entries();
+    return this._bots.values();
   }
 
   /**
@@ -186,7 +195,9 @@ class BotManager {
     const counts = {};
 
     for (const botData of this._bots.values()) {
-      counts[botData.team] = (counts[botData.team] || 0) + 1;
+      const team = botData.team;
+
+      counts[team] = (counts[team] || 0) + 1;
     }
 
     return counts;
