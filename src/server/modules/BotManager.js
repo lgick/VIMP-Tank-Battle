@@ -131,7 +131,11 @@ class BotManager {
       this._bots.set(gameId, botData);
 
       // регистрация бота в системах игры
-      this._stat.addUser(gameId, teamId, { name, latency: 'BOT' });
+      this._stat.addUser(gameId, teamId, {
+        name,
+        status: 'dead',
+        latency: 'BOT',
+      });
       this._panel.addUser(gameId);
       this._vimp._teamSizes[targetTeam].add(gameId);
 
