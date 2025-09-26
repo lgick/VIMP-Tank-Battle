@@ -1,3 +1,5 @@
+import BotController from './BotController.js';
+
 /**
  * @class BotManager
  * @description Управляет жизненным циклом ботов в игре:
@@ -19,6 +21,18 @@ class BotManager {
     this._model = 'm1'; // модель танка для ботов
     this._bots = new Map();
     this._scaledMapData = null; // данные карты для респаунов
+
+    this._botControllers = new Map();
+  }
+
+  /**
+   * @description Обновляет логику всех активных ботов.
+   * @param {number} dt
+   */
+  updateBots(dt) {
+    for (const controller of this._botControllers.values()) {
+      controller.update(dt);
+    }
   }
 
   /**
@@ -104,6 +118,16 @@ class BotManager {
         isBot: true,
       };
 
+      // контроллер для бота
+      const controller = new BotController(
+        this._vimp,
+        this._game,
+        this._panel,
+        botData,
+      );
+
+      this._botControllers.set(gameId, controller);
+
       this._bots.set(gameId, botData);
 
       // регистрация бота в системах игры
@@ -141,6 +165,13 @@ class BotManager {
 
     if (!botData) {
       return;
+    }
+
+    const controller = this._botControllers.get(gameId);
+
+    if (controller) {
+      controller.destroy();
+      this._botControllers.delete(gameId);
     }
 
     // удаление бота из систем игры

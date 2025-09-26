@@ -136,6 +136,8 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData(dt);
 
+    this._botManager.updateBots(dt);
+
     // список пользователей готовых к игре
     const userList = Object.values(this._users).filter(
       user => user.isReady === true,
