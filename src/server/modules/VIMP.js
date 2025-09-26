@@ -168,11 +168,8 @@ class VIMP {
       if (user.isWatching === true) {
         // если есть играющие пользователи
         if (this._activePlayersList.length) {
-          // если наблюдаемый игрок не существует (завершил игру)
-          if (
-            !this._users[user.watchedGameId] &&
-            !this._botManager.getBotById(user.watchedGameId)
-          ) {
+          // если наблюдаемый игрок не существует среди играющих
+          if (!this._activePlayersList.includes(user.watchedGameId)) {
             user.watchedGameId = this._activePlayersList[0];
           }
 
@@ -664,6 +661,21 @@ class VIMP {
     }
   }
 
+  // заменяет наблюдаемого игрока (victimId) на killerId
+  replaceWatchedPlayer(victimId, killerId) {
+    if (this._activePlayersList.includes(killerId)) {
+      for (const p in this._users) {
+        if (Object.hasOwn(this._users, p)) {
+          const user = this._users[p];
+
+          if (user.watchedGameId === victimId) {
+            user.watchedGameId = killerId;
+          }
+        }
+      }
+    }
+  }
+
   // проверяет уничтожение всей команды
   checkTeamWipe(victimTeamId, killerTeamId) {
     // если раунд уже в процессе завершения
@@ -752,7 +764,6 @@ class VIMP {
     }
 
     victimUser.isWatching = true;
-    this.removeFromActivePlayers(victimId);
     this._stat.updateUser(victimId, victimUser.teamId, {
       deaths: 1,
       status: 'dead',
@@ -771,6 +782,12 @@ class VIMP {
 
       // если это не самоубийство
       if (victimId !== killerId) {
+        // отслеживание противника
+        victimUser.watchedGameId = killerId;
+
+        // если кто-то наблюдал за victimId — переназначить на killerId
+        this.replaceWatchedPlayer(victimId, killerId);
+
         // если это не убийство игрока своей команды
         if (victimUser.teamId !== killerUser.teamId) {
           this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
