@@ -136,6 +136,8 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData(dt);
 
+    this._botManager.updateBots(dt);
+
     // список пользователей готовых к игре
     const userList = Object.values(this._users).filter(
       user => user.isReady === true,
@@ -166,8 +168,8 @@ class VIMP {
       if (user.isWatching === true) {
         // если есть играющие пользователи
         if (this._activePlayersList.length) {
-          // если наблюдаемый игрок не существует (завершил игру)
-          if (!this._users[user.watchedGameId]) {
+          // если наблюдаемый игрок не существует среди играющих
+          if (!this._activePlayersList.includes(user.watchedGameId)) {
             user.watchedGameId = this._activePlayersList[0];
           }
 
@@ -413,7 +415,17 @@ class VIMP {
     this._isRoundEnding = false; // сброс флага завершения раунда
 
     const respawns = this._scaledMapData.respawns;
-    const respId = {};
+    const respId = Object.keys(this._teams)
+      .filter(key => key !== this._spectatorTeam)
+      .reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+
+    function getRespawnData(team) {
+      const number = respId[team];
+
+      respId[team] += 1;
+
+      return respawns[team][number];
+    }
 
     // очищение списка играющих
     this._activePlayersList = [];
@@ -441,14 +453,7 @@ class VIMP {
           user.isWatching = true;
           this._socketManager.sendSpectatorDefaultShot(socketId);
         } else {
-          respId[team] = respId[team] || 0;
-
-          const respArr = respawns[team];
-          const respawnData = respArr[respId[team]];
-
-          this._setActivePlayer(user, respawnData);
-
-          respId[team] += 1;
+          this._setActivePlayer(user, getRespawnData(team));
         }
 
         this._socketManager.sendRoundStart(socketId);
@@ -456,23 +461,8 @@ class VIMP {
     }
 
     // создание ботов на карте
-    for (const [botId, botData] of this._botManager.getBots()) {
-      const team = botData.team;
-      const respArr = respawns[team];
-
-      respId[team] = respId[team] || 0;
-
-      if (respArr && respId[team] < respArr.length) {
-        this._game.createPlayer(
-          botId,
-          botData.model,
-          botData.name,
-          botData.teamId,
-          respArr[respId[team]],
-        );
-
-        respId[team] += 1;
-      }
+    for (const botData of this._botManager.getBots()) {
+      this._setActivePlayer(botData, getRespawnData(botData.team));
     }
   }
 
@@ -630,7 +620,11 @@ class VIMP {
     user.isWatching = false;
     user.watchedGameId = null;
 
-    this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
+    // если это не бот
+    if (!user.isBot) {
+      this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
+    }
+
     this._stat.updateUser(gameId, teamId, { status: '' });
     this._game.createPlayer(gameId, model, name, teamId, respawnData);
     this.addToActivePlayers(gameId);
@@ -667,6 +661,21 @@ class VIMP {
     }
   }
 
+  // заменяет наблюдаемого игрока (victimId) на killerId
+  replaceWatchedPlayer(victimId, killerId) {
+    if (this._activePlayersList.includes(killerId)) {
+      for (const p in this._users) {
+        if (Object.hasOwn(this._users, p)) {
+          const user = this._users[p];
+
+          if (user.watchedGameId === victimId) {
+            user.watchedGameId = killerId;
+          }
+        }
+      }
+    }
+  }
+
   // проверяет уничтожение всей команды
   checkTeamWipe(victimTeamId, killerTeamId) {
     // если раунд уже в процессе завершения
@@ -687,9 +696,20 @@ class VIMP {
         const user = this._users[gameId];
 
         // если нашелся живой игрок, команда не уничтожена
-        if (user.teamId === victimTeamId && !user.isWatching) {
+        if (user.teamId === victimTeamId && this._game.isAlive(gameId)) {
           return;
         }
+      }
+    }
+
+    // проверка на живых ботов в команде
+    for (const botData of this._botManager.getBots()) {
+      // если нашелся живой бот, команда не уничтожена
+      if (
+        botData.teamId === victimTeamId &&
+        this._game.isAlive(botData.gameId)
+      ) {
+        return;
       }
     }
 
@@ -736,48 +756,55 @@ class VIMP {
 
   // обрабатывает уничтожение игрока, обновляет статистику
   reportKill(victimId, killerId = null) {
-    const victimUser = this._users[victimId];
+    const victimUser =
+      this._users[victimId] || this._botManager.getBotById(victimId);
 
-    if (!victimUser || victimUser.isWatching) {
+    if (!victimUser) {
       return;
     }
 
     victimUser.isWatching = true;
-    this.removeFromActivePlayers(victimId);
-
-    // обновление статистики уничтоженного игрока
     this._stat.updateUser(victimId, victimUser.teamId, {
       deaths: 1,
       status: 'dead',
     });
 
-    const killerUser = this._users[killerId];
-
-    // если это не самоубийство
-    if (killerUser && victimId !== killerId) {
-      // если это не убийство игрока своей команды
-      if (victimUser.teamId !== killerUser.teamId) {
-        this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
-        // иначе если это огонь по своим
-      } else {
-        this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
-      }
-
-      this._socketManager.sendFragSound(killerUser.socketId);
-    }
-
     // отмена всех запланированных обновлений панели
     this._panel.invalidate(victimId);
 
-    this._socketManager.sendSpectatorDefaultShot(victimUser.socketId);
+    if (!victimUser.isBot) {
+      this._socketManager.sendSpectatorDefaultShot(victimUser.socketId);
+    }
 
-    // проверка на уничтожение всей команды противника
-    this.checkTeamWipe(
-      victimUser.teamId,
-      killerUser ? killerUser.teamId : null,
-    );
+    if (killerId) {
+      const killerUser =
+        this._users[killerId] || this._botManager.getBotById(killerId);
+
+      // если это не самоубийство
+      if (victimId !== killerId) {
+        // отслеживание противника
+        victimUser.watchedGameId = killerId;
+
+        // если кто-то наблюдал за victimId — переназначить на killerId
+        this.replaceWatchedPlayer(victimId, killerId);
+
+        // если это не убийство игрока своей команды
+        if (victimUser.teamId !== killerUser.teamId) {
+          this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
+          // иначе если это огонь по своим
+        } else {
+          this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
+        }
+
+        if (!killerUser.isBot) {
+          this._socketManager.sendFragSound(killerUser.socketId);
+        }
+      }
+
+      // проверка на уничтожение всей команды противника
+      this.checkTeamWipe(victimUser.teamId, killerUser.teamId);
+    }
   }
-
   // меняет и возвращает gameId наблюдаемого игрока
   getNextActivePlayerForUser(gameId, back) {
     const currentId = this._users[gameId]?.watchedGameId;
@@ -891,20 +918,20 @@ class VIMP {
 
     // если не наблюдатель
     if (team !== this._spectatorTeam) {
-      // удаляем из модуля game
+      // удаление из модуля game
       this._game.removePlayer(gameId);
 
-      // удаляем из списка играющих на полотне
+      // удаление из списка играющих на полотне
       this.removeFromActivePlayers(gameId);
 
-      // добавляем в список удаляемых игроков у пользователей
+      // добавление в список удаляемых игроков у пользователей
       this._removedPlayersList.push({
         gameId,
         model,
       });
     }
 
-    // обновляем счетчики команд
+    // обновление счетчиков команд
     this._teamSizes[team].delete(gameId);
 
     delete this._users[gameId];

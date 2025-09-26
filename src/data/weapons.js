@@ -2,7 +2,7 @@ export default {
   // bullet
   w1: {
     type: 'hitscan',
-    impulseMagnitude: 500000, // сила импульса (кг*м/с)
+    impulseMagnitude: 500, // сила импульса (кг*м/с)
     damage: 40, // урон от одного попадания
     range: 1500, // максимальная дальность выстрела (в игровых юнитах)
     fireRate: 0, // кулдаун между выстрелами (0 - отсутствует)
@@ -18,12 +18,12 @@ export default {
   w2: {
     type: 'explosive',
     constructor: 'Bomb',
-    time: 5000,
+    time: 500,
     shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
     size: 13, // соотношение сторон 1:1
     fireRate: 0, // кулдаун (0 - отсутствует)
-    damage: 20, // урон в эпицентре
-    radius: 200, // радиус взрыва
+    damage: 70, // урон в эпицентре
+    radius: 80, // радиус взрыва
     impulseMagnitude: 20000000, // сила импульса
     cameraShake: {
       intensity: 30, // сила тряски (в пикселях)
