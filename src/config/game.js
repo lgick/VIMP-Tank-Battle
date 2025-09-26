@@ -108,7 +108,7 @@ export default {
     },
     w2: {
       key: 'w2',
-      value: 50,
+      value: 100,
     },
   },
 
