@@ -197,7 +197,7 @@ class Game {
   }
 
   // удаляет всех игроков и возвращает список удаленных моделей (игроков, дыма)
-  removePlayers() {
+  _removePlayers() {
     const modelNameSet = new Set();
 
     for (const gameId in this._playersData) {
@@ -251,7 +251,7 @@ class Game {
     }
 
     this._playersData = {};
-    this.removeShots();
+    this._removeShots();
     this._lastExpiredShotsData = {};
     this._accumulator = 0;
   }
@@ -278,8 +278,8 @@ class Game {
     // делаем столько фиксированных шагов, сколько нужно
     while (this._accumulator >= this._timeStep) {
       // оружие, чье время жизни истекло на этом шаге (не hitscan оружие)
-      const expiredByTimeData = this.processShotsExpiredByTime();
-      this.mergeShotOutcomeData(expiredByTimeData);
+      const expiredByTimeData = this._processShotsExpiredByTime();
+      this._mergeShotOutcomeData(expiredByTimeData);
 
       this._world.step(
         this._timeStep,
@@ -289,10 +289,10 @@ class Game {
 
       // обрабатываем все события контактов,
       // которые произошли на этом шаге
-      this.processContactEvents();
+      this._processContactEvents();
 
       // удаляем все тела, которые были помечены на удаление
-      this.destroyQueuedBodies();
+      this._destroyQueuedBodies();
 
       this._accumulator -= this._timeStep;
     }
@@ -353,7 +353,7 @@ class Game {
   }
 
   // обрабатывает события контактов, накопленные за шаг физики
-  processContactEvents() {
+  _processContactEvents() {
     for (const contact of this._contactEvents) {
       const fixtureA = contact.fixtureA;
       const fixtureB = contact.fixtureB;
@@ -412,7 +412,7 @@ class Game {
   }
 
   // уничтожает тела, находящиеся в очереди на удаление
-  destroyQueuedBodies() {
+  _destroyQueuedBodies() {
     if (this._bodiesToDestroy.size === 0) {
       return;
     }
@@ -424,7 +424,7 @@ class Game {
       if (userData && userData.type === 'shot') {
         delete this._shotsData[userData.shotId];
 
-        this.mergeShotOutcomeData({
+        this._mergeShotOutcomeData({
           [userData.weaponName]: { [userData.shotId]: null },
         });
       }
@@ -436,7 +436,7 @@ class Game {
   }
 
   // вспомогательный метод для слияния данных об исходе пуль
-  mergeShotOutcomeData(newData) {
+  _mergeShotOutcomeData(newData) {
     for (const weaponName in newData) {
       if (Object.hasOwn(newData, weaponName)) {
         this._lastExpiredShotsData[weaponName] =
@@ -454,7 +454,7 @@ class Game {
   }
 
   // обрабатывает оружие, чье время жизни истекло (не hitscan оружие)
-  processShotsExpiredByTime() {
+  _processShotsExpiredByTime() {
     const shotsInCurrentTick = this._shotsAtTime[this._currentStepTick];
     const outcomeData = {};
 
@@ -532,7 +532,7 @@ class Game {
             gameData[weaponName] = gameData[weaponName] || [];
             gameData[weaponName].push(shot);
           } else if (weaponConfig.type === 'explosive') {
-            const shot = this.createWeaponAction(gameId, weaponName, shotData);
+            const shot = this._createWeaponAction(gameId, weaponName, shotData);
 
             gameData[weaponName] = gameData[weaponName] || {};
             gameData[weaponName][shot.shotId] = shot.getData();
@@ -562,7 +562,7 @@ class Game {
   }
 
   // создает действие с оружием и возвращает объект снаряда
-  createWeaponAction(gameId, weaponName, shotData) {
+  _createWeaponAction(gameId, weaponName, shotData) {
     const weaponData = this._weapons[weaponName];
     const lifetimeMs = weaponData.time;
     const lifetimeSeconds = lifetimeMs / 1000.0;
@@ -616,8 +616,8 @@ class Game {
   // удаляет данные игроков и пуль и возвращает список удалённых имён
   removePlayersAndShots() {
     return [
-      ...this.removePlayers(),
-      ...this.removeShots(),
+      ...this._removePlayers(),
+      ...this._removeShots(),
       ...Object.keys(this._hitscanWeapons),
       ...this._weaponEffectList,
     ];
@@ -625,7 +625,7 @@ class Game {
 
   // сбрасывает currentShotId,
   // удаляет все пули и возвращает список удаленных имён
-  removeShots() {
+  _removeShots() {
     const weaponNameSet = new Set();
 
     this._currentShotId = 0;

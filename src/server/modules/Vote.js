@@ -45,7 +45,7 @@ class Vote {
   }
 
   // добавляет данные голосования
-  push(arr) {
+  _push(arr) {
     this._list.push(arr);
   }
 
@@ -75,7 +75,7 @@ class Vote {
         this.pushByUser(userList[i], payload);
       }
     } else {
-      this.push(payload);
+      this._push(payload);
     }
 
     if (onStartCallback) {

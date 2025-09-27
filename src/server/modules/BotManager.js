@@ -157,14 +157,14 @@ class BotManager {
         )
       : [...this._bots.keys()];
 
-    botsToRemove.forEach(gameId => this.removeBotById(gameId));
+    botsToRemove.forEach(gameId => this._removeBotById(gameId));
   }
 
   /**
    * @description Удаляет конкретного бота по его ID.
    * @param {string} gameId - Идентификатор бота для удаления.
    */
-  removeBotById(gameId) {
+  _removeBotById(gameId) {
     const botData = this._bots.get(gameId);
 
     if (!botData) {
@@ -196,7 +196,7 @@ class BotManager {
   removeOneBotForPlayer(teamName) {
     for (const botData of this._bots.values()) {
       if (botData.team === teamName) {
-        this.removeBotById(botData.gameId);
+        this._removeBotById(botData.gameId);
         return true;
       }
     }

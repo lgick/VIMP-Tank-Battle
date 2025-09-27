@@ -35,7 +35,7 @@ class Stat {
         for (const gameId in bodyStats) {
           if (Object.hasOwn(bodyStats, gameId)) {
             const stat = bodyStats[gameId];
-            stat[2] = this.getDefaultBody(stat[2]);
+            stat[2] = this._getDefaultBody(stat[2]);
             this._lastBody.push(stat);
           }
         }
@@ -51,7 +51,7 @@ class Stat {
             const conf = this._config[p];
 
             if (conf.headSync) {
-              this.updateHeadSync(teamId, p);
+              this._updateHeadSync(teamId, p);
             } else if (typeof conf.headValue !== 'undefined') {
               stat[1][conf.key] = conf.headValue;
             }
@@ -64,7 +64,7 @@ class Stat {
   }
 
   // возвращает дефолтные данные для body
-  getDefaultBody(stat = []) {
+  _getDefaultBody(stat = []) {
     for (const p in this._config) {
       if (Object.hasOwn(this._config, p)) {
         const conf = this._config[p];
@@ -81,7 +81,7 @@ class Stat {
   // добавляет пользователя
   addUser(gameId, teamId, data) {
     // добавление данных по умолчанию из конфига
-    this._body[teamId][gameId] = [gameId, teamId, this.getDefaultBody()];
+    this._body[teamId][gameId] = [gameId, teamId, this._getDefaultBody()];
 
     // обновление данных игрока (имя, статус...)
     this.updateUser(gameId, teamId, data);
@@ -107,7 +107,7 @@ class Stat {
         stat[p] = value;
 
         if (conf.headSync === true) {
-          this.updateHeadSync(teamId, p, true);
+          this._updateHeadSync(teamId, p, true);
         }
       }
     }
@@ -142,7 +142,7 @@ class Stat {
         }
 
         if (conf.headSync === true) {
-          this.updateHeadSync(teamId, p, true);
+          this._updateHeadSync(teamId, p, true);
         }
       }
     }
@@ -170,7 +170,7 @@ class Stat {
   }
 
   // обновляет статистику head синхронизированную с body
-  updateHeadSync(teamId, param, save) {
+  _updateHeadSync(teamId, param, save) {
     const stat = this._head[teamId];
     const bodyStats = this._body[teamId];
     const conf = this._config[param];

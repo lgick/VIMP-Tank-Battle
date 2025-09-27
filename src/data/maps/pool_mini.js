@@ -221,10 +221,10 @@ export default {
 
     const newMap = [];
 
-    for (let row of originalMap) {
+    for (const row of originalMap) {
       const newRow1 = [];
       const newRow2 = [];
-      for (let tile of row) {
+      for (const tile of row) {
         newRow1.push(tile, tile);
         newRow2.push(tile, tile);
       }
