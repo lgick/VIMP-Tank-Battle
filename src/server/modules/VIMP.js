@@ -5,7 +5,7 @@ import Vote from './Vote.js';
 import Game from './Game.js';
 import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
-import BotManager from './BotManager.js';
+import Bots from './bots/index.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
 import { isValidName } from '../../lib/validators.js';
 
@@ -73,12 +73,7 @@ class VIMP {
 
     this._socketManager = socketManager;
 
-    this._botManager = new BotManager(
-      this,
-      this._game,
-      this._panel,
-      this._stat,
-    );
+    this._bots = new Bots(this, this._game, this._panel, this._stat);
 
     this._RTTManager = new RTTManager(data.rtt, {
       onKickForMissedPings: gameId => this._kickForMissedPings(gameId),
@@ -136,7 +131,7 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData(dt);
 
-    this._botManager.updateBots(dt);
+    this._bots.updateBots(dt);
 
     // список пользователей готовых к игре
     const userList = Object.values(this._users).filter(
@@ -310,9 +305,9 @@ class VIMP {
     }
 
     this._scaledMapData = scaleMapData(this._currentMapData);
-    this._botManager.createMap(this._scaledMapData);
-    const botCounts = this._botManager.getBotCountsPerTeam();
-    this._botManager.removeBots();
+    this._bots.createMap(this._scaledMapData);
+    const botCounts = this._bots.getBotCountsPerTeam();
+    this._bots.removeBots();
 
     // если нет индивидуального конструктора для создания карты
     if (!this._currentMapData.setId) {
@@ -358,7 +353,7 @@ class VIMP {
     // воссоздание ботов на новой карте
     for (const [team, count] of Object.entries(botCounts)) {
       if (count > 0) {
-        this._botManager.createBots(count, team);
+        this._bots.createBots(count, team);
       }
     }
 
@@ -461,7 +456,7 @@ class VIMP {
     }
 
     // создание ботов на карте
-    for (const botData of this._botManager.getBots()) {
+    for (const botData of this._bots.getBots()) {
       this._setActivePlayer(botData, getRespawnData(botData.team));
     }
   }
@@ -520,7 +515,7 @@ class VIMP {
       respawns[newTeam].length <= this._teamSizes[newTeam].size
     ) {
       // попытка удалить одного бота, чтобы освободить место
-      const botRemoved = this._botManager.removeOneBotForPlayer(newTeam);
+      const botRemoved = this._bots.removeOneBotForPlayer(newTeam);
 
       if (!botRemoved) {
         this._chat.pushSystemByUser(gameId, 'TEAMS_TEAM_FULL', [
@@ -703,7 +698,7 @@ class VIMP {
     }
 
     // проверка на живых ботов в команде
-    for (const botData of this._botManager.getBots()) {
+    for (const botData of this._bots.getBots()) {
       // если нашелся живой бот, команда не уничтожена
       if (
         botData.teamId === victimTeamId &&
@@ -756,8 +751,7 @@ class VIMP {
 
   // обрабатывает уничтожение игрока, обновляет статистику
   reportKill(victimId, killerId = null) {
-    const victimUser =
-      this._users[victimId] || this._botManager.getBotById(victimId);
+    const victimUser = this._users[victimId] || this._bots.getBotById(victimId);
 
     if (!victimUser) {
       return;
@@ -778,7 +772,7 @@ class VIMP {
 
     if (killerId) {
       const killerUser =
-        this._users[killerId] || this._botManager.getBotById(killerId);
+        this._users[killerId] || this._bots.getBotById(killerId);
 
       // если это не самоубийство
       if (victimId !== killerId) {
@@ -1221,19 +1215,19 @@ class VIMP {
   // исполняет команду /bot
   _executeBotCommand(userName, count, team) {
     if (team) {
-      this._botManager.removeBots(team);
+      this._bots.removeBots(team);
 
       if (count > 0) {
-        count = this._botManager.createBots(count, team);
+        count = this._bots.createBots(count, team);
         this._chat.pushSystem('BOT_CREATED_FOR_TEAM', [userName, count, team]);
       } else {
         this._chat.pushSystem('BOT_REMOVED_FROM_TEAM', [userName, team]);
       }
     } else {
-      this._botManager.removeBots();
+      this._bots.removeBots();
 
       if (count > 0) {
-        count = this._botManager.createBots(count, null);
+        count = this._bots.createBots(count, null);
         this._chat.pushSystem('BOT_CREATED', [userName, count]);
       } else {
         this._chat.pushSystem('BOT_REMOVED', [userName]);
