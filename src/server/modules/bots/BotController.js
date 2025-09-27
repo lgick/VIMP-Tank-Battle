@@ -1,5 +1,3 @@
-// BotController.js
-
 import { Vec2, Rot } from 'planck';
 
 // Константы для поведения бота
@@ -104,7 +102,7 @@ class BotController {
     let minDistanceSq = Infinity;
     const potentialTargets = [
       ...Object.values(this._vimp._users),
-      ...this._vimp._botManager.getBots(),
+      ...this._vimp._bots.getBots(),
     ];
 
     potentialTargets.forEach(p => {
