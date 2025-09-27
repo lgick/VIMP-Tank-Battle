@@ -360,7 +360,7 @@ templates: {
 */
 {
   "name": "mapChangeBySystem",
-  "values": ["pool_mini", "arena", "cross", "garden"]
+  "values": ["pool mini", "arena", "cross", "garden"]
 }
 ```
 
