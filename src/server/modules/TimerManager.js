@@ -43,19 +43,19 @@ class TimerManager extends AbstractTimer {
   // запускает все основные игровые таймеры (карта, игровой цикл, раунд)
   startGameTimers() {
     this.startMapTimer();
-    this.startGameLoop();
+    this._startGameLoop();
     this.startRoundTimer();
-    this.startRttPingTimer();
+    this._startRttPingTimer();
   }
 
   // останавливает все основные игровые таймеры
   stopGameTimers() {
-    this.stopGameLoop();
+    this._stopGameLoop();
     this.stopRoundTimer();
     this.stopMapTimer();
-    this.stopRoundRestartDelay();
-    this.stopMapChangeDelay();
-    this.stopRttPingTimer();
+    this._stopRoundRestartDelay();
+    this._stopMapChangeDelay();
+    this._stopRttPingTimer();
   }
 
   // запускает таймер до конца текущей карты
@@ -128,8 +128,8 @@ class TimerManager extends AbstractTimer {
   }
 
   // инициализирует и запускает игровой цикл (обновление кадров)
-  startGameLoop() {
-    this.stopGameLoop();
+  _startGameLoop() {
+    this._stopGameLoop();
 
     this._lastShotTime = performance.now();
     this._expectedTickTime = this._lastShotTime + this._timeStep;
@@ -139,7 +139,7 @@ class TimerManager extends AbstractTimer {
   }
 
   // останавливает игровой цикл
-  stopGameLoop() {
+  _stopGameLoop() {
     this._stopTimer('gameLoop');
   }
 
@@ -191,7 +191,7 @@ class TimerManager extends AbstractTimer {
   }
 
   // останавливает отложенный перезапуск раунда
-  stopRoundRestartDelay() {
+  _stopRoundRestartDelay() {
     this._stopTimer('roundRestartDelay');
   }
 
@@ -201,7 +201,7 @@ class TimerManager extends AbstractTimer {
   }
 
   // останавливает отложенную смену карты
-  stopMapChangeDelay() {
+  _stopMapChangeDelay() {
     this._stopTimer('mapChangeDelay');
   }
 
@@ -221,13 +221,13 @@ class TimerManager extends AbstractTimer {
   startIdleCheckTimer() {
     // если есть интервал и callback
     if (this._idleCheckInterval && this._callbacks.onIdleCheck) {
-      this.stopIdleCheckTimer();
+      this._stopIdleCheckTimer();
       this._idleCheckTick();
     }
   }
 
   // останавливает проверку на бездействие
-  stopIdleCheckTimer() {
+  _stopIdleCheckTimer() {
     this._stopTimer('idleCheck');
   }
 
@@ -244,16 +244,16 @@ class TimerManager extends AbstractTimer {
   }
 
   // запускает отправку пингов
-  startRttPingTimer() {
+  _startRttPingTimer() {
     // если есть интервал и callback
     if (this._rttPingInterval && this._callbacks.onSendPing) {
-      this.stopRttPingTimer();
+      this._stopRttPingTimer();
       this._rttPingTick();
     }
   }
 
   // останавливает отправку пингов
-  stopRttPingTimer() {
+  _stopRttPingTimer() {
     this._stopTimer('rttPing');
   }
 }

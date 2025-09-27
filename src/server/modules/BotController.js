@@ -11,11 +11,13 @@ const MIN_TARGET_DISTANCE = 80; // Минимальная дистанция д�
 const MAX_FIRING_DISTANCE = 500; // Максимальная дистанция для ведения огня
 
 // --- НОВЫЕ КОНСТАНТЫ ДЛЯ СНИЖЕНИЯ МЕТКОСТИ ---
-// Максимальная случайная погрешность прицеливания в радианах (0.05 радиана ~ 3 градуса)
+// Максимальная случайная погрешность прицеливания в радианах
+// (0.05 радиана ~ 3 градуса)
 const AIM_INACCURACY = 0.5;
 // Минимальная задержка перед выстрелом (в секундах)
 const MIN_FIRING_DELAY = 2;
-// Дополнительная случайная задержка (итоговая задержка будет от 0.8 до 1.3 секунды)
+// Дополнительная случайная задержка
+// (итоговая задержка будет от 0.8 до 1.3 секунды)
 const RANDOM_FIRING_DELAY = 0.5;
 
 class BotController {
@@ -56,6 +58,7 @@ class BotController {
         this.state = 'DEAD';
         this.releaseAllKeys();
       }
+
       return;
     }
 
@@ -79,16 +82,22 @@ class BotController {
       this.state = 'IDLE';
       return;
     }
+
     if (health <= HEALTH_THRESHOLD_FOR_COVER && !this.isBehindCover()) {
       this.state = 'SEEKING_COVER';
       return;
     }
+
     this.state = 'ATTACKING';
   }
 
   findClosestEnemy() {
     const myPosArray = this.getBotPosition();
-    if (!myPosArray) return null;
+
+    if (!myPosArray) {
+      return null;
+    }
+
     const myPosition = new Vec2(myPosArray[0], myPosArray[1]);
 
     let closestEnemy = null;
@@ -103,12 +112,17 @@ class BotController {
         p.gameId === this._botData.gameId ||
         p.teamId === this._botData.teamId ||
         p.teamId === this._vimp._spectatorId
-      )
+      ) {
         return;
+      }
 
       if (this._game.isAlive(p.gameId)) {
         const enemyPosArray = this._game.getPosition(p.gameId);
-        if (!enemyPosArray) return;
+
+        if (!enemyPosArray) {
+          return;
+        }
+
         const enemyPosition = new Vec2(enemyPosArray[0], enemyPosArray[1]);
         const distanceSq = Vec2.distanceSquared(myPosition, enemyPosition);
 
@@ -118,6 +132,7 @@ class BotController {
         }
       }
     });
+
     return closestEnemy;
   }
 
@@ -145,30 +160,44 @@ class BotController {
 
   moveTo(targetGameId) {
     const myBody = this._game._playersData[this._botData.gameId]?.getBody();
-    if (!myBody) return;
+
+    if (!myBody) {
+      return;
+    }
+
     const myPosition = myBody.getPosition();
 
     const targetPosArray = this._game.getPosition(targetGameId);
-    if (!targetPosArray) return;
+
+    if (!targetPosArray) {
+      return;
+    }
+
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
 
     const targetBody = this._game._playersData[targetGameId]?.getBody();
+
     if (targetBody) {
       const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
+
       targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
     }
 
     const directionToTarget = Vec2.sub(targetPosition, myPosition);
+
     if (
       directionToTarget.lengthSquared() <
       MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
     ) {
       this._setKeyState('forward', false);
+
       return;
     }
 
     const dirToTargetNorm = Vec2.clone(directionToTarget);
+
     dirToTargetNorm.normalize();
+
     const finalDirection = this.avoidObstacles(myBody, dirToTargetNorm);
     const forwardVec = myBody.getWorldVector(new Vec2(1, 0));
     const angleToTarget = Math.atan2(
@@ -177,6 +206,7 @@ class BotController {
     );
 
     const turnThreshold = 0.2;
+
     if (angleToTarget > turnThreshold) {
       this._setKeyState('right', true);
       this._setKeyState('left', false);
@@ -202,31 +232,39 @@ class BotController {
       left: Rot.mulVec2(new Rot(Math.PI / 6), desiredDirection),
       right: Rot.mulVec2(new Rot(-Math.PI / 6), desiredDirection),
     };
-    let steerCorrection = new Vec2(0, 0);
+    const steerCorrection = new Vec2(0, 0);
     let obstaclesDetected = false;
+
     for (const dir in rays) {
       const endPoint = Vec2.add(
         myPosition,
         rays[dir].mul(OBSTACLE_AVOIDANCE_RAY_LENGTH),
       );
       let hit = false;
+
       this._world.rayCast(myPosition, endPoint, fixture => {
         if (fixture.getBody() !== myBody && !fixture.isSensor()) {
           hit = true;
+
           return 0;
         }
+
         return -1;
       });
+
       if (hit) {
         obstaclesDetected = true;
         steerCorrection.sub(rays[dir]);
       }
     }
+
     if (obstaclesDetected) {
       const correctedDir = steerCorrection.add(desiredDirection);
       correctedDir.normalize();
+
       return correctedDir;
     }
+
     return desiredDirection;
   }
 
@@ -243,19 +281,26 @@ class BotController {
     }
 
     const botTank = this._game._playersData[this._botData.gameId];
-    if (!botTank) return;
+
+    if (!botTank) {
+      return;
+    }
+
     const myBody = botTank.getBody();
 
     const targetPosArray = this._game.getPosition(this._target.gameId);
-    if (!targetPosArray) return;
+
+    if (!targetPosArray) {
+      return;
+    }
+
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
     const directionToTarget = Vec2.sub(targetPosition, myBody.getPosition());
 
-    // --- ИЗМЕНЕНИЕ 1: ДОБАВЛЯЕМ СЛУЧАЙНУЮ ПОГРЕШНОСТЬ К ЦЕЛИ ---
+    // случайная погрешность к цели
     let targetAngle = Math.atan2(directionToTarget.y, directionToTarget.x);
     const randomInaccuracy = (Math.random() - 0.5) * AIM_INACCURACY;
     targetAngle += randomInaccuracy;
-    // -----------------------------------------------------------
 
     const currentGunAngle = myBody.getAngle() + myBody.gunRotation;
     let angleDifference = targetAngle - currentGunAngle;
@@ -282,11 +327,12 @@ class BotController {
         MAX_FIRING_DISTANCE * MAX_FIRING_DISTANCE;
 
       if (targetIsVisible && cooldownReady && targetInRange) {
-        // --- ИЗМЕНЕНИЕ 2: УСТАНАВЛИВАЕМ СЛУЧАЙНУЮ ЗАДЕРЖКУ ДЛЯ СЛЕДУЮЩЕГО ВЫСТРЕЛА ---
+        // случайная задержка для следующего выстрела
         this._firingTimer =
           MIN_FIRING_DELAY + Math.random() * RANDOM_FIRING_DELAY;
-        // --------------------------------------------------------------------------
+
         const weapon = botTank.currentWeapon;
+
         if (this._panel.hasResources(this._botData.gameId, weapon, 1)) {
           this._game.updateKeys(this._botData.gameId, {
             action: 'down',
@@ -299,19 +345,34 @@ class BotController {
 
   hasLineOfSight(target) {
     const myBody = this._game._playersData[this._botData.gameId]?.getBody();
-    if (!myBody) return false;
+
+    if (!myBody) {
+      return false;
+    }
+
     const startPoint = myBody.getPosition();
     const endPosArray = this._game.getPosition(target.gameId);
-    if (!endPosArray) return false;
+
+    if (!endPosArray) {
+      return false;
+    }
+
     const endPoint = new Vec2(endPosArray[0], endPosArray[1]);
     let isVisible = false;
+
     this._world.rayCast(startPoint, endPoint, fixture => {
       const hitBody = fixture.getBody();
-      if (hitBody === myBody || fixture.isSensor()) return -1.0;
+
+      if (hitBody === myBody || fixture.isSensor()) {
+        return -1.0;
+      }
+
       const hitUserData = hitBody.getUserData();
       isVisible = hitUserData && hitUserData.gameId === target.gameId;
+
       return 0;
     });
+
     return isVisible;
   }
 
@@ -326,8 +387,11 @@ class BotController {
   isBehindCover() {
     return false;
   }
+
   findAndMoveToCover() {
-    if (this._target) this.moveTo(this._target.gameId);
+    if (this._target) {
+      this.moveTo(this._target.gameId);
+    }
   }
 
   destroy() {
