@@ -1,22 +1,26 @@
 import { Vec2, Rot } from 'planck';
 
-// Константы для поведения бота
+// константы для поведения бота
 const AI_UPDATE_INTERVAL = 0.2; // как часто бот принимает решения (в секундах)
 const HEALTH_THRESHOLD_FOR_COVER = 40; // порог здоровья для поиска укрытия
 const TARGET_PREDICTION_FACTOR = 0.2; // коэффициент для упреждения цели
 const OBSTACLE_AVOIDANCE_RAY_LENGTH = 150; // длина лучей для обхода препятствий
-const MIN_TARGET_DISTANCE = 80; // Минимальная дистанция до цели
-const MAX_FIRING_DISTANCE = 500; // Максимальная дистанция для ведения огня
+const MIN_TARGET_DISTANCE = 80; // минимальная дистанция до цели
+const MAX_FIRING_DISTANCE = 500; // максимальная дистанция для ведения огня
 
-// --- НОВЫЕ КОНСТАНТЫ ДЛЯ СНИЖЕНИЯ МЕТКОСТИ ---
-// Максимальная случайная погрешность прицеливания в радианах
+// константы для снижения меткости
+// максимальная случайная погрешность прицеливания в радианах
 // (0.05 радиана ~ 3 градуса)
 const AIM_INACCURACY = 0.5;
-// Минимальная задержка перед выстрелом (в секундах)
+// минимальная задержка перед выстрелом (в секундах)
 const MIN_FIRING_DELAY = 2;
-// Дополнительная случайная задержка
+// дополнительная случайная задержка
 // (итоговая задержка будет от 0.8 до 1.3 секунды)
 const RANDOM_FIRING_DELAY = 0.5;
+
+// константы для использования бомб
+const BOMB_USAGE_DISTANCE = 50; // дистанция для использования бомбы
+const BOMB_COOLDOWN = 0.5; // перезарядка бомбы в секундах
 
 class BotController {
   constructor(vimp, game, panel, botData) {
@@ -31,6 +35,7 @@ class BotController {
 
     this._aiUpdateTimer = 0;
     this._firingTimer = 0;
+    this._bombCooldownTimer = 0;
 
     this._keyStates = {
       forward: false,
@@ -62,6 +67,7 @@ class BotController {
 
     this._aiUpdateTimer -= dt;
     this._firingTimer = Math.max(0, this._firingTimer - dt);
+    this._bombCooldownTimer = Math.max(0, this._bombCooldownTimer - dt);
 
     if (this._aiUpdateTimer <= 0) {
       this._aiUpdateTimer = AI_UPDATE_INTERVAL;
@@ -267,35 +273,55 @@ class BotController {
   }
 
   executeAimAndShoot() {
-    if (!this._target || !this._game.isAlive(this._target.gameId)) {
+    if (
+      this.state !== 'ATTACKING' ||
+      !this._target ||
+      !this._game.isAlive(this._target.gameId)
+    ) {
       this._target = null;
       this.state = 'IDLE';
-    }
-
-    if (this.state !== 'ATTACKING' || !this._target) {
       this._setKeyState('gunLeft', false);
       this._setKeyState('gunRight', false);
       return;
     }
 
     const botTank = this._game._playersData[this._botData.gameId];
-
     if (!botTank) {
       return;
     }
-
     const myBody = botTank.getBody();
-
     const targetPosArray = this._game.getPosition(this._target.gameId);
-
     if (!targetPosArray) {
       return;
     }
 
+    const myPosition = myBody.getPosition();
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
-    const directionToTarget = Vec2.sub(targetPosition, myBody.getPosition());
+    const directionToTarget = Vec2.sub(targetPosition, myPosition);
+    const distanceToTargetSq = directionToTarget.lengthSquared();
 
-    // случайная погрешность к цели
+    const shouldUseBomb =
+      distanceToTargetSq < BOMB_USAGE_DISTANCE * BOMB_USAGE_DISTANCE &&
+      this._bombCooldownTimer <= 0;
+    const currentWeapon = botTank.currentWeapon;
+
+    if (shouldUseBomb) {
+      if (currentWeapon !== 'w2') {
+        this._game.updateKeys(this._botData.gameId, {
+          action: 'down',
+          name: 'nextWeapon',
+        });
+        return;
+      }
+    } else if (currentWeapon === 'w2') {
+      this._game.updateKeys(this._botData.gameId, {
+        action: 'down',
+        name: 'nextWeapon',
+      });
+      return;
+    }
+
+    // логика прицеливания
     let targetAngle = Math.atan2(directionToTarget.y, directionToTarget.x);
     const randomInaccuracy = (Math.random() - 0.5) * AIM_INACCURACY;
     targetAngle += randomInaccuracy;
@@ -318,24 +344,36 @@ class BotController {
       this._setKeyState('gunLeft', false);
       this._setKeyState('gunRight', false);
 
+      // логика стрельбы
       const targetIsVisible = this.hasLineOfSight(this._target);
-      const cooldownReady = this._firingTimer <= 0;
-      const targetInRange =
-        directionToTarget.lengthSquared() <
-        MAX_FIRING_DISTANCE * MAX_FIRING_DISTANCE;
+      const weaponCooldownReady = this._firingTimer <= 0; // для основного оружия
 
-      if (targetIsVisible && cooldownReady && targetInRange) {
-        // случайная задержка для следующего выстрела
-        this._firingTimer =
-          MIN_FIRING_DELAY + Math.random() * RANDOM_FIRING_DELAY;
-
-        const weapon = botTank.currentWeapon;
-
-        if (this._panel.hasResources(this._botData.gameId, weapon, 1)) {
-          this._game.updateKeys(this._botData.gameId, {
-            action: 'down',
-            name: 'fire',
-          });
+      if (targetIsVisible) {
+        if (shouldUseBomb && currentWeapon === 'w2') {
+          if (this._panel.hasResources(this._botData.gameId, 'w2', 1)) {
+            this._game.updateKeys(this._botData.gameId, {
+              action: 'down',
+              name: 'fire',
+            });
+            this._bombCooldownTimer = BOMB_COOLDOWN;
+          }
+        } else if (
+          !shouldUseBomb &&
+          currentWeapon === 'w1' &&
+          weaponCooldownReady
+        ) {
+          const targetInRange =
+            distanceToTargetSq < MAX_FIRING_DISTANCE * MAX_FIRING_DISTANCE;
+          if (targetInRange) {
+            this._firingTimer =
+              MIN_FIRING_DELAY + Math.random() * RANDOM_FIRING_DELAY;
+            if (this._panel.hasResources(this._botData.gameId, 'w1', 1)) {
+              this._game.updateKeys(this._botData.gameId, {
+                action: 'down',
+                name: 'fire',
+              });
+            }
+          }
         }
       }
     }
