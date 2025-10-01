@@ -365,4 +365,12 @@ export default class SocketManager {
   sendFragSound(socketId) {
     this._send(socketId, this._PORT_SOUND_DATA, 'frag');
   }
+
+  /**
+   * Отправка звук уничтожения.
+   * @param {string} socketId
+   */
+  sendGameOverSound(socketId) {
+    this._send(socketId, this._PORT_SOUND_DATA, 'gameOver');
+  }
 }

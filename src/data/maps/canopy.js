@@ -1,7 +1,7 @@
-// public/maps/maze_of_doom.js
-
 export default {
   setId: 'c1',
+
+  scale: 0.2,
 
   spriteSheet: {
     img: 'tiles3.png',
@@ -13,136 +13,125 @@ export default {
   },
 
   layers: {
-    1: [0, 1], // Слои под танком
-    4: [2], // Слой над танком
+    1: [0, 1], // слои под танком
+    4: [2], // слой над танком
   },
 
   step: 32,
 
-  physicsStatic: [1], // Только стены статичны
+  physicsStatic: [1],
 
-  physicsDynamic: [
-    {
-      density: 1.2,
-      layer: 3,
-      position: [1280, 1184],
-      angle: 0,
-      width: 64,
-      height: 64,
-      img: 'b1.png',
-    },
-    {
-      density: 1.2,
-      layer: 3,
-      position: [2048, 1184],
-      angle: 0,
-      width: 64,
-      height: 64,
-      img: 'b1.png',
-    },
-    {
-      density: 1.2,
-      layer: 3,
-      position: [1664, 800],
-      angle: 90,
-      width: 64,
-      height: 64,
-      img: 'b1.png',
-    },
-    {
-      density: 1.2,
-      layer: 3,
-      position: [1664, 1568],
-      angle: 90,
-      width: 64,
-      height: 64,
-      img: 'b1.png',
-    },
-  ],
+  // динамические объекты
+  physicsDynamic: (function () {
+    const step = 32;
+    // размер динамического объекта теперь 80x80
+    const dynamicObjectSize = 80;
+    const dynamicObjectSizeInTiles = dynamicObjectSize / step; // 2.5
+
+    // центральные колонны в качестве динамических стен
+    const wallDefinitions = [
+      [80, 50, 81, 100],
+      [130, 50, 131, 100],
+    ];
+
+    const generatedWalls = [];
+    const halfSize = dynamicObjectSize / 2;
+
+    wallDefinitions.forEach(([x1, y1, x2, y2]) => {
+      for (let y = y1; y <= y2; y += dynamicObjectSizeInTiles) {
+        for (let x = x1; x <= x2; x += dynamicObjectSizeInTiles) {
+          const posX = x * step + halfSize;
+          const posY = y * step + halfSize;
+
+          generatedWalls.push({
+            density: 500,
+            layer: 3,
+            position: [posX, posY],
+            angle: 0,
+            width: dynamicObjectSize,
+            height: dynamicObjectSize,
+            img: 'b1.png',
+          });
+        }
+      }
+    });
+
+    return [...generatedWalls];
+  })(),
 
   respawns: {
     team1: [
-      // Центральная зона
-      [224, 920, 0],
-      [128, 1152, 0],
-      [224, 1344, 0],
-      [128, 1500, 0],
-      // Верхняя зона
-      [128, 256, 0],
-      [224, 416, 0],
-      [128, 576, 0],
-      // Нижняя зона
-      [224, 1824, 0],
-      [128, 1984, 0],
-      [224, 2144, 0],
+      // центральная зона
+      [448, 1840, 0],
+      [256, 2304, 0],
+      [448, 2688, 0],
+      [256, 3000, 0],
+      // верхняя зона
+      [256, 512, 0],
+      [448, 832, 0],
+      [256, 1152, 0],
+      // нижняя зона
+      [448, 3648, 0],
+      [256, 3968, 0],
+      [448, 4288, 0],
     ],
     team2: [
-      // Центральная зона
-      [3136, 920, 180],
-      [3232, 1152, 180],
-      [3136, 1344, 180],
-      [3232, 1500, 180],
-      // Верхняя зона
-      [3232, 256, 180],
-      [3136, 416, 180],
-      [3232, 576, 180],
-      // Нижняя зона
-      [3136, 1824, 180],
-      [3232, 1984, 180],
-      [3136, 2144, 180],
+      // центральная зона
+      [6272, 1840, 180],
+      [6464, 2304, 180],
+      [6272, 2688, 180],
+      [6464, 3000, 180],
+      // верхняя зона
+      [6464, 512, 180],
+      [6272, 832, 180],
+      [6464, 1152, 180],
+      // нижняя зона
+      [6272, 3648, 180],
+      [6464, 3968, 180],
+      [6272, 4288, 180],
     ],
   },
 
   map: (function () {
-    const width = 105;
-    const height = 75;
+    const width = 210;
+    const height = 150;
     const tiles = { floor: 0, wall: 1, effect: 2 };
 
     const map = Array.from({ length: height }, () =>
       Array(width).fill(tiles.floor),
     );
 
-    // Внешние стены
+    // внешние стены
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        if (y === 0 || y === height - 1 || x === 0 || x === width - 1) {
+        if (y < 2 || y >= height - 2 || x < 2 || x >= width - 2) {
           map[y][x] = tiles.wall;
         }
       }
     }
 
-    // Генерация лабиринта
+    // создание статических стен
     const buildWall = (x1, y1, x2, y2) => {
       for (let y = y1; y <= y2; y++) {
         for (let x = x1; x <= x2; x++) {
-          map[y][x] = tiles.wall;
+          if (x >= 0 && x < width && y >= 0 && y < height) {
+            map[y][x] = tiles.wall;
+          }
         }
       }
     };
 
-    // Укрытия на базах
-    buildWall(10, 10, 10, height - 11);
-    buildWall(width - 11, 10, width - 11, height - 11);
-    buildWall(1, 25, 20, 25);
-    buildWall(1, 50, 20, 50);
-    buildWall(width - 21, 25, width - 2, 25);
-    buildWall(width - 21, 50, width - 2, 50);
+    // статичные стены
+    buildWall(50, 0, 51, 30);
+    buildWall(50, height - 31, 51, height - 1);
+    buildWall(width - 52, 0, width - 51, 30);
+    buildWall(width - 52, height - 31, width - 51, height - 1);
+    buildWall(80, 30, 130, 31);
+    buildWall(80, height - 32, 130, height - 31);
 
-    // Центральный лабиринт
-    buildWall(25, 0, 25, 15);
-    buildWall(25, height - 16, 25, height - 1);
-    buildWall(width - 26, 0, width - 26, 15);
-    buildWall(width - 26, height - 16, width - 26, height - 1);
-
-    buildWall(40, 15, 65, 15);
-    buildWall(40, height - 16, 65, height - 16);
-    buildWall(40, 25, 40, 50);
-    buildWall(65, 25, 65, 50);
-
-    // Центральный "блиндаж" (шахматный порядок)
-    for (let y = 32; y < 43; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        // Создаем шахматный узор
+    // центральный блиндаж
+    for (let y = 64; y < 86; y++) {
+      for (let x = 2; x < width - 2; x++) {
         if ((x + y) % 2 === 0) {
           map[y][x] = tiles.effect;
         } else {

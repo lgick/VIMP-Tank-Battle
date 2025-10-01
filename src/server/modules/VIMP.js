@@ -768,6 +768,7 @@ class VIMP {
 
     if (!victimUser.isBot) {
       this._socketManager.sendSpectatorDefaultShot(victimUser.socketId);
+      this._socketManager.sendGameOverSound(victimUser.socketId);
     }
 
     if (killerId) {
