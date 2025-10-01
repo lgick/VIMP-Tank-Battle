@@ -1,8 +1,8 @@
-![poster](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/poster.png?raw=true)
-
-# VIMP Tank Battle (в работе)
+# VIMP Tank Battle
 
 Многопользовательская 2D онлайн реалтайм игра.
+
+![Game](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/video/game.gif?raw=true)
 
 # Запуск сервера (Ubuntu 24.04)
 
