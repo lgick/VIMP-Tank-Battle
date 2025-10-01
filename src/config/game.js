@@ -15,7 +15,7 @@ export default {
 
   maps, // карты игры
   mapScale: 0.3, // масштаб карт
-  currentMap: 'pool mini', // название карты по умолчанию
+  currentMap: 'canopy', // название карты по умолчанию
   mapsInVote: 4, // количество карт в голосовании
   mapSetId: 'c1', // дефолтный id конструкторов создания карт
 

@@ -87,7 +87,7 @@ export default class Tank extends Container {
         this._soundId,
         () => ({ x: this.x, y: this.y }),
         () => this._currentVolume,
-        () => 1.0 + this._speedRatio * 0.2,
+        () => 1.0 + this._speedRatio * 0.1,
       );
     }
 

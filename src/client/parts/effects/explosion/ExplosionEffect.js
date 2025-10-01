@@ -4,7 +4,7 @@ import BaseEffect from '../BaseEffect.js';
 const EFFECT_BASE_RADIUS_PX = 50; // базовый радиус для расчета масштаба
 
 export default class ExplosionEffect extends BaseEffect {
-  constructor(x, y, radius, onComplete, assets) {
+  constructor(_x, _y, radius, onComplete, assets) {
     super(onComplete); // конструктор BaseEffect
 
     // ассет взрыва
@@ -65,11 +65,11 @@ export default class ExplosionEffect extends BaseEffect {
     const baseScale = this._radius / EFFECT_BASE_RADIUS_PX;
 
     // анимация основного тела (затухание)
-    this._mainBody.alpha = 0.8 * (1 - easeInQuad(progress));
+    this._mainBody.alpha = 0.6 * (1 - easeInQuad(progress));
 
     // анимация ядра (затухание и сжатие)
     const coreProgress = Math.min(1, progress * 1.5);
-    this._core.alpha = 1.0 - coreProgress;
+    this._core.alpha = 0.7 - coreProgress;
     this._core.scale.set(baseScale * (1 - coreProgress));
   }
 
