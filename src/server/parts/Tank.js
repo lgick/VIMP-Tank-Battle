@@ -209,25 +209,11 @@ class Tank extends BaseModel {
     if (fire) {
       // если проверка на кулдаун/патроны пройдена
       if (this.tryConsumeAmmoAndShoot()) {
-        const currentAngle = body.getAngle();
-        // explosive weapon
-        if (this.weaponConstructorType === 'explosive') {
-          const extraOffset = 20;
-          const localBombOffset = new Vec2(-this._width / 2 - extraOffset, 0);
-
-          this._shotData = {
-            position: body.getWorldPoint(localBombOffset),
-            angle: currentAngle,
-          };
-          // hitscan weapon
-        } else if (this.weaponConstructorType === 'hitscan') {
-          this._shotData = {
-            shooterBody: body,
-            soundPoint: body.getPosition(),
-            startPoint: this.getMuzzlePosition(this.currentWeapon),
-            direction: this.getFireDirection(this.currentWeapon),
-          };
-        }
+        this._shotData = {
+          bodyPosition: body.getPosition(),
+          startPoint: this.getMuzzlePosition(this.currentWeapon),
+          direction: this.getFireDirection(this.currentWeapon),
+        };
       }
     }
 

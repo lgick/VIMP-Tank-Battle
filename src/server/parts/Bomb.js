@@ -3,13 +3,12 @@ import { BoxShape, Vec2, AABB } from 'planck';
 class Bomb {
   constructor(data) {
     this._weaponData = data.weaponData;
-    this._shotData = data.shotData;
 
     const size = this._weaponData.size;
 
     this._body = data.world.createBody({
       type: 'static',
-      position: this._shotData.position,
+      position: data.position,
       angle: 0,
     });
 
