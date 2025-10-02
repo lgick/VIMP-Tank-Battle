@@ -18,7 +18,7 @@ export default {
   w2: {
     type: 'explosive',
     constructor: 'Bomb',
-    time: 500,
+    time: 1000,
     shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
     size: 13, // соотношение сторон 1:1
     fireRate: 0, // кулдаун (0 - отсутствует)

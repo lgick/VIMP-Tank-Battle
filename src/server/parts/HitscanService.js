@@ -20,12 +20,11 @@ class HitscanService {
   // обработка hitscan-выстрела
   processShot(params) {
     const {
-      shooterBody, // тело стреляющего
       gameId, // id стреляющего
       weaponName, // имя оружия из weaponsConfig
       startPoint, // мировая точка начала луча (например, дуло оружия)
       direction, // нормализованный мировой вектор направления луча
-      soundPoint,
+      bodyPosition,
     } = params;
 
     const weaponConfig = this._weapons[weaponName];
@@ -46,13 +45,6 @@ class HitscanService {
       endPointRay,
       (fixture, point, _normal, fraction) => {
         if (fixture.isSensor()) {
-          return -1.0;
-        }
-
-        const body = fixture.getBody();
-
-        // если сам стрелок, игнорировать эту фикстуру и продолжить луч
-        if (body === shooterBody) {
           return -1.0;
         }
 
@@ -99,8 +91,8 @@ class HitscanService {
       +startPoint.y.toFixed(1),
       +endPoint.x,
       +endPoint.y,
-      +soundPoint.x.toFixed(1),
-      +soundPoint.y.toFixed(1),
+      +bodyPosition.x.toFixed(1),
+      +bodyPosition.y.toFixed(1),
       wasHit,
     ];
   }

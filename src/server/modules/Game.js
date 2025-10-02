@@ -593,7 +593,7 @@ class Game {
     // создаем экземпляр снаряда (например, Bomb)
     const shot = this._Factory(weaponData.constructor, {
       weaponData,
-      shotData,
+      position: shotData.bodyPosition,
       userData: {
         type: weaponData.type,
         weaponName,
