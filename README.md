@@ -2,7 +2,7 @@
 
 Многопользовательская 2D онлайн реалтайм игра.
 
-![Game](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/video/game.gif?raw=true)
+![game video](./github/assets/video/game.gif?raw=true)
 
 # Запуск сервера (Ubuntu 24.04)
 
@@ -125,7 +125,7 @@ panel: {
 
 Статистика игры.
 
-![stat](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/stat.png?raw=true)
+![stat](./github/assets/images/stat.png?raw=true)
 
 ## Правила формирования статистики:
 
@@ -281,7 +281,7 @@ statArray = [
 
 По умолчанию при вызове модуля отображается меню.
 
-![vote-menu](https://github.com/lgick/VIMP-Tank-Battle/blob/master/public/vote-menu.png?raw=true)
+![vote menu](./github/assets/images/vote-menu.png?raw=true)
 
 ### Ключевые возможности
 
