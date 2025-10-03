@@ -24,6 +24,11 @@ const BOMB_COOLDOWN = 0.5; // перезарядка бомбы в секунд�
 const REPATH_INTERVAL = 1.0; // частота пересчёта пути (секунды)
 const TARGET_SCAN_INTERVAL = 1.5; // интервал поиска новой цели (секунды)
 
+/**
+ * @class BotController
+ * @description Управляет поведением одного бота:
+ * навигацией, прицеливанием, стрельбой и принятием решений.
+ */
 class BotController {
   constructor(vimp, game, panel, botData) {
     this._vimp = vimp;
@@ -47,7 +52,14 @@ class BotController {
     this._bombCooldownTimer = 0;
 
     this._lastKnownPosition = null;
-    this._repathTimer = 0; // таймер для пересчета пути
+
+    // свойства для обнаружения застревания
+    this._stuckTimer = 0;
+    this._lastPosition = null;
+
+    // свойства для тактики "стреляй и двигайся"
+    this._repositionTimer = 0;
+    this._repositionTarget = null;
 
     this._keyStates = {
       forward: false,
@@ -59,6 +71,13 @@ class BotController {
     };
   }
 
+  /**
+   * @description Обновляет состояние нажатия клавиш и
+   * отправляет команду в игру.
+   * @param {string} keyName - Название клавиши.
+   * @param {boolean} isDown - true, если клавиша нажата, иначе false.
+   * @private
+   */
   _setKeyState(keyName, isDown) {
     if (this._keyStates[keyName] !== isDown) {
       this._keyStates[keyName] = isDown;
@@ -67,6 +86,10 @@ class BotController {
     }
   }
 
+  /**
+   * @description Главный метод обновления, вызывается в каждом игровом цикле.
+   * @param {number} dt - Время, прошедшее с последнего кадра (delta time).
+   */
   update(dt) {
     if (!this._game.isAlive(this._botData.gameId)) {
       if (this.state !== 'DEAD') {
@@ -82,54 +105,96 @@ class BotController {
     this._bombCooldownTimer = Math.max(0, this._bombCooldownTimer - dt);
     this._repathTimer -= dt;
     this._targetScanTimer -= dt;
+    this._repositionTimer = Math.max(0, this._repositionTimer - dt);
+
+    // обнаружение застревания
+    this._stuckTimer += dt;
+    if (this._stuckTimer >= 1.5) {
+      this._stuckTimer = 0;
+
+      const currentPos = this.getBotPosition();
+
+      if (currentPos && this._lastPosition) {
+        const posVec = new Vec2(currentPos[0], currentPos[1]);
+        const distSq = Vec2.distanceSquared(posVec, this._lastPosition);
+
+        if (
+          (this.state === 'NAVIGATING' || this.state === 'SEARCHING') &&
+          distSq < 10
+        ) {
+          console.log(
+            `[BOT DEBUG] ${this._botData.gameId}: I am stuck!
+             Trying to shoot my way out.
+            `,
+          );
+          this.state = 'CLEARING_OBSTACLE';
+        }
+      }
+
+      if (currentPos) {
+        this._lastPosition = new Vec2(currentPos[0], currentPos[1]);
+      }
+    }
 
     if (this._aiUpdateTimer <= 0) {
       this._aiUpdateTimer = AI_UPDATE_INTERVAL;
       this.makeDecision();
     }
 
-    this.executeMovement();
-    this.executeAimAndShoot();
+    if (this.state === 'CLEARING_OBSTACLE') {
+      this.handleClearingObstacle();
+    } else {
+      this.executeMovement();
+      this.executeAimAndShoot();
+    }
   }
 
+  /**
+   * @description Основная логика принятия решений.
+   * Определяет состояние бота (атака, навигация, поиск).
+   */
   makeDecision() {
-    if (this._targetScanTimer > 0) {
+    if (
+      this.state === 'CLEARING_OBSTACLE' ||
+      this._targetScanTimer > 0 ||
+      this._repositionTimer > 0
+    ) {
       return;
     }
 
     this._targetScanTimer = TARGET_SCAN_INTERVAL;
-
     this._target = this.findClosestEnemy();
 
     if (this._target) {
-      // последняя валидная позиция
       const targetPos = this._game.getPosition(this._target.gameId);
+
       if (targetPos) {
         this._lastKnownPosition = new Vec2(targetPos[0], targetPos[1]);
       }
     } else {
-      // если цели вообще нет, возможно, стоит пойти к последнему месту,
-      // где она была
       if (this.state !== 'SEARCHING' && this._lastKnownPosition) {
         this.state = 'SEARCHING';
       } else {
         this.state = 'IDLE';
       }
+
       return;
     }
 
     const targetIsVisible = this.hasLineOfSight(this._target);
 
-    // если есть цель в прямой видимости
     if (targetIsVisible) {
       this.state = 'ATTACKING';
-      this._path = null; // сброс старого пути
-      // если цель есть, но не видима
+      this._path = null;
     } else {
       this.state = 'NAVIGATING';
     }
   }
 
+  /**
+   * @description Ищет ближайшего живого врага.
+   * @returns {object | null} - Данные врага или null, если врагов нет.
+   */
   findClosestEnemy() {
     const myPosArray = this.getBotPosition();
 
@@ -175,10 +240,17 @@ class BotController {
     return closestEnemy;
   }
 
+  /**
+   * @description Отпускает все нажатые клавиши управления.
+   */
   releaseAllKeys() {
     Object.keys(this._keyStates).forEach(key => this._setKeyState(key, false));
   }
 
+  /**
+   * @description Выполняет логику движения
+   * в зависимости от текущего состояния бота.
+   */
   executeMovement() {
     if (!this._target || !this._game.isAlive(this._target.gameId)) {
       this._target = null;
@@ -189,9 +261,24 @@ class BotController {
     }
 
     if (this.state === 'ATTACKING' && this._target) {
+      if (this._repositionTimer > 0 && this._repositionTarget) {
+        this.moveTo(this._repositionTarget, true);
+        const myPosArray = this.getBotPosition();
+        if (myPosArray) {
+          const myPosVec = new Vec2(myPosArray[0], myPosArray[1]);
+          if (
+            Vec2.distanceSquared(myPosVec, this._repositionTarget) <
+            50 * 50
+          ) {
+            this._repositionTimer = 0;
+            this.releaseAllKeys();
+          }
+        }
+        return;
+      }
+
       this.moveTo(this._target.gameId);
 
-      // если в процессе атаки враг скрылся
       if (!this.hasLineOfSight(this._target)) {
         this.state = 'NAVIGATING';
       }
@@ -199,11 +286,11 @@ class BotController {
       this.navigateAlongPath();
     } else if (this.state === 'SEARCHING') {
       this.moveTo(this._lastKnownPosition, true);
-      // если добравшись до мест враг не обнаружен, обнуление и переход в IDLE
       const myPos = this.getBotPosition();
 
       if (myPos) {
         const myPosVec = new Vec2(myPos[0], myPos[1]);
+
         if (
           Vec2.distanceSquared(myPosVec, this._lastKnownPosition) <
           MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
@@ -213,24 +300,19 @@ class BotController {
         }
       }
     } else {
-      // IDLE
       this.releaseAllKeys();
     }
   }
 
   /**
-   * @description Двигает бота к указанной цели.
-   * Умеет двигаться как к динамической цели (игроку),
-   * так и к статической точке (координате).
-   * @param {string|Vec2} target - gameId игрока
-   * или объект Vec2 с координатами точки.
-   * @param {boolean} [isStaticPoint=false] - Флаг, указывающий, что цель —
-   * это статическая точка.
+   * @description Двигает бота к указанной цели (игроку или статической точке).
+   * @param {string|Vec2} target - gameId игрока или объект Vec2 с координатами.
+   * @param {boolean} [isStaticPoint=false] - Флаг, что цель —
+   * статическая точка.
    */
   moveTo(target, isStaticPoint = false) {
     const myBody = this._game._playersData[this._botData.gameId]?.getBody();
 
-    // если тела бота нет
     if (!myBody) {
       return;
     }
@@ -238,17 +320,11 @@ class BotController {
     let targetPosition;
     const myPosition = myBody.getPosition();
 
-    // определение координат цели
-    // если цель - это просто точка на карте (например, из системы навигации),
-    // то target уже является объектом Vec2
     if (isStaticPoint) {
       targetPosition = target;
-      // иначе, если цель - это другой игрок, то target - это его gameId.
-      // поиск его позиции и попытка предсказать, куда он будет двигаться
     } else {
       const targetPosArray = this._game.getPosition(target);
 
-      // если цель больше не существует
       if (!targetPosArray) {
         return;
       }
@@ -258,46 +334,35 @@ class BotController {
       const targetBody = this._game._playersData[target]?.getBody();
 
       if (targetBody) {
-        // упреждение: добавляем к текущей позиции цели её вектор скорости,
-        // чтобы бот целился немного "наперёд"
         const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
         targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
       }
     }
 
-    // вектор и дистанция до цели
     const directionToTarget = Vec2.sub(targetPosition, myPosition);
 
-    // если достаточно близко до цели, прекращение движения вперёд
-    // (это предотвращает "толкание" цели)
     if (
       directionToTarget.lengthSquared() <
       MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
     ) {
       this._setKeyState('forward', false);
+      // Прекращаем поворот корпуса, когда стоим близко, чтобы избежать вращения.
+      this._setKeyState('left', false);
+      this._setKeyState('right', false);
       return;
     }
 
-    // нормализация вектора направления и
-    // корректировка его для обхода препятствий
     const dirToTargetNorm = Vec2.clone(directionToTarget);
-
     dirToTargetNorm.normalize();
 
-    // использование локального избегание препятствий,
-    // чтобы не врезаться в углы и мелкие объекты
     const finalDirection = this.avoidObstacles(myBody, dirToTargetNorm);
 
-    // вычисление угла для поворота корпуса танка
-    // направление "вперёд" для танка
     const forwardVec = myBody.getWorldVector(new Vec2(1, 0));
     const angleToTarget = Math.atan2(
       Vec2.cross(forwardVec, finalDirection),
       Vec2.dot(forwardVec, finalDirection),
     );
 
-    // устанавливка команды для поворота
-    // порог в радианах, чтобы избежать мелкого дрожания.
     const turnThreshold = 0.2;
 
     if (angleToTarget > turnThreshold) {
@@ -307,15 +372,10 @@ class BotController {
       this._setKeyState('left', true);
       this._setKeyState('right', false);
     } else {
-      // прицед настроен, поворачивать не нужно
       this._setKeyState('left', false);
       this._setKeyState('right', false);
     }
 
-    // устанавка команды для движения вперёд
-    // движение вперёд, только если угол до цели не слишком большой
-    // это предотвращает движение боком и помогает сначала повернуться,
-    // а потом ехать
     if (Math.abs(angleToTarget) < Math.PI / 1.5) {
       this._setKeyState('forward', true);
     } else {
@@ -324,17 +384,14 @@ class BotController {
   }
 
   /**
-   * @description Навигация по точкам маршрута.
+   * @description Двигает бота по заранее построенному маршруту (_path).
+   * Используется для состояний NAVIGATING и SEARCHING.
    */
   navigateAlongPath() {
-    // если цели нет
     if (!this._target) {
       this.makeDecision();
       return;
     }
-
-    // уменьшение таймера на время "кадра" ИИ
-    this._repathTimer -= AI_UPDATE_INTERVAL;
 
     const myPosArray = this.getBotPosition();
     const targetPosArray = this._game.getPosition(this._target.gameId);
@@ -343,17 +400,14 @@ class BotController {
       return;
     }
 
-    // если цель обнаружена
     if (this.hasLineOfSight(this._target)) {
       this.state = 'ATTACKING';
       this._path = null;
       return;
     }
 
-    // если таймер истек
     if (this._repathTimer <= 0) {
-      this._repathTimer = REPATH_INTERVAL; // сброс таймера
-
+      this._repathTimer = REPATH_INTERVAL;
       const startVec = new Vec2(myPosArray[0], myPosArray[1]);
       const endVec = new Vec2(targetPosArray[0], targetPosArray[1]);
       const newPath = this._vimp._bots.findPath(startVec, endVec);
@@ -362,11 +416,7 @@ class BotController {
         this._path = newPath;
         this._pathIndex = 0;
       } else {
-        // если путь не найден
         this.state = 'SEARCHING';
-        console.log(
-          `[BOT DEBUG] ${this._botData.gameId}: Path could not be recalculated. Switching to IDLE.`,
-        );
         return;
       }
     }
@@ -375,17 +425,14 @@ class BotController {
       return;
     }
 
-    // движение к следующей точке маршрута
     const nextWaypoint = this._path[this._pathIndex];
     this.moveTo(nextWaypoint, true);
 
-    // проверка достижения цели в текущей точки
     const myPositionVec = new Vec2(myPosArray[0], myPosArray[1]);
     const distanceToWaypointSq = Vec2.distanceSquared(
       myPositionVec,
       nextWaypoint,
     );
-
     const waypointReachedThreshold = MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE;
 
     if (distanceToWaypointSq < waypointReachedThreshold) {
@@ -393,6 +440,13 @@ class BotController {
     }
   }
 
+  /**
+   * @description Локальное избегание препятствий с помощью лучей.
+   * Игнорирует динамические объекты, чтобы таранить их.
+   * @param {planck.Body} myBody - Тело бота.
+   * @param {planck.Vec2} desiredDirection - Желаемое направление движения.
+   * @returns {planck.Vec2} - Скорректированное направление.
+   */
   avoidObstacles(myBody, desiredDirection) {
     const myPosition = myBody.getPosition();
     const rays = {
@@ -402,6 +456,7 @@ class BotController {
     };
     const steerCorrection = new Vec2(0, 0);
     let obstaclesDetected = false;
+    let dynamicObstacleInPath = false;
 
     for (const dir in rays) {
       const endPoint = Vec2.add(
@@ -412,9 +467,18 @@ class BotController {
 
       this._world.rayCast(myPosition, endPoint, fixture => {
         if (fixture.getBody() !== myBody && !fixture.isSensor()) {
+          const hitBody = fixture.getBody();
+          const userData = hitBody.getUserData();
+
+          // если это динамический объект карты
+          if (userData && userData.type === 'map_object') {
+            dynamicObstacleInPath = true;
+            return -1; // игнорирование, продолжение луча
+          }
+
           hit = true;
 
-          return 0;
+          return 0; // статичное препятствие, окончание луча
         }
 
         return -1;
@@ -426,24 +490,37 @@ class BotController {
       }
     }
 
+    // если впереди только динамические объекты,
+    // не корректируется курс (таран)
+    if (dynamicObstacleInPath && !obstaclesDetected) {
+      return desiredDirection;
+    }
+
     if (obstaclesDetected) {
       const correctedDir = steerCorrection.add(desiredDirection);
       correctedDir.normalize();
-
       return correctedDir;
     }
 
     return desiredDirection;
   }
 
+  /**
+   * @description Управляет прицеливанием и стрельбой бота.
+   * Выполняется только в состоянии ATTACKING.
+   */
   executeAimAndShoot() {
+    if (this._repositionTimer > 0) {
+      this._setKeyState('gunLeft', false);
+      this._setKeyState('gunRight', false);
+      return;
+    }
+
     if (
       this.state !== 'ATTACKING' ||
       !this._target ||
       !this._game.isAlive(this._target.gameId)
     ) {
-      this._target = null;
-      this.state = 'IDLE';
       this._setKeyState('gunLeft', false);
       this._setKeyState('gunRight', false);
       return;
@@ -466,7 +543,6 @@ class BotController {
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
     const directionToTarget = Vec2.sub(targetPosition, myPosition);
     const distanceToTargetSq = directionToTarget.lengthSquared();
-
     const shouldUseBomb =
       distanceToTargetSq < BOMB_USAGE_DISTANCE * BOMB_USAGE_DISTANCE &&
       this._bombCooldownTimer <= 0;
@@ -478,6 +554,7 @@ class BotController {
           action: 'down',
           name: 'nextWeapon',
         });
+
         return;
       }
     } else if (currentWeapon === 'w2') {
@@ -485,22 +562,25 @@ class BotController {
         action: 'down',
         name: 'nextWeapon',
       });
+
       return;
     }
 
-    // логика прицеливания
     let targetAngle = Math.atan2(directionToTarget.y, directionToTarget.x);
     const randomInaccuracy = (Math.random() - 0.5) * AIM_INACCURACY;
+
     targetAngle += randomInaccuracy;
 
     const currentGunAngle = myBody.getAngle() + myBody.gunRotation;
     let angleDifference = targetAngle - currentGunAngle;
+
     angleDifference = Math.atan2(
       Math.sin(angleDifference),
       Math.cos(angleDifference),
     );
 
     const aimThreshold = 0.05;
+
     if (angleDifference > aimThreshold) {
       this._setKeyState('gunRight', true);
       this._setKeyState('gunLeft', false);
@@ -511,7 +591,6 @@ class BotController {
       this._setKeyState('gunLeft', false);
       this._setKeyState('gunRight', false);
 
-      // логика стрельбы
       const targetIsVisible = this.hasLineOfSight(this._target);
       const weaponCooldownReady = this._firingTimer <= 0;
 
@@ -523,6 +602,9 @@ class BotController {
               name: 'fire',
             });
             this._bombCooldownTimer = BOMB_COOLDOWN;
+            // после выстрела смена позиции
+            this._repositionTimer = 2.0;
+            this.calculateNewCombatPosition();
           }
         } else if (
           !shouldUseBomb &&
@@ -539,6 +621,9 @@ class BotController {
                 action: 'down',
                 name: 'fire',
               });
+              // после выстрела смена позиции
+              this._repositionTimer = 2.0;
+              this.calculateNewCombatPosition();
             }
           }
         }
@@ -546,6 +631,83 @@ class BotController {
     }
   }
 
+  /**
+   * @description Обрабатывает ситуацию, когда бот застрял.
+   * Целится прямо перед собой и стреляет, чтобы расчистить путь.
+   */
+  handleClearingObstacle() {
+    this.releaseAllKeys();
+    const myBody = this._game._playersData[this._botData.gameId]?.getBody();
+    if (!myBody) {
+      this.state = 'IDLE';
+      return;
+    }
+
+    // цель прямо по курсу танка (башня в 0 градусов относительно корпуса)
+    const currentGunAngle = myBody.getAngle() + myBody.gunRotation;
+    const bodyAngle = myBody.getAngle();
+    let angleDifference = bodyAngle - currentGunAngle;
+
+    angleDifference = Math.atan2(
+      Math.sin(angleDifference),
+      Math.cos(angleDifference),
+    );
+
+    const aimThreshold = 0.1;
+
+    if (angleDifference > aimThreshold) {
+      this._setKeyState('gunRight', true);
+    } else if (angleDifference < -aimThreshold) {
+      this._setKeyState('gunLeft', true);
+    } else {
+      this._setKeyState('gunLeft', false);
+      this._setKeyState('gunRight', false);
+
+      // башня наведена, выстрел
+      this._game.updateKeys(this._botData.gameId, {
+        action: 'down',
+        name: 'fire',
+      });
+
+      this._aiUpdateTimer = 0.5; // задержка перед следующим решением
+      this.state = 'NAVIGATING'; // возврат к навигации
+    }
+  }
+
+  /**
+   * @description Рассчитывает новую боевую позицию
+   * для стрейфа (движения вбок).
+   */
+  calculateNewCombatPosition() {
+    const myPosArray = this.getBotPosition();
+
+    if (!myPosArray) {
+      return;
+    }
+
+    const myPosVec = new Vec2(myPosArray[0], myPosArray[1]);
+    const body = this._game._playersData[this._botData.gameId]?.getBody();
+
+    if (!body) {
+      return;
+    }
+
+    const rightVec = body.getWorldVector(new Vec2(0, 1));
+    const strafeDirection = Math.random() > 0.5 ? 1 : -1;
+    const strafeDistance = 100 + Math.random() * 100; // от 100 до 200
+
+    this._repositionTarget = Vec2.add(
+      myPosVec,
+      rightVec.mul(strafeDistance * strafeDirection),
+    );
+  }
+
+  /**
+   * @description Проверяет, есть ли прямая видимость до цели,
+   * используя raycast.
+   * @param {object} target - Данные цели.
+   * @returns {boolean} - true, если цель видна, иначе false.
+   */
   hasLineOfSight(target) {
     const myBody = this._game._playersData[this._botData.gameId]?.getBody();
 
@@ -571,6 +733,7 @@ class BotController {
       }
 
       const hitUserData = hitBody.getUserData();
+
       isVisible = hitUserData && hitUserData.gameId === target.gameId;
 
       return 0;
@@ -579,6 +742,10 @@ class BotController {
     return isVisible;
   }
 
+  /**
+   * @description Безопасно получает текущую позицию бота.
+   * @returns {number[] | null} - Массив [x, y] или null в случае ошибки.
+   */
   getBotPosition() {
     try {
       return this._game.getPosition(this._botData.gameId);
@@ -587,10 +754,9 @@ class BotController {
     }
   }
 
-  isBehindCover() {
-    return false;
-  }
-
+  /**
+   * @description Метод очистки при уничтожении бота.
+   */
   destroy() {
     this._target = null;
     this.state = 'DEAD';
