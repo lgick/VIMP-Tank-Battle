@@ -2,7 +2,6 @@ import { Vec2, Rot } from 'planck';
 
 // константы для поведения бота
 const AI_UPDATE_INTERVAL = 0.2; // как часто бот принимает решения (в секундах)
-const HEALTH_THRESHOLD_FOR_COVER = 40; // порог здоровья для поиска укрытия
 const TARGET_PREDICTION_FACTOR = 0.2; // коэффициент для упреждения цели
 const OBSTACLE_AVOIDANCE_RAY_LENGTH = 150; // длина лучей для обхода препятствий
 const MIN_TARGET_DISTANCE = 80; // минимальная дистанция до цели
@@ -22,6 +21,9 @@ const RANDOM_FIRING_DELAY = 0.5;
 const BOMB_USAGE_DISTANCE = 50; // дистанция для использования бомбы
 const BOMB_COOLDOWN = 0.5; // перезарядка бомбы в секундах
 
+const REPATH_INTERVAL = 1.0; // частота пересчёта пути (секунды)
+const TARGET_SCAN_INTERVAL = 1.5; // интервал поиска новой цели (секунды)
+
 class BotController {
   constructor(vimp, game, panel, botData) {
     this._vimp = vimp;
@@ -33,9 +35,19 @@ class BotController {
     this._target = null;
     this.state = 'IDLE';
 
+    // свойства для навигации
+    this._path = null;
+    this._pathIndex = 0;
+
+    this._repathTimer = Math.random() * REPATH_INTERVAL;
+    this._targetScanTimer = Math.random() * TARGET_SCAN_INTERVAL;
+
     this._aiUpdateTimer = 0;
     this._firingTimer = 0;
     this._bombCooldownTimer = 0;
+
+    this._lastKnownPosition = null;
+    this._repathTimer = 0; // таймер для пересчета пути
 
     this._keyStates = {
       forward: false,
@@ -68,6 +80,8 @@ class BotController {
     this._aiUpdateTimer -= dt;
     this._firingTimer = Math.max(0, this._firingTimer - dt);
     this._bombCooldownTimer = Math.max(0, this._bombCooldownTimer - dt);
+    this._repathTimer -= dt;
+    this._targetScanTimer -= dt;
 
     if (this._aiUpdateTimer <= 0) {
       this._aiUpdateTimer = AI_UPDATE_INTERVAL;
@@ -79,20 +93,41 @@ class BotController {
   }
 
   makeDecision() {
+    if (this._targetScanTimer > 0) {
+      return;
+    }
+
+    this._targetScanTimer = TARGET_SCAN_INTERVAL;
+
     this._target = this.findClosestEnemy();
-    const health = this._panel.getCurrentValue(this._botData.gameId, 'health');
 
-    if (!this._target) {
-      this.state = 'IDLE';
+    if (this._target) {
+      // последняя валидная позиция
+      const targetPos = this._game.getPosition(this._target.gameId);
+      if (targetPos) {
+        this._lastKnownPosition = new Vec2(targetPos[0], targetPos[1]);
+      }
+    } else {
+      // если цели вообще нет, возможно, стоит пойти к последнему месту,
+      // где она была
+      if (this.state !== 'SEARCHING' && this._lastKnownPosition) {
+        this.state = 'SEARCHING';
+      } else {
+        this.state = 'IDLE';
+      }
       return;
     }
 
-    if (health <= HEALTH_THRESHOLD_FOR_COVER && !this.isBehindCover()) {
-      this.state = 'SEEKING_COVER';
-      return;
-    }
+    const targetIsVisible = this.hasLineOfSight(this._target);
 
-    this.state = 'ATTACKING';
+    // если есть цель в прямой видимости
+    if (targetIsVisible) {
+      this.state = 'ATTACKING';
+      this._path = null; // сброс старого пути
+      // если цель есть, но не видима
+    } else {
+      this.state = 'NAVIGATING';
+    }
   }
 
   findClosestEnemy() {
@@ -148,67 +183,121 @@ class BotController {
     if (!this._target || !this._game.isAlive(this._target.gameId)) {
       this._target = null;
       this.state = 'IDLE';
+      this._path = null;
+      this.releaseAllKeys();
+      return;
     }
 
     if (this.state === 'ATTACKING' && this._target) {
       this.moveTo(this._target.gameId);
-    } else if (this.state === 'SEEKING_COVER') {
-      this.findAndMoveToCover();
+
+      // если в процессе атаки враг скрылся
+      if (!this.hasLineOfSight(this._target)) {
+        this.state = 'NAVIGATING';
+      }
+    } else if (this.state === 'NAVIGATING') {
+      this.navigateAlongPath();
+    } else if (this.state === 'SEARCHING') {
+      this.moveTo(this._lastKnownPosition, true);
+      // если добравшись до мест враг не обнаружен, обнуление и переход в IDLE
+      const myPos = this.getBotPosition();
+
+      if (myPos) {
+        const myPosVec = new Vec2(myPos[0], myPos[1]);
+        if (
+          Vec2.distanceSquared(myPosVec, this._lastKnownPosition) <
+          MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
+        ) {
+          this._lastKnownPosition = null;
+          this.state = 'IDLE';
+        }
+      }
     } else {
       // IDLE
-      this._setKeyState('forward', false);
-      this._setKeyState('left', false);
-      this._setKeyState('right', false);
+      this.releaseAllKeys();
     }
   }
 
-  moveTo(targetGameId) {
+  /**
+   * @description Двигает бота к указанной цели.
+   * Умеет двигаться как к динамической цели (игроку),
+   * так и к статической точке (координате).
+   * @param {string|Vec2} target - gameId игрока
+   * или объект Vec2 с координатами точки.
+   * @param {boolean} [isStaticPoint=false] - Флаг, указывающий, что цель —
+   * это статическая точка.
+   */
+  moveTo(target, isStaticPoint = false) {
     const myBody = this._game._playersData[this._botData.gameId]?.getBody();
 
+    // если тела бота нет
     if (!myBody) {
       return;
     }
 
+    let targetPosition;
     const myPosition = myBody.getPosition();
 
-    const targetPosArray = this._game.getPosition(targetGameId);
+    // определение координат цели
+    // если цель - это просто точка на карте (например, из системы навигации),
+    // то target уже является объектом Vec2
+    if (isStaticPoint) {
+      targetPosition = target;
+      // иначе, если цель - это другой игрок, то target - это его gameId.
+      // поиск его позиции и попытка предсказать, куда он будет двигаться
+    } else {
+      const targetPosArray = this._game.getPosition(target);
 
-    if (!targetPosArray) {
-      return;
+      // если цель больше не существует
+      if (!targetPosArray) {
+        return;
+      }
+
+      targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
+
+      const targetBody = this._game._playersData[target]?.getBody();
+
+      if (targetBody) {
+        // упреждение: добавляем к текущей позиции цели её вектор скорости,
+        // чтобы бот целился немного "наперёд"
+        const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
+        targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
+      }
     }
 
-    const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
-
-    const targetBody = this._game._playersData[targetGameId]?.getBody();
-
-    if (targetBody) {
-      const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
-
-      targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
-    }
-
+    // вектор и дистанция до цели
     const directionToTarget = Vec2.sub(targetPosition, myPosition);
 
+    // если достаточно близко до цели, прекращение движения вперёд
+    // (это предотвращает "толкание" цели)
     if (
       directionToTarget.lengthSquared() <
       MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
     ) {
       this._setKeyState('forward', false);
-
       return;
     }
 
+    // нормализация вектора направления и
+    // корректировка его для обхода препятствий
     const dirToTargetNorm = Vec2.clone(directionToTarget);
 
     dirToTargetNorm.normalize();
 
+    // использование локального избегание препятствий,
+    // чтобы не врезаться в углы и мелкие объекты
     const finalDirection = this.avoidObstacles(myBody, dirToTargetNorm);
+
+    // вычисление угла для поворота корпуса танка
+    // направление "вперёд" для танка
     const forwardVec = myBody.getWorldVector(new Vec2(1, 0));
     const angleToTarget = Math.atan2(
       Vec2.cross(forwardVec, finalDirection),
       Vec2.dot(forwardVec, finalDirection),
     );
 
+    // устанавливка команды для поворота
+    // порог в радианах, чтобы избежать мелкого дрожания.
     const turnThreshold = 0.2;
 
     if (angleToTarget > turnThreshold) {
@@ -218,14 +307,89 @@ class BotController {
       this._setKeyState('left', true);
       this._setKeyState('right', false);
     } else {
+      // прицед настроен, поворачивать не нужно
       this._setKeyState('left', false);
       this._setKeyState('right', false);
     }
 
+    // устанавка команды для движения вперёд
+    // движение вперёд, только если угол до цели не слишком большой
+    // это предотвращает движение боком и помогает сначала повернуться,
+    // а потом ехать
     if (Math.abs(angleToTarget) < Math.PI / 1.5) {
       this._setKeyState('forward', true);
     } else {
       this._setKeyState('forward', false);
+    }
+  }
+
+  /**
+   * @description Навигация по точкам маршрута.
+   */
+  navigateAlongPath() {
+    // если цели нет
+    if (!this._target) {
+      this.makeDecision();
+      return;
+    }
+
+    // уменьшение таймера на время "кадра" ИИ
+    this._repathTimer -= AI_UPDATE_INTERVAL;
+
+    const myPosArray = this.getBotPosition();
+    const targetPosArray = this._game.getPosition(this._target.gameId);
+
+    if (!myPosArray || !targetPosArray) {
+      return;
+    }
+
+    // если цель обнаружена
+    if (this.hasLineOfSight(this._target)) {
+      this.state = 'ATTACKING';
+      this._path = null;
+      return;
+    }
+
+    // если таймер истек
+    if (this._repathTimer <= 0) {
+      this._repathTimer = REPATH_INTERVAL; // сброс таймера
+
+      const startVec = new Vec2(myPosArray[0], myPosArray[1]);
+      const endVec = new Vec2(targetPosArray[0], targetPosArray[1]);
+      const newPath = this._vimp._bots.findPath(startVec, endVec);
+
+      if (newPath && newPath.length > 0) {
+        this._path = newPath;
+        this._pathIndex = 0;
+      } else {
+        // если путь не найден
+        this.state = 'SEARCHING';
+        console.log(
+          `[BOT DEBUG] ${this._botData.gameId}: Path could not be recalculated. Switching to IDLE.`,
+        );
+        return;
+      }
+    }
+
+    if (!this._path || this._pathIndex >= this._path.length) {
+      return;
+    }
+
+    // движение к следующей точке маршрута
+    const nextWaypoint = this._path[this._pathIndex];
+    this.moveTo(nextWaypoint, true);
+
+    // проверка достижения цели в текущей точки
+    const myPositionVec = new Vec2(myPosArray[0], myPosArray[1]);
+    const distanceToWaypointSq = Vec2.distanceSquared(
+      myPositionVec,
+      nextWaypoint,
+    );
+
+    const waypointReachedThreshold = MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE;
+
+    if (distanceToWaypointSq < waypointReachedThreshold) {
+      this._pathIndex += 1;
     }
   }
 
@@ -286,11 +450,14 @@ class BotController {
     }
 
     const botTank = this._game._playersData[this._botData.gameId];
+
     if (!botTank) {
       return;
     }
+
     const myBody = botTank.getBody();
     const targetPosArray = this._game.getPosition(this._target.gameId);
+
     if (!targetPosArray) {
       return;
     }
@@ -346,7 +513,7 @@ class BotController {
 
       // логика стрельбы
       const targetIsVisible = this.hasLineOfSight(this._target);
-      const weaponCooldownReady = this._firingTimer <= 0; // для основного оружия
+      const weaponCooldownReady = this._firingTimer <= 0;
 
       if (targetIsVisible) {
         if (shouldUseBomb && currentWeapon === 'w2') {
@@ -422,12 +589,6 @@ class BotController {
 
   isBehindCover() {
     return false;
-  }
-
-  findAndMoveToCover() {
-    if (this._target) {
-      this.moveTo(this._target.gameId);
-    }
   }
 
   destroy() {

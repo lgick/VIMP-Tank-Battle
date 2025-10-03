@@ -1,4 +1,5 @@
 import BotController from './BotController.js';
+import NavigationSystem from './NavigationSystem.js';
 
 /**
  * @class BotManager
@@ -20,9 +21,10 @@ class BotManager {
 
     this._model = 'm1'; // модель танка для ботов
     this._bots = new Map();
-    this._scaledMapData = null; // данные карты для респаунов
+    this._respawns = null; // данные респаунов
 
     this._botControllers = new Map();
+    this._navigationSystem = new NavigationSystem();
   }
 
   /**
@@ -40,7 +42,18 @@ class BotManager {
    * @param {object} mapData - Данные масштабированной карты.
    */
   createMap(mapData) {
-    this._scaledMapData = mapData;
+    this._respawns = mapData.respawns;
+    this._navigationSystem.generateNavGraph(mapData);
+  }
+
+  /**
+   * @description Находит путь между двумя точками (прокси-метод).
+   * @param {Vec2} startPos
+   * @param {Vec2} endPos
+   * @returns {Vec2[] | null}
+   */
+  findPath(startPos, endPos) {
+    return this._navigationSystem.findPath(startPos, endPos);
   }
 
   /**
@@ -67,7 +80,7 @@ class BotManager {
    * @returns {number} Количество фактически созданных ботов.
    */
   createBots(count, teamName = null) {
-    if (!this._scaledMapData?.respawns) {
+    if (!this._respawns) {
       return 0;
     }
 
@@ -98,9 +111,9 @@ class BotManager {
 
       if (
         !targetTeam ||
-        !this._scaledMapData.respawns[targetTeam] ||
+        !this._respawns[targetTeam] ||
         this._vimp._teamSizes[targetTeam].size >=
-          this._scaledMapData.respawns[targetTeam].length
+          this._respawns[targetTeam].length
       ) {
         // нет свободных мест в команде, или команда не найдена
         continue;
