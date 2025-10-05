@@ -131,7 +131,9 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData(dt);
 
+    const playerList = this._game.getAlivePlayers();
     this._bots.updateBots(dt);
+    this._bots.buildSpatialGrid(playerList);
 
     // список пользователей готовых к игре
     const userList = Object.values(this._users).filter(
@@ -308,6 +310,7 @@ class VIMP {
     this._bots.createMap(this._scaledMapData);
     const botCounts = this._bots.getBotCountsPerTeam();
     this._bots.removeBots();
+    this._bots.clearSpatialGrid();
 
     // если нет индивидуального конструктора для создания карты
     if (!this._currentMapData.setId) {

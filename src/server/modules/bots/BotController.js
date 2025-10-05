@@ -30,7 +30,7 @@ const TARGET_SCAN_INTERVAL = 1.5; // интервал поиска новой ц
  * навигацией, прицеливанием, стрельбой и принятием решений.
  */
 class BotController {
-  constructor(vimp, game, panel, botData) {
+  constructor(vimp, game, panel, spatialManager, botData) {
     this._vimp = vimp;
     this._game = game;
     this._panel = panel;
@@ -69,6 +69,8 @@ class BotController {
       gunLeft: false,
       gunRight: false,
     };
+
+    this._spatialManager = spatialManager;
   }
 
   /**
@@ -202,40 +204,44 @@ class BotController {
       return null;
     }
 
-    const myPosition = new Vec2(myPosArray[0], myPosArray[1]);
+    // получение позиции
+    const myVec = new Vec2(myPosArray[0], myPosArray[1]);
+
+    // получение кандидатов из соседних ячеек через SpatialManager
+    const candidates = this._spatialManager.queryNearby(myVec.x, myVec.y);
 
     let closestEnemy = null;
     let minDistanceSq = Infinity;
-    const potentialTargets = [
-      ...Object.values(this._vimp._users),
-      ...this._vimp._bots.getBots(),
-    ];
 
-    potentialTargets.forEach(p => {
-      if (
-        p.gameId === this._botData.gameId ||
-        p.teamId === this._botData.teamId ||
-        p.teamId === this._vimp._spectatorId
-      ) {
-        return;
+    // перебор только кандидатов поблизости
+    for (const { gameId, teamId, x, y } of candidates) {
+      // пропуск себя и своей команды
+      if (gameId === this._botData.gameId || teamId === this._botData.teamId) {
+        continue;
       }
 
-      if (this._game.isAlive(p.gameId)) {
-        const enemyPosArray = this._game.getPosition(p.gameId);
+      // кандидат уже прошел первичный отсев SpatialManager.
+      // проверка distSq
+      const enemyVec = new Vec2(x, y);
+      const distanceSq = Vec2.distanceSquared(myVec, enemyVec);
 
-        if (!enemyPosArray) {
-          return;
+      if (distanceSq < minDistanceSq) {
+        // проверка лимита видимости (например, MAX_FIRING_DISTANCE + запас)
+        // чтобы не агриться на кого-то через 2 экрана, если ячейки большие.
+        // Для примера возьмем 1000 * 1000.
+        if (distanceSq > 1000 * 1000) {
+          continue;
         }
 
-        const enemyPosition = new Vec2(enemyPosArray[0], enemyPosArray[1]);
-        const distanceSq = Vec2.distanceSquared(myPosition, enemyPosition);
+        // получение полного объекта пользователя/бота из VIMP только для ближайшего
+        const vimpUser = this._vimp._users[gameId];
+        const vimpBot = this._vimp._bots.getBotById(gameId);
+        const enemyData = vimpUser || vimpBot;
 
-        if (distanceSq < minDistanceSq) {
-          minDistanceSq = distanceSq;
-          closestEnemy = p;
-        }
+        minDistanceSq = distanceSq;
+        closestEnemy = enemyData;
       }
-    });
+    }
 
     return closestEnemy;
   }
