@@ -1,5 +1,9 @@
 import BotController from './BotController.js';
 import NavigationSystem from './NavigationSystem.js';
+import SpatialManager from './SpatialManager.js';
+
+// размер ячейки 600 (чуть больше MAX_FIRING_DISTANCE 500 у ботов)
+const SPATIAL_CELL_SIZE = 600;
 
 /**
  * @class BotManager
@@ -25,6 +29,9 @@ class BotManager {
 
     this._botControllers = new Map();
     this._navigationSystem = new NavigationSystem();
+
+    // инициализация пространственного менеджера
+    this._spatialManager = new SpatialManager(SPATIAL_CELL_SIZE);
   }
 
   /**
@@ -136,6 +143,7 @@ class BotManager {
         this._vimp,
         this._game,
         this._panel,
+        this._spatialManager,
         botData,
       );
 
@@ -171,6 +179,26 @@ class BotManager {
       : [...this._bots.keys()];
 
     botsToRemove.forEach(gameId => this._removeBotById(gameId));
+  }
+
+  /**
+   * @description Заполняет пространственную сетку объектами игроков.
+   * Перед заполнением сетка очищается.
+   * @param {Array} playerList - Массив игроков для вставки в сетку.
+   */
+  buildSpatialGrid(playerList = []) {
+    this._spatialManager.clear();
+
+    for (let i = 0; i < playerList.length; i += 1) {
+      this._spatialManager.insert(playerList[i]);
+    }
+  }
+
+  /**
+   * @description Очищает все объекты из пространственной сетки.
+   */
+  clearSpatialGrid() {
+    this._spatialManager.clear();
   }
 
   /**

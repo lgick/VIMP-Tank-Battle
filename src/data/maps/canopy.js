@@ -24,8 +24,8 @@ export default {
   // динамические объекты
   physicsDynamic: (function () {
     const step = 32;
-    // размер динамического объекта теперь 80x80
-    const dynamicObjectSize = 80;
+    // размер динамического объекта
+    const dynamicObjectSize = 30;
     const dynamicObjectSizeInTiles = dynamicObjectSize / step; // 2.5
 
     // центральные колонны в качестве динамических стен
@@ -44,13 +44,15 @@ export default {
           const posY = y * step + halfSize;
 
           generatedWalls.push({
-            density: 500,
+            density: 100,
             layer: 3,
             position: [posX, posY],
             angle: 0,
             width: dynamicObjectSize,
             height: dynamicObjectSize,
             img: 'b1.png',
+            linearDamping: 5.0,
+            angularDamping: 14.0,
           });
         }
       }
