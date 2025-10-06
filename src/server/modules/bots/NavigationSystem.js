@@ -1,13 +1,17 @@
 import { Vec2 } from 'planck';
 import Pathfinder from './Pathfinder.js';
 
-const COEF_GRIG_STEP = 2.5; // коэффициент шага сетки
+// коэффициент шага сетки
+const COEF_GRIG_STEP = 4.0;
 
 /**
  * @class NavigationSystem
  * @description Управляет навигацией: строит граф и ищет пути для ботов.
  */
 class NavigationSystem {
+  /**
+   * @description Создает экземпляр NavigationSystem.
+   */
   constructor() {
     this._navGraph = null;
     this._pathfinder = new Pathfinder();
@@ -21,8 +25,7 @@ class NavigationSystem {
    * 0 - проходимо, 1 - статичное препятствие.
    * @param {object} mapData - Объект с данными карты.
    * @param {number[][]} mapData.map - 2D массив тайлов карты.
-   * @param {number[]} mapData.physicsStatic - Массив ID тайлов,
-   * являющихся статичными препятствиями.
+   * @param {number[]} mapData.physicsStatic - Массив ID тайлов, являющихся статичными препятствиями.
    * @param {number} mapData.step - Размер одного тайла.
    * @private
    */
@@ -48,7 +51,7 @@ class NavigationSystem {
    * Процесс включает:
    * 1. Создание сетки проходимости.
    * 2. Расстановку узлов в свободных зонах.
-   * 3. Соединение видимых друг для друга узлов рёбрами.
+   * 3. Соединение видимых друг для друга *ближайших* узлов рёбрами.
    * @param {object} scaledMapData - Объект с данными масштабированной карты.
    */
   generateNavGraph(scaledMapData) {
@@ -66,35 +69,38 @@ class NavigationSystem {
     const mapHeight = this._navGrid.length * this._gridStep;
 
     // расстановка узлов в свободных местах
-    for (let x = nodePlacementStep; x < mapWidth; x += nodePlacementStep) {
-      for (let y = nodePlacementStep; y < mapHeight; y += nodePlacementStep) {
-        const gridX = Math.floor(x / this._gridStep);
-        const gridY = Math.floor(y / this._gridStep);
-
-        // если точка находится внутри проходимого тайла
-        if (this._navGrid[gridY] && this._navGrid[gridY][gridX] === 0) {
+    for (let x = nodePlacementStep / 2; x < mapWidth; x += nodePlacementStep) {
+      for (
+        let y = nodePlacementStep / 2;
+        y < mapHeight;
+        y += nodePlacementStep
+      ) {
+        if (this.isWalkable(new Vec2(x, y))) {
           nodes.push(new Vec2(x, y));
         }
       }
     }
 
-    // соединение узлов рёбрами,
-    // с использованием быстрой проверки линии видимости
+    // соединение узлов рёбрами, с использованием быстрой проверки линии видимости
     const edges = new Map();
+    const maxConnectionDistSq =
+      nodePlacementStep * 1.5 * (nodePlacementStep * 1.5);
 
     for (let i = 0; i < nodes.length; i += 1) {
       edges.set(i, []);
-
       for (let j = i + 1; j < nodes.length; j += 1) {
-        if (!this._hasObstacleBetween(nodes[i], nodes[j])) {
-          const distance = Vec2.distance(nodes[i], nodes[j]);
-          edges.get(i).push({ node: j, weight: distance });
+        const distSq = Vec2.distanceSquared(nodes[i], nodes[j]);
+        // Проверяем только ближайших соседей, чтобы избежать N^2 перебора
+        if (distSq <= maxConnectionDistSq) {
+          if (!this._hasObstacleBetween(nodes[i], nodes[j])) {
+            const distance = Math.sqrt(distSq);
+            edges.get(i).push({ node: j, weight: distance });
 
-          if (!edges.has(j)) {
-            edges.set(j, []);
+            if (!edges.has(j)) {
+              edges.set(j, []);
+            }
+            edges.get(j).push({ node: i, weight: distance });
           }
-
-          edges.get(j).push({ node: i, weight: distance });
         }
       }
     }
@@ -102,17 +108,39 @@ class NavigationSystem {
     this._navGraph = { nodes, edges };
 
     console.log(
-      `Navigation graph generated: ${this._navGraph.nodes.length} nodes.`,
+      `Optimized navigation graph generated: ${this._navGraph.nodes.length} nodes.`,
     );
   }
 
   /**
-   * @description Быстрая проверка линии видимости между двумя точками по сетке,
-   * используя алгоритм Брезенхэма для растеризации линии.
+   * @description Возвращает координаты случайного узла из навигационного графа.
+   * @returns {Vec2 | null} Координаты случайной точки или null, если граф не готов.
+   */
+  getRandomNode() {
+    if (!this._navGraph || this._navGraph.nodes.length === 0) {
+      return null;
+    }
+    const randomIndex = Math.floor(Math.random() * this._navGraph.nodes.length);
+    return this._navGraph.nodes[randomIndex];
+  }
+
+  /**
+   * @description Проверяет, является ли точка на карте проходимой.
+   * @param {Vec2} point - Вектор с мировыми координатами точки.
+   * @returns {boolean} - true, если точка проходима, иначе false.
+   */
+  isWalkable(point) {
+    if (!this._navGrid || this._gridStep === 0) return false;
+    const gridX = Math.floor(point.x / this._gridStep);
+    const gridY = Math.floor(point.y / this._gridStep);
+    return this._navGrid[gridY]?.[gridX] === 0;
+  }
+
+  /**
+   * @description Быстрая проверка линии видимости между двумя точками по сетке.
    * @param {Vec2} start - Вектор начальной точки в мировых координатах.
    * @param {Vec2} end - Вектор конечной точки в мировых координатах.
-   * @returns {boolean} - Возвращает `true`,
-   * если на пути есть препятствие, иначе `false`.
+   * @returns {boolean} - Возвращает `true`, если на пути есть препятствие, иначе `false`.
    * @private
    */
   _hasObstacleBetween(start, end) {
@@ -128,69 +156,43 @@ class NavigationSystem {
     let err = dx + dy;
 
     while (true) {
-      // проверка ячейки на наличие препятствий в сетке
-      // если препятствие найдено
-      if (this._navGrid[y0]?.[x0] === 1) {
-        return true;
-      }
-
-      if (x0 === x1 && y0 === y1) {
-        break;
-      }
-
+      if (this._navGrid[y0]?.[x0] === 1) return true;
+      if (x0 === x1 && y0 === y1) break;
       const e2 = 2 * err;
-
       if (e2 >= dy) {
         err += dy;
         x0 += sx;
       }
-
       if (e2 <= dx) {
         err += dx;
         y0 += sy;
       }
     }
-
-    return false; // препятствий на линии нет
+    return false;
   }
 
   /**
-   * @description Находит последовательность точек (путь)
-   * от начальной до конечной позиции.
-   * Оптимизация: если между точками есть прямая видимость,
-   * возвращает путь из одной конечной точки.
-   * В противном случае, ищет путь по навигационному графу
-   * с помощью алгоритма A*.
+   * @description Находит последовательность точек (путь) от начальной до конечной позиции.
    * @param {Vec2} startPos - Вектор начальной позиции.
    * @param {Vec2} endPos - Вектор конечной позиции.
-   * @returns {Vec2[] | null} - Массив векторов,
-   * представляющих путь, или `null`, если путь не найден.
+   * @returns {Vec2[] | null} - Массив векторов, представляющих путь, или `null`.
    */
   findPath(startPos, endPos) {
-    if (!this._navGraph || this._navGraph.nodes.length === 0) {
+    if (!this._navGraph || this._navGraph.nodes.length === 0) return null;
+    if (!this._hasObstacleBetween(startPos, endPos)) return [endPos];
+
+    const startNode = this._findClosestVisibleNode(startPos);
+    const endNode = this._findClosestVisibleNode(endPos);
+
+    if (startNode === null || endNode === null || startNode === endNode)
       return null;
-    }
-
-    if (!this._hasObstacleBetween(startPos, endPos)) {
-      return [endPos];
-    }
-
-    const startNode = this._findClosestNode(startPos);
-    const endNode = this._findClosestNode(endPos);
-
-    if (startNode === null || endNode === null) {
-      return null;
-    }
 
     const pathIndexes = this._pathfinder.findPath(
       startNode,
       endNode,
       this._navGraph,
     );
-
-    if (!pathIndexes) {
-      return null;
-    }
+    if (!pathIndexes) return null;
 
     const pathCoords = pathIndexes.map(index => this._navGraph.nodes[index]);
     pathCoords.push(endPos);
@@ -199,27 +201,24 @@ class NavigationSystem {
   }
 
   /**
-   * @description Находит индекс ближайшего узла
-   * в навигационном графе (`_navGraph`) к заданной мировой позиции.
+   * @description Находит индекс ближайшего *видимого* узла к заданной мировой позиции.
    * @param {Vec2} position - Вектор мировой позиции для поиска.
-   * @returns {number | null} - Индекс ближайшего узла в `this._navGraph.nodes`
-   * или `null`, если граф не существует.
+   * @returns {number | null} - Индекс ближайшего узла или `null`.
    * @private
    */
-  _findClosestNode(position) {
-    if (!this._navGraph || this._navGraph.nodes.length === 0) {
-      return null;
-    }
+  _findClosestVisibleNode(position) {
+    if (!this._navGraph || this._navGraph.nodes.length === 0) return null;
 
     let closestNode = null;
     let minDistanceSq = Infinity;
 
     this._navGraph.nodes.forEach((node, index) => {
-      const distanceSq = Vec2.distanceSquared(position, node);
-
-      if (distanceSq < minDistanceSq) {
-        minDistanceSq = distanceSq;
-        closestNode = index;
+      if (!this._hasObstacleBetween(position, node)) {
+        const distanceSq = Vec2.distanceSquared(position, node);
+        if (distanceSq < minDistanceSq) {
+          minDistanceSq = distanceSq;
+          closestNode = index;
+        }
       }
     });
 
