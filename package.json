@@ -10,7 +10,8 @@
     "type": "git",
     "url": "git+ssh://git@github.com/lgick/VIMP-Tank-Battle.git"
   },
-  "license": "MIT",
+  "license": "UNLICENSED",
+  "private": true,
   "author": "lgick",
   "type": "module",
   "main": "src/server/main.js",
