@@ -211,6 +211,7 @@ class Tank extends BaseModel {
       if (this.tryConsumeAmmoAndShoot()) {
         this._shotData = {
           bodyPosition: body.getPosition(),
+          velocity: body.getLinearVelocity(),
           startPoint: this.getMuzzlePosition(this.currentWeapon),
           direction: this.getFireDirection(this.currentWeapon),
         };

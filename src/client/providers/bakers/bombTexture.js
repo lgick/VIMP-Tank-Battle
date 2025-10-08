@@ -11,19 +11,13 @@ export default function bombTexture(params, renderer) {
   // базовый размер
   const size = 40;
   const borderWidth = 2;
+  const radius = size / 2;
 
   // внешний контур
-  graphics.rect(0, 0, size, size).fill(colorOuter);
+  graphics.circle(radius, radius, radius).fill(colorOuter);
 
   // внутренняя часть
-  graphics
-    .rect(
-      borderWidth,
-      borderWidth,
-      size - borderWidth * 2,
-      size - borderWidth * 2,
-    )
-    .fill(colorInner);
+  graphics.circle(radius, radius, radius - borderWidth).fill(colorInner);
 
   const texture = renderer.generateTexture({
     target: graphics,

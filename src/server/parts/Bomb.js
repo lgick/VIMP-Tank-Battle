@@ -1,4 +1,4 @@
-import { BoxShape, Vec2, AABB } from 'planck';
+import { Vec2, AABB, Circle } from 'planck';
 
 class Bomb {
   constructor(data) {
@@ -7,14 +7,17 @@ class Bomb {
     const size = this._weaponData.size;
 
     this._body = data.world.createBody({
-      type: 'static',
+      type: 'dynamic',
       position: data.position,
       angle: 0,
+      linearVelocity: data.velocity, // начальная скорость
+      linearDamping: this._weaponData.damping.linear, // затухание (трение)
     });
 
-    this._body.createFixture(new BoxShape(size / 2, size / 2), {
-      isSensor: true,
-    });
+    this._body.createFixture(
+      new Circle(size / 2, size / 2),
+      this._weaponData.fixture,
+    );
 
     this._body.setUserData(data.userData);
   }

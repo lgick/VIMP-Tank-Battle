@@ -83,7 +83,12 @@ export default class Bomb extends Container {
     }
   }
 
-  update() {}
+  update(params) {
+    console.log(params);
+    this.x = params[0];
+    this.y = params[1];
+    this.rotation = params[2];
+  }
 
   _stopTimer() {
     if (this._tickListener) {

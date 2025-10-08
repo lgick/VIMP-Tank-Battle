@@ -352,6 +352,37 @@ class Game {
     }
   }
 
+  // детонация бомбы
+  _detonateBomb(shot) {
+    // если снаряда уже нет (например, взорвался в том же тике)
+    if (!shot) {
+      return;
+    }
+
+    const weaponName = shot.weaponName;
+    const weapon = this._weapons[weaponName];
+    const shotOutcomeId = weapon.shotOutcomeId;
+
+    // если у оружия есть эффект по истечению времени (например, взрыв)
+    if (shotOutcomeId) {
+      const explosionData = shot.detonate(
+        this._world,
+        this,
+        this._friendlyFire,
+      );
+
+      this._lastWeaponEffects[shotOutcomeId] =
+        this._lastWeaponEffects[shotOutcomeId] || [];
+      this._lastWeaponEffects[shotOutcomeId].push(explosionData);
+    }
+
+    // тело бомбы кандидат на удаление
+    this._bodiesToDestroy.add(shot.getBody());
+
+    // удаление снаряда из активных, чтобы не было взрыва по таймеру
+    delete this._shotsData[shot.shotId];
+  }
+
   // обрабатывает события контактов, накопленные за шаг физики
   _processContactEvents() {
     for (const contact of this._contactEvents) {
@@ -365,7 +396,6 @@ class Game {
 
       const bodyA = fixtureA.getBody();
       const bodyB = fixtureB.getBody();
-
       const userDataA = bodyA.getUserData();
       const userDataB = bodyB.getUserData();
 
@@ -374,37 +404,53 @@ class Game {
       }
 
       // логика определения кто в кого попал
-      let playerFixture, shotFixture;
+      let shotData, otherUserData, shotBody;
 
-      if (userDataA.type === 'player' && userDataB.type === 'shot') {
-        playerFixture = fixtureA;
-        shotFixture = fixtureB;
-      } else if (userDataB.type === 'player' && userDataA.type === 'shot') {
-        playerFixture = fixtureB;
-        shotFixture = fixtureA;
+      if (userDataA.type === 'shot') {
+        shotData = userDataA;
+        otherUserData = userDataB;
+        shotBody = bodyA;
+      } else if (userDataB.type === 'shot') {
+        shotData = userDataB;
+        otherUserData = userDataA;
+        shotBody = bodyB;
       } else {
-        continue; // это не контакт между игроком и снарядом
+        continue; // это не столкновение с участием снаряда
       }
 
-      const playerData = playerFixture.getBody().getUserData();
-      const shotData = shotFixture.getBody().getUserData();
-
-      // Если это оружие взрывного типа (например, бомба),
-      // оно не должно уничтожаться при контакте, а только по таймеру.
-      const weaponConfig = this._weapons[shotData.weaponName];
-      if (weaponConfig && weaponConfig.type === 'explosive') {
-        continue; // Игнорируем контакт и переходим к следующему
-      }
-
-      // если тело снаряда уже в очереди на удаление, пропускаем
-      if (this._bodiesToDestroy.has(shotFixture.getBody())) {
+      // игнорируем столкновение снаряда с игроком, который его выпустил
+      if (
+        otherUserData.type === 'player' &&
+        shotData.gameId === otherUserData.gameId
+      ) {
         continue;
       }
 
-      this.applyDamage(playerData.gameId, shotData.gameId, shotData.weaponName);
+      // если тело снаряда уже в очереди на удаление, пропускаем
+      if (this._bodiesToDestroy.has(shotBody)) {
+        continue;
+      }
 
-      // помечаем снаряд на удаление, а не удаляем сразу
-      this._bodiesToDestroy.add(shotFixture.getBody());
+      const weaponConfig = this._weapons[shotData.weaponName];
+
+      // если это бомба
+      if (weaponConfig && weaponConfig.type === 'explosive') {
+        const shot = this._shotsData[shotData.shotId];
+        this._detonateBomb(shot);
+        continue; // после обработки переход к следующему контакту
+      }
+
+      // если это был обычный снаряд, который попал в игрока
+      if (otherUserData.type === 'player') {
+        this.applyDamage(
+          otherUserData.gameId,
+          shotData.gameId,
+          shotData.weaponName,
+        );
+      }
+
+      // добавление на удаление при любом столкновении любой не-взрывной снаряд
+      this._bodiesToDestroy.add(shotBody);
     }
 
     // очищаем массив для следующего шага
@@ -464,33 +510,17 @@ class Game {
 
       // если пуля все еще существует (не была уничтожена досрочно)
       if (shot) {
-        const weaponName = shot.weaponName;
-        const weapon = this._weapons[weaponName];
-        const shotOutcomeId = weapon.shotOutcomeId;
-
-        // если у оружия есть эффект по истечению времени (например, взрыв)
-        if (shotOutcomeId) {
-          const explosionData = shot.detonate(
-            this._world,
-            this,
-            this._friendlyFire,
-          );
-
-          this._lastWeaponEffects[shotOutcomeId] =
-            this._lastWeaponEffects[shotOutcomeId] || [];
-          this._lastWeaponEffects[shotOutcomeId].push(explosionData);
-        }
-
-        this._world.destroyBody(shot.getBody());
-        delete this._shotsData[shotId];
+        this._detonateBomb(shot);
 
         // помечаем исходный снаряд (бомбу) как удаленный
+        const weaponName = shot.weaponName;
         outcomeData[weaponName] = outcomeData[weaponName] || {};
         outcomeData[weaponName][shotId] = null;
       }
     }
 
     this._shotsAtTime[this._currentStepTick] = []; // очищаем текущий слот
+
     // переходим к следующему слоту
     this._currentStepTick =
       (this._currentStepTick + 1) % this._maxShotTimeInSteps;
@@ -538,6 +568,16 @@ class Game {
             gameData[weaponName][shot.shotId] = shot.getData();
           }
         }
+      }
+    }
+
+    for (const shotId in this._shotsData) {
+      if (Object.hasOwn(this._shotsData, shotId)) {
+        const shot = this._shotsData[shotId];
+        const weaponName = shot.weaponName;
+
+        gameData[weaponName] = gameData[weaponName] || {};
+        gameData[weaponName][shot.shotId] = shot.getData();
       }
     }
 
@@ -590,12 +630,24 @@ class Game {
     const removalTick =
       (this._currentStepTick + lifetimeInSteps) % this._maxShotTimeInSteps;
 
+    // расчет итоговой скорости бомбы
+    const initialSpeed = weaponData.initialSpeed || 0;
+    const tankVelocity = shotData.velocity;
+    const direction = shotData.direction;
+
+    // скорость, которую нужно добавить в направлении выстрела
+    const boost = direction.mul(initialSpeed);
+
+    // итоговая скорость = скорость танка + дополнительная скорость
+    const finalVelocity = planck.Vec2.add(tankVelocity, boost);
+
     // создаем экземпляр снаряда (например, Bomb)
     const shot = this._Factory(weaponData.constructor, {
       weaponData,
-      position: shotData.bodyPosition,
+      position: shotData.startPoint,
+      velocity: finalVelocity,
       userData: {
-        type: weaponData.type,
+        type: 'shot',
         weaponName,
         shotId,
         gameId,
