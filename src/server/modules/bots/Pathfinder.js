@@ -25,6 +25,7 @@ class Pathfinder {
 
     // fScore: gScore + эвристика (предполагаемая стоимость до конца)
     const fScore = new Map();
+
     fScore.set(
       startNode,
       this._heuristic(graph.nodes[startNode], graph.nodes[endNode]),

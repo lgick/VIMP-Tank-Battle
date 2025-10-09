@@ -1,16 +1,20 @@
 /**
  * @class SpatialManager
- * @description Разделяет игровой мир на сетку ячеек для оптимизации поиска ближайших соседей.
- * Позволяет снизить сложность поиска целей с O(N^2) до приближенного O(N) или O(1) для запроса.
+ * @description Разделяет игровой мир на сетку ячеек
+ * для оптимизации поиска ближайших соседей.
+ * Позволяет снизить сложность поиска целей с O(N^2)
+ * до приближенного O(N) или O(1) для запроса.
  */
 class SpatialManager {
   /**
-   * @param {number} cellSize - Размер стороны одной квадратной ячейки сетки (в игровых юнитах).
-   * Должен быть сравним с максимальным радиусом взаимодействия (например, дальностью стрельбы).
+   * @param {number} cellSize - Размер стороны одной квадратной ячейки сетки
+   * (в игровых юнитах).
+   * Должен быть сравним с максимальным радиусом взаимодействия
+   * (например, дальностью стрельбы).
    */
   constructor(cellSize = 500) {
     this._cellSize = cellSize;
-    // Хранилище ячеек: ключ 'cx,cy', значение Set<EntityData>
+    // хранилище ячеек: ключ 'cx,cy', значение Set<EntityData>
     this._grid = new Map();
   }
 
@@ -22,7 +26,8 @@ class SpatialManager {
   }
 
   /**
-   * @description Генерирует уникальный строковый ключ для ячейки по координатам.
+   * @description Генерирует уникальный строковый ключ
+   * для ячейки по координатам.
    * @private
    */
   _getCellKey(x, y) {
@@ -46,7 +51,7 @@ class SpatialManager {
       this._grid.set(key, []);
     }
 
-    // Сохраняем только необходимые данные для быстрой фильтрации
+    // сохранение только необходимых данных для быстрой фильтрации
     this._grid.get(key).push({
       gameId: entity.gameId,
       teamId: entity.teamId,
@@ -69,14 +74,14 @@ class SpatialManager {
     const centerCy = Math.floor(y / this._cellSize);
     const candidates = [];
 
-    // Перебор 3x3 ячеек вокруг центра
+    // перебор 3x3 ячеек вокруг центра
     for (let cy = centerCy - 1; cy <= centerCy + 1; cy += 1) {
       for (let cx = centerCx - 1; cx <= centerCx + 1; cx += 1) {
         const key = `${cx},${cy}`;
         const cellEntities = this._grid.get(key);
 
         if (cellEntities) {
-          // Быстро добавляем содержимое ячейки в общий список (spread operator)
+          // добавление содержимого ячейки в общий список (spread operator)
           candidates.push(...cellEntities);
         }
       }

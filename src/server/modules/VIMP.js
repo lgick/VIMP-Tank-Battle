@@ -131,9 +131,11 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData(dt);
 
-    const playerList = this._game.getAlivePlayers();
-    this._bots.updateBots(dt);
-    this._bots.buildSpatialGrid(playerList);
+    if (this._bots.getBotCount() > 0) {
+      const playerList = this._game.getAlivePlayers();
+      this._bots.updateBots(dt);
+      this._bots.buildSpatialGrid(playerList);
+    }
 
     // список пользователей готовых к игре
     const userList = Object.values(this._users).filter(

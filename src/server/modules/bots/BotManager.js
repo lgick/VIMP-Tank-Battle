@@ -45,7 +45,8 @@ class BotManager {
   }
 
   /**
-   * @description Получает данные о текущей карте для определения точек респауна.
+   * @description Получает данные о текущей карте
+   * для определения точек респауна.
    * @param {object} mapData - Данные масштабированной карты.
    */
   createMap(mapData) {
@@ -64,7 +65,8 @@ class BotManager {
   }
 
   /**
-   * @description Проверяет наличие прямой видимости между двумя точками (прокси-метод).
+   * @description Проверяет наличие прямой видимости
+   * между двумя точками (прокси-метод).
    * @param {Vec2} startPos
    * @param {Vec2} endPos
    * @returns {boolean}
@@ -76,7 +78,8 @@ class BotManager {
   /**
    * @description Возвращает координаты случайного узла из навигационного графа.
    * Используется для определения цели патрулирования.
-   * @returns {Vec2 | null} Координаты случайной точки или null, если граф не готов.
+   * @returns {Vec2 | null} Координаты случайной точки или null,
+   * если граф не готов.
    */
   getRandomNavNode() {
     return this._navigationSystem.getRandomNode();
@@ -101,7 +104,8 @@ class BotManager {
   /**
    * @description Создаёт заданное количество ботов.
    * @param {number} count - Количество ботов для создания.
-   * @param {string|null} teamName - Имя команды. Если null, боты распределяются равномерно.
+   * @param {string|null} teamName - Имя команды.
+   * Если null, боты распределяются равномерно.
    * @returns {number} Количество фактически созданных ботов.
    */
   createBots(count, teamName = null) {
@@ -185,7 +189,8 @@ class BotManager {
 
   /**
    * @description Удаляет ботов.
-   * @param {string|null} teamName - Если указано, удаляет ботов только из этой команды. Иначе удаляет всех.
+   * @param {string|null} teamName - Если указано, удаляет ботов
+   * только из этой команды. Иначе удаляет всех.
    */
   removeBots(teamName = null) {
     const botsToRemove = teamName
@@ -241,12 +246,12 @@ class BotManager {
     this._panel.removeUser(gameId);
     this._vimp._teamSizes[botData.team].delete(gameId);
     this._game.removePlayer(gameId);
-
     this._bots.delete(gameId);
   }
 
   /**
-   * @description Удаляет одного бота из указанной команды, чтобы освободить место.
+   * @description Удаляет одного бота из указанной команды,
+   * чтобы освободить место.
    * @param {string} teamName - Имя команды.
    * @returns {boolean} - true, если бот был удален, иначе false.
    */
@@ -264,7 +269,8 @@ class BotManager {
   /**
    * @description Возвращает botData по gameId
    * @param {string} gameId
-   * @returns {object | undefined} - botData или undefined, если нет такого gameId
+   * @returns {object | undefined} - botData или undefined,
+   * если нет такого gameId
    */
   getBotById(gameId) {
     return this._bots.get(gameId);
@@ -279,8 +285,17 @@ class BotManager {
   }
 
   /**
+   * @description Возвращает количество ботов в игре.
+   * @returns {number} Количество ботов.
+   */
+  getBotCount() {
+    return this._bots.size;
+  }
+
+  /**
    * @description Подсчитывает текущее количество ботов в каждой команде.
-   * @returns {object} Объект, где ключ - название команды, значение - количество ботов.
+   * @returns {object} Объект, где ключ - название команды,
+   * значение - количество ботов.
    */
   getBotCountsPerTeam() {
     const counts = {};
