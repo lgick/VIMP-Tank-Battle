@@ -42,7 +42,6 @@ class BotController {
     this._game = game;
     this._panel = panel;
     this._botData = botData;
-    // --- ИЗМЕНЕНИЕ: Возвращаем доступ к миру для rayCast ---
     this._world = this._game._world;
 
     this._target = null;
@@ -69,7 +68,6 @@ class BotController {
     this._repositionTimer = 0;
     this._repositionTarget = null;
 
-    /** @type {Vec2 | null} */
     this._patrolTarget = null;
 
     this._keyStates = {
@@ -83,9 +81,7 @@ class BotController {
 
     this._spatialManager = spatialManager;
 
-    /** @type {number[] | null} */
     this._myPosition = null;
-    /** @type {planck.Body | null} */
     this._myBody = null;
   }
 
@@ -129,6 +125,7 @@ class BotController {
         this.state = 'DEAD';
         this.releaseAllKeys();
       }
+
       return;
     }
 
@@ -141,11 +138,14 @@ class BotController {
 
     // обнаружение застревания
     this._stuckTimer += dt;
+
     if (this._stuckTimer >= 1.5) {
       this._stuckTimer = 0;
       const currentPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+
       if (this._lastPosition) {
         const distSq = Vec2.distanceSquared(currentPosVec, this._lastPosition);
+
         if (
           (this.state === 'NAVIGATING' ||
             this.state === 'SEARCHING' ||
@@ -155,6 +155,7 @@ class BotController {
           this.state = 'CLEARING_OBSTACLE';
         }
       }
+
       this._lastPosition = currentPosVec;
     }
 
@@ -173,10 +174,16 @@ class BotController {
 
   /**
    * @description Основная логика принятия решений.
-   * Приоритеты: 1. Атаковать видимого врага. 2. Двигаться к последней позиции врага. 3. Патрулировать.
+   * Приоритеты:
+   * 1. Атаковать видимого врага.
+   * 2. Двигаться к последней позиции врага.
+   * 3. Патрулировать.
    */
   makeDecision() {
-    if (this._targetScanTimer > 0 && this.state !== 'PATROLLING') return;
+    if (this._targetScanTimer > 0 && this.state !== 'PATROLLING') {
+      return;
+    }
+
     this._targetScanTimer = TARGET_SCAN_INTERVAL;
 
     this._target = this.findClosestEnemy();
@@ -194,6 +201,7 @@ class BotController {
         );
         this.state = isVisible ? 'ATTACKING' : 'NAVIGATING';
       }
+
       return;
     }
 
@@ -203,17 +211,20 @@ class BotController {
     }
 
     this.state = 'PATROLLING';
+
     if (!this._patrolTarget) {
       this.setNewPatrolTarget();
     }
   }
 
   /**
-   * @description Устанавливает новую случайную цель для патрулирования и строит к ней путь.
+   * @description Устанавливает новую случайную цель
+   * для патрулирования и строит к ней путь.
    * @private
    */
   setNewPatrolTarget() {
     const randomNode = this._vimp._bots.getRandomNavNode();
+
     if (randomNode && this._myPosition) {
       this._patrolTarget = randomNode;
       const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
@@ -223,7 +234,8 @@ class BotController {
   }
 
   /**
-   * @description Выполняет логику движения в зависимости от текущего состояния бота.
+   * @description Выполняет логику движения
+   * в зависимости от текущего состояния бота.
    */
   executeMovement() {
     if (this._target && !this._game.isAlive(this._target.gameId)) {
@@ -234,28 +246,35 @@ class BotController {
     }
 
     if (this.state === 'ATTACKING' || this.state === 'NAVIGATING') {
-      if (!this._target) return;
+      if (!this._target) {
+        return;
+      }
+
       if (this._repositionTimer > 0 && this._repositionTarget) {
         this.moveTo(this._repositionTarget, true);
         const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+
         if (Vec2.distanceSquared(myPosVec, this._repositionTarget) < 50 * 50) {
           this._repositionTimer = 0;
         }
       } else {
         this.moveTo(this._target.gameId);
       }
+
       return;
     }
 
     if (this.state === 'SEARCHING' && this._lastKnownPosition) {
       this.moveTo(this._lastKnownPosition, true);
       const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+
       if (
         Vec2.distanceSquared(myPosVec, this._lastKnownPosition) <
         MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
       ) {
         this._lastKnownPosition = null;
       }
+
       return;
     }
 
@@ -263,6 +282,7 @@ class BotController {
       if (this._path && this._patrolTarget) {
         this.followPath();
         const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+
         if (
           Vec2.distanceSquared(myPosVec, this._patrolTarget) <
           MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
@@ -273,6 +293,7 @@ class BotController {
       } else if (!this._path) {
         this.setNewPatrolTarget();
       }
+
       return;
     }
 
@@ -292,6 +313,7 @@ class BotController {
     this.moveTo(nextWaypoint, true);
 
     const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+
     if (
       Vec2.distanceSquared(myPosVec, nextWaypoint) <
       MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
@@ -305,15 +327,22 @@ class BotController {
    * @returns {object | null} - Данные врага или null.
    */
   findClosestEnemy() {
-    if (!this._myPosition) return null;
+    if (!this._myPosition) {
+      return null;
+    }
+
     const myVec = new Vec2(this._myPosition[0], this._myPosition[1]);
     const candidates = this._spatialManager.queryNearby(myVec.x, myVec.y);
     let closestEnemy = null;
     let minDistanceSq = Infinity;
+
     for (const { gameId, teamId, x, y } of candidates) {
-      if (gameId === this._botData.gameId || teamId === this._botData.teamId)
+      if (gameId === this._botData.gameId || teamId === this._botData.teamId) {
         continue;
+      }
+
       const distanceSq = Vec2.distanceSquared(myVec, new Vec2(x, y));
+
       if (
         distanceSq < minDistanceSq &&
         distanceSq < MAX_FIRING_DISTANCE * MAX_FIRING_DISTANCE * 1.5
@@ -323,6 +352,7 @@ class BotController {
           this._vimp._users[gameId] || this._vimp._bots.getBotById(gameId);
       }
     }
+
     return closestEnemy;
   }
 
@@ -339,22 +369,33 @@ class BotController {
    * @param {boolean} [isStaticPoint=false]
    */
   moveTo(target, isStaticPoint = false) {
-    if (!this._myBody) return;
+    if (!this._myBody) {
+      return;
+    }
+
     const myPosition = this._myBody.getPosition();
     let targetPosition;
+
     if (isStaticPoint) {
       targetPosition = target;
     } else {
       const targetPosArray = this._game.getPosition(target);
-      if (!targetPosArray) return;
+
+      if (!targetPosArray) {
+        return;
+      }
+
       targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
       const targetBody = this._game._playersData[target]?.getBody();
+
       if (targetBody) {
         const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
         targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
       }
     }
+
     const directionToTarget = Vec2.sub(targetPosition, myPosition);
+
     if (
       directionToTarget.lengthSquared() <
       MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
@@ -364,10 +405,11 @@ class BotController {
       this._setKeyState('right', false);
       return;
     }
+
     const dirToTargetNorm = Vec2.clone(directionToTarget);
     dirToTargetNorm.normalize();
 
-    // --- ИЗМЕНЕНИЕ: Возвращаем вызов надежного метода избегания препятствий ---
+    // возврат вызова надежного метода избегания препятствий
     const finalDirection = this.avoidObstacles(this._myBody, dirToTargetNorm);
 
     const forwardVec = this._myBody.getWorldVector(new Vec2(1, 0));
@@ -376,6 +418,7 @@ class BotController {
       Vec2.dot(forwardVec, finalDirection),
     );
     const turnThreshold = 0.2;
+
     if (angleToTarget > turnThreshold) {
       this._setKeyState('right', true);
       this._setKeyState('left', false);
@@ -386,6 +429,7 @@ class BotController {
       this._setKeyState('left', false);
       this._setKeyState('right', false);
     }
+
     if (Math.abs(angleToTarget) < Math.PI / 1.5) {
       this._setKeyState('forward', true);
     } else {
@@ -430,8 +474,10 @@ class BotController {
           }
 
           hit = true;
+
           return 0; // статичное препятствие, окончание луча
         }
+
         return -1;
       });
 
@@ -441,7 +487,8 @@ class BotController {
       }
     }
 
-    // если впереди только динамические объекты, не корректируется курс (таран)
+    // если впереди только динамические объекты,
+    // не корректируется курс (таран)
     if (dynamicObstacleInPath && !obstaclesDetected) {
       return desiredDirection;
     }
@@ -469,25 +516,40 @@ class BotController {
       this._setKeyState('gunRight', false);
       return;
     }
+
     const botTank = this._game._playersData[this._botData.gameId];
-    if (!botTank || !this._myBody) return;
+
+    if (!botTank || !this._myBody) {
+      return;
+    }
+
     const targetPosArray = this._game.getPosition(this._target.gameId);
-    if (!targetPosArray) return;
+
+    if (!targetPosArray) {
+      return;
+    }
+
     const myPosition = this._myBody.getPosition();
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
-    if (!this._vimp._bots.hasLineOfSight(myPosition, targetPosition)) return;
+
+    if (!this._vimp._bots.hasLineOfSight(myPosition, targetPosition)) {
+      return;
+    }
+
     const directionToTarget = Vec2.sub(targetPosition, myPosition);
     const distanceToTargetSq = directionToTarget.lengthSquared();
     const shouldUseBomb =
       distanceToTargetSq < BOMB_USAGE_DISTANCE * BOMB_USAGE_DISTANCE &&
       this._bombCooldownTimer <= 0;
     const currentWeapon = botTank.currentWeapon;
+
     if (shouldUseBomb) {
       if (currentWeapon !== 'w2') {
         this._game.updateKeys(this._botData.gameId, {
           action: 'down',
           name: 'nextWeapon',
         });
+
         return;
       }
     } else if (currentWeapon === 'w2') {
@@ -495,9 +557,11 @@ class BotController {
         action: 'down',
         name: 'nextWeapon',
       });
+
       return;
     }
-    let targetAngle =
+
+    const targetAngle =
       Math.atan2(directionToTarget.y, directionToTarget.x) +
       (Math.random() - 0.5) * AIM_INACCURACY;
     const currentGunAngle = this._myBody.getAngle() + this._myBody.gunRotation;
@@ -507,6 +571,7 @@ class BotController {
       Math.cos(angleDifference),
     );
     const aimThreshold = 0.05;
+
     if (angleDifference > aimThreshold) {
       this._setKeyState('gunRight', true);
       this._setKeyState('gunLeft', false);
@@ -516,6 +581,7 @@ class BotController {
     } else {
       this._setKeyState('gunLeft', false);
       this._setKeyState('gunRight', false);
+
       if (this._firingTimer <= 0) {
         if (
           shouldUseBomb &&
@@ -526,6 +592,7 @@ class BotController {
             action: 'down',
             name: 'fire',
           });
+
           this._bombCooldownTimer = BOMB_COOLDOWN;
           this._repositionTimer = 2.0;
           this.calculateNewCombatPosition();
@@ -541,6 +608,7 @@ class BotController {
               action: 'down',
               name: 'fire',
             });
+
             this._repositionTimer = 2.0;
             this.calculateNewCombatPosition();
           }
@@ -554,10 +622,12 @@ class BotController {
    */
   handleClearingObstacle() {
     this.releaseAllKeys();
+
     if (!this._myBody) {
       this.state = 'IDLE';
       return;
     }
+
     const currentGunAngle = this._myBody.getAngle() + this._myBody.gunRotation;
     const bodyAngle = this._myBody.getAngle();
     let angleDifference = bodyAngle - currentGunAngle;
@@ -566,6 +636,7 @@ class BotController {
       Math.cos(angleDifference),
     );
     const aimThreshold = 0.1;
+
     if (angleDifference > aimThreshold) {
       this._setKeyState('gunRight', true);
     } else if (angleDifference < -aimThreshold) {
@@ -586,11 +657,15 @@ class BotController {
    * @description Рассчитывает новую боевую позицию для стрейфа.
    */
   calculateNewCombatPosition() {
-    if (!this._myPosition || !this._myBody) return;
+    if (!this._myPosition || !this._myBody) {
+      return;
+    }
+
     const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
     const rightVec = this._myBody.getWorldVector(new Vec2(0, 1));
     const strafeDirection = Math.random() > 0.5 ? 1 : -1;
     const strafeDistance = 100 + Math.random() * 100;
+
     this._repositionTarget = Vec2.add(
       myPosVec,
       rightVec.mul(strafeDistance * strafeDirection),
