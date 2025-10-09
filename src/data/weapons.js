@@ -18,11 +18,11 @@ export default {
   w2: {
     type: 'explosive',
     constructor: 'Bomb',
-    time: 1000,
+    time: 500,
     shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
     size: 13, // соотношение сторон 1:1
     fireRate: 0, // кулдаун (0 - отсутствует)
-    damage: 70, // урон в эпицентре
+    damage: 90, // урон в эпицентре
     radius: 80, // радиус взрыва
     impulseMagnitude: 20000000, // сила импульса
     cameraShake: {

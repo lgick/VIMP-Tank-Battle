@@ -298,6 +298,22 @@ class Game {
     }
   }
 
+  // получение списка активных игроков
+  getAlivePlayers() {
+    return Object.entries(this._playersData)
+      .filter(([_, player]) => player.isAlive())
+      .map(([gameId, player]) => {
+        const pos = player.getPosition();
+
+        return {
+          gameId,
+          teamId: player.teamId,
+          x: pos[0],
+          y: pos[1],
+        };
+      });
+  }
+
   // проверка жив ли игрок
   isAlive(gameId) {
     const player = this._playersData[gameId];
