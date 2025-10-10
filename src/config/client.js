@@ -212,10 +212,10 @@ export default {
             'Only active players can use /bot',
             'Invalid bot count',
             'Invalid team name',
-            '{0} created {1} bot(s) for {2}',
-            '{0} removed all bots from {1}',
-            '{0} created {1} bot(s)',
-            '{0} removed all bots',
+            '{0} bot(s) created for {1}',
+            'All bots removed from {0}',
+            '{0} bot(s) created',
+            'All bots removed',
           ],
         },
       },
@@ -282,20 +282,20 @@ export default {
           teamChange: ['Choose a team', 'teams', true],
           mapChangeBySystem: ['Choose the next map'],
           mapChangeByUser: ['{0} suggested the map: {1}', ['Yes', 'No']],
-          addBotsForTeam: [
-            '{0} suggests adding {1} bot(s) to {2}. Vote?',
+          createBotsForTeam: [
+            '{0} suggests creating {1} bot(s) to {2}. Agree?',
             ['Yes', 'No'],
           ],
           removeBotsForTeam: [
-            '{0} suggests removing all bots from {1}. Vote?',
+            '{0} suggests removing all bots from {1}. Agree?',
             ['Yes', 'No'],
           ],
-          addBots: [
-            '{0} suggests adding {1} bot(s) to the game. Vote?',
+          createBots: [
+            '{0} suggests creating {1} bot(s) to the game. Agree?',
             ['Yes', 'No'],
           ],
           removeBots: [
-            '{0} suggests removing all bots from the game. Vote?',
+            '{0} suggests removing all bots from the game. Agree?',
             ['Yes', 'No'],
           ],
         },
