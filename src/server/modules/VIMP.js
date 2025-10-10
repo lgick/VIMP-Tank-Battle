@@ -1225,18 +1225,18 @@ class VIMP {
 
       if (count > 0) {
         count = this._bots.createBots(count, team);
-        this._chat.pushSystem('BOT_CREATED_FOR_TEAM', [userName, count, team]);
+        this._chat.pushSystem('BOT_CREATED_FOR_TEAM', [count, team]);
       } else {
-        this._chat.pushSystem('BOT_REMOVED_FROM_TEAM', [userName, team]);
+        this._chat.pushSystem('BOT_REMOVED_FROM_TEAM', [team]);
       }
     } else {
       this._bots.removeBots();
 
       if (count > 0) {
         count = this._bots.createBots(count, null);
-        this._chat.pushSystem('BOT_CREATED', [userName, count]);
+        this._chat.pushSystem('BOT_CREATED', [count]);
       } else {
-        this._chat.pushSystem('BOT_REMOVED', [userName]);
+        this._chat.pushSystem('BOT_REMOVED');
       }
     }
 
@@ -1256,17 +1256,29 @@ class VIMP {
 
     if (team) {
       if (count > 0) {
-        voteName = 'addBotsForTeam';
+        voteName = 'createBotsForTeam';
         voteArgs = [userName, count, team];
       } else {
+        // если удалять нечего
+        if (this._bots.getBotCountForTeam(team) === 0) {
+          this._chat.pushSystemByUser(gameId, 'BOT_REMOVED_FROM_TEAM', [team]);
+          return;
+        }
+
         voteName = 'removeBotsForTeam';
         voteArgs = [userName, team];
       }
     } else {
       if (count > 0) {
-        voteName = 'addBots';
+        voteName = 'createBots';
         voteArgs = [userName, count];
       } else {
+        // если удалять нечего
+        if (this._bots.getBotCount() === 0) {
+          this._chat.pushSystemByUser(gameId, 'BOT_REMOVED');
+          return;
+        }
+
         voteName = 'removeBots';
         voteArgs = [userName];
       }

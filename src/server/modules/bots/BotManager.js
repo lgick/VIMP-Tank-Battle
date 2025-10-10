@@ -293,6 +293,15 @@ class BotManager {
   }
 
   /**
+   * @description Возвращает количество ботов в указанной команде.
+   * @param {string} teamName - Имя команды для подсчета.
+   * @returns {number} Количество ботов в команде.
+   */
+  getBotCountForTeam(teamName) {
+    return [...this._bots.values()].filter(bot => bot.team === teamName).length;
+  }
+
+  /**
    * @description Подсчитывает текущее количество ботов в каждой команде.
    * @returns {object} Объект, где ключ - название команды,
    * значение - количество ботов.
