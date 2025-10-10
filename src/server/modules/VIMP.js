@@ -1198,6 +1198,21 @@ class VIMP {
           break;
         }
 
+        // если команда на удаление ботов, но удалять нечего
+        if (count === 0) {
+          if (team && this._bots.getBotCountForTeam(team) === 0) {
+            this._chat.pushSystemByUser(gameId, 'BOT_REMOVED_FROM_TEAM', [
+              team,
+            ]);
+            break;
+          }
+
+          if (this._bots.getBotCount() === 0) {
+            this._chat.pushSystemByUser(gameId, 'BOT_REMOVED');
+            break;
+          }
+        }
+
         // проверка количества активных игроков
         const activePlayerCount = Object.values(this._users).filter(
           user => user.teamId !== this._spectatorId,
@@ -1259,12 +1274,6 @@ class VIMP {
         voteName = 'createBotsForTeam';
         voteArgs = [userName, count, team];
       } else {
-        // если удалять нечего
-        if (this._bots.getBotCountForTeam(team) === 0) {
-          this._chat.pushSystemByUser(gameId, 'BOT_REMOVED_FROM_TEAM', [team]);
-          return;
-        }
-
         voteName = 'removeBotsForTeam';
         voteArgs = [userName, team];
       }
@@ -1273,12 +1282,6 @@ class VIMP {
         voteName = 'createBots';
         voteArgs = [userName, count];
       } else {
-        // если удалять нечего
-        if (this._bots.getBotCount() === 0) {
-          this._chat.pushSystemByUser(gameId, 'BOT_REMOVED');
-          return;
-        }
-
         voteName = 'removeBots';
         voteArgs = [userName];
       }
