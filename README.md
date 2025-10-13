@@ -75,7 +75,7 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git && cd VIMP-Tank-Battle &
 
 # Interface
 
-![interface](./.github/assets/images/interface.png?raw=true)
+![interface](./.github/assets/images/face.png?raw=true)
 
 # Модуль PANEL
 
