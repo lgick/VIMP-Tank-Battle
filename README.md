@@ -73,6 +73,10 @@ git clone https://github.com/lgick/VIMP-Tank-Battle.git && cd VIMP-Tank-Battle &
 |  6   |    vote data     | Данные опроса                                     |
 |  7   |       pong       | RTT (round trip time)                             |
 
+# Interface
+
+![interface](./.github/assets/images/interface.png?raw=true)
+
 # Модуль PANEL
 
 Данные игры.
