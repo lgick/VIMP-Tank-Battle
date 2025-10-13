@@ -706,3 +706,13 @@ keys: {
 - отправляет этим пользователям общие данные модулей `game`, `stat`, `chat`, `vote`
 - если для `chat` и `vote` общих данных нет, то, если имеются, отправляются персональные данные
 - отправляются данные об удаленных пользователях, координаты наблюдаемых пользователей для наблюдателей, данные `panel`
+
+## ❤️ Supporting the Project
+
+If you find this plugin useful and want to support its development, starring the project on GitHub is a great way to show your appreciation!
+
+Donations are also welcome via Bitcoin. Every contribution helps sustain the project and is greatly appreciated.
+
+| Currency | Address                                      | QR Code                                                                                                                                            |
+| :------- | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **BTC**  | `bc1q0fnakv2jean57p3rjqzhq826jklygpj6gc7evu` | <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=bc1q0fnakv2jean57p3rjqzhq826jklygpj6gc7evu" alt="BTC QR Code" width="120"> |
