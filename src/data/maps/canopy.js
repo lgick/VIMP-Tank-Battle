@@ -24,41 +24,40 @@ export default {
   // динамические объекты
   physicsDynamic: (function () {
     const step = 32;
-    // размер динамического объекта
-    const dynamicObjectSize = 30;
-    const dynamicObjectSizeInTiles = dynamicObjectSize / step; // 2.5
-
-    // центральные колонны в качестве динамических стен
-    const wallDefinitions = [
-      [80, 50, 81, 100],
-      [130, 50, 131, 100],
-    ];
-
-    const generatedWalls = [];
+    const dynamicObjectSize = 96;
     const halfSize = dynamicObjectSize / 2;
+    const generatedObjects = [];
 
-    wallDefinitions.forEach(([x1, y1, x2, y2]) => {
-      for (let y = y1; y <= y2; y += dynamicObjectSizeInTiles) {
-        for (let x = x1; x <= x2; x += dynamicObjectSizeInTiles) {
-          const posX = x * step + halfSize;
-          const posY = y * step + halfSize;
+    const objectSizeInTiles = dynamicObjectSize / step; // 3
 
-          generatedWalls.push({
-            density: 100,
-            layer: 3,
-            position: [posX, posY],
-            angle: 0,
-            width: dynamicObjectSize,
-            height: dynamicObjectSize,
-            img: 'b1.png',
-            linearDamping: 5.0,
-            angularDamping: 14.0,
-          });
-        }
+    // параметры стены: 1 блок в ширину, 20 в высоту
+    const wallWidthInBlocks = 1;
+    const wallHeightInBlocks = 20;
+
+    const startX = 104; // центр по горизонтали
+    const startY = 45;
+
+    // вертикальный ряд
+    for (let y = 0; y < wallHeightInBlocks; y += 1) {
+      for (let x = 0; x < wallWidthInBlocks; x += 1) {
+        const posX = (startX + x * objectSizeInTiles) * step + halfSize;
+        const posY = (startY + y * objectSizeInTiles) * step + halfSize;
+
+        generatedObjects.push({
+          density: 20,
+          layer: 3,
+          position: [posX, posY],
+          angle: 0,
+          width: dynamicObjectSize,
+          height: dynamicObjectSize,
+          img: 'b1.png',
+          linearDamping: 8.0,
+          angularDamping: 16.0,
+        });
       }
-    });
+    }
 
-    return [...generatedWalls];
+    return generatedObjects;
   })(),
 
   respawns: {
@@ -112,7 +111,7 @@ export default {
       }
     }
 
-    // создание статических стен
+    // статические стены
     const buildWall = (x1, y1, x2, y2) => {
       for (let y = y1; y <= y2; y++) {
         for (let x = x1; x <= x2; x++) {
