@@ -276,7 +276,7 @@ socketMethods[PS_SHOT_DATA] = shotData;
 
 // sound data
 socketMethods[PS_SOUND_DATA] = sample => {
-  soundManager.play(sample);
+  soundManager.playSystemSound(sample);
 };
 
 // game inform data
@@ -378,10 +378,11 @@ function shotData(data) {
     coords.x = crds[0];
     coords.y = crds[1];
     soundManager.setListenerPosition(coords.x, coords.y);
-    soundManager.setListenerOrientation();
   }
 
-  soundManager.updateAllSpatialSounds();
+  soundManager.processAudibility();
+  soundManager.updatePersistentSounds();
+
   updateGameControllers();
 
   // панель
