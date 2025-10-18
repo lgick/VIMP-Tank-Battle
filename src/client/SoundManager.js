@@ -71,7 +71,9 @@ export default class SoundManager {
     const supportedCodec = codecList.find(codec => Howler.codecs(codec));
 
     if (!supportedCodec) {
-      console.error('No supported audio codec found from the list:', codecList);
+      console.error(
+        `No supported audio codec found from the list:, ${codecList}`,
+      );
       return;
     }
 
@@ -156,8 +158,8 @@ export default class SoundManager {
 
     if (!soundData) {
       console.warn(
-        `SoundManager: Попытка запросить несуществующий звук "${soundName}".
-        Заявка отклонена.
+        `SoundManager: Attempt to request a non-existent sound "${soundName}".
+        Request rejected.
         `,
       );
 
@@ -447,7 +449,7 @@ export default class SoundManager {
 
     if (!soundData) {
       console.warn(
-        `SoundManager: _internalPlay не смог найти звук "${soundName}".`,
+        `SoundManager: _internalPlay failed to find the sound "${soundName}".`,
       );
 
       return null;
@@ -458,7 +460,7 @@ export default class SoundManager {
 
     if (typeof soundId !== 'number') {
       console.error(
-        `SoundManager: Howler не смог воспроизвести звук "${soundName}".`,
+        `SoundManager: Howler failed to play the sound "${soundName}".`,
       );
 
       return null;
