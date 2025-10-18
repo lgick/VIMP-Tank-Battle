@@ -217,23 +217,26 @@ export default class SoundManager {
   /**
    * Регистрирует постоянный, зацикленный источник звука
    * (например, двигатель танка).
-   * Сообщает "режиссёру" о существовании этого звука, чтобы он мог быть включен
-   * в общий конкурс за право быть услышанным.
-   * @param {Symbol} id - Уникальный идентификатор объекта-владельца звука.
    * @param {string} soundName - Имя звука.
    * @param {function} getPosition - Функция, возвращающая актуальные координаты
    * {x, y}.
    * @param {function} getVolume - Функция, возвращающая базовую громкость.
    * @param {function} [getRate] - Опциональная функция,
    * возвращающая высоту тона.
+   * @returns {Symbol | null} Уникальный ID зарегистрированного звука.
    */
-  registerPersistentSound(id, soundName, getPosition, getVolume, getRate) {
-    if (this._persistentSounds.has(id)) {
-      return;
+  registerPersistentSound(soundName, getPosition, getVolume, getRate) {
+    const soundData = this._sounds.get(soundName);
+
+    if (!soundData) {
+      console.warn(`SoundManager: Sound "${soundName}" does not exist.`);
+      return null;
     }
 
-    this._persistentSounds.set(id, {
-      id,
+    const soundId = Symbol(`persistent_${soundName}`);
+
+    this._persistentSounds.set(soundId, {
+      id: soundId,
       soundName,
       getPosition,
       getVolume,
@@ -241,6 +244,8 @@ export default class SoundManager {
       activeSoundId: null,
       type: 'persistent',
     });
+
+    return soundId;
   }
 
   /**

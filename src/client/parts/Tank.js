@@ -54,8 +54,7 @@ export default class Tank extends Container {
     this.wreck.scale.set(scaleFactor);
 
     this._soundManager = dependencies.soundManager;
-    this._soundId = Symbol('tankEngineSound');
-    this._soundsInitialized = false;
+    this._soundId = null;
     this._speedRatio = 0;
 
     this._maxSpeed = 240; // максимальная скорость, соответствует серверной
@@ -66,19 +65,16 @@ export default class Tank extends Container {
 
   // запускает звуки двигателя танка
   _initSounds() {
-    if (this._soundsInitialized || this._condition === 0) {
+    if (this._soundId || this._condition === 0) {
       return;
     }
 
-    this._soundManager.registerPersistentSound(
-      this._soundId,
+    this._soundId = this._soundManager.registerPersistentSound(
       'tankEngine',
       () => ({ x: this.x, y: this.y }),
       () => 0.3 + 0.5 * this._speedRatio,
       () => 1.0 + this._speedRatio * 0.1,
     );
-
-    this._soundsInitialized = true;
   }
 
   create() {
@@ -124,7 +120,7 @@ export default class Tank extends Container {
     this.gun.rotation = data[3];
 
     // обновление звуковой логики
-    if (this._soundsInitialized && this._condition > 0) {
+    if (this._soundId && this._condition > 0) {
       const vX = data[4] || 0;
       const vY = data[5] || 0;
       const currentSpeed = Math.hypot(vX, vY);
@@ -155,10 +151,9 @@ export default class Tank extends Container {
 
   // останавливает и сбрасывает все звуки, связанные с танком
   destroySounds() {
-    if (this._soundsInitialized && this._soundId) {
+    if (this._soundId) {
       this._soundManager.unregisterPersistentSound(this._soundId);
       this._soundId = null;
-      this._soundsInitialized = false;
     }
   }
 
