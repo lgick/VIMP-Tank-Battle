@@ -471,14 +471,6 @@ export default class SoundManager {
       return null;
     }
 
-    // регистрация активного экземпляра
-    this._activeInstances.set(soundId, {
-      sound, // объект Howl
-      name: soundName, // имя звука
-      type, // тип ('one-shot' или 'persistent')
-      ownerId: id, // уникальный ID (Symbol)
-    });
-
     if (options) {
       // установка зацикливания (важно для 'persistent' звуков)
       if (options.loop) {
@@ -490,6 +482,14 @@ export default class SoundManager {
         sound.volume(options.volume, soundId);
       }
     }
+
+    // регистрация активного экземпляра
+    this._activeInstances.set(soundId, {
+      sound, // объект Howl
+      name: soundName, // имя звука
+      type, // тип ('one-shot' или 'persistent')
+      ownerId: id, // уникальный ID (Symbol)
+    });
 
     // установка логики самоуничтожения для одноразовых звуков
     if (type === 'one-shot' && !(options && options.loop)) {
