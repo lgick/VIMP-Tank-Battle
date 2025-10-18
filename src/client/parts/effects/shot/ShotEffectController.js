@@ -28,16 +28,17 @@ export default class ShotEffectController extends Container {
     this._soundComplete = false;
 
     // звук выстрела в момент старта эффекта
-    this._soundId = this._soundManager.playSpatialOneShot('shot', {
-      x: this.soundPositionX,
-      y: this.soundPositionY,
-      // callback, который будет вызван, когда звук закончится
-      onend: () => {
-        this._soundComplete = true;
-        this._soundId = null;
-        this._tryDestroy();
+    this._soundId = this._soundManager.requestOneShot(
+      'shot',
+      { x: this.soundPositionX, y: this.soundPositionY },
+      {
+        onend: () => {
+          this._soundComplete = true;
+          this._soundId = null;
+          this._tryDestroy();
+        },
       },
-    });
+    );
 
     // если по какой-то причине звук не запустился,
     // сразу считаем его "завершенным"
@@ -131,7 +132,7 @@ export default class ShotEffectController extends Container {
     // этот вызов остается на случай, если эффект уничтожат принудительно,
     // до того как звук закончится сам
     if (this._soundId) {
-      this._soundManager.stopById(this._soundId);
+      this._soundManager.cancelOneShot(this._soundId);
       this._soundId = null;
     }
 
