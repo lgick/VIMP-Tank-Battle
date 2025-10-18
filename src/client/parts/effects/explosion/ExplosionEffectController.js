@@ -13,7 +13,6 @@ export default class ExplosionEffectController extends Container {
     this._assets = assets;
 
     this._soundManager = dependencies.soundManager;
-    this._soundId = null;
 
     this.x = this.originX;
     this.y = this.originY;
@@ -24,7 +23,7 @@ export default class ExplosionEffectController extends Container {
     this.funnel = null;
     this._isDestroyed = false;
 
-    this._soundId = this._soundManager.playSpatialOneShot('explosion', {
+    this._soundId = this._soundManager.requestOneShot('explosion', {
       x: this.originX,
       y: this.originY,
     });
@@ -88,7 +87,7 @@ export default class ExplosionEffectController extends Container {
     this._isDestroyed = true;
 
     if (this._soundId) {
-      this._soundManager.stopById(this._soundId);
+      this._soundManager.cancelOneShot(this._soundId);
       this._soundId = null;
     }
 

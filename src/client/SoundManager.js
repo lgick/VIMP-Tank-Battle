@@ -2,8 +2,10 @@ import { Howl, Howler } from 'howler';
 
 /**
  * @class SoundManager
- * @description Управляет загрузкой, воспроизведением и остановкой звуков
- * с использованием Howler.js.
+ * @description Централизованный "режиссёр звука". Управляет загрузкой,
+ * виртуализацией и воспроизведением всех звуков в игре. Использует систему
+ * приоритетов и глобальный лимит голосов для предотвращения перегрузки
+ * аудио-движка и обеспечения того, чтобы самые важные звуки всегда были слышны.
  */
 export default class SoundManager {
   constructor() {
@@ -11,13 +13,19 @@ export default class SoundManager {
     Howler.usingWebAudio = true;
     Howler.autoSuspend = false;
     Howler.volume(0.7); // начальная глобальная громкость
+    Howler.pos(0, 0, 0);
+
+    // устанавливает ориентацию (направление взгляда) слушателя.
+    // вектор "вперед" (0, 0, -1) - соответствует верху экрана
+    // вектор "вверх" (0, 1, 0) - вектор "вверх" для аудиосистемы
+    Howler.orientation(0, 0, -1, 0, 1, 0);
 
     // настройки пространственного звука
     this._defaultPannerSettings = {
       panningModel: 'HRTF', // модель панорамирования
       distanceModel: 'inverse', // модель затухания звука с расстоянием
-      refDistance: 250, // расстояние (в px), на котором громкость равна 100%
-      maxDistance: 2500, // расстояние, дальше которого звук не слышен
+      refDistance: 100, // расстояние (в px), на котором громкость равна 100%
+      maxDistance: 1000, // расстояние, дальше которого звук не слышен
       rolloffFactor: 1, // коэффициент затухания (больше - быстрее затухает)
       coneInnerAngle: 360, // звук распространяется во все стороны одинаково
       coneOuterAngle: 0,
@@ -34,26 +42,29 @@ export default class SoundManager {
     this._listenerX = 0;
     this._listenerY = 0;
 
-    // хранит режим панорамирования ('centered' или 'spatial')
-    // для каждого активного экземпляра звука (по soundId).
-    // Это позволяет избежать конфликтов состояний в Web Audio API.
-    this._soundModes = new Map();
+    // глобальный лимит звуков
+    this.WORLD_VOICE_LIMIT = 30;
 
-    // радиус "личного пространства", в котором звуки не панорамируются,
-    // а воспроизводятся по центру
-    this._CENTERED_THRESHOLD = 10.0;
+    // реестр постоянных звуков (loop's)
+    this._persistentSounds = new Map();
 
-    this._registeredSounds = new Map();
+    // очередь одноразовых звуков, заявленных в этом кадре
+    this._oneShotQueue = [];
+
+    // минимальная дистанция для панорамирования
+    this.MIN_SPATIAL_DISTANCE = 1.0;
   }
 
   /**
    * Асинхронно загружает все звуки, определенные в конфигурации.
+   * Сохраняет как сам экземпляр Howl, так и его конфигурацию (приоритет).
    * @param {object} soundsConfig - Объект конфигурации звуков.
-   * @param {string[]} soundsConfig.codecList - Список поддерживаемых кодеков.
+   * @param {string[]} soundsConfig.codecList - Список поддерживаемых кодеков
+   * (['webm', 'mp3']).
    * @param {string} soundsConfig.path - Путь к директории со звуками.
    * @param {object} soundsConfig.sounds - Словарь, где ключ - имя звука,
-   * значение - имя файла.
-   * @returns {Promise<void>} Promise, разрешается после загрузки всех звуков.
+   * а значение - объект конфигурации { file, priority }.
+   * @returns {Promise<void>} Promise, который разрешается после загрузки.
    */
   async load(soundsConfig) {
     const { codecList, path, sounds } = soundsConfig;
@@ -65,15 +76,22 @@ export default class SoundManager {
     }
 
     const loadingPromises = Object.entries(sounds).map(
-      ([soundName, fileName]) => {
+      ([soundName, soundData]) => {
+        const fileName =
+          typeof soundData === 'string' ? soundData : soundData.file;
+
         const url = `${path}${fileName}.${supportedCodec}`;
+
         return new Promise((resolve, reject) => {
           const soundInstance = new Howl({
             src: [url],
             preload: true,
             html5: false,
             onload: () => {
-              this._sounds.set(soundName, soundInstance);
+              this._sounds.set(soundName, {
+                howl: soundInstance.pannerAttr(this._defaultPannerSettings),
+                config: soundData,
+              });
               resolve(soundName);
             },
             onloaderror: (_id, error) => {
@@ -97,92 +115,415 @@ export default class SoundManager {
   }
 
   /**
-   * Регистрирует звук, чтобы SoundManager сам обновлял его позицию/громкость.
-   * @param {number} soundId - ID экземпляра
-   * @param {function} getPosition - функция, возвращающая {x, y}
-   * @param {function} getVolume - функция, возвращающая громкость (0..1)
-   * @param {function} [getRate] - функция для обновления pitch (опционально)
-   */
-  registerSpatialSound(soundId, getPosition, getVolume, getRate) {
-    if (!soundId) {
-      return;
-    }
-
-    this._registeredSounds.set(soundId, {
-      getPosition,
-      getVolume,
-      getRate,
-    });
-  }
-
-  /**
-   * Удаляет звук из списка зарегистрированных
-   * @param {number} soundId - ID экземпляра
-   */
-  unregisterSpatialSound(soundId) {
-    this._registeredSounds.delete(soundId);
-    this._soundModes.delete(soundId);
-  }
-
-  /**
-   * Централизованное обновление всех зарегистрированных звуков
-   */
-  updateAllSpatialSounds() {
-    for (const [
-      soundId,
-      { getPosition, getVolume, getRate },
-    ] of this._registeredSounds.entries()) {
-      const sound = this._activeInstances.get(soundId);
-
-      if (!sound) {
-        continue;
-      }
-
-      const { x, y } = getPosition();
-      const volume = getVolume();
-
-      this._updateSpatialSound(sound, soundId, x, y, volume);
-
-      if (getRate) {
-        this._updateRate(sound, soundId, getRate());
-      }
-    }
-  }
-
-  /**
-   * Устанавливает позицию слушателя (игрока) в 2D-пространстве.
-   * @param {number} x - Координата X.
-   * @param {number} y - Координата Y.
+   * Устанавливает позицию слушателя (игрока) в 2D-пространстве для
+   * корректного расчета 3D-звука.
+   * @param {number} x - Координата X слушателя.
+   * @param {number} y - Координата Y слушателя.
    */
   setListenerPosition(x, y) {
     this._listenerX = x;
     this._listenerY = y;
-    // Корректное сопоставление координат для вида сверху:
-    // Игровая Y-координата (глубина) -> Звуковая Z-координата
-    // Звуковая Y-координата (высота) фиксируется на 0
-    Howler.pos(x, 0, y);
   }
 
   /**
-   * Устанавливает ориентацию (направление взгляда) слушателя.
-   * Для 2D вида сверху ориентация всегда фиксирована - "вперед" к верху экрана.
+   * Воспроизводит системный/UI звук немедленно, в обход системы приоритетов.
+   * Следует использовать для критически важных звуков, не относящихся к
+   * игровому миру (например звук начала раунда).
+   * @param {string} soundName - Имя звука для воспроизведения.
    */
-  setListenerOrientation() {
-    // вектор "вперед" (0, 0, -1) - соответствует верху экрана
-    // вектор "вверх" (0, 1, 0) - вектор "вверх" для аудиосистемы
-    Howler.orientation(0, 0, -1, 0, 1, 0);
+  playSystemSound(soundName) {
+    const soundData = this._sounds.get(soundName);
+
+    if (soundData) {
+      soundData.howl.play();
+    }
   }
 
   /**
-   * Обновляет громкость и позицию/панораму пространственного звука.
-   * При первом вызове определяет режим звука
-   * (центрированный или пространственный)
-   * и настраивает его один раз для избежания аудио-артефактов.
-   * @param {string} sound - Звук.
-   * @param {number} soundId - ID экземпляра.
+   * Подает заявку на воспроизведение одноразового пространственного звука.
+   * Возвращает уникальный ID заявки для возможной отмены. Звук не играется
+   * немедленно, а попадает в очередь на рассмотрение "режиссёром".
+   * @param {string} soundName - Имя звука (ключ из файла sounds.js).
+   * @param {object} position - Координаты источника звука в мире,
+   * формат: { x: number, y: number }.
+   * @param {object} [options={}] - Дополнительные опции для звука
+   * (volume, onend, isPersonal).
+   * @returns {Symbol | null} Уникальный ID заявки или `null`,
+   * если звук не найден.
+   */
+  requestOneShot(soundName, position, options = {}) {
+    const soundData = this._sounds.get(soundName);
+
+    if (!soundData) {
+      console.warn(
+        `SoundManager: Попытка запросить несуществующий звук "${soundName}".
+        Заявка отклонена.
+        `,
+      );
+
+      return null;
+    }
+
+    // уникальный идентификатор для заявки
+    const requestId = Symbol(`oneShot_${soundName}`);
+
+    // создание объекта заявки и добавление его в очередь
+    this._oneShotQueue.push({
+      id: requestId, // уникальный ID этой заявки
+      soundName, // имя звука для поиска в `_sounds`
+      position, // позиция в мире для расчета приоритета
+      options, // дополнительные параметры (громкость, onend и т.д.)
+      type: 'one-shot', // тип звука (одноразовый звук)
+    });
+
+    return requestId;
+  }
+
+  /**
+   * Отменяет заявку на воспроизведение одноразового звука.
+   * Эффективно работает как для звуков, которые еще в очереди,
+   * так и для тех, что уже начали проигрываться.
+   * @param {Symbol | null} requestId - Уникальный ID,
+   * полученный от `requestOneShot`.
+   */
+  cancelOneShot(requestId) {
+    if (!requestId) {
+      return;
+    }
+
+    // поиск и попытка удалить из очереди ожидания
+    const queueIndex = this._oneShotQueue.findIndex(
+      req => req.id === requestId,
+    );
+
+    if (queueIndex !== -1) {
+      this._oneShotQueue.splice(queueIndex, 1);
+
+      return;
+    }
+
+    // если в очереди нет, значит звук, возможно, уже играет,
+    // поиск среди активных
+    for (const [soundId, instanceData] of this._activeInstances.entries()) {
+      if (instanceData.requestId === requestId) {
+        this._internalStop(soundId);
+        break; // звук найден и остановлен
+      }
+    }
+  }
+
+  /**
+   * Регистрирует постоянный, зацикленный источник звука
+   * (например, двигатель танка).
+   * Сообщает "режиссёру" о существовании этого звука, чтобы он мог быть включен
+   * в общий конкурс за право быть услышанным.
+   * @param {Symbol} id - Уникальный идентификатор объекта-владельца звука.
+   * @param {string} soundName - Имя звука.
+   * @param {function} getPosition - Функция, возвращающая актуальные координаты
+   * {x, y}.
+   * @param {function} getVolume - Функция, возвращающая базовую громкость.
+   * @param {function} [getRate] - Опциональная функция,
+   * возвращающая высоту тона.
+   */
+  registerPersistentSound(id, soundName, getPosition, getVolume, getRate) {
+    if (this._persistentSounds.has(id)) {
+      return;
+    }
+
+    this._persistentSounds.set(id, {
+      id,
+      soundName,
+      getPosition,
+      getVolume,
+      getRate,
+      activeSoundId: null,
+      type: 'persistent',
+    });
+  }
+
+  /**
+   * Снимает с регистрации постоянный источник звука.
+   * Если звук в данный момент проигрывается, он будет немедленно остановлен.
+   * @param {Symbol} id - Уникальный идентификатор объекта-владельца.
+   */
+  unregisterPersistentSound(id) {
+    const soundData = this._persistentSounds.get(id);
+
+    if (soundData && soundData.activeSoundId !== null) {
+      this._internalStop(soundData.activeSoundId);
+    }
+
+    this._persistentSounds.delete(id);
+  }
+
+  /**
+   * Главный метод - "режиссёр", мозг всей звуковой системы.
+   * Анализирует все существующие и заявленные
+   * звуки (как постоянные, так и одноразовые), пересчитывает их важность
+   * на основе приоритета и расстояния, и решает, какие из них должны
+   * звучать в данный момент, соблюдая глобальный лимит голосов.
+   * Вызывается один раз за кадр.
+   */
+  processAudibility() {
+    const candidates = [];
+
+    // добавление новых заявкок (one-shot и persistent)
+    for (const sound of this._persistentSounds.values()) {
+      if (sound.activeSoundId === null) {
+        // только те, что еще не играют
+        candidates.push({ ...sound, position: sound.getPosition() });
+      }
+    }
+
+    candidates.push(...this._oneShotQueue);
+    this._oneShotQueue = [];
+
+    // добавление играющих звуков в общий конкурс
+    for (const [soundId, instance] of this._activeInstances.entries()) {
+      let position;
+
+      if (instance.type === 'persistent') {
+        // для зацикленных звуков - актуальная позиция
+        position = this._persistentSounds.get(instance.ownerId)?.getPosition();
+      } else {
+        // для one-shot звуков статичная позиция (хранится в самом инстансе)
+        position = instance.position;
+      }
+
+      // если позицию определить не удалось, пропуск
+      if (!position) {
+        continue;
+      }
+
+      candidates.push({
+        id: instance.ownerId,
+        soundName: instance.name,
+        type: instance.type,
+        position,
+        options: instance.options,
+        isPlaying: true, // кандидат уже активен
+        soundId,
+      });
+    }
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    // расчет рейтинга
+    for (const candidate of candidates) {
+      if (candidate.options && candidate.options.isPersonal) {
+        candidate.priorityScore = 99999;
+        continue;
+      }
+
+      const distance =
+        Math.hypot(
+          candidate.position.x - this._listenerX,
+          candidate.position.y - this._listenerY,
+        ) || 0.1;
+
+      const soundData = this._sounds.get(candidate.soundName);
+
+      if (!soundData) {
+        candidate.priorityScore = 0;
+        continue;
+      }
+
+      const soundConfig = soundData.config;
+      const basePriority = soundConfig.priority || 50;
+      candidate.priorityScore = basePriority / distance;
+    }
+
+    // выбор лучших с учетом глобального лимита
+    candidates.sort((a, b) => b.priorityScore - a.priorityScore);
+    const audibleCandidates = candidates.slice(0, this.WORLD_VOICE_LIMIT);
+    const audibleSet = new Set(audibleCandidates);
+
+    // синхронизация: остановка и запуск
+    for (const candidate of candidates) {
+      const shouldBePlaying = audibleSet.has(candidate);
+
+      if (candidate.isPlaying) {
+        // звук играет, но больше не должен - остановка
+        if (!shouldBePlaying) {
+          this._internalStop(candidate.soundId);
+          // если это был persistent, обновляем его статус
+          if (candidate.type === 'persistent') {
+            const sound = this._persistentSounds.get(candidate.id);
+
+            if (sound) {
+              sound.activeSoundId = null;
+            }
+          }
+        }
+      } else {
+        // звук не играет, но должен - запуск
+        if (shouldBePlaying) {
+          if (candidate.type === 'one-shot') {
+            const soundId = this._internalPlay(candidate);
+
+            if (soundId !== null) {
+              // сохранение позиции,
+              // чтобы в следующем кадре переоценить этот звук
+              this._activeInstances.get(soundId).position = candidate.position;
+              this._activeInstances.get(soundId).options = candidate.options;
+
+              const soundHowl = this._activeInstances.get(soundId)?.sound;
+
+              this._updateSpatialSound(
+                soundHowl,
+                soundId,
+                candidate.position.x,
+                candidate.position.y,
+                candidate.options.volume,
+              );
+            }
+          } else if (candidate.type === 'persistent') {
+            const sound = this._persistentSounds.get(candidate.id);
+
+            if (sound) {
+              // sound.activeSoundId здесь гарантированно null
+              sound.activeSoundId = this._internalPlay({
+                ...candidate,
+                options: { loop: true, volume: 0 },
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Централизованно обновляет параметры (громкость, панорама, высота тона)
+   * для всех постоянных звуков, которые в данный момент активны.
+   * Вызывается каждый кадр после `processAudibility`.
+   */
+  updatePersistentSounds() {
+    for (const persistentSound of this._persistentSounds.values()) {
+      // проверка, активен ли этот звук в данный момент
+      // если "режиссёр" решил его не воспроизводить, activeSoundId будет null.
+      const soundId = persistentSound.activeSoundId;
+
+      if (soundId === null) {
+        continue;
+      }
+
+      const instanceData = this._activeInstances.get(soundId);
+
+      if (!instanceData) {
+        continue;
+      }
+
+      const howl = instanceData.sound;
+
+      // получение актуальных данных
+      const { x, y } = persistentSound.getPosition();
+      const volume = persistentSound.getVolume();
+
+      // обновление пространственного звука
+      this._updateSpatialSound(howl, soundId, x, y, volume);
+
+      // обновление высоты тона
+      if (persistentSound.getRate) {
+        const rate = persistentSound.getRate();
+        this._updateRate(howl, soundId, rate);
+      }
+    }
+  }
+
+  /**
+   * Внутренний метод - "исполнитель" для воспроизведения звука через Howler.
+   * Вызывается только "режиссёром" (processAudibility) для одобренных звуков.
+   * @private
+   * @param {object} candidate - Объект-кандидат на воспроизведение.
+   * @returns {number | null} ID экземпляра звука от Howler.js или null.
+   */
+  _internalPlay(candidate) {
+    const { soundName, options, id, type } = candidate;
+
+    const soundData = this._sounds.get(soundName);
+
+    if (!soundData) {
+      console.warn(
+        `SoundManager: _internalPlay не смог найти звук "${soundName}".`,
+      );
+
+      return null;
+    }
+
+    const sound = soundData.howl;
+    const soundId = sound.play();
+
+    if (typeof soundId !== 'number') {
+      console.error(
+        `SoundManager: Howler не смог воспроизвести звук "${soundName}".`,
+      );
+
+      return null;
+    }
+
+    // регистрация активного экземпляра
+    this._activeInstances.set(soundId, {
+      sound, // объект Howl
+      name: soundName, // имя звука
+      type, // тип ('one-shot' или 'persistent')
+      ownerId: id, // уникальный ID (Symbol)
+    });
+
+    if (options) {
+      // установка зацикливания (важно для 'persistent' звуков)
+      if (options.loop) {
+        sound.loop(true, soundId);
+      }
+
+      // установка начальной громкости
+      if (typeof options.volume === 'number') {
+        sound.volume(options.volume, soundId);
+      }
+    }
+
+    // установка логики самоуничтожения для одноразовых звуков
+    if (type === 'one-shot' && !(options && options.loop)) {
+      const onEndCallback = () => {
+        // запуск пользовательского колбэка, если он был предоставлен
+        if (options && typeof options.onend === 'function') {
+          options.onend();
+        }
+
+        // удаление звука из внутреннего реестра активных звуков
+        this._activeInstances.delete(soundId);
+      };
+
+      sound.once('end', onEndCallback, soundId);
+    }
+
+    return soundId;
+  }
+
+  /**
+   * Внутренний метод для немедленной остановки конкретного экземпляра звука.
+   * @private
+   * @param {number} soundId - ID экземпляра звука от Howler.js.
+   */
+  _internalStop(soundId) {
+    const instanceData = this._activeInstances.get(soundId);
+
+    if (instanceData) {
+      instanceData.sound.stop(soundId);
+      this._activeInstances.delete(soundId);
+    }
+  }
+
+  /**
+   * Обновляет громкость и 3D-позицию/панораму.
+   * @private
+   * @param {Howl} sound - Экземпляр Howl.
+   * @param {number} soundId - ID конкретного проигрываемого звука.
    * @param {number} x - Координата X источника звука.
    * @param {number} y - Координата Y источника звука.
-   * @param {number} baseVolume - Базовая громкость
+   * @param {number} [baseVolume=0.7] - Базовая громкость.
    */
   _updateSpatialSound(sound, soundId, x, y, baseVolume = 0.7) {
     if (!sound || typeof soundId !== 'number') {
@@ -191,46 +532,24 @@ export default class SoundManager {
 
     const distance = Math.hypot(x - this._listenerX, y - this._listenerY);
 
-    // плавное затухание у границы
-    const { maxDistance } = this._defaultPannerSettings;
-    let finalVolume = baseVolume;
-
-    if (distance >= maxDistance) {
-      finalVolume = 0; // за пределами вообще не слышно
+    if (distance >= this._defaultPannerSettings.maxDistance) {
+      sound.volume(0, soundId);
     } else {
-      // чем ближе к maxDistance, тем слабее громкость
-      const fadeFactor = 1 - distance / maxDistance;
-
-      finalVolume *= Math.max(0, fadeFactor);
+      sound.volume(baseVolume, soundId);
     }
 
-    // "ленивая" инициализация режима (определяется только один раз)
-    if (!this._soundModes.has(soundId)) {
-      if (distance < this._CENTERED_THRESHOLD) {
-        // режим для близких звуков (включая звук самого игрока)
-        this._soundModes.set(soundId, 'centered');
-        sound.stereo(0, soundId);
-      } else {
-        // режим для всех остальных звуков в мире
-        this._soundModes.set(soundId, 'spatial');
-        sound.pannerAttr(this._defaultPannerSettings, soundId);
-      }
-    }
-
-    const mode = this._soundModes.get(soundId);
-
-    if (mode === 'centered') {
-      sound.volume(finalVolume, soundId);
-    } else if (mode === 'spatial') {
-      sound.pos(x, 0, y, soundId);
-      sound.volume(finalVolume, soundId);
+    if (distance > this.MIN_SPATIAL_DISTANCE) {
+      sound.pos(x - this._listenerX, 0, y - this._listenerY, soundId);
+    } else {
+      sound.pos(0, 0, 0, soundId);
     }
   }
 
   /**
-   * Обновляет скорость воспроизведения (pitch) для уже играющего звука.
-   * @param {string} sound - Звук.
-   * @param {number} soundId - ID экземпляра, полученный от метода play().
+   * Обновляет скорость воспроизведения (pitch/rate) для играющего звука.
+   * @private
+   * @param {Howl} sound - Экземпляр Howl.
+   * @param {number} soundId - ID конкретного проигрываемого звука.
    * @param {number} rate - Новая скорость воспроизведения (1.0 - нормальная).
    */
   _updateRate(sound, soundId, rate) {
@@ -240,105 +559,7 @@ export default class SoundManager {
   }
 
   /**
-   * Воспроизводит звук по его имени.
-   * @param {string} name - Имя звука (ключ из SoundDefinition).
-   * @param {object} [options={}] - Опции воспроизведения.
-   * @param {boolean} [options.loop=false] - Зациклить ли воспроизведение.
-   * @param {number} [options.volume] - Громкость для этого экземпляра звука.
-   * @param {function} [options.onend] - Callback по завершению звука.
-   * @returns {number | null} ID воспроизводимого экземпляра звука или null.
-   */
-  play(name, options = {}) {
-    const sound = this._sounds.get(name);
-
-    if (!sound) {
-      console.warn(`Attempting to play non-existent sound: "${name}"`);
-      return null;
-    }
-
-    const soundId = sound.play();
-
-    if (typeof soundId === 'number') {
-      this._activeInstances.set(soundId, sound);
-    }
-
-    const { loop, volume, onend } = options;
-
-    if (loop) {
-      sound.loop(true, soundId);
-    }
-
-    if (typeof volume === 'number') {
-      sound.volume(volume, soundId);
-    }
-
-    // когда звук заканчивает воспроизведение, удаление его из state-менеджера
-    if (!loop) {
-      sound.once(
-        'end',
-        () => {
-          this.unregisterSpatialSound(soundId);
-          this._activeInstances.delete(soundId);
-
-          if (onend) {
-            onend(soundId);
-          }
-        },
-        soundId,
-      );
-    }
-
-    return soundId;
-  }
-
-  /**
-   * Воспроизводит звук один раз в указанной точке пространства.
-   * Это обертка над play() и _updateSpatialSound() для удобства.
-   * @param {string} name - Имя звука.
-   * @param {object} options - Опции.
-   * @param {number} options.x - Координата X.
-   * @param {number} options.y - Координата Y.
-   * @param {number} [options.volume=0.7] - Базовая громкость.
-   * @param {function} [options.onend] - Callback по завершению звука.
-   * @returns {number | null} ID экземпляра звука или null.
-   */
-  playSpatialOneShot(name, options) {
-    const { x, y, volume = 0.7, onend } = options;
-
-    const soundId = this.play(name, { onend });
-
-    if (
-      typeof soundId === 'number' &&
-      typeof x === 'number' &&
-      typeof y === 'number'
-    ) {
-      const sound = this._activeInstances.get(soundId);
-
-      if (sound) {
-        this._updateSpatialSound(sound, soundId, x, y, volume);
-      }
-    }
-
-    return soundId;
-  }
-
-  /**
-   * Останавливает конкретный экземпляр звука по его ID.
-   * @param {number} soundId - ID экземпляра, полученный от метода play().
-   */
-  stopById(soundId) {
-    const sound = this._activeInstances.get(soundId);
-
-    if (sound && typeof soundId === 'number') {
-      sound.stop(soundId);
-      // явно очищается состояние при ручной остановке звука
-      this._soundModes.delete(soundId);
-      this._activeInstances.delete(soundId);
-    }
-  }
-
-  /**
-   * Выключает все звуки (mute).
+   * Выключает все звуки.
    */
   mute() {
     Howler.mute(true);
@@ -352,25 +573,24 @@ export default class SoundManager {
   }
 
   /**
-   * Останавливает все играющие в данный момент звуки и сбрасывает их
-   * состояние (режимы панорамирования, регистрацию).
+   * Останавливает все играющие звуки и
+   * сбрасывает внутреннее состояние "режиссёра".
+   * Используется при смене карты или полной перезагрузке.
    */
   reset() {
     // остановка всех звуков, которые сейчас играют
     Howler.stop();
-    this._soundModes.clear();
-    this._registeredSounds.clear();
     this._activeInstances.clear();
   }
 
   /**
-   * Полностью выгружает все звуки из памяти и очищает внутренние состояния.
+   * Полностью выгружает все загруженные звуки из памяти.
+   * Следует вызывать при закрытии вкладки или
+   * полном завершении работы приложения.
    */
   destroy() {
     Howler.unload();
     this._sounds.clear();
-    this._soundModes.clear();
-    this._registeredSounds.clear();
     this._activeInstances.clear();
   }
 }
