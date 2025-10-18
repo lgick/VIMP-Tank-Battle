@@ -46,7 +46,6 @@ export default class SoundManager {
     this.WORLD_VOICE_LIMIT = 30;
 
     // реестр постоянных звуков (loop's)
-    // Map<id, { soundName, position, soundId, type, ... }>
     this._persistentSounds = new Map();
 
     // очередь одноразовых звуков, заявленных в этом кадре
@@ -58,13 +57,14 @@ export default class SoundManager {
 
   /**
    * Асинхронно загружает все звуки, определенные в конфигурации.
-   * Сохраняет как сам экземпляр Howl, так и его конфигурацию (приоритет и т.д.).
+   * Сохраняет как сам экземпляр Howl, так и его конфигурацию (приоритет).
    * @param {object} soundsConfig - Объект конфигурации звуков.
-   * @param {string[]} soundsConfig.codecList - Список поддерживаемых кодеков (например, ['webm', 'mp3']).
+   * @param {string[]} soundsConfig.codecList - Список поддерживаемых кодеков
+   * (['webm', 'mp3']).
    * @param {string} soundsConfig.path - Путь к директории со звуками.
    * @param {object} soundsConfig.sounds - Словарь, где ключ - имя звука,
    * а значение - объект конфигурации { file, priority }.
-   * @returns {Promise<void>} Promise, который разрешается после загрузки всех звуков.
+   * @returns {Promise<void>} Promise, который разрешается после загрузки.
    */
   async load(soundsConfig) {
     const { codecList, path, sounds } = soundsConfig;
@@ -128,7 +128,7 @@ export default class SoundManager {
   /**
    * Воспроизводит системный/UI звук немедленно, в обход системы приоритетов.
    * Следует использовать для критически важных звуков, не относящихся к
-   * игровому миру (например, клики в меню, звук начала раунда).
+   * игровому миру (например звук начала раунда).
    * @param {string} soundName - Имя звука для воспроизведения.
    */
   playSystemSound(soundName) {
@@ -144,85 +144,86 @@ export default class SoundManager {
    * Возвращает уникальный ID заявки для возможной отмены. Звук не играется
    * немедленно, а попадает в очередь на рассмотрение "режиссёром".
    * @param {string} soundName - Имя звука (ключ из файла sounds.js).
-   * @param {object} position - Координаты источника звука в мире, формат: { x: number, y: number }.
-   * @param {object} [options={}] - Дополнительные опции для звука (volume, onend, isPersonal).
-   * @returns {Symbol | null} Уникальный ID заявки или `null`, если звук не найден.
+   * @param {object} position - Координаты источника звука в мире,
+   * формат: { x: number, y: number }.
+   * @param {object} [options={}] - Дополнительные опции для звука
+   * (volume, onend, isPersonal).
+   * @returns {Symbol | null} Уникальный ID заявки или `null`,
+   * если звук не найден.
    */
   requestOneShot(soundName, position, options = {}) {
-    // 1. Проверка существования звука.
-    // Это важный шаг, чтобы избежать ошибок, если будет запрошен несуществующий
-    // или неправильно названный звук. Мы ищем его в нашей карте `_sounds`.
     const soundData = this._sounds.get(soundName);
 
     if (!soundData) {
-      // Выводим предупреждение в консоль для помощи в отладке,
-      // но не прерываем выполнение игры.
       console.warn(
-        `SoundManager: Попытка запросить несуществующий звук "${soundName}". Заявка отклонена.`,
+        `SoundManager: Попытка запросить несуществующий звук "${soundName}".
+        Заявка отклонена.
+        `,
       );
+
       return null;
     }
 
-    // 2. Создание уникального идентификатора для заявки.
-    // Symbol гарантирует, что этот ID никогда не будет конфликтовать с другими,
-    // даже если несколько звуков будут запрошены в один и тот же момент времени.
+    // уникальный идентификатор для заявки
     const requestId = Symbol(`oneShot_${soundName}`);
 
-    // 3. Создание объекта заявки и добавление его в очередь.
-    // Объект содержит всю необходимую "режиссёру" информацию для принятия решения.
+    // создание объекта заявки и добавление его в очередь
     this._oneShotQueue.push({
-      id: requestId, // Уникальный ID этой конкретной заявки
-      soundName, // Имя звука для поиска в `_sounds`
-      position, // Позиция в мире для расчета приоритета
-      options, // Дополнительные параметры (громкость, onend и т.д.)
-      type: 'one-shot', // Тип, чтобы "режиссёр" знал, что это одноразовый звук
+      id: requestId, // уникальный ID этой заявки
+      soundName, // имя звука для поиска в `_sounds`
+      position, // позиция в мире для расчета приоритета
+      options, // дополнительные параметры (громкость, onend и т.д.)
+      type: 'one-shot', // тип звука (одноразовый звук)
     });
 
-    // 4. Возвращаем ID вызывающему коду.
-    // Это позволяет объекту (например, ShotEffectController) сохранить этот ID
-    // и, при необходимости, отменить свою заявку позже.
     return requestId;
   }
 
   /**
    * Отменяет заявку на воспроизведение одноразового звука.
-   * Эффективно работает как для звуков, которые еще в очереди, так и для тех,
-   * что уже начали проигрываться.
-   * @param {Symbol | null} requestId - Уникальный ID, полученный от `requestOneShot`.
+   * Эффективно работает как для звуков, которые еще в очереди,
+   * так и для тех, что уже начали проигрываться.
+   * @param {Symbol | null} requestId - Уникальный ID,
+   * полученный от `requestOneShot`.
    */
   cancelOneShot(requestId) {
     if (!requestId) {
       return;
     }
 
-    // 1. Попробовать найти и удалить из очереди ожидания (самый частый случай)
+    // поиск и попытка удалить из очереди ожидания
     const queueIndex = this._oneShotQueue.findIndex(
       req => req.id === requestId,
     );
 
     if (queueIndex !== -1) {
       this._oneShotQueue.splice(queueIndex, 1);
+
       return;
     }
 
-    // 2. Если в очереди нет, значит звук, возможно, уже играет. Ищем его в активных.
+    // если в очереди нет, значит звук, возможно, уже играет,
+    // поиск среди активных
     for (const [soundId, instanceData] of this._activeInstances.entries()) {
       if (instanceData.requestId === requestId) {
         this._internalStop(soundId);
-        break; // Нашли и остановили, выходим из цикла
+        break; // звук найден и остановлен
       }
     }
   }
 
   /**
-   * Регистрирует постоянный, зацикленный источник звука (например, двигатель танка).
+   * Регистрирует постоянный, зацикленный источник звука
+   * (например, двигатель танка).
    * Сообщает "режиссёру" о существовании этого звука, чтобы он мог быть включен
    * в общий конкурс за право быть услышанным.
    * @param {Symbol} id - Уникальный идентификатор объекта-владельца звука.
    * @param {string} soundName - Имя звука.
-   * @param {function} getPosition - Функция, возвращающая актуальные координаты {x, y}.
-   * @param {function} getVolume - Функция, возвращающая базовую громкость звука.
-   * @param {function} [getRate] - Опциональная функция, возвращающая высоту тона.
+   * @param {function} getPosition - Функция, возвращающая актуальные координаты
+   * {x, y}.
+   * @param {function} getVolume - Функция, возвращающая базовую громкость.
+   * @param {function} [getRate] - Опциональная функция,
+   * возвращающая высоту тона.
    */
   registerPersistentSound(id, soundName, getPosition, getVolume, getRate) {
     if (this._persistentSounds.has(id)) {
@@ -256,20 +257,20 @@ export default class SoundManager {
   }
 
   /**
-   * Главный метод-"режиссёр", мозг всей звуковой системы.
-   * Вызывается один раз за кадр. Анализирует все существующие и заявленные
+   * Главный метод - "режиссёр", мозг всей звуковой системы.
+   * Анализирует все существующие и заявленные
    * звуки (как постоянные, так и одноразовые), пересчитывает их важность
    * на основе приоритета и расстояния, и решает, какие из них должны
    * звучать в данный момент, соблюдая глобальный лимит голосов.
+   * Вызывается один раз за кадр.
    */
   processAudibility() {
-    // 1. --- СБОР ВСЕХ КАНДИДАТОВ (НОВЫХ И СТАРЫХ) ---
     const candidates = [];
 
-    // --- ШАГ 1А: Добавляем НОВЫЕ заявки (one-shot и persistent) ---
-    for (const [id, sound] of this._persistentSounds.entries()) {
+    // добавление новых заявкок (one-shot и persistent)
+    for (const sound of this._persistentSounds.values()) {
       if (sound.activeSoundId === null) {
-        // Только те, что еще не играют
+        // только те, что еще не играют
         candidates.push({ ...sound, position: sound.getPosition() });
       }
     }
@@ -277,20 +278,19 @@ export default class SoundManager {
     candidates.push(...this._oneShotQueue);
     this._oneShotQueue = [];
 
-    // --- ШАГ 1Б: Добавляем УЖЕ ИГРАЮЩИЕ звуки в общий конкурс ---
-    // Они тоже должны бороться за право продолжать играть
+    // добавление играющих звуков в общий конкурс
     for (const [soundId, instance] of this._activeInstances.entries()) {
       let position;
 
       if (instance.type === 'persistent') {
-        // Для моторов берем актуальную позицию
+        // для зацикленных звуков - актуальная позиция
         position = this._persistentSounds.get(instance.ownerId)?.getPosition();
       } else {
-        // Для one-shot звуков позиция статична и хранится в самом инстансе
+        // для one-shot звуков статичная позиция (хранится в самом инстансе)
         position = instance.position;
       }
 
-      // Если позицию определить не удалось, пропускаем
+      // если позицию определить не удалось, пропуск
       if (!position) {
         continue;
       }
@@ -310,43 +310,45 @@ export default class SoundManager {
       return;
     }
 
-    // 2. --- РАСЧЕТ РЕЙТИНГА ДЛЯ ВСЕХ ---
-    // Этот блок остается почти без изменений
+    // расчет рейтинга
     for (const candidate of candidates) {
       if (candidate.options && candidate.options.isPersonal) {
         candidate.priorityScore = 99999;
         continue;
       }
+
       const distance =
         Math.hypot(
           candidate.position.x - this._listenerX,
           candidate.position.y - this._listenerY,
         ) || 0.1;
+
       const soundData = this._sounds.get(candidate.soundName);
+
       if (!soundData) {
         candidate.priorityScore = 0;
         continue;
       }
+
       const soundConfig = soundData.config;
       const basePriority = soundConfig.priority || 50;
       candidate.priorityScore = basePriority / distance;
     }
 
-    // 3. --- ВЫБОР ЛУЧШИХ N (ГЛОБАЛЬНЫЙ ТОП) ---
+    // выбор лучших с учетом глобального лимита
     candidates.sort((a, b) => b.priorityScore - a.priorityScore);
     const audibleCandidates = candidates.slice(0, this.WORLD_VOICE_LIMIT);
     const audibleSet = new Set(audibleCandidates);
 
-    // 4. --- СИНХРОНИЗАЦИЯ: ОСТАНОВКА И ЗАПУСК ---
-    // Теперь логика становится проще. Проходим по всем кандидатам (и старым, и новым).
+    // синхронизация: остановка и запуск
     for (const candidate of candidates) {
       const shouldBePlaying = audibleSet.has(candidate);
 
       if (candidate.isPlaying) {
-        // --- Сценарий 1: Звук играет, но больше НЕ должен -> ОСТАНОВКА ---
+        // звук играет, но больше не должен - остановка
         if (!shouldBePlaying) {
           this._internalStop(candidate.soundId);
-          // Если это был persistent, обновляем его статус
+          // если это был persistent, обновляем его статус
           if (candidate.type === 'persistent') {
             const sound = this._persistentSounds.get(candidate.id);
 
@@ -356,16 +358,19 @@ export default class SoundManager {
           }
         }
       } else {
-        // --- Сценарий 2: Звук НЕ играет, но ДОЛЖЕН -> ЗАПУСК ---
+        // звук не играет, но должен - запуск
         if (shouldBePlaying) {
           if (candidate.type === 'one-shot') {
             const soundId = this._internalPlay(candidate);
+
             if (soundId !== null) {
-              // Сохраняем позицию, чтобы в след. кадре переоценить этот звук
+              // сохранение позиции,
+              // чтобы в следующем кадре переоценить этот звук
               this._activeInstances.get(soundId).position = candidate.position;
               this._activeInstances.get(soundId).options = candidate.options;
 
               const soundHowl = this._activeInstances.get(soundId)?.sound;
+
               this._updateSpatialSound(
                 soundHowl,
                 soundId,
@@ -376,6 +381,7 @@ export default class SoundManager {
             }
           } else if (candidate.type === 'persistent') {
             const sound = this._persistentSounds.get(candidate.id);
+
             if (sound) {
               // sound.activeSoundId здесь гарантированно null
               sound.activeSoundId = this._internalPlay({
@@ -395,30 +401,31 @@ export default class SoundManager {
    * Вызывается каждый кадр после `processAudibility`.
    */
   updatePersistentSounds() {
-    // 1. Итерируемся по нашему новому реестру постоянных звуков.
     for (const persistentSound of this._persistentSounds.values()) {
-      // 2. Проверяем, активен ли этот звук в данный момент.
-      // Если "режиссёр" решил его не воспроизводить, activeSoundId будет null.
+      // проверка, активен ли этот звук в данный момент
+      // если "режиссёр" решил его не воспроизводить, activeSoundId будет null.
       const soundId = persistentSound.activeSoundId;
+
       if (soundId === null) {
         continue;
       }
 
-      // 3. Получаем реальный экземпляр Howl из карты активных звуков.
       const instanceData = this._activeInstances.get(soundId);
+
       if (!instanceData) {
-        continue; // Защита на случай рассинхронизации.
+        continue;
       }
+
       const howl = instanceData.sound;
 
-      // 4. Используем getter'ы, сохраненные при регистрации, чтобы получить актуальные данные.
+      // получение актуальных данных
       const { x, y } = persistentSound.getPosition();
       const volume = persistentSound.getVolume();
 
-      // 5. Вызываем низкоуровневый метод для обновления пространственного звука.
+      // обновление пространственного звука
       this._updateSpatialSound(howl, soundId, x, y, volume);
 
-      // 6. Обновляем высоту тона, если эта функция была предоставлена.
+      // обновление высоты тона
       if (persistentSound.getRate) {
         const rate = persistentSound.getRate();
         this._updateRate(howl, soundId, rate);
@@ -427,7 +434,7 @@ export default class SoundManager {
   }
 
   /**
-   * Внутренний метод-"исполнитель" для воспроизведения звука через Howler.
+   * Внутренний метод - "исполнитель" для воспроизведения звука через Howler.
    * Вызывается только "режиссёром" (processAudibility) для одобренных звуков.
    * @private
    * @param {object} candidate - Объект-кандидат на воспроизведение.
@@ -566,7 +573,8 @@ export default class SoundManager {
   }
 
   /**
-   * Останавливает все играющие звуки и сбрасывает внутреннее состояние "режиссёра".
+   * Останавливает все играющие звуки и
+   * сбрасывает внутреннее состояние "режиссёра".
    * Используется при смене карты или полной перезагрузке.
    */
   reset() {
@@ -577,7 +585,8 @@ export default class SoundManager {
 
   /**
    * Полностью выгружает все загруженные звуки из памяти.
-   * Следует вызывать при закрытии вкладки или полном завершении работы приложения.
+   * Следует вызывать при закрытии вкладки или
+   * полном завершении работы приложения.
    */
   destroy() {
     Howler.unload();
