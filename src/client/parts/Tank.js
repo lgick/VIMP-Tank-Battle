@@ -1,10 +1,5 @@
 import { Container, Sprite } from 'pixi.js';
 
-// функция линейной интерполяции
-function lerp(start, end, amt) {
-  return (1 - amt) * start + amt * end;
-}
-
 export default class Tank extends Container {
   constructor(data, assets, dependencies) {
     super();
@@ -60,9 +55,6 @@ export default class Tank extends Container {
 
     this._soundManager = dependencies.soundManager;
     this._soundId = null;
-    this._soundsInitialized = false;
-    this._currentVolume = 0;
-    this._soundSmoothingFactor = 0.05; // коэффициент сглаживания
     this._speedRatio = 0;
 
     this._maxSpeed = 240; // максимальная скорость, соответствует серверной
@@ -73,25 +65,16 @@ export default class Tank extends Container {
 
   // запускает звуки двигателя танка
   _initSounds() {
-    if (this._soundsInitialized || this._condition === 0) {
+    if (this._soundId || this._condition === 0) {
       return;
     }
 
-    this._soundId = this._soundManager.play('tankEngine', {
-      loop: true,
-      volume: 0,
-    });
-
-    if (this._soundId) {
-      this._soundManager.registerSpatialSound(
-        this._soundId,
-        () => ({ x: this.x, y: this.y }),
-        () => this._currentVolume,
-        () => 1.0 + this._speedRatio * 0.1,
-      );
-    }
-
-    this._soundsInitialized = true;
+    this._soundId = this._soundManager.registerPersistentSound(
+      'tankEngine',
+      () => ({ x: this.x, y: this.y }),
+      () => 0.3 + 0.5 * this._speedRatio,
+      () => 1.0 + this._speedRatio * 0.1,
+    );
   }
 
   create() {
@@ -106,7 +89,7 @@ export default class Tank extends Container {
       // поворот башни, так как она теперь часть обломков
       this.gun.rotation = 0;
 
-      // При уничтожении останавливаем все звуки
+      // при уничтожении отключение звука
       this.destroySounds();
     } else {
       // если танк "ожил" или создан впервые
@@ -137,21 +120,12 @@ export default class Tank extends Container {
     this.gun.rotation = data[3];
 
     // обновление звуковой логики
-    if (this._soundsInitialized && this._condition > 0) {
+    if (this._soundId && this._condition > 0) {
       const vX = data[4] || 0;
       const vY = data[5] || 0;
       const currentSpeed = Math.hypot(vX, vY);
 
       this._speedRatio = Math.min(currentSpeed / this._maxSpeed, 1.0);
-
-      // громкость = 0.3 при простое → до 0.8 при движении
-      const targetVolume = 0.3 + 0.5 * this._speedRatio;
-
-      this._currentVolume = lerp(
-        this._currentVolume,
-        targetVolume,
-        this._soundSmoothingFactor,
-      );
     }
 
     const newCondition = data[6];
@@ -177,11 +151,9 @@ export default class Tank extends Container {
 
   // останавливает и сбрасывает все звуки, связанные с танком
   destroySounds() {
-    if (this._soundsInitialized && this._soundId) {
-      this._soundManager.stopById(this._soundId);
-      this._soundManager.unregisterSpatialSound(this._soundId);
+    if (this._soundId) {
+      this._soundManager.unregisterPersistentSound(this._soundId);
       this._soundId = null;
-      this._soundsInitialized = false;
     }
   }
 
