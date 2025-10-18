@@ -49,6 +49,8 @@ export default server => {
         return;
       }
 
+      console.log(`[${new Date().toISOString()}] User connected: ${address}`);
+
       const socketMethods = [];
       let gameId;
 
@@ -191,6 +193,10 @@ export default server => {
 
       // обработчик закрытия
       ws.on('close', (code, _reason) => {
+        console.log(
+          `[${new Date().toISOString()}] User disconnected: ${address}`,
+        );
+
         if (code !== 4002) {
           delete ips[address];
         }
