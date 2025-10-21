@@ -23,7 +23,7 @@ export default class UserCtrl {
   // инициализация
   init(data) {
     this._model.resize(data);
-    this._view.show();
+    this._view.init();
   }
 
   // добавляет клавишу
