@@ -13,6 +13,7 @@ export default class UserView {
     userView = this;
 
     this._displayIdList = displayIdList;
+    this._cursorTimerId = null;
 
     this.publisher = new Publisher();
 
@@ -23,6 +24,8 @@ export default class UserView {
     onkeyup = event => {
       userView.publisher.emit('keyUp', event);
     };
+
+    onmouseup = onmousedown = onmousemove = this._resetCursorHideTimer;
 
     onresize = () => {
       userView.publisher.emit('resize', {
@@ -37,7 +40,7 @@ export default class UserView {
   }
 
   // отображает элементы
-  show() {
+  init() {
     for (const id of this._displayIdList) {
       const elem = document.getElementById(id);
 
@@ -45,6 +48,8 @@ export default class UserView {
         elem.style.display = 'block';
       }
     }
+
+    this._resetCursorHideTimer();
   }
 
   // изменение размеров
@@ -59,5 +64,18 @@ export default class UserView {
     }
 
     this.publisher.emit('redraw', sizes);
+  }
+
+  // показывает курсор и запускает таймер его сокрытия
+  _resetCursorHideTimer() {
+    // сбрасывает старый таймер
+    clearTimeout(this._cursorTimerId);
+
+    document.body.classList.remove('hide-cursor');
+
+    // запускает новый таймер через 3 секунды бездействия мыши
+    this._cursorTimerId = setTimeout(() => {
+      document.body.classList.add('hide-cursor');
+    }, 3000);
   }
 }
