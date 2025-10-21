@@ -121,10 +121,6 @@ class NavigationSystem {
 
     this._navGraph = { nodes, edges };
     this._createNodeGrid(this._navGraph.nodes, nodePlacementStep);
-
-    console.log(
-      `Optimized navigation graph generated: ${this._navGraph.nodes.length} nodes.`,
-    );
   }
 
   /**
