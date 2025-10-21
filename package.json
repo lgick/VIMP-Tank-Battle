@@ -37,7 +37,7 @@
     "eslint-plugin-no-consecutive-caps": "^1.2.0",
     "globals": "^16.2.0",
     "nodemon": "^3.1.10",
-    "vite": "^7.1.9",
+    "vite": "^7.1.11",
     "vite-plugin-pug": "^0.4.1"
   }
 }
