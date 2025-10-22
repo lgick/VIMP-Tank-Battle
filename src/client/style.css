@@ -427,29 +427,12 @@
   margin: 3px auto;
 }
 
-#auth-link {
+#auth-copy {
   font-size: 9px;
   height: 15px;
   margin: 0;
   text-shadow: none;
-}
-
-#auth-link p {
-  margin: 0;
-  width: 50%;
-  float: left;
-}
-
-#auth-link p a {
-  color: #ff0;
-}
-
-#auth-link p:nth-child(1) {
-  text-align: left;
-}
-
-#auth-link p:nth-child(2) {
-  text-align: right;
+  text-align: center;
 }
 
 .auth-inform {
