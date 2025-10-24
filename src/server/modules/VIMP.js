@@ -109,7 +109,7 @@ class VIMP {
     }
   }
 
-  // кикает за превышение прокусков ответа на ping
+  // кикает за превышение пропусков ответа на ping
   _kickForMissedPings(gameId) {
     const user = this._users[gameId];
 
