@@ -382,7 +382,7 @@ function shotData(data) {
   }
 
   soundManager.processAudibility();
-  soundManager.updatePersistentSounds();
+  soundManager.updateActiveSounds();
 
   updateGameControllers();
 
