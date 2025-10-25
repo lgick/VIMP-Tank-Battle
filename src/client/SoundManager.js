@@ -27,7 +27,7 @@ const PANNER_SETTINGS = {
  */
 export default class SoundManager {
   constructor() {
-    // хранение загруженных звуков { howl, config, loop }
+    // хранение загруженных звуков { howl, config }
     this._sounds = new Map();
 
     // хранит соответствие soundId -> { sound, name, ownerId, isLoop }
@@ -50,14 +50,13 @@ export default class SoundManager {
    * (['webm', 'mp3']).
    * @param {string} soundsConfig.path - Путь к директории со звуками.
    * @param {object} soundsConfig.sounds - Словарь, где ключ - имя звука,
-   * а значение - объект конфигурации { file, priority }.
+   * а значение - объект конфигурации { file, priority, loop, volume }.
    * @returns {Promise<void>} Promise, который разрешается после загрузки.
    */
   async init(soundsConfig) {
     const { codecList, path, sounds } = soundsConfig;
     const supportedCodec = codecList.find(codec => Howler.codecs(codec));
 
-    //Howler.autoUnlock = true; // разблокировка аудио при первом взаимодействии
     Howler.usingWebAudio = true;
     Howler.autoSuspend = false;
     Howler.pos(0, 0, 0);
@@ -89,7 +88,6 @@ export default class SoundManager {
             onload: () => {
               this._sounds.set(soundName, {
                 howl: soundInstance.pannerAttr(PANNER_SETTINGS),
-                loop,
                 config: soundData,
               });
 
@@ -139,14 +137,14 @@ export default class SoundManager {
   }
 
   /**
-   * Регистрирует источник звука в мире.
+   * Регистрирует звук.
    * Возвращает уникальный ID для управления этим источником.
    * @param {string} soundName - Имя звука (ключ из файла sounds.js).
    * @param {object} data - Начальные параметры звука.
    * @param {object} data.position - { x: number, y: number }.
-   * @param {number} [data.rate=1.0] - Скорость воспроизведения.
-   * @param {function} [callback] - Функция, вызываемая по завершении
-   * (только для не зацикленных звуков).
+   * @param {number} [data?.rate] - Скорость воспроизведения.
+   * @param {number} [data?.volume] - Громкость.
+   * @param {function} [callback] - Функция, вызываемая по завершении.
    * @returns {symbol | null} Уникальный ID звука или null, если звук не найден.
    */
   registerSound(soundName, data, callback) {
@@ -158,12 +156,14 @@ export default class SoundManager {
       return null;
     }
 
+    const { loop = false, priority = 50 } = soundData.config;
     const id = Symbol(soundName);
     const registration = {
       ...data,
       id,
       soundName,
-      isLoop: soundData.loop,
+      isLoop: loop,
+      priority,
       activeSoundId: null, // ID от Howler, когда звук будет играть
       callback,
     };
@@ -194,6 +194,7 @@ export default class SoundManager {
    */
   updateSoundData(id, data) {
     const sound = this._registeredSounds.get(id);
+
     if (sound) {
       Object.assign(sound, data);
     }
@@ -217,20 +218,14 @@ export default class SoundManager {
       const dy = regSound.position.y - this._listenerY;
       const distanceSquared = dx * dx + dy * dy;
 
-      // если звук слишком далеко и он одноразовый (удаление)
+      // если звук слишком далеко и он одноразовый, то удаление
       if (distanceSquared >= maxDistSquared && !regSound.isLoop) {
         this._registeredSounds.delete(regSound.id);
         continue;
       }
 
-      const soundConfig = this._sounds.get(regSound.soundName)?.config;
-
-      if (!soundConfig) {
-        continue;
-      }
-
       // расчет приоритета
-      const basePriority = soundConfig.priority || 50;
+      const basePriority = regSound.priority;
       // дистанция 1.0, если звук в той же точке,
       // чтобы избежать деления на ноль
       const priorityScore =
@@ -352,6 +347,7 @@ export default class SoundManager {
       }
     }
   }
+
   /**
    * @private Внутренний метод для воспроизведения звука через Howler.
    */
@@ -385,7 +381,7 @@ export default class SoundManager {
             callback();
           }
 
-          // по завершению удаляем из активных инстансов И из реестра
+          // по завершению удаляем из активных инстансов и из реестра
           const regSound = this._registeredSounds.get(id);
 
           if (regSound && regSound.activeSoundId === soundId) {
