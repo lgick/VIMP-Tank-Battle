@@ -50,6 +50,7 @@ const PS_CONSOLE = wsports.server.CONSOLE;
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = wsports.client.CONFIG_READY;
 const PC_AUTH_RESPONSE = wsports.client.AUTH_RESPONSE;
+const PC_MODULES_READY = wsports.client.MODULES_READY;
 const PC_MAP_READY = wsports.client.MAP_READY;
 const PC_FIRST_SHOT_READY = wsports.client.FIRST_SHOT_READY;
 const PC_KEYS_DATA = wsports.client.KEYS_DATA;
@@ -65,6 +66,7 @@ const modules = {};
 
 // создание и инициализация SoundManager
 const soundManager = new SoundManager();
+let soundData = {};
 
 let modulesConfig = {};
 
@@ -103,9 +105,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
 
   const bakedAssets = data.parts.bakedAssets || {};
   const componentDependencies = data.parts.componentDependencies || {};
-  const sounds = data.parts.sounds || {};
-  // загрузка звуков
-  await soundManager.load(sounds);
+  soundData = data.parts.sounds || {};
 
   // создание полотен игры
   const initPromises = Object.entries(modulesConfig.canvasOptions).map(
@@ -192,13 +192,14 @@ socketMethods[PS_AUTH_DATA] = data => {
 };
 
 // auth errors
-socketMethods[PS_AUTH_RESULT] = err => {
+socketMethods[PS_AUTH_RESULT] = async err => {
   modules.auth.parseRes(err);
 
   if (!err) {
+    await soundManager.init(soundData);
     runModules(modulesConfig);
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    sending(PC_MODULES_READY);
   }
 };
 
