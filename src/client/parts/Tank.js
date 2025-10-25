@@ -69,12 +69,18 @@ export default class Tank extends Container {
       return;
     }
 
-    this._soundId = this._soundManager.registerPersistentSound(
+    this._soundId = this._soundManager.registerSound(
       'tankEngine',
-      () => ({ x: this.x, y: this.y }),
-      () => 0.3 + 0.5 * this._speedRatio,
-      () => 1.0 + this._speedRatio * 0.1,
+      this._getSoundData(),
     );
+  }
+
+  _getSoundData() {
+    return {
+      position: { x: this.x, y: this.y },
+      rate: 1.0 + this._speedRatio * 0.1,
+      volume: 0.3 + 0.5 * this._speedRatio,
+    };
   }
 
   create() {
@@ -126,6 +132,7 @@ export default class Tank extends Container {
       const currentSpeed = Math.hypot(vX, vY);
 
       this._speedRatio = Math.min(currentSpeed / this._maxSpeed, 1.0);
+      this._soundManager.updateSoundData(this._soundId, this._getSoundData());
     }
 
     const newCondition = data[6];
@@ -152,7 +159,7 @@ export default class Tank extends Container {
   // останавливает и сбрасывает все звуки, связанные с танком
   destroySounds() {
     if (this._soundId) {
-      this._soundManager.unregisterPersistentSound(this._soundId);
+      this._soundManager.unregisterSound(this._soundId);
       this._soundId = null;
     }
   }
