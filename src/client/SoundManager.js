@@ -1,5 +1,23 @@
 import { Howl, Howler } from 'howler';
 
+// глобальный лимит звуков
+const WORLD_VOICE_LIMIT = 30;
+
+// минимальная дистанция для панорамирования
+const MIN_SPATIAL_DISTANCE = 1.0;
+
+// настройки пространственного звука
+const PANNER_SETTINGS = {
+  panningModel: 'HRTF', // модель панорамирования
+  distanceModel: 'inverse', // модель затухания звука с расстоянием
+  refDistance: 100, // расстояние (в px), на котором громкость равна 100%
+  maxDistance: 1000, // расстояние, дальше которого звук не слышен
+  rolloffFactor: 1, // коэффициент затухания (больше - быстрее затухает)
+  coneInnerAngle: 360, // звук распространяется во все стороны одинаково
+  coneOuterAngle: 0,
+  coneOuterGain: 0,
+};
+
 /**
  * @class SoundManager
  * @description Централизованный "режиссёр звука". Управляет загрузкой,
@@ -9,29 +27,6 @@ import { Howl, Howler } from 'howler';
  */
 export default class SoundManager {
   constructor() {
-    Howler.autoUnlock = true; // разблокировка аудио при первом взаимодействии
-    Howler.usingWebAudio = true;
-    Howler.autoSuspend = false;
-    Howler.volume(0.7); // начальная глобальная громкость
-    Howler.pos(0, 0, 0);
-
-    // устанавливает ориентацию (направление взгляда) слушателя.
-    // вектор "вперед" (0, 0, -1) - соответствует верху экрана
-    // вектор "вверх" (0, 1, 0) - вектор "вверх" для аудиосистемы
-    Howler.orientation(0, 0, -1, 0, 1, 0);
-
-    // настройки пространственного звука
-    this._defaultPannerSettings = {
-      panningModel: 'HRTF', // модель панорамирования
-      distanceModel: 'inverse', // модель затухания звука с расстоянием
-      refDistance: 100, // расстояние (в px), на котором громкость равна 100%
-      maxDistance: 1000, // расстояние, дальше которого звук не слышен
-      rolloffFactor: 1, // коэффициент затухания (больше - быстрее затухает)
-      coneInnerAngle: 360, // звук распространяется во все стороны одинаково
-      coneOuterAngle: 0,
-      coneOuterGain: 0,
-    };
-
     // хранение загруженных звуков, ключ - имя звука, значение - экземпляр Howl
     this._sounds = new Map();
 
@@ -42,21 +37,16 @@ export default class SoundManager {
     this._listenerX = 0;
     this._listenerY = 0;
 
-    // глобальный лимит звуков
-    this.WORLD_VOICE_LIMIT = 30;
-
     // реестр постоянных звуков (loop's)
     this._persistentSounds = new Map();
 
     // очередь одноразовых звуков, заявленных в этом кадре
     this._oneShotQueue = [];
-
-    // минимальная дистанция для панорамирования
-    this.MIN_SPATIAL_DISTANCE = 1.0;
   }
 
   /**
-   * Асинхронно загружает все звуки, определенные в конфигурации.
+   * Производит базовую настройку Howler, асинхронно загружает все звуки,
+   * определенные в конфигурации.
    * Сохраняет как сам экземпляр Howl, так и его конфигурацию (приоритет).
    * @param {object} soundsConfig - Объект конфигурации звуков.
    * @param {string[]} soundsConfig.codecList - Список поддерживаемых кодеков
@@ -66,9 +56,20 @@ export default class SoundManager {
    * а значение - объект конфигурации { file, priority }.
    * @returns {Promise<void>} Promise, который разрешается после загрузки.
    */
-  async load(soundsConfig) {
+  async init(soundsConfig) {
     const { codecList, path, sounds } = soundsConfig;
     const supportedCodec = codecList.find(codec => Howler.codecs(codec));
+
+    //Howler.autoUnlock = true; // разблокировка аудио при первом взаимодействии
+    Howler.usingWebAudio = true;
+    Howler.autoSuspend = false;
+    //Howler.volume(0.7); // начальная глобальная громкость
+    Howler.pos(0, 0, 0);
+
+    // устанавливает ориентацию (направление взгляда) слушателя.
+    // вектор "вперед" (0, 0, -1) - соответствует верху экрана
+    // вектор "вверх" (0, 1, 0) - вектор "вверх" для аудиосистемы
+    Howler.orientation(0, 0, -1, 0, 1, 0);
 
     if (!supportedCodec) {
       console.error(
@@ -91,7 +92,7 @@ export default class SoundManager {
             html5: false,
             onload: () => {
               this._sounds.set(soundName, {
-                howl: soundInstance.pannerAttr(this._defaultPannerSettings),
+                howl: soundInstance.pannerAttr(PANNER_SETTINGS),
                 config: soundData,
               });
               resolve(soundName);
@@ -344,7 +345,7 @@ export default class SoundManager {
 
     // выбор лучших с учетом глобального лимита
     candidates.sort((a, b) => b.priorityScore - a.priorityScore);
-    const audibleCandidates = candidates.slice(0, this.WORLD_VOICE_LIMIT);
+    const audibleCandidates = candidates.slice(0, WORLD_VOICE_LIMIT);
     const audibleSet = new Set(audibleCandidates);
 
     // синхронизация: остановка и запуск
@@ -539,13 +540,13 @@ export default class SoundManager {
 
     const distance = Math.hypot(x - this._listenerX, y - this._listenerY);
 
-    if (distance >= this._defaultPannerSettings.maxDistance) {
+    if (distance >= PANNER_SETTINGS.maxDistance) {
       sound.volume(0, soundId);
     } else {
       sound.volume(baseVolume, soundId);
     }
 
-    if (distance > this.MIN_SPATIAL_DISTANCE) {
+    if (distance > MIN_SPATIAL_DISTANCE) {
       sound.pos(x - this._listenerX, 0, y - this._listenerY, soundId);
     } else {
       sound.pos(0, 0, 0, soundId);

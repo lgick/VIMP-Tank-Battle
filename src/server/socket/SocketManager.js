@@ -1,7 +1,7 @@
 const TECH_CODES = {
   fullServer: [0],
   anotherDevice: [1],
-  sendMap: [2],
+  loading: [2],
   kickIdle: [3],
   kickForMaxLatency: [4],
   kickForMissedPings: [5],
