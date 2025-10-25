@@ -207,54 +207,93 @@ export default class SoundManager {
    * Вызывается один раз за кадр.
    */
   processAudibility() {
-    const candidatesMap = new Map();
+    const candidates = [];
+    const maxDistSquared =
+      PANNER_SETTINGS.maxDistance * PANNER_SETTINGS.maxDistance;
 
-    // сбор всех кандидатов в один список (включая играющих)
+    // сбор и предварительный отсев кандидатов
     for (const regSound of this._registeredSounds.values()) {
-      candidatesMap.set(regSound.id, {
-        ...regSound,
-        isPlaying: regSound.activeSoundId !== null,
-        soundId: regSound.activeSoundId,
-      });
-    }
+      const dx = regSound.position.x - this._listenerX;
+      const dy = regSound.position.y - this._listenerY;
+      const distanceSquared = dx * dx + dy * dy;
 
-    const candidates = [...candidatesMap.values()];
-
-    if (candidates.length === 0) {
-      return;
-    }
-
-    // расчёт приоритета для каждого
-    for (const candidate of candidates) {
-      const distance =
-        Math.hypot(
-          candidate.position.x - this._listenerX,
-          candidate.position.y - this._listenerY,
-        ) || 0.1;
-
-      const soundConfig = this._sounds.get(candidate.soundName)?.config;
-
-      if (!soundConfig) {
-        candidate.priorityScore = 0;
+      // если звук слишком далеко и он одноразовый (удаление)
+      if (distanceSquared >= maxDistSquared && !regSound.isLoop) {
+        this._registeredSounds.delete(regSound.id);
         continue;
       }
 
+      const soundConfig = this._sounds.get(regSound.soundName)?.config;
+
+      if (!soundConfig) {
+        continue;
+      }
+
+      // расчет приоритета
       const basePriority = soundConfig.priority || 50;
-      candidate.priorityScore = basePriority / distance;
+      // дистанция 1.0, если звук в той же точке,
+      // чтобы избежать деления на ноль
+      const priorityScore =
+        (basePriority * basePriority) / (distanceSquared || 1.0);
+
+      candidates.push({
+        ...regSound,
+        isPlaying: regSound.activeSoundId !== null,
+        soundId: regSound.activeSoundId,
+        priorityScore,
+      });
     }
 
-    // выбор лучших, кто попадёт в лимит
-    candidates.sort((a, b) => b.priorityScore - a.priorityScore);
+    // если кандидатов нет, то очистка одноразовых звуков и выход
+    if (candidates.length === 0) {
+      this._cleanupUnplayedOneShots();
+      return;
+    }
 
-    const audibleSet = new Set(candidates.slice(0, WORLD_VOICE_LIMIT));
+    // алгоритм выбора
+    // поиск топ-N самых приоритетных звуков за один проход O(N)
+    const audibleCandidates = [];
+    let minPriorityInAudible = Infinity;
+    let minPriorityIndex = -1;
 
-    // синхронизация состояния: остановка и запуск
+    for (const candidate of candidates) {
+      if (audibleCandidates.length < WORLD_VOICE_LIMIT) {
+        audibleCandidates.push(candidate);
+
+        // после заполнения массива, поиск элемента с минимальным приоритетом
+        if (audibleCandidates.length === WORLD_VOICE_LIMIT) {
+          audibleCandidates.forEach((c, index) => {
+            if (c.priorityScore < minPriorityInAudible) {
+              minPriorityInAudible = c.priorityScore;
+              minPriorityIndex = index;
+            }
+          });
+        }
+      } else {
+        if (candidate.priorityScore > minPriorityInAudible) {
+          // замена слабого звука в топе на нового, более сильного кандидата
+          audibleCandidates[minPriorityIndex] = candidate;
+          // поиск самого слабого звука в обновленном топе
+          minPriorityInAudible = Infinity;
+
+          audibleCandidates.forEach((c, index) => {
+            if (c.priorityScore < minPriorityInAudible) {
+              minPriorityInAudible = c.priorityScore;
+              minPriorityIndex = index;
+            }
+          });
+        }
+      }
+    }
+
+    const audibleSet = new Set(audibleCandidates);
+
+    // синхронизация и очистка
     for (const candidate of candidates) {
       const shouldBePlaying = audibleSet.has(candidate);
       const regSound = this._registeredSounds.get(candidate.id);
 
       if (candidate.isPlaying) {
-        // звук играет, но больше не должен (остановить)
         if (!shouldBePlaying) {
           this._internalStop(candidate.soundId);
 
@@ -263,14 +302,11 @@ export default class SoundManager {
           }
         }
       } else {
-        // звук не играет, но должен (запустить)
         if (shouldBePlaying) {
           const newSoundId = this._internalPlay(candidate);
 
           if (newSoundId !== null && regSound) {
             regSound.activeSoundId = newSoundId;
-
-            // обновление позиции для нового звука
             this._updateSpatialSound(
               this._activeInstances.get(newSoundId)?.sound,
               newSoundId,
@@ -284,11 +320,7 @@ export default class SoundManager {
     }
 
     // очистка несыгравших одноразовых звуков
-    for (const [id, regSound] of this._registeredSounds.entries()) {
-      if (!regSound.isLoop && regSound.activeSoundId === null) {
-        this._registeredSounds.delete(id);
-      }
-    }
+    this._cleanupUnplayedOneShots();
   }
 
   /**
@@ -407,6 +439,19 @@ export default class SoundManager {
       sound.pos(x - this._listenerX, 0, y - this._listenerY, soundId);
     } else {
       sound.pos(0, 0, 0, soundId);
+    }
+  }
+
+  /**
+   * @private
+   * Удаляет из реестра одноразовые звуки, которые были заявлены,
+   * но не попали в лимит воспроизведения в текущем кадре.
+   */
+  _cleanupUnplayedOneShots() {
+    for (const [id, regSound] of this._registeredSounds.entries()) {
+      if (!regSound.isLoop && regSound.activeSoundId === null) {
+        this._registeredSounds.delete(id);
+      }
     }
   }
 
