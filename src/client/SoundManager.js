@@ -4,13 +4,13 @@ import { Howl, Howler } from 'howler';
 const WORLD_VOICE_LIMIT = 30;
 
 // минимальная дистанция для панорамирования
-const MIN_SPATIAL_DISTANCE = 1.0;
+const MIN_SPATIAL_DISTANCE = 1;
 
 // настройки пространственного звука
 const PANNER_SETTINGS = {
   panningModel: 'HRTF', // модель панорамирования
   distanceModel: 'inverse', // модель затухания звука с расстоянием
-  refDistance: 100, // расстояние (в px), на котором громкость равна 100%
+  refDistance: 150, // расстояние (в px), на котором громкость равна 100%
   maxDistance: 1000, // расстояние, дальше которого звук не слышен
   rolloffFactor: 1, // коэффициент затухания (больше - быстрее затухает)
   coneInnerAngle: 360, // звук распространяется во все стороны одинаково
@@ -60,6 +60,7 @@ export default class SoundManager {
     Howler.usingWebAudio = true;
     Howler.autoSuspend = false;
     Howler.pos(0, 0, 0);
+    Howler.volume(0.5);
 
     // устанавливает ориентацию (направление взгляда) слушателя.
     // вектор "вперед" (0, 0, -1) - соответствует верху экрана
@@ -75,7 +76,7 @@ export default class SoundManager {
       ([soundName, soundData]) => {
         const fileName = soundData.file;
         const loop = !!soundData.loop;
-        const volume = soundData.volume || 0.7;
+        const volume = soundData.volume || 0.5;
         const url = `${path}${fileName}.${supportedCodec}`;
 
         return new Promise((resolve, reject) => {
@@ -226,17 +227,14 @@ export default class SoundManager {
 
       // расчет приоритета
       const basePriority = regSound.priority;
+
       // дистанция 1.0, если звук в той же точке,
       // чтобы избежать деления на ноль
-      const priorityScore =
+      regSound.priorityScore =
         (basePriority * basePriority) / (distanceSquared || 1.0);
+      regSound.isPlaying = regSound.activeSoundId !== null;
 
-      candidates.push({
-        ...regSound,
-        isPlaying: regSound.activeSoundId !== null,
-        soundId: regSound.activeSoundId,
-        priorityScore,
-      });
+      candidates.push(regSound);
     }
 
     // если кандидатов нет, то очистка одноразовых звуков и выход
@@ -245,63 +243,27 @@ export default class SoundManager {
       return;
     }
 
-    // алгоритм выбора
-    // поиск топ-N самых приоритетных звуков за один проход O(N)
-    const audibleCandidates = [];
-    let minPriorityInAudible = Infinity;
-    let minPriorityIndex = -1;
+    // сортировка кандидатов по убыванию очков приоритета
+    candidates.sort((a, b) => b.priorityScore - a.priorityScore);
 
-    for (const candidate of candidates) {
-      if (audibleCandidates.length < WORLD_VOICE_LIMIT) {
-        audibleCandidates.push(candidate);
-
-        // после заполнения массива, поиск элемента с минимальным приоритетом
-        if (audibleCandidates.length === WORLD_VOICE_LIMIT) {
-          audibleCandidates.forEach((c, index) => {
-            if (c.priorityScore < minPriorityInAudible) {
-              minPriorityInAudible = c.priorityScore;
-              minPriorityIndex = index;
-            }
-          });
-        }
-      } else {
-        if (candidate.priorityScore > minPriorityInAudible) {
-          // замена слабого звука в топе на нового, более сильного кандидата
-          audibleCandidates[minPriorityIndex] = candidate;
-          // поиск самого слабого звука в обновленном топе
-          minPriorityInAudible = Infinity;
-
-          audibleCandidates.forEach((c, index) => {
-            if (c.priorityScore < minPriorityInAudible) {
-              minPriorityInAudible = c.priorityScore;
-              minPriorityIndex = index;
-            }
-          });
-        }
-      }
-    }
-
+    const audibleCandidates = candidates.slice(0, WORLD_VOICE_LIMIT);
     const audibleSet = new Set(audibleCandidates);
 
     // синхронизация и очистка
     for (const candidate of candidates) {
       const shouldBePlaying = audibleSet.has(candidate);
-      const regSound = this._registeredSounds.get(candidate.id);
 
       if (candidate.isPlaying) {
         if (!shouldBePlaying) {
-          this._internalStop(candidate.soundId);
-
-          if (regSound) {
-            regSound.activeSoundId = null;
-          }
+          this._internalStop(candidate.activeSoundId);
+          candidate.activeSoundId = null;
         }
       } else {
         if (shouldBePlaying) {
           const newSoundId = this._internalPlay(candidate);
 
-          if (newSoundId !== null && regSound) {
-            regSound.activeSoundId = newSoundId;
+          if (newSoundId !== null) {
+            candidate.activeSoundId = newSoundId;
             this._updateSpatialSound(
               this._activeInstances.get(newSoundId)?.sound,
               newSoundId,
@@ -418,7 +380,7 @@ export default class SoundManager {
    * @param {number} y - Координата Y источника звука.
    * @param {number} volume - Громкость звука.
    */
-  _updateSpatialSound(sound, soundId, x, y, volume = 0.7) {
+  _updateSpatialSound(sound, soundId, x, y, volume = 0.5) {
     if (!sound || typeof soundId !== 'number') {
       return;
     }
@@ -427,14 +389,17 @@ export default class SoundManager {
 
     if (distance >= PANNER_SETTINGS.maxDistance) {
       sound.volume(0, soundId);
-    } else {
-      sound.volume(volume, soundId);
+
+      return;
     }
 
+    sound.volume(volume, soundId);
+
+    // если дистанция позволяет панорамировать звук
     if (distance > MIN_SPATIAL_DISTANCE) {
       sound.pos(x - this._listenerX, 0, y - this._listenerY, soundId);
     } else {
-      sound.pos(0, 0, 0, soundId);
+      sound.pos(0, 0, 0, soundId); // отключение панорамирования
     }
   }
 
