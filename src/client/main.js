@@ -1,5 +1,4 @@
 import './style.css';
-import 'pixi.js/unsafe-eval';
 import { Application } from 'pixi.js';
 import AuthModel from './components/model/Auth.js';
 import AuthView from './components/view/Auth.js';
