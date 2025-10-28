@@ -21,7 +21,7 @@ const sounds = {
   bombHasBeenPlanted: { file: 'bomb-has-been-planted', priority: 90 },
 
   // https://freesound.org/people/monosfera/sounds/572294/
-  tankEngine: { file: 'tank-engine', priority: 50 },
+  tankEngine: { file: 'tank-engine', priority: 50, loop: true },
 };
 
 export default {

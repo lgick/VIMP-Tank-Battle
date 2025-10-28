@@ -351,7 +351,7 @@ class VIMP {
 
         this._teamSizes[this._spectatorTeam].add(gameId);
 
-        this._sendMap(gameId);
+        this.sendMap(gameId);
       }
     }
 
@@ -366,13 +366,13 @@ class VIMP {
   }
 
   // отправляет карту
-  _sendMap(gameId) {
+  sendMap(gameId) {
     const user = this._users[gameId];
     const socketId = user.socketId;
 
     user.isReady = false;
     user.currentMap = this._currentMap;
-    this._socketManager.sendTechInform(socketId, 'sendMap');
+    this._socketManager.sendTechInform(socketId, 'loading');
     this._socketManager.sendMap(socketId, this._currentMapData);
   }
 
@@ -382,7 +382,7 @@ class VIMP {
 
     // если карта не актуальна
     if (user.currentMap !== this._currentMap) {
-      this._sendMap(gameId);
+      this.sendMap(gameId);
       return;
     }
 
@@ -897,7 +897,6 @@ class VIMP {
 
     process.nextTick(() => {
       cb(gameId);
-      this._sendMap(gameId);
     });
   }
 

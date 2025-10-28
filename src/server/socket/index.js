@@ -9,6 +9,7 @@ import SocketManager from './SocketManager.js';
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = config.get('wsports:client:CONFIG_READY');
 const PC_AUTH_RESPONSE = config.get('wsports:client:AUTH_RESPONSE');
+const PC_MODULES_READY = config.get('wsports:client:MODULES_READY');
 const PC_MAP_READY = config.get('wsports:client:MAP_READY');
 const PC_FIRST_SHOT_READY = config.get('wsports:client:FIRST_SHOT_READY');
 const PC_KEYS_DATA = config.get('wsports:client:KEYS_DATA');
@@ -82,14 +83,15 @@ export default server => {
       const id = (ws.socket.id = uuidv1());
 
       ws.socket.socketMethods = [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
+        false, // CONFIG_READY
+        false, // AUTH_RESPONSE
+        false, // MODULES_READY
+        false, // MAP_READY
+        false, // FIRST_SHOT_READY
+        false, // KEYS_DATA
+        false, // CHAT_DATA
+        false, // VOTE_DATA
+        false, // PONG
       ];
 
       socketManager.addUser(id, ws.socket);
@@ -130,54 +132,64 @@ export default server => {
         if (data && typeof data === 'object') {
           const err = validateAuth(data, auth.params);
 
-          socketManager.sendAuthResult(id, err);
-
           if (!err) {
             ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
-            ws.socket.socketMethods[PC_MAP_READY] = true;
-            ws.socket.socketMethods[PC_FIRST_SHOT_READY] = true;
-            ws.socket.socketMethods[PC_KEYS_DATA] = true;
-            ws.socket.socketMethods[PC_CHAT_DATA] = true;
-            ws.socket.socketMethods[PC_VOTE_DATA] = true;
-            ws.socket.socketMethods[PC_PONG] = true;
+            ws.socket.socketMethods[PC_MODULES_READY] = true;
 
             vimp.createUser(data, id, createdId => {
               gameId = createdId;
             });
+
+            socketManager.sendTechInform(id, 'loading');
           }
+
+          socketManager.sendAuthResult(id, err);
         }
       };
 
-      // 2: map ready
+      // 2: modules ready
+      socketMethods[PC_MODULES_READY] = () => {
+        ws.socket.socketMethods[PC_MODULES_READY] = false;
+        ws.socket.socketMethods[PC_MAP_READY] = true;
+        ws.socket.socketMethods[PC_FIRST_SHOT_READY] = true;
+        ws.socket.socketMethods[PC_KEYS_DATA] = true;
+        ws.socket.socketMethods[PC_CHAT_DATA] = true;
+        ws.socket.socketMethods[PC_VOTE_DATA] = true;
+        ws.socket.socketMethods[PC_PONG] = true;
+
+        vimp.sendMap(gameId);
+      };
+
+      // 3: map ready
       socketMethods[PC_MAP_READY] = () => {
         vimp.mapReady(gameId);
       };
 
-      // 3: first shot ready
+      // 4: first shot ready
       socketMethods[PC_FIRST_SHOT_READY] = () => {
         vimp.firstShotReady(gameId);
       };
 
-      // 4: keys data
+      // 5: keys data
       socketMethods[PC_KEYS_DATA] = keyEventString => {
         if (typeof keyEventString === 'string') {
           vimp.updateKeys(gameId, keyEventString);
         }
       };
 
-      // 5: chat data
+      // 6: chat data
       socketMethods[PC_CHAT_DATA] = message => {
         vimp.pushMessage(gameId, message);
       };
 
-      // 6: vote data
+      // 7: vote data
       socketMethods[PC_VOTE_DATA] = data => {
         if (data) {
           vimp.parseVote(gameId, data);
         }
       };
 
-      // 7: pong
+      // 8: pong
       socketMethods[PC_PONG] = pingId => {
         vimp.updateRTT(gameId, pingId);
       };
