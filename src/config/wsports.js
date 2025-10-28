@@ -19,11 +19,12 @@ export default {
   client: {
     CONFIG_READY: 0,
     AUTH_RESPONSE: 1,
-    MAP_READY: 2,
-    FIRST_SHOT_READY: 3,
-    KEYS_DATA: 4,
-    CHAT_DATA: 5,
-    VOTE_DATA: 6,
-    PONG: 7,
+    MODULES_READY: 2,
+    MAP_READY: 3,
+    FIRST_SHOT_READY: 4,
+    KEYS_DATA: 5,
+    CHAT_DATA: 6,
+    VOTE_DATA: 7,
+    PONG: 8,
   },
 };

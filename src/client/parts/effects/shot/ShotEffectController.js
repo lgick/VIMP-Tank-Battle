@@ -28,15 +28,15 @@ export default class ShotEffectController extends Container {
     this._soundComplete = false;
 
     // звук выстрела в момент старта эффекта
-    this._soundId = this._soundManager.requestOneShot(
+    this._soundId = this._soundManager.registerSound(
       'shot',
-      { x: this.soundPositionX, y: this.soundPositionY },
       {
-        onend: () => {
-          this._soundComplete = true;
-          this._soundId = null;
-          this._tryDestroy();
-        },
+        position: { x: this.soundPositionX, y: this.soundPositionY },
+      },
+      () => {
+        this._soundComplete = true;
+        this._soundId = null;
+        this._tryDestroy();
       },
     );
 
@@ -132,7 +132,7 @@ export default class ShotEffectController extends Container {
     // этот вызов остается на случай, если эффект уничтожат принудительно,
     // до того как звук закончится сам
     if (this._soundId) {
-      this._soundManager.cancelOneShot(this._soundId);
+      this._soundManager.unregisterSound(this._soundId);
       this._soundId = null;
     }
 
