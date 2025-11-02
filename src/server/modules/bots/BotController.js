@@ -1,9 +1,9 @@
 import { Vec2, Rot } from 'planck';
 
 // константы для поведения бота
-const AI_UPDATE_INTERVAL = 0.2; // как часто бот принимает решения (в секундах)
+const AI_UPDATE_INTERVAL = 0.1; // как часто бот принимает решения (в секундах)
 const TARGET_PREDICTION_FACTOR = 0.2; // коэффициент для упреждения цели
-const OBSTACLE_AVOIDANCE_RAY_LENGTH = 250; // длина лучей для обхода препятствий
+const OBSTACLE_AVOIDANCE_RAY_LENGTH = 50; // длина лучей для обхода препятствий
 const MIN_TARGET_DISTANCE = 30; // минимальная дистанция до цели
 const MAX_FIRING_DISTANCE = 500; // максимальная дистанция для ведения огня
 
@@ -19,7 +19,7 @@ const RANDOM_FIRING_DELAY = 0.5;
 
 // константы для использования бомб
 const BOMB_USAGE_DISTANCE = 100; // дистанция для использования бомбы
-const BOMB_COOLDOWN = 0.1; // перезарядка бомбы в секундах
+const BOMB_COOLDOWN = 0; // перезарядка бомбы в секундах
 
 const REPATH_INTERVAL = 1.0; // частота пересчёта пути (секунды)
 const TARGET_SCAN_INTERVAL = 1.5; // интервал поиска новой цели (секунды)
