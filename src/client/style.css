@@ -317,8 +317,8 @@
 
 #chat-box {
   width: 92%;
-  font-size: 11px;
-  line-height: 14px;
+  font-size: 14px;
+  line-height: 18px;
   margin: 0 auto 40px;
 }
 
@@ -366,7 +366,7 @@
   bottom: 0;
   width: 92%;
   margin: 0 auto 5px;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 23px;
   outline: none;
   border: 3px solid #099;

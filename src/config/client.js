@@ -191,6 +191,9 @@ export default {
             'Your team: {0}', // 1
             'Your new team: {0}', // 2
             'Your new status: spectator', // 3
+            '⚔️  {0} killed {1}', // 4
+            '⚡ {0} joined the game', // 5
+            '👋  {0} left the game', // 6
           ],
           // vote
           v: [

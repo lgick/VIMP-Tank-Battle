@@ -3,6 +3,9 @@ const MESSAGE_CODES = {
   TEAMS_YOUR_TEAM: 's:1', // Your team: {0}
   TEAMS_NEW_TEAM: 's:2', // Your new team: {0}
   TEAMS_NOW_SPECTATOR: 's:3', // Your new status: spectator
+  REPORT_KILL: 's:4', // ⚔️  {0} killed {1}!
+  USER_JOINED: 's:5', // ⚡ {0} joined the game
+  USER_LEFT: 's:6', // 👋  {0} left the game
 
   VOTE_CREATED: 'v:0', // A vote has been created
   VOTE_STARTED: 'v:1', // Voting has started
