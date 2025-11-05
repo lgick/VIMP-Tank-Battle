@@ -401,6 +401,7 @@ class VIMP {
     user.isReady = true;
     this._socketManager.sendTechInform(socketId); // скрывает экран загрузки
     this._socketManager.sendFirstVote(socketId);
+    this._chat.pushSystem('USER_JOINED', [user.name]);
   }
 
   // запуск нового раунда
@@ -801,6 +802,8 @@ class VIMP {
         }
       }
 
+      this._chat.pushSystem('REPORT_KILL', [killerUser.name, victimUser.name]);
+
       // проверка на уничтожение всей команды противника
       this._checkTeamWipe(victimUser.teamId, killerUser.teamId);
     }
@@ -935,6 +938,8 @@ class VIMP {
     this._teamSizes[team].delete(gameId);
 
     delete this._users[gameId];
+
+    this._chat.pushSystem('USER_LEFT', [user.name]);
   }
 
   // обновляет команды
