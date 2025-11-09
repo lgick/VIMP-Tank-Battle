@@ -27,10 +27,10 @@ const PANNER_SETTINGS = {
  */
 export default class SoundManager {
   constructor() {
-    // хранение загруженных звуков { howl, config }
+    // хранение загруженных звуков { sound, config }
     this._sounds = new Map();
 
-    // хранит соответствие soundId -> { sound, name, ownerId, isLoop }
+    // хранит соответствие soundId -> { sound, ownerId, loop }
     this._activeInstances = new Map();
 
     // реестр всех зарегистрированных звуковых источников
@@ -76,7 +76,7 @@ export default class SoundManager {
       ([soundName, soundData]) => {
         const fileName = soundData.file;
         const loop = !!soundData.loop;
-        const volume = soundData.volume || 0.5;
+        const volume = soundData.volume ?? 0.5;
         const url = `${path}${fileName}.${supportedCodec}`;
 
         return new Promise((resolve, reject) => {
@@ -88,8 +88,8 @@ export default class SoundManager {
             volume,
             onload: () => {
               this._sounds.set(soundName, {
-                howl: soundInstance.pannerAttr(PANNER_SETTINGS),
-                config: soundData,
+                sound: soundInstance.pannerAttr(PANNER_SETTINGS),
+                config: { ...soundData, priority: soundData.priority ?? 50 },
               });
 
               resolve(soundName);
@@ -134,7 +134,7 @@ export default class SoundManager {
    * @param {string} soundName - Имя звука для воспроизведения.
    */
   playSystemSound(soundName) {
-    this._sounds.get(soundName)?.howl.play();
+    this._sounds.get(soundName)?.sound.play();
   }
 
   /**
@@ -157,14 +157,12 @@ export default class SoundManager {
       return null;
     }
 
-    const { loop = false, priority = 50 } = soundData.config;
     const id = Symbol(soundName);
     const registration = {
+      ...soundData.config,
       ...data,
+      sound: soundData.sound,
       id,
-      soundName,
-      isLoop: loop,
-      priority,
       activeSoundId: null, // ID от Howler, когда звук будет играть
       callback,
     };
@@ -212,16 +210,18 @@ export default class SoundManager {
     const candidates = [];
     const maxDistSquared =
       PANNER_SETTINGS.maxDistance * PANNER_SETTINGS.maxDistance;
+    const { _listenerX: lx, _listenerY: ly } = this;
+    const deleteList = [];
 
     // сбор и предварительный отсев кандидатов
     for (const regSound of this._registeredSounds.values()) {
-      const dx = regSound.position.x - this._listenerX;
-      const dy = regSound.position.y - this._listenerY;
+      const dx = regSound.position.x - lx;
+      const dy = regSound.position.y - ly;
       const distanceSquared = dx * dx + dy * dy;
 
       // если звук слишком далеко и он одноразовый, то удаление
-      if (distanceSquared >= maxDistSquared && !regSound.isLoop) {
-        this._registeredSounds.delete(regSound.id);
+      if (distanceSquared >= maxDistSquared && !regSound.loop) {
+        deleteList.push(regSound.id);
         continue;
       }
 
@@ -231,11 +231,13 @@ export default class SoundManager {
       // дистанция 1.0, если звук в той же точке,
       // чтобы избежать деления на ноль
       regSound.priorityScore =
-        (basePriority * basePriority) / (distanceSquared || 1.0);
+        (basePriority * basePriority) / Math.max(distanceSquared, 1.0);
       regSound.isPlaying = regSound.activeSoundId !== null;
 
       candidates.push(regSound);
     }
+
+    deleteList.forEach(id => this._registeredSounds.delete(id));
 
     // если кандидатов нет, то очистка одноразовых звуков и выход
     if (candidates.length === 0) {
@@ -246,7 +248,11 @@ export default class SoundManager {
     // сортировка кандидатов по убыванию очков приоритета
     candidates.sort((a, b) => b.priorityScore - a.priorityScore);
 
-    const audibleCandidates = candidates.slice(0, WORLD_VOICE_LIMIT);
+    const audibleCandidates =
+      candidates.length > WORLD_VOICE_LIMIT
+        ? candidates.slice(0, WORLD_VOICE_LIMIT)
+        : candidates;
+
     const audibleSet = new Set(audibleCandidates);
 
     // синхронизация и очистка
@@ -285,21 +291,20 @@ export default class SoundManager {
    * Вызывается каждый кадр после `processAudibility`.
    */
   updateActiveSounds() {
-    for (const activeInstance of this._activeInstances.values()) {
-      if (!activeInstance.isLoop) {
+    for (const [soundId, activeInstance] of this._activeInstances.entries()) {
+      if (!activeInstance.loop) {
         continue;
       }
 
       const regSound = this._registeredSounds.get(activeInstance.ownerId);
+      const { sound } = activeInstance;
 
       if (!regSound) {
+        sound.stop(soundId);
+        this._activeInstances.delete(soundId);
         continue;
       }
 
-      const { sound } = activeInstance;
-      const soundId = regSound.activeSoundId;
-
-      // обновленные данные
       const { position, volume, rate } = regSound;
 
       this._updateSpatialSound(sound, soundId, position.x, position.y, volume);
@@ -314,14 +319,7 @@ export default class SoundManager {
    * @private Внутренний метод для воспроизведения звука через Howler.
    */
   _internalPlay(candidate) {
-    const { soundName, id, isLoop, callback } = candidate;
-    const soundData = this._sounds.get(soundName);
-
-    if (!soundData) {
-      return null;
-    }
-
-    const sound = soundData.howl;
+    const { sound, id, loop, callback } = candidate;
     const soundId = sound.play();
 
     if (typeof soundId !== 'number') {
@@ -330,12 +328,11 @@ export default class SoundManager {
 
     this._activeInstances.set(soundId, {
       sound,
-      name: soundName,
       ownerId: id,
-      isLoop,
+      loop,
     });
 
-    if (!isLoop) {
+    if (!loop) {
       sound.once(
         'end',
         () => {
@@ -380,7 +377,7 @@ export default class SoundManager {
    * @param {number} y - Координата Y источника звука.
    * @param {number} volume - Громкость звука.
    */
-  _updateSpatialSound(sound, soundId, x, y, volume = 0.5) {
+  _updateSpatialSound(sound, soundId, x, y, volume) {
     if (!sound || typeof soundId !== 'number') {
       return;
     }
@@ -410,7 +407,7 @@ export default class SoundManager {
    */
   _cleanupUnplayedOneShots() {
     for (const [id, regSound] of this._registeredSounds.entries()) {
-      if (!regSound.isLoop && regSound.activeSoundId === null) {
+      if (!regSound.loop && regSound.activeSoundId === null) {
         this._registeredSounds.delete(id);
       }
     }
@@ -439,6 +436,8 @@ export default class SoundManager {
     Howler.stop();
     this._activeInstances.clear();
     this._registeredSounds.clear();
+    this._listenerX = 0;
+    this._listenerY = 0;
   }
 
   /**
