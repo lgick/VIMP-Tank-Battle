@@ -14,11 +14,12 @@ export default class TankRadar extends Container {
     this.addChild(this.body);
 
     // параметры с сервера:
-    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
+    // [x, y, rotation, gunRotation, vX, vY,
+    // throttleLevel, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
-    this._condition = data[6];
-    this._teamId = data[8];
+    this._condition = data[7];
+    this._teamId = data[9];
 
     // масштаб контейнера
     this.scale.set(7, 7);
@@ -44,8 +45,8 @@ export default class TankRadar extends Container {
     this.x = data[0];
     this.y = data[1];
 
-    const newCondition = data[6];
-    const teamId = data[8];
+    const newCondition = data[7];
+    const teamId = data[9];
     let needsVisualChange = false;
 
     if (newCondition !== undefined && newCondition !== this._condition) {
