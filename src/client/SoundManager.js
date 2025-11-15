@@ -117,6 +117,15 @@ export default class SoundManager {
   }
 
   /**
+   * Возвращает конфигурацию для указанного звука.
+   * @param {string} soundName - Имя звука.
+   * @returns {object | undefined} Конфигурация звука или undefined.
+   */
+  getSoundConfig(soundName) {
+    return this._sounds.get(soundName)?.config;
+  }
+
+  /**
    * Устанавливает позицию слушателя (игрока) в 2D-пространстве для
    * корректного расчета 3D-звука.
    * @param {number} x - Координата X слушателя.
