@@ -9,7 +9,7 @@ export default class Tracks extends Container {
     this._currentX = data[0] || 0;
     this._currentY = data[1] || 0;
     this._currentRotation = data[2] || 0;
-    this._throttleLevel = data[6] || 0;
+    this._engineLoad = data[6] || 0;
     this._condition = data[7];
     this._size = data[8];
 
@@ -88,7 +88,7 @@ export default class Tracks extends Container {
     this._currentX = data[0];
     this._currentY = data[1];
     this._currentRotation = data[2];
-    this._throttleLevel = data[6];
+    this._engineLoad = data[6];
     this._condition = data[7];
   }
 
@@ -168,8 +168,8 @@ export default class Tracks extends Container {
     }
 
     // если танк газует, будучи застрявшим (состояние напряжения)
-    // throttleLevel > 1.0 означает напряжение (strain)
-    if (this._throttleLevel > 1.0) {
+    // engineLoad > 1.0 означает напряжение (strain)
+    if (this._engineLoad > 1.0) {
       shouldLeaveMark = true;
     }
 

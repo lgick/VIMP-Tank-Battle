@@ -1,17 +1,17 @@
 const sounds = {
   // https://freesound.org/people/joepayne/sounds/413201/
-  roundStart: { file: 'round-start', priority: 200, volume: 0.4 },
+  roundStart: { file: 'round-start', priority: 200, volume: 0.3 },
   // https://pixabay.com/sound-effects/silly-trumpet-2-187807/
-  victory: { file: 'victory', priority: 200, volume: 0.4 },
+  victory: { file: 'victory', priority: 200, volume: 0.3 },
   // https://pixabay.com/sound-effects/silly-trumpet-11-187806/
-  defeat: { file: 'defeat', priority: 200, volume: 0.4 },
+  defeat: { file: 'defeat', priority: 200, volume: 0.3 },
 
   // https://pixabay.com/sound-effects/metal-hit-sound-effect-241374/
-  frag: { file: 'frag', priority: 150, volume: 0.4 },
+  frag: { file: 'frag', priority: 150, volume: 0.3 },
   // https://freesound.org/people/SamsterBirdies/sounds/581598/
-  hit: { file: 'hit', priority: 150, volume: 0.4 },
+  hit: { file: 'hit', priority: 150, volume: 0.3 },
   // https://freesound.org/people/obstgegenrechz/sounds/267980/
-  gameOver: { file: 'game-over', priority: 150, volume: 0.4 },
+  gameOver: { file: 'game-over', priority: 150, volume: 0.3 },
 
   // https://freesound.org/people/GaryQ/sounds/127845/
   shot: { file: 'shot', priority: 100, volume: 0.4 },

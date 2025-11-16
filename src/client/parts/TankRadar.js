@@ -15,7 +15,7 @@ export default class TankRadar extends Container {
 
     // параметры с сервера:
     // [x, y, rotation, gunRotation, vX, vY,
-    // throttleLevel, condition, size, teamId]
+    // engineLoad, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this._condition = data[7];
