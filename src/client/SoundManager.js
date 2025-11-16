@@ -60,7 +60,7 @@ export default class SoundManager {
     Howler.usingWebAudio = true;
     Howler.autoSuspend = false;
     Howler.pos(0, 0, 0);
-    Howler.volume(0.5);
+    Howler.volume(0.7);
 
     // устанавливает ориентацию (направление взгляда) слушателя.
     // вектор "вперед" (0, 0, -1) - соответствует верху экрана

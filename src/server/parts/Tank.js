@@ -1,14 +1,6 @@
 import BaseModel from './BaseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck';
 
-// порог скорости (в % от максимальной),
-// ниже которого танк считается "застрявшим"
-const STRAIN_SPEED_THRESHOLD = 0.9;
-
-// насколько увеличивается throttleLevel
-// в состоянии напряжения. 1.0 + 0.3 = 1.3.
-const STRAIN_BOOST = 0.3;
-
 class Tank extends BaseModel {
   // максимальный шаг в 1/30 секунды
   _MAX_DT = 1 / 30;
@@ -23,6 +15,15 @@ class Tank extends BaseModel {
   // (меньше 1 = менее резкий поворот назад)
   // например, 0.5 - 0.8
   _REVERSE_TURN_MULTIPLIER = 0.7;
+
+  // как быстро "нажимается педаль газа" (единиц в секунду)
+  _THROTTLE_INCREASE_RATE = 2.0;
+
+  // как быстро "отпускается педаль газа"
+  _THROTTLE_DECREASE_RATE = 2.5;
+
+  // коэффициент, усиливающий нагрузку при сопротивлении
+  _STRAIN_FACTOR = 1.5;
 
   constructor(data) {
     super(data);
@@ -50,7 +51,8 @@ class Tank extends BaseModel {
 
     this._shotData = null;
 
-    this._throttleLevel = 0; // уровень "газа"
+    this._engineThrottle = 0; // намерение игрока (0.0 до 1.0)
+    this._engineLoad = 0; // нагрузка на двигатель для звука
 
     this._body = data.world.createBody({
       type: 'dynamic',
@@ -223,23 +225,23 @@ class Tank extends BaseModel {
       }
     }
 
-    // применение сил и момента
+    if (forward || back) {
+      // игрок "давит на газ" - плавное увеличение до 1.0
+      this._engineThrottle = Math.min(
+        1.0,
+        this._engineThrottle + this._THROTTLE_INCREASE_RATE * dt,
+      );
+    } else {
+      // игрок "отпустил газ" - плавное уменьшение до 0.0
+      this._engineThrottle = Math.max(
+        0.0,
+        this._engineThrottle - this._THROTTLE_DECREASE_RATE * dt,
+      );
+    }
+
     const currentVelocity = body.getLinearVelocity();
     const forwardVec = body.getWorldVector(new Vec2(1, 0));
     const currentForwardSpeed = Vec2.dot(currentVelocity, forwardVec);
-
-    // танк катится по инерции, уровень газа равен текущей скорости
-    this._throttleLevel = this._getSpeedRatio(currentForwardSpeed);
-
-    if (forward || back) {
-      // если при движении есть сопротивление
-      if (this._throttleLevel < STRAIN_SPEED_THRESHOLD) {
-        this._throttleLevel = 1.0 + STRAIN_BOOST;
-        // иначе танк едет нормально
-      } else {
-        this._throttleLevel = 1.0;
-      }
-    }
 
     // сила против бокового скольжения
     const lateralVel = this.getLateralVelocity(body);
@@ -249,20 +251,22 @@ class Tank extends BaseModel {
     );
     body.applyForceToCenter(sidewaysForceVec, true);
 
+    // применение физической силы на основе _engineThrottle
     let forceMagnitude = 0;
 
     // эффективная сила ускорения, зависящая от массы
     const effectiveAcceleration = this._accelerationFactor * this._mass;
 
-    if (forward && currentForwardSpeed < this._maxForwardSpeed) {
-      // постоянная сила для ускорения вперед, пока скорость ниже максимальной
-      forceMagnitude = effectiveAcceleration;
-    } else if (back && currentForwardSpeed > this._maxReverseSpeed) {
-      // постоянная сила для ускорения назад, пока скорость ниже максимальной
-      forceMagnitude = -effectiveAcceleration;
-    } else if (!forward && !back) {
-      // активное торможение:
-      // применение силы, противоположной текущей скорости
+    if (this._engineThrottle > 0) {
+      if (forward && currentForwardSpeed < this._maxForwardSpeed) {
+        forceMagnitude = this._engineThrottle * effectiveAcceleration;
+      } else if (back && currentForwardSpeed > this._maxReverseSpeed) {
+        forceMagnitude = -this._engineThrottle * effectiveAcceleration;
+      }
+    }
+
+    // если газ отпущен, применение активного торможения
+    if (forceMagnitude === 0 && !forward && !back) {
       const brakingForce =
         -currentForwardSpeed * this._brakingFactor * this._mass;
       forceMagnitude = brakingForce;
@@ -272,6 +276,17 @@ class Tank extends BaseModel {
       const appliedForce = forwardVec.mul(forceMagnitude);
       body.applyForceToCenter(appliedForce, true);
     }
+
+    // рассчёт нагрузки на двигатель (_engineLoad) для звука
+    const speedRatio = this._getSpeedRatio(currentForwardSpeed);
+
+    // нагрузка = намерение игрока + бонус за "напряжение"
+    // напряжение - это разница между тем, как сильно игрок жмет газ,
+    // и тем, насколько быстро танк на самом деле едет
+    const strain = Math.max(0, this._engineThrottle - speedRatio);
+
+    this._engineLoad = this._engineThrottle + strain * this._STRAIN_FACTOR;
+    this._engineLoad = Math.max(0, this._engineLoad); // Ограничиваем снизу
 
     // крутящий момент для поворота
     let torque = 0;
@@ -410,7 +425,7 @@ class Tank extends BaseModel {
         +this._body.gunRotation.toFixed(2),
         +vel.x.toFixed(1),
         +vel.y.toFixed(1),
-        this._throttleLevel,
+        +this._engineLoad.toFixed(2),
         this._condition,
       ];
     }
@@ -432,7 +447,7 @@ class Tank extends BaseModel {
       +this._body.gunRotation.toFixed(2), // угол поворота башни (радианы)
       +vel.x.toFixed(1), // скорость по x (мировая)
       +vel.y.toFixed(1), // скорость по y (мировая)
-      this._throttleLevel,
+      +this._engineLoad.toFixed(2), // нагрузка двигателя
       this._condition, // состояние танка
       this._modelData.size, // размер танка
       this.teamId, // id команды

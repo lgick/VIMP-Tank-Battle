@@ -16,28 +16,30 @@ const MIN_ENGINE_VOLUME_FACTOR = 0.9;
 const MAX_ENGINE_VOLUME_FACTOR = 1.0;
 
 /**
- * Вычисляет параметры звука двигателя на основе уровня газа.
- * @param {number} throttle - Уровень газа (от 0.0 до > 1.0).
+ * Вычисляет параметры звука двигателя на основе нагрузки на двигатель.
+ * @param {number} load - Нагрузка на двигатель (от 0.0 до > 1.0).
  * @returns {{rate: number, volumeFactor: number}} -
  * Объект со скоростью (pitch) и множителем громкости.
  */
-function calculateEngineSoundParams(throttle) {
-  // если состояние "напряжения" (танк разгоняется или встретил препятствие)
-  if (throttle > 1.0) {
-    return {
-      rate: STRAIN_ENGINE_RATE,
-      volumeFactor: MAX_ENGINE_VOLUME_FACTOR,
-    };
-  }
+function calculateEngineSoundParams(load) {
+  // load 0.0 -> холостой ход
+  // load 1.0 -> движение на полной скорости
+  // load > 1.0 -> напряжение (газ в стену)
 
-  // нормальное состояние: линейная интерполяция
-  // от холостого хода до полного газа
-  // Формула: min + (max - min) * value
-  const rate = MIN_ENGINE_RATE + (MAX_ENGINE_RATE - MIN_ENGINE_RATE) * throttle;
+  // интерполяция скорости (pitch) и громкости,
+  // разделение базовой нагрузки (до 1.0)
+  // и нагрузки от напряжения (свыше 1.0).
+  const baseLoad = Math.min(load, 1.0);
+  const strainLoad = Math.max(0, load - 1.0);
+
+  const rate =
+    MIN_ENGINE_RATE +
+    (MAX_ENGINE_RATE - MIN_ENGINE_RATE) * baseLoad +
+    (STRAIN_ENGINE_RATE - MAX_ENGINE_RATE) * strainLoad;
 
   const volumeFactor =
     MIN_ENGINE_VOLUME_FACTOR +
-    (MAX_ENGINE_VOLUME_FACTOR - MIN_ENGINE_VOLUME_FACTOR) * throttle;
+    (MAX_ENGINE_VOLUME_FACTOR - MIN_ENGINE_VOLUME_FACTOR) * baseLoad;
 
   return { rate, volumeFactor };
 }
@@ -65,12 +67,12 @@ export default class Tank extends Container {
 
     // параметры с сервера:
     // [x, y, rotation, gunRotation, vX, vY,
-    // throttleLevel, condition, size, teamId]
+    // engineLoad, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this.rotation = data[2] || 0;
     this.gun.rotation = data[3] || 0;
-    this._throttleLevel = data[6] || 0;
+    this._engineLoad = data[6] || 0;
     this._condition = data[7];
     this._size = data[8];
     this._teamId = data[9];
@@ -120,9 +122,7 @@ export default class Tank extends Container {
   }
 
   _getSoundData() {
-    const { rate, volumeFactor } = calculateEngineSoundParams(
-      this._throttleLevel,
-    );
+    const { rate, volumeFactor } = calculateEngineSoundParams(this._engineLoad);
 
     return {
       position: { x: this.x, y: this.y },
@@ -172,7 +172,7 @@ export default class Tank extends Container {
     this.y = data[1];
     this.rotation = data[2];
     this.gun.rotation = data[3];
-    this._throttleLevel = data[6];
+    this._engineLoad = data[6];
 
     // обновление звуковой логики
     if (this._soundId && this._condition > 0) {

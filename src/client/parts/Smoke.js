@@ -60,7 +60,7 @@ export default class Smoke extends Container {
     this._emitterRotation = data[2];
     this._emitterVX = data[4];
     this._emitterVY = data[5];
-    this._throttleLevel = data[6];
+    this._engineLoad = data[6];
     this._condition = data[7];
     this._size = data[8];
 
@@ -92,7 +92,7 @@ export default class Smoke extends Container {
     this._emitterRotation = data[2];
     this._emitterVX = data[4];
     this._emitterVY = data[5];
-    this._throttleLevel = data[6];
+    this._engineLoad = data[6];
     this._condition = data[7];
   }
 
