@@ -136,7 +136,6 @@ class Map {
         angle,
         linearDamping: data.linearDamping ?? 0,
         angularDamping: data.angularDamping ?? 0.01,
-        allowSleep: true,
       });
 
       body.createFixture(

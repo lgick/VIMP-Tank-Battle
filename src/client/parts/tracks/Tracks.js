@@ -6,16 +6,17 @@ export default class Tracks extends Container {
     super();
     this.zIndex = 1;
 
-    this.currentX = data[0] || 0;
-    this.currentY = data[1] || 0;
-    this.currentRotation = data[2] || 0;
-    this.condition = data[6];
-    this._size = data[7];
+    this._currentX = data[0] || 0;
+    this._currentY = data[1] || 0;
+    this._currentRotation = data[2] || 0;
+    this._engineLoad = data[6] || 0;
+    this._condition = data[7];
+    this._size = data[8];
 
     // состояние для расчета дельт и ускорений
-    this._prevX = this.currentX;
-    this._prevY = this.currentY;
-    this._prevRotation = this.currentRotation;
+    this._prevX = this._currentX;
+    this._prevY = this._currentY;
+    this._prevRotation = this._currentRotation;
     this._prevSpeed = 0; // предыдущая линейная скорость
     this._prevAngularSpeed = 0; // предыдущая угловая скорость
 
@@ -25,24 +26,24 @@ export default class Tracks extends Container {
     // двух последовательных "пачек" следов
     // чем меньше значение, тем больше кол-во следов
     // (создаст больше объектов TrackMark, может повлиять на производительность)
-    this.trackMarkCooldown = 2;
+    this._trackMarkCooldown = 2;
 
     // задержка в ms между созданием последовательных "пачек" следов
-    this.lastTrackMarkTime = 0;
+    this._lastTrackMarkTime = 0;
 
     // минимальное изменение линейной скорости, чтобы оставить след
     // скорость измеряется в пикселях за время deltaMs последнего тика
     // при уменьшении значения, следы будут появляться чаще
     // при малейшем маневрировании скоростью
     // (легкий разгон, небольшое торможение)
-    this.minAbsAccelerationForMark = 4;
+    this._minAbsAccelerationForMark = 4;
 
     // минимальная текущая угловая скорость для следов при повороте
     // рекомендуемые значения от 0.02 до 0.06
     // при уменьшении: даже медленные или плавные повороты
     // (при условии достаточной линейной скорости)
     // будут оставлять следы
-    this.minAngularSpeedForMark = 0.02;
+    this._minAngularSpeedForMark = 0.02;
 
     // минимальное изменение угловой скорости (угловое ускорение)
     // рекомендуемые значения: 0.01 - 1
@@ -50,7 +51,7 @@ export default class Tracks extends Container {
     // при небольших изменениях в скорости поворота
     // при увеличении: следы будут появляться только
     // при очень резком начале или очень резком прекращении вращения
-    this.minRotationAccelerationForMark = 0.4;
+    this._minRotationAccelerationForMark = 0.4;
 
     // минимальная линейная скорость, чтобы поворот оставлял след
     // рекомендемые значения: min: 0, max: 2
@@ -58,36 +59,37 @@ export default class Tracks extends Container {
     // при вращении на месте
     // при увеличении: танк должен заметно двигаться вперед или назад,
     // чтобы его повороты оставляли следы
-    this.minSpeedForRotationMarks = 1.4;
+    this._minSpeedForRotationMarks = 1.4;
 
     // визуальные параметры следов
 
     // ширина одного сегмента следа
-    this.trackWidth = this._size * 0.4;
+    this._trackWidth = this._size * 0.4;
 
     // длина одного сегмента следа
-    this.trackLength = this._size * 0.5;
+    this._trackLength = this._size * 0.5;
 
     const tankHeight = this._size * 3;
 
     // расстояние от центральной линии танка до центра каждого из двух следов
-    this.trackOffset = (tankHeight / 2) * 0.7;
+    this._trackOffset = (tankHeight / 2) * 0.7;
 
     // смещение назад точки появления следов от центра танка
-    this.backwardOffset = tankHeight * 0.4;
+    this._backwardOffset = tankHeight * 0.4;
 
     // начальная прозрачность следа (от 0 до 1), когда он только появляется
-    this.trackInitialAlpha = 0.4;
+    this._trackInitialAlpha = 0.4;
 
     this._tickListener = ticker => this._internalUpdate(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
   }
 
   update(data) {
-    this.currentX = data[0];
-    this.currentY = data[1];
-    this.currentRotation = data[2];
-    this.condition = data[6];
+    this._currentX = data[0];
+    this._currentY = data[1];
+    this._currentRotation = data[2];
+    this._engineLoad = data[6];
+    this._condition = data[7];
   }
 
   _internalUpdate(deltaMs) {
@@ -110,13 +112,13 @@ export default class Tracks extends Container {
     }
 
     // текущие скорости
-    const deltaX = this.currentX - this._prevX;
-    const deltaY = this.currentY - this._prevY;
+    const deltaX = this._currentX - this._prevX;
+    const deltaY = this._currentY - this._prevY;
 
     // текущая линейная скорость (пикселей за время deltaMs)
     const currentSpeed = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    let rotationDiff = this.currentRotation - this._prevRotation;
+    let rotationDiff = this._currentRotation - this._prevRotation;
 
     while (rotationDiff > Math.PI) {
       rotationDiff -= 2 * Math.PI;
@@ -143,11 +145,11 @@ export default class Tracks extends Container {
 
     // логика принятия решения об оставлении следа
     if (
-      this.condition !== 0 &&
-      currentTime - this.lastTrackMarkTime > this.trackMarkCooldown
+      this._condition !== 0 &&
+      currentTime - this._lastTrackMarkTime > this._trackMarkCooldown
     ) {
       // если резкое изменение линейной скорости (ускорение или торможение)
-      if (absAcceleration > this.minAbsAccelerationForMark) {
+      if (absAcceleration > this._minAbsAccelerationForMark) {
         shouldLeaveMark = true;
       }
 
@@ -155,25 +157,31 @@ export default class Tracks extends Container {
       // ИЛИ высокое угловое ускорение)
       // и при этом есть минимальное движение вперед,
       // чтобы не рисовать следы при вращении на месте.
-      if (currentSpeed > this.minSpeedForRotationMarks) {
+      if (currentSpeed > this._minSpeedForRotationMarks) {
         if (
-          currentAngularSpeed > this.minAngularSpeedForMark ||
-          absAngularAcceleration > this.minRotationAccelerationForMark
+          currentAngularSpeed > this._minAngularSpeedForMark ||
+          absAngularAcceleration > this._minRotationAccelerationForMark
         ) {
           shouldLeaveMark = true;
         }
       }
     }
 
+    // если танк газует, будучи застрявшим (состояние напряжения)
+    // engineLoad > 1.0 означает напряжение (strain)
+    if (this._engineLoad > 1.0) {
+      shouldLeaveMark = true;
+    }
+
     if (shouldLeaveMark) {
       this.createTrackMarksAtPreviousPosition();
-      this.lastTrackMarkTime = currentTime;
+      this._lastTrackMarkTime = currentTime;
     }
 
     // сохранение текущих значений как предыдущих для следующего вызова
-    this._prevX = this.currentX;
-    this._prevY = this.currentY;
-    this._prevRotation = this.currentRotation;
+    this._prevX = this._currentX;
+    this._prevY = this._currentY;
+    this._prevRotation = this._currentRotation;
     this._prevSpeed = currentSpeed;
     this._prevAngularSpeed = currentAngularSpeed;
   }
@@ -181,14 +189,14 @@ export default class Tracks extends Container {
   createTrackMarksAtPreviousPosition() {
     for (let i = -1; i <= 1; i += 2) {
       const sideOffsetX =
-        Math.cos(this._prevRotation + Math.PI / 2) * this.trackOffset * i;
+        Math.cos(this._prevRotation + Math.PI / 2) * this._trackOffset * i;
       const sideOffsetY =
-        Math.sin(this._prevRotation + Math.PI / 2) * this.trackOffset * i;
+        Math.sin(this._prevRotation + Math.PI / 2) * this._trackOffset * i;
 
       const backwardComponentX =
-        -Math.cos(this._prevRotation) * this.backwardOffset;
+        -Math.cos(this._prevRotation) * this._backwardOffset;
       const backwardComponentY =
-        -Math.sin(this._prevRotation) * this.backwardOffset;
+        -Math.sin(this._prevRotation) * this._backwardOffset;
 
       const markX = this._prevX + sideOffsetX + backwardComponentX;
       const markY = this._prevY + sideOffsetY + backwardComponentY;
@@ -197,9 +205,9 @@ export default class Tracks extends Container {
         markX,
         markY,
         this._prevRotation,
-        this.trackWidth,
-        this.trackLength,
-        this.trackInitialAlpha,
+        this._trackWidth,
+        this._trackLength,
+        this._trackInitialAlpha,
         this._assets.trackMarkTexture,
       );
 
