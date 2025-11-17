@@ -51,17 +51,18 @@ export default class Smoke extends Container {
     this.zIndex = 4;
 
     // ассет для частиц дыма
-    this.smokeTexture = assets.smokeTexture;
+    this._smokeTexture = assets.smokeTexture;
 
     // параметры с сервера:
     // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
-    this.emitterX = data[0];
-    this.emitterY = data[1];
-    this.emitterRotation = data[2];
-    this.emitterVX = data[4];
-    this.emitterVY = data[5];
-    this.condition = data[6];
-    this._size = data[7];
+    this._emitterX = data[0];
+    this._emitterY = data[1];
+    this._emitterRotation = data[2];
+    this._emitterVX = data[4];
+    this._emitterVY = data[5];
+    this._engineLoad = data[6];
+    this._condition = data[7];
+    this._size = data[8];
 
     // соотношение сторон танка: 4(width):3(height)
     this._width = this._size * 4;
@@ -70,28 +71,29 @@ export default class Smoke extends Container {
     // коэффициент масштаба на основе площади.
     // Используем sqrt для менее резкого масштабирования
     // Math.max чтобы размер не был слишком маленьким для очень мелких танков
-    this.particleScaleMultiplier = Math.max(
+    this._particleScaleMultiplier = Math.max(
       0.5,
       Math.sqrt(this._width * this._height * 0.001),
     );
 
-    this.particles = [];
-    this.particleContainer = new Container();
-    this.addChild(this.particleContainer);
+    this._particles = [];
+    this._particleContainer = new Container();
+    this.addChild(this._particleContainer);
 
-    this.timeSinceLastSpawn = 0;
+    this._timeSinceLastSpawn = 0;
 
     this._tickListener = ticker => this._updateParticles(ticker.deltaMS);
     Ticker.shared.add(this._tickListener);
   }
 
   update(data) {
-    this.emitterX = data[0];
-    this.emitterY = data[1];
-    this.emitterRotation = data[2];
-    this.emitterVX = data[4];
-    this.emitterVY = data[5];
-    this.condition = data[6];
+    this._emitterX = data[0];
+    this._emitterY = data[1];
+    this._emitterRotation = data[2];
+    this._emitterVX = data[4];
+    this._emitterVY = data[5];
+    this._engineLoad = data[6];
+    this._condition = data[7];
   }
 
   _updateParticles(deltaMs) {
@@ -102,18 +104,18 @@ export default class Smoke extends Container {
     const deltaTime = deltaMs / 1000.0; // время в секундах
 
     // спавн новых частиц
-    this.timeSinceLastSpawn += deltaMs;
+    this._timeSinceLastSpawn += deltaMs;
 
     // определяем количество потоков
     let numStreams = 1;
 
-    if (this.condition === 1) {
+    if (this._condition === 1) {
       numStreams = 2;
-    } else if (this.condition === 0) {
+    } else if (this._condition === 0) {
       numStreams = 3;
     }
 
-    const spawnRate = SMOKE_CONFIG.particleSpawnRate[this.condition];
+    const spawnRate = SMOKE_CONFIG.particleSpawnRate[this._condition];
     // интервал определяет, как часто происходит "пачка" спавна
     // (для всех потоков сразу)
     const spawnInterval = 1000.0 / spawnRate;
@@ -121,25 +123,25 @@ export default class Smoke extends Container {
     //let spawnedThisFrame = 0;
 
     // если пора спавнить, спавним частицы для каждого потока
-    while (this.timeSinceLastSpawn >= spawnInterval) {
+    while (this._timeSinceLastSpawn >= spawnInterval) {
       for (let i = 0; i < numStreams; i++) {
         this.spawnParticle(i, numStreams);
       }
 
-      this.timeSinceLastSpawn -= spawnInterval;
+      this._timeSinceLastSpawn -= spawnInterval;
       //spawnedThisFrame += numStreams;
     }
 
     // обновление существующих частиц
-    for (let i = this.particles.length - 1; i >= 0; i -= 1) {
-      const particle = this.particles[i];
+    for (let i = this._particles.length - 1; i >= 0; i -= 1) {
+      const particle = this._particles[i];
 
       particle.age += deltaMs;
 
       if (particle.age >= particle.lifetime) {
-        this.particleContainer.removeChild(particle.graphics);
+        this._particleContainer.removeChild(particle.graphics);
         particle.graphics.destroy();
-        this.particles.splice(i, 1);
+        this._particles.splice(i, 1);
         continue;
       }
 
@@ -163,7 +165,7 @@ export default class Smoke extends Container {
         lifeProgress,
       );
 
-      const currentScale = currentSizeFactor * this.particleScaleMultiplier;
+      const currentScale = currentSizeFactor * this._particleScaleMultiplier;
 
       particle.graphics.x = particle.x;
       particle.graphics.y = particle.y;
@@ -180,11 +182,11 @@ export default class Smoke extends Container {
       SMOKE_CONFIG.particleLifetime.max,
     );
     const startSizeFactor =
-      SMOKE_CONFIG.particleStartSizeFactor[this.condition];
-    const endSizeFactor = SMOKE_CONFIG.particleEndSizeFactor[this.condition];
+      SMOKE_CONFIG.particleStartSizeFactor[this._condition];
+    const endSizeFactor = SMOKE_CONFIG.particleEndSizeFactor[this._condition];
     const startAlpha = SMOKE_CONFIG.particleStartAlpha;
     const endAlpha = SMOKE_CONFIG.particleEndAlpha;
-    const angle = this.emitterRotation;
+    const angle = this._emitterRotation;
     const cosAngle = Math.cos(angle);
     const sinAngle = Math.sin(angle);
 
@@ -208,8 +210,8 @@ export default class Smoke extends Container {
     const rotatedOffsetX = localOffsetX * cosAngle - localOffsetY * sinAngle;
     const rotatedOffsetY = localOffsetX * sinAngle + localOffsetY * cosAngle;
 
-    const spawnX = this.emitterX + rotatedOffsetX;
-    const spawnY = this.emitterY + rotatedOffsetY;
+    const spawnX = this._emitterX + rotatedOffsetX;
+    const spawnY = this._emitterY + rotatedOffsetY;
 
     // расчет начальной скорости с учетом вращения
     const speedAway = randomRange(
@@ -237,14 +239,14 @@ export default class Smoke extends Container {
     const initialVX =
       baseVX +
       varianceVX +
-      this.emitterVX * SMOKE_CONFIG.emitterMovementInfluence;
+      this._emitterVX * SMOKE_CONFIG.emitterMovementInfluence;
     const initialVY =
       baseVY +
       varianceVY +
-      this.emitterVY * SMOKE_CONFIG.emitterMovementInfluence;
+      this._emitterVY * SMOKE_CONFIG.emitterMovementInfluence;
 
     // создание графики и объекта частицы
-    const graphics = new Sprite(this.smokeTexture);
+    const graphics = new Sprite(this._smokeTexture);
     graphics.anchor.set(0.5);
     graphics.tint = SMOKE_CONFIG.particleColor;
 
@@ -252,8 +254,8 @@ export default class Smoke extends Container {
     graphics.y = spawnY;
     graphics.alpha = startAlpha;
 
-    // начальный масштаб будет startSizeFactor * this.particleScaleMultiplier
-    const initialScale = startSizeFactor * this.particleScaleMultiplier;
+    // начальный масштаб будет startSizeFactor * this._particleScaleMultiplier
+    const initialScale = startSizeFactor * this._particleScaleMultiplier;
     graphics.scale.set(initialScale);
 
     const particle = {
@@ -270,8 +272,8 @@ export default class Smoke extends Container {
       endAlpha,
     };
 
-    this.particleContainer.addChild(graphics);
-    this.particles.push(particle);
+    this._particleContainer.addChild(graphics);
+    this._particles.push(particle);
   }
 
   _stopTimer() {
@@ -285,14 +287,14 @@ export default class Smoke extends Container {
     this._stopTimer();
 
     // уничтожаем частицы, если они еще остались
-    for (let i = this.particles.length - 1; i >= 0; i -= 1) {
-      this.particleContainer.removeChild(this.particles[i].graphics);
-      this.particles[i].graphics.destroy();
+    for (let i = this._particles.length - 1; i >= 0; i -= 1) {
+      this._particleContainer.removeChild(this._particles[i].graphics);
+      this._particles[i].graphics.destroy();
     }
 
-    this.particles = [];
+    this._particles = [];
 
-    this.particleContainer.destroy({
+    this._particleContainer.destroy({
       children: true,
       texture: false, // текстуры общие
       baseTexture: false,

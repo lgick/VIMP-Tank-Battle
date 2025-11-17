@@ -1,5 +1,49 @@
 import { Container, Sprite } from 'pixi.js';
 
+// скорость (высота тона) на холостом ходу
+const MIN_ENGINE_RATE = 1;
+
+// скорость при движении
+const MAX_ENGINE_RATE = 1.1;
+
+// повышенная скорость при напряжении (газ в стену)
+const STRAIN_ENGINE_RATE = 1.18;
+
+// множитель громкости на холостом ходу (90% от базовой)
+const MIN_ENGINE_VOLUME_FACTOR = 0.9;
+
+// множитель на полном ходу (100% от базовой)
+const MAX_ENGINE_VOLUME_FACTOR = 1.0;
+
+/**
+ * Вычисляет параметры звука двигателя на основе нагрузки на двигатель.
+ * @param {number} load - Нагрузка на двигатель (от 0.0 до > 1.0).
+ * @returns {{rate: number, volumeFactor: number}} -
+ * Объект со скоростью (pitch) и множителем громкости.
+ */
+function calculateEngineSoundParams(load) {
+  // load 0.0 -> холостой ход
+  // load 1.0 -> движение на полной скорости
+  // load > 1.0 -> напряжение (газ в стену)
+
+  // интерполяция скорости (pitch) и громкости,
+  // разделение базовой нагрузки (до 1.0)
+  // и нагрузки от напряжения (свыше 1.0).
+  const baseLoad = Math.min(load, 1.0);
+  const strainLoad = Math.max(0, load - 1.0);
+
+  const rate =
+    MIN_ENGINE_RATE +
+    (MAX_ENGINE_RATE - MIN_ENGINE_RATE) * baseLoad +
+    (STRAIN_ENGINE_RATE - MAX_ENGINE_RATE) * strainLoad;
+
+  const volumeFactor =
+    MIN_ENGINE_VOLUME_FACTOR +
+    (MAX_ENGINE_VOLUME_FACTOR - MIN_ENGINE_VOLUME_FACTOR) * baseLoad;
+
+  return { rate, volumeFactor };
+}
+
 export default class Tank extends Container {
   constructor(data, assets, dependencies) {
     super();
@@ -22,14 +66,16 @@ export default class Tank extends Container {
     this._textures = assets.tankTexture;
 
     // параметры с сервера:
-    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
+    // [x, y, rotation, gunRotation, vX, vY,
+    // engineLoad, condition, size, teamId]
     this.x = data[0] || 0;
     this.y = data[1] || 0;
     this.rotation = data[2] || 0;
     this.gun.rotation = data[3] || 0;
-    this._condition = data[6];
-    this._size = data[7];
-    this._teamId = data[8];
+    this._engineLoad = data[6] || 0;
+    this._condition = data[7];
+    this._size = data[8];
+    this._teamId = data[9];
 
     // правильный якорь для пушки в зависимости от команды
     const liveTextures =
@@ -55,9 +101,9 @@ export default class Tank extends Container {
 
     this._soundManager = dependencies.soundManager;
     this._soundId = null;
-    this._speedRatio = 0;
 
-    this._maxSpeed = 240; // максимальная скорость, соответствует серверной
+    const engineConfig = this._soundManager.getSoundConfig('tankEngine') || {};
+    this._baseEngineVolume = engineConfig.volume || 0;
 
     // первоначальная установка визуального состояния
     this.create();
@@ -76,10 +122,12 @@ export default class Tank extends Container {
   }
 
   _getSoundData() {
+    const { rate, volumeFactor } = calculateEngineSoundParams(this._engineLoad);
+
     return {
       position: { x: this.x, y: this.y },
-      rate: 1.0 + this._speedRatio * 0.1,
-      volume: 0.3 + 0.5 * this._speedRatio,
+      rate,
+      volume: this._baseEngineVolume * volumeFactor,
     };
   }
 
@@ -124,19 +172,15 @@ export default class Tank extends Container {
     this.y = data[1];
     this.rotation = data[2];
     this.gun.rotation = data[3];
+    this._engineLoad = data[6];
 
     // обновление звуковой логики
     if (this._soundId && this._condition > 0) {
-      const vX = data[4] || 0;
-      const vY = data[5] || 0;
-      const currentSpeed = Math.hypot(vX, vY);
-
-      this._speedRatio = Math.min(currentSpeed / this._maxSpeed, 1.0);
       this._soundManager.updateSoundData(this._soundId, this._getSoundData());
     }
 
-    const newCondition = data[6];
-    const teamId = data[8];
+    const newCondition = data[7];
+    const teamId = data[9];
 
     let needsVisualChange = false;
 
