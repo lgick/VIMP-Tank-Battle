@@ -1,0 +1,230 @@
+name: Multi-Server Build & Deploy
+
+on:
+  push:
+    branches: ['master']
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  # ========================================
+  # 1. BUILD (Сборка Docker образа)
+  # ========================================
+
+  build_and_push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ========================================
+  # 2. PREPARE MATRIX (JSON файл)
+  # ========================================
+
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      # экспорт переменной 'servers' для использования в других Jobs
+      servers: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        name: Read servers.json
+        run: |
+          # jq для сжатия JSON в одну строку, иначе GitHub не примет
+          # .github/deployment/servers.json — путь к вашему файлу
+          JSON=$(jq -c . .github/deployment/servers.json)
+          echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+          echo "Loaded server list: $JSON"
+
+  # ========================================
+  # 3. DEPLOY (Динамическая матрица)
+  # ========================================
+
+  deploy:
+    # ожидание завершения билда и подготовки списка серверов
+    needs: [build_and_push, prepare-matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-matrix.outputs.servers) }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Подготовка Nginx (Template)
+      - name: Prepare Nginx Config
+        shell: bash
+        env:
+          VIMP_DOMAIN: ${{ matrix.domain }}
+          VIMP_PORT: ${{ matrix.port }}
+        run: |
+          export VIMP_DOMAIN VIMP_PORT
+          # имя уникального файла
+          CONF_NAME="nginx_${VIMP_DOMAIN}.conf"
+
+          # замена переменных в шаблоне
+          envsubst '${VIMP_DOMAIN} ${VIMP_PORT}' < .github/deployment/nginx.conf > "$CONF_NAME"
+          echo "Created config file: $CONF_NAME"
+
+      # 2. Копирование файлов (SCP)
+      - name: Copy Nginx Config to Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ matrix.ip }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: ${{ format('nginx_{0}.conf', matrix.domain) }}
+          # копирование в /tmp/
+          target: '/tmp/'
+
+      # 3. Деплой по SSH
+      - name: Deploy to ${{ matrix.domain }} via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          VIMP_DOMAIN: ${{ matrix.domain }}
+          VIMP_PORT: ${{ matrix.port }}
+          VIMP_PLAYERS: ${{ matrix.players }}
+        with:
+          host: ${{ matrix.ip }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: IMAGE_NAME,VIMP_DOMAIN,VIMP_PORT,VIMP_PLAYERS
+          script: |
+
+            # -------------------------------------
+            # A. DOCKER
+            # -------------------------------------
+
+            PROJECT_DIR="$HOME/vimp_projects/${VIMP_DOMAIN}"
+            echo "📂 Deploying to: $PROJECT_DIR"
+
+            mkdir -p "$PROJECT_DIR"
+            cd "$PROJECT_DIR"
+
+            echo "📄 Generating .env.prod..."
+
+            {
+              echo "NODE_ENV=production"
+              echo "VIMP_DOMAIN=${VIMP_DOMAIN}"
+              echo "VIMP_PORT=${VIMP_PORT}"
+              echo "VIMP_PLAYERS=${VIMP_PLAYERS}"
+            } > .env.prod
+
+            echo "🐳 Generating docker-compose.yml..."
+
+            {
+              echo "services:"
+              echo "  game:"
+              echo "    image: $IMAGE_NAME:latest"
+              echo "    container_name: \"vimp-${VIMP_DOMAIN}\""
+              echo "    restart: always"
+              echo "    env_file: .env.prod"
+              echo "    ports:"
+              echo "      - \"127.0.0.1:${VIMP_PORT}:${VIMP_PORT}\""
+            } > docker-compose.yml
+
+            echo "🚀 Restarting Docker..."
+
+            docker compose down || true
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
+            # -------------------------------------
+            # B. NGINX & SSL AUTO-CONFIG
+            # -------------------------------------
+
+            UPLOADED_CONF="/tmp/nginx_${VIMP_DOMAIN}.conf"
+            DEST_CONF="/etc/nginx/sites-available/${VIMP_DOMAIN}.conf"
+            SSL_DIR="/etc/letsencrypt/live/${VIMP_DOMAIN}"
+
+            # проверка отсутствия SSL (для первого запуска)
+            if [ ! -f "$SSL_DIR/fullchain.pem" ]; then
+                echo "⚠️ SSL missing. Starting Auto-Issuance sequence..."
+
+                echo "   👉 Applying temporary HTTP config..."
+
+                {
+                  echo "server {"
+                  echo "  listen 80;"
+                  echo "  server_name ${VIMP_DOMAIN};"
+                  echo "  location / {"
+                  echo "    return 200 \"OK\";"
+                  echo "  }"
+                  echo "}"
+                } > temp_http.conf
+
+                sudo mv temp_http.conf "$DEST_CONF"
+                sudo ln -sf "$DEST_CONF" /etc/nginx/sites-enabled/
+
+                # reload для открытия 80 порта для Certbot
+                sudo nginx -t && sudo systemctl reload nginx
+
+                echo "   👉 Running Certbot..."
+                sudo certbot certonly --nginx \
+                  -d "${VIMP_DOMAIN}" \
+                  --non-interactive \
+                  --agree-tos \
+                  -m "admin@${VIMP_DOMAIN}" \
+                  --redirect=false
+
+                if [ -f "$SSL_DIR/fullchain.pem" ]; then
+                   echo "✅ Certificate issued successfully!"
+                else
+                   echo "❌ Certbot failed."
+                fi
+            else
+                echo "✅ SSL exists. Skipping generation."
+            fi
+
+            # финальный конфиг
+            if [ -f "$SSL_DIR/fullchain.pem" ]; then
+                echo "🚀 Applying Full HTTPS Configuration..."
+
+                if [ -f "$UPLOADED_CONF" ]; then
+                   sudo mv "$UPLOADED_CONF" "$DEST_CONF"
+                else
+                   echo "❌ Error: Uploaded config not found at $UPLOADED_CONF"
+                   exit 1
+                fi
+            else
+                echo "⚠️ SSL still missing. Website will remain on HTTP."
+                # удаление загруженного HTTPS конфига
+                [ -f "$UPLOADED_CONF" ] && rm "$UPLOADED_CONF"
+            fi
+
+            sudo ln -sf "$DEST_CONF" /etc/nginx/sites-enabled/
+
+            # -------------------------------------
+            # C. FINAL RELOAD & CLEANUP
+            # -------------------------------------
+
+            # очистка временного файла конфига
+            rm -f "$UPLOADED_CONF"
+
+            if sudo nginx -t; then
+                echo "✅ Final Nginx Reload."
+                sudo systemctl reload nginx
+            else
+                echo "❌ Final Nginx Config Failed!"
+                exit 1
+            fi

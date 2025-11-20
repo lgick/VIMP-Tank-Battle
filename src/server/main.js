@@ -117,7 +117,7 @@ if (isProduction) {
 }
 
 // для продакшена localhost, чтобы сервер не был доступен извне напрямую
-const host = isProduction ? '127.0.0.1' : undefined;
+const host = isProduction ? '0.0.0.0' : undefined;
 
 server.listen(port, host, () => {
   const protocol = isProduction ? 'http:' : 'https:';
