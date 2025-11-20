@@ -1,0 +1,14 @@
+[
+  {
+    "ip": "64.188.125.213",
+    "domain": "test2.vimp.lgick.space",
+    "port": "3005",
+    "players": "3"
+  },
+  {
+    "ip": "64.188.125.213",
+    "domain": "test.vimp.lgick.space",
+    "port": "3006",
+    "players": "2"
+  }
+]
