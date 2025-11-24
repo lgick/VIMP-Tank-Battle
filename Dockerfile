@@ -44,10 +44,10 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
 
 # сервер
-COPY --from=builder /app/src/server ./src/server
 COPY --from=builder /app/src/config ./src/config
-COPY --from=builder /app/src/lib ./src/lib
 COPY --from=builder /app/src/data ./src/data
+COPY --from=builder /app/src/lib ./src/lib
+COPY --from=builder /app/src/server ./src/server
 
 ENV NODE_ENV=production
 
