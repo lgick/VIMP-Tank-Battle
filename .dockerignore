@@ -1,0 +1,41 @@
+# =========================
+# Node & Build Artifacts
+# =========================
+node_modules
+dist
+build
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Git
+# =========================
+.git
+.gitignore
+
+# =========================
+# Editors & System Files
+# =========================
+.vscode
+.idea
+.DS_Store
+
+# =========================
+# Environment
+# =========================
+.env
+.env.local
+.env.development
+.env.test
+
+# игнорировать все env кроме prod:
+.env.*
+!.env.prod
+
+# =========================
+# Docker & CI
+# =========================
+.dockerignore
+.github/*
