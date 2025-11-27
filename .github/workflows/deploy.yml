@@ -21,7 +21,7 @@ jobs:
 
       - name: Lowercase Image Name
         run: |
-          echo "IMAGE_NAME=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
@@ -75,7 +75,7 @@ jobs:
     steps:
       - name: Lowercase Image Name for Deploy
         run: |
-          echo "IMAGE_NAME=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
