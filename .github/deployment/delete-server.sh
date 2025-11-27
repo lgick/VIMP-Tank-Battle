@@ -1,105 +1,111 @@
 #!/bin/bash
 # ====================================================
-# delete-server.sh (SAFE VERSION)
+# delete-server.sh
 # Удаляет игровые серверы VIMP.
 # ====================================================
 
 echo "=================================================="
-echo "   🗑️  VIMP SERVER DELETION TOOL"
+echo "           🗑️ УДАЛЕНИЕ СЕРВЕРА VIMP               "
 echo "=================================================="
 
-# Папка, где лежат проекты игр
+# Папка, где находятся игровые проекты
 PROJECTS_ROOT="$HOME/vimp_projects"
 
-# 1. Собираем список валидных VIMP-серверов
-# Логика: Берем конфиги Nginx И проверяем, есть ли для них папка проекта.
+# ----------------------------------------------------
+# 1. Поиск существующих серверов VIMP
+# ----------------------------------------------------
+# Логика: берём конфиги Nginx и проверяем, есть ли для них папки проектов.
 RAW_SITES=$(ls /etc/nginx/sites-enabled/ | grep -v "default")
 VIMP_SITES=""
 
 for site in $RAW_SITES; do
   if [ -d "$PROJECTS_ROOT/$site" ]; then
-    # Это наш клиент!
     VIMP_SITES="$VIMP_SITES $site"
   fi
 done
 
-# Если список пуст
+# Если серверов нет
 if [ -z "$VIMP_SITES" ]; then
-  echo "❌ No VIMP game servers found."
-  echo "   (Checked Nginx configs matching folders in $PROJECTS_ROOT)"
+  echo "❌ Игровых серверов VIMP не найдено."
+  echo "   (Проверено: конфиги Nginx + наличие папок в $PROJECTS_ROOT)"
   exit 0
 fi
 
-# 2. Меню выбора
-PS3="👉 Select a server to DELETE (enter number): "
-select DOMAIN in $VIMP_SITES "Cancel"; do
-  if [[ "$DOMAIN" == "Cancel" ]]; then
-    echo "Action cancelled."
+# ----------------------------------------------------
+# 2. Меню выбора сервера
+# ----------------------------------------------------
+PS3="👉 Выберите сервер для УДАЛЕНИЯ (введите номер): "
+select DOMAIN in $VIMP_SITES "Отмена"; do
+  if [[ "$DOMAIN" == "Отмена" ]]; then
+    echo "Действие отменено."
     exit 0
+
   elif [[ -n "$DOMAIN" ]]; then
     echo ""
-    echo "🚨 WARNING: You are about to DELETE VIMP server: $DOMAIN"
-    echo "   This will remove:"
-    echo "   - Nginx configuration (/etc/nginx/sites-enabled/$DOMAIN)"
-    echo "   - SSL Certificates (via Certbot)"
-    echo "   - Docker Container (vimp-$DOMAIN)"
-    echo "   - Project files ($PROJECTS_ROOT/$DOMAIN)"
+    echo "🚨 ВНИМАНИЕ! Вы собираетесь удалить сервер VIMP: $DOMAIN"
+    echo "   Будет выполнено удаление:"
+    echo "   - Конфига Nginx  (/etc/nginx/sites-enabled/$DOMAIN)"
+    echo "   - SSL-сертификатов (через Certbot)"
+    echo "   - Docker-контейнера (vimp-$DOMAIN)"
+    echo "   - Папки проекта ($PROJECTS_ROOT/$DOMAIN)"
     echo ""
-    read -p "Are you sure? Type 'yes' to confirm: " CONFIRM
+    read -p "Для подтверждения введите 'yes': " CONFIRM
 
     if [[ "$CONFIRM" == "yes" ]]; then
       break
     else
-      echo "❌ Cancelled."
+      echo "❌ Удаление отменено."
       exit 0
     fi
+
   else
-    echo "Invalid selection."
+    echo "Неверный выбор. Попробуйте снова."
   fi
 done
 
 echo ""
-echo "🔥 Deleting $DOMAIN..."
+echo "🔥 Удаление сервера: $DOMAIN..."
 
 # ----------------------------------------------------
 # 1. Docker
 # ----------------------------------------------------
 CONTAINER_NAME="vimp-$DOMAIN"
-echo "🐳 Stopping Docker container: $CONTAINER_NAME..."
+echo "🐳 Остановка Docker-контейнера: $CONTAINER_NAME..."
 docker stop "$CONTAINER_NAME" 2>/dev/null || true
 docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
 # ----------------------------------------------------
-# 2. Files
+# 2. Папка проекта
 # ----------------------------------------------------
 TARGET_DIR="$PROJECTS_ROOT/$DOMAIN"
 if [ -d "$TARGET_DIR" ]; then
-  echo "📂 Removing project directory: $TARGET_DIR..."
+  echo "📂 Удаление папки проекта: $TARGET_DIR..."
   rm -rf "$TARGET_DIR"
 fi
 
 # ----------------------------------------------------
-# 3. Nginx Configs
+# 3. Конфиги Nginx
 # ----------------------------------------------------
-echo "🌐 Removing Nginx configurations..."
+echo "🌐 Удаление конфигураций Nginx..."
 sudo rm -f /etc/nginx/sites-enabled/$DOMAIN
 sudo rm -f /etc/nginx/sites-available/$DOMAIN
 
 # ----------------------------------------------------
-# 4. SSL Certs
+# 4. SSL сертификаты
 # ----------------------------------------------------
-echo "🔐 Removing SSL certificates..."
-sudo certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null || echo "   ⚠️  Certbot check skipped (cert might be gone)."
+echo "🔐 Удаление SSL-сертификатов..."
+sudo certbot delete --cert-name "$DOMAIN" --non-interactive 2>/dev/null \
+  || echo "   ⚠️  Certbot: сертификат не найден или уже удалён."
 
 # ----------------------------------------------------
-# 5. Reload
+# 5. Перезагрузка Nginx
 # ----------------------------------------------------
-echo "🔄 Reloading Nginx..."
+echo "🔄 Перезагрузка Nginx..."
 if sudo nginx -t; then
   sudo systemctl reload nginx
-  echo "✅ SUCCESS! Server $DOMAIN has been deleted."
-  echo "👉 Don't forget to remove it from servers.json in your repository!"
+  echo "✅ ГОТОВО! Сервер $DOMAIN успешно удалён."
+  echo "👉 Не забудьте удалить его из servers.json в репозитории!"
 else
-  echo "❌ Error reloading Nginx. Config check failed."
+  echo "❌ Ошибка: некорректная конфигурация Nginx."
   sudo nginx -t
 fi
