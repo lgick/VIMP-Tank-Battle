@@ -1,0 +1,150 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: ['master']
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  # ====================================================
+  # 1. СБОРКА И ПУБЛИКАЦИЯ ОБРАЗА
+  # ====================================================
+  build_and_push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+          # Кэширование (ускоряет сборку)
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ====================================================
+  # 2. ПОДГОТОВКА СПИСКА СЕРВЕРОВ
+  # ====================================================
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      servers: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        run: |
+          # servers.json в строку для матрицы GitHub
+          JSON=$(jq -c . .github/deployment/servers.json)
+          echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+
+  # ====================================================
+  # 3. ДЕПЛОЙ НА КАЖДЫЙ СЕРВЕР
+  # ====================================================
+  deploy:
+    needs: [build_and_push, prepare-matrix]
+    runs-on: ubuntu-latest
+    strategy:
+      # Если один сервер упал/не настроен, остальные продолжат обновляться
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-matrix.outputs.servers) }}
+
+    steps:
+      - name: Deploy to ${{ matrix.domain }}
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          # Переменные из servers.json
+          VIMP_DOMAIN: ${{ matrix.domain }}
+          VIMP_PORT: ${{ matrix.port }}
+          VIMP_PLAYERS: ${{ matrix.players }}
+          VIMP_MAP: ${{ matrix.map }}
+          VIMP_ROUND_TIME: ${{ matrix.round_time }}
+          VIMP_MAP_TIME: ${{ matrix.map_time }}
+          VIMP_FRIENDLY_FIRE: ${{ matrix.friendly_fire }}
+        with:
+          host: ${{ matrix.ip }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          # Передача переменных окружения внутрь скрипта SSH
+          envs: IMAGE_NAME,VIMP_DOMAIN,VIMP_PORT,VIMP_PLAYERS,VIMP_MAP,VIMP_ROUND_TIME,VIMP_MAP_TIME,VIMP_FRIENDLY_FIRE
+          script: |
+            # Остановка выполнения при любой критической ошибке
+            set -e
+
+            PROJECT_DIR="$HOME/vimp_projects/${VIMP_DOMAIN}"
+
+            echo "🔍 Checking status for ${VIMP_DOMAIN}..."
+
+            # Если папки нет, значит сервер не был настроен через add-server.sh.
+            # Пропуск деплоя, но выход с кодом 0 (Success), чтобы пайплайн остался зеленым.
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "========================================================"
+              echo "⚠️  SKIP: Server is not configured on VPS."
+              echo "   Directory '$PROJECT_DIR' does not exist."
+              echo "   Run './add-server.sh' on the server to setup first."
+              echo "========================================================"
+              exit 0
+            fi
+            # -----------------------
+
+            cd "$PROJECT_DIR"
+
+            echo "📄 Generating .env config..."
+
+            {
+              echo "NODE_ENV=production"
+              echo "VIMP_DOMAIN=$VIMP_DOMAIN"
+
+              # Опциональные настройки
+              [ -n "$VIMP_PLAYERS" ]       && echo "VIMP_PLAYERS=$VIMP_PLAYERS"
+              [ -n "$VIMP_MAP" ]           && echo "VIMP_MAP=$VIMP_MAP"
+              [ -n "$VIMP_ROUND_TIME" ]    && echo "VIMP_ROUND_TIME=$VIMP_ROUND_TIME"
+              [ -n "$VIMP_MAP_TIME" ]      && echo "VIMP_MAP_TIME=$VIMP_MAP_TIME"
+              [ -n "$VIMP_FRIENDLY_FIRE" ] && echo "VIMP_FRIENDLY_FIRE=$VIMP_FRIENDLY_FIRE"
+            } > .env.prod
+
+
+            echo "🐳 Generating docker-compose.yml..."
+            # Конфиг Docker.
+            # container_name должен быть уникальным для каждого домена.
+            # ports: 127.0.0.1 - чтобы порт был закрыт снаружи (безопасность).
+            {
+              echo "services:"
+              echo "  game:"
+              echo "    image: $IMAGE_NAME:latest"
+              echo "    container_name: \"vimp-${VIMP_DOMAIN}\""
+              echo "    restart: always"
+              echo "    env_file: .env.prod"
+              echo "    ports:"
+              # СЛЕВА: Порт на сервере (уникальный из JSON, например 3005)
+              # СПРАВА: Порт внутри контейнера (всегда 3000)
+              echo "      - \"127.0.0.1:${VIMP_PORT}:3000\""
+            } > docker-compose.yml
+
+            echo "🚀 Pulling and Restarting..."
+
+            # Обновление образа
+            docker compose pull
+
+            # Пересоздание контейнера (удалит старый и запустит новый)
+            docker compose up -d --force-recreate --remove-orphans
+
+            # Чистка старых неиспользуемых образов, чтобы не забивать диск
+            docker image prune -f
+
+            echo "✅ Deployment Finished for ${VIMP_DOMAIN}"

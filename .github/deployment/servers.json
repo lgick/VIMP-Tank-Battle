@@ -1,0 +1,18 @@
+[
+  {
+    "ip": "64.188.125.213",
+    "domain": "test2.vimp.lgick.space",
+    "port": "3005",
+    "players": "3",
+    "map": "garden",
+    "round_time": 180000,
+    "map_time": 900000,
+    "friendly_fire": false
+  },
+  {
+    "ip": "64.188.125.213",
+    "domain": "test.vimp.lgick.space",
+    "port": "3006",
+    "players": "2"
+  }
+]
