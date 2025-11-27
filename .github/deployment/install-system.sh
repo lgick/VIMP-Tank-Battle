@@ -116,12 +116,14 @@ ensure_packages() {
 }
 
 ensure_docker() {
-  if command -v docker &>/dev/null; then
-    log "Docker уже установлен."
+  if command -v docker &>/dev/null && docker compose version &>/dev/null; then
+    log "Docker и плагин Docker Compose (v2) уже установлены. Пропуск."
     return 0
   fi
-  log "Установка Docker Engine..."
-  run "curl -fsSL https://get.docker.com -o /tmp/get-docker.sh && sudo sh /tmp/get-docker.sh >/dev/null"
+
+  log "Установка или обновление Docker до актуальной версии..."
+  run "curl -fsSL https://get.docker.com -o /tmp/get-docker.sh"
+  run "sudo sh /tmp/get-docker.sh"
   run "rm -f /tmp/get-docker.sh"
   run "sudo systemctl enable --now docker"
 }
