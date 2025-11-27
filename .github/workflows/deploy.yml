@@ -91,12 +91,14 @@ jobs:
           VIMP_ROUND_TIME: ${{ matrix.round_time }}
           VIMP_MAP_TIME: ${{ matrix.map_time }}
           VIMP_FRIENDLY_FIRE: ${{ matrix.friendly_fire }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ matrix.ip }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           # Передача переменных окружения внутрь скрипта SSH
-          envs: IMAGE_NAME,VIMP_DOMAIN,VIMP_PORT,VIMP_PLAYERS,VIMP_MAP,VIMP_ROUND_TIME,VIMP_MAP_TIME,VIMP_FRIENDLY_FIRE
+          envs: IMAGE_NAME,VIMP_DOMAIN,VIMP_PORT,VIMP_PLAYERS,VIMP_MAP,VIMP_ROUND_TIME,VIMP_MAP_TIME,VIMP_FRIENDLY_FIRE,GITHUB_ACTOR,GITHUB_TOKEN
           script: |
             # Остановка выполнения при любой критической ошибке
             set -e
@@ -119,6 +121,9 @@ jobs:
             # -----------------------
 
             cd "$PROJECT_DIR"
+
+            echo "🔐 Logging into GHCR..."
+            echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
 
             echo "📄 Generating .env config..."
 
