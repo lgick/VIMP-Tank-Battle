@@ -108,13 +108,13 @@ jobs:
             # Если папки нет, значит сервер не был настроен через add-server.sh.
             # Пропуск деплоя, но выход с кодом 0 (Success), чтобы пайплайн остался зеленым.
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "::warning title=Server Skipped (${VIMP_DOMAIN})::Server is not configured via add-server.sh yet. Deployment skipped."
               echo "========================================================"
               echo "⚠️  SKIP: Server is not configured on VPS."
               echo "   Directory '$PROJECT_DIR' does not exist."
               echo "   Run './add-server.sh' on the server to setup first."
               echo "========================================================"
-              exit 0
+              echo "❌ ERROR: Deployment failed because folder is missing."
+              exit 1
             fi
             # -----------------------
 
