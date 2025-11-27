@@ -2,7 +2,6 @@
 # ====================================================
 # add-server.sh
 # Добавление нового игрового сервера vimp.
-# Метод валидации: Webroot (Certbot)
 # ====================================================
 
 set -euo pipefail
@@ -11,7 +10,6 @@ IFS=$'\n\t'
 # --- Глобальные переменные (инициализация для set -u) ---
 TEMPLATE="/etc/nginx/vimp-game.template"
 DEFAULT_EMAIL="mail@vimp.lgick.space"
-WEBROOT_PATH="/var/www/certbot"
 PROJECTS_ROOT="$HOME/vimp_projects"
 DOMAIN=""
 PORT=""
@@ -84,14 +82,6 @@ trap 'cleanup' ERR
 
 # Экранирование для sed
 escape_sed() { printf '%s\n' "$1" | sed 's/[&/\]/\\&/g'; }
-
-# --- Проверка окружения ---
-[ ! -f "$TEMPLATE" ] && error "Файл шаблона $TEMPLATE не найден!" && exit 1
-
-# Создаем папку, если нет (тихо, если есть)
-if [ ! -d "$WEBROOT_PATH" ]; then
-  sudo mkdir -p "$WEBROOT_PATH" && sudo chmod 755 "$WEBROOT_PATH" && info "Создана директория $WEBROOT_PATH"
-fi
 
 # --- Функции ввода ---
 read_domain() {
@@ -175,11 +165,6 @@ server {
   listen 80;
   server_name $DOMAIN;
 
-  location ^~ /.well-known/acme-challenge/ {
-    root $WEBROOT_PATH;
-    default_type "text/plain";
-  }
-
   location / {
     return 200 "VIMP Server: Ожидание настройки SSL...";
     add_header Content-Type text/plain;
@@ -196,7 +181,7 @@ sudo systemctl reload nginx
 # --- Этап 3: Получение SSL ---
 info "2️⃣ Запрос SSL сертификата..."
 # Если certbot упадет, сработает trap и удалит конфиг
-sudo certbot certonly --webroot -w "$WEBROOT_PATH" -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL"
+sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$EMAIL"
 
 # --- Этап 4: Финальный HTTPS конфиг ---
 info "3️⃣ Применение финальной конфигурации..."
