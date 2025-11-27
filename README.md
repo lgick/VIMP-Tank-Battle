@@ -4,7 +4,7 @@
 
 ![game video](./.github/assets/video/game.gif?raw=true)
 
-# 🚀 Деплой и Настройка
+# Деплой и Настройка
 
 Подробная инструкция по настройке VPS и добавлению новых серверов:
 [📄 Руководство по развертыванию](.github/deployment/README.md)
