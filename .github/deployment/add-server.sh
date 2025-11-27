@@ -12,6 +12,7 @@ IFS=$'\n\t'
 TEMPLATE="/etc/nginx/vimp-game.template"
 DEFAULT_EMAIL="mail@vimp.lgick.space"
 WEBROOT_PATH="/var/www/certbot"
+PROJECTS_ROOT="$HOME/vimp_projects"
 DOMAIN=""
 PORT=""
 EMAIL=""
