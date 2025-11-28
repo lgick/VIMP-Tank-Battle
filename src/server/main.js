@@ -33,7 +33,7 @@ if (isProduction) {
 
   // максимальное количество игроков
   if (env.VIMP_PLAYERS) {
-    config.set('server:maxPlayers', Number(env.VIMP_PLAYERS));
+    config.set('game:maxPlayers', Number(env.VIMP_PLAYERS));
   }
 
   // стартовая карта

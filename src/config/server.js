@@ -14,6 +14,5 @@ export default {
   },
 
   oneConnection: true,
-  maxPlayers: 10,
   VIMP,
 };

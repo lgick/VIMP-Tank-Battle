@@ -2,7 +2,7 @@ import config from './config.js';
 
 let waitingList = [];
 let currentPlayers = [];
-const maxPlayers = config.get('server:maxPlayers');
+const maxPlayers = config.get('game:maxPlayers');
 
 // проверяет наличие свободные мест
 const check = (id, cb) => {
