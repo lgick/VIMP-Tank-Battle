@@ -166,6 +166,6 @@ jobs:
             docker compose up -d --force-recreate --remove-orphans
 
             # Чистка старых неиспользуемых образов, чтобы не забивать диск
-            docker image prune -f
+            docker image prune -f || true
 
             echo "✅ Deployment Finished for ${VIMP_DOMAIN}"
