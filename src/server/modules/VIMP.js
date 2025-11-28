@@ -30,6 +30,7 @@ class VIMP {
     this._mapSetId = data.mapSetId; // дефолтный id конструктора карт
     this._currentMap = data.currentMap; // название текущей карты
     this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
+    this._maxPlayers = data.maxPlayers; // максимальное количество игроков
 
     this._idleTimeoutForPlayer = data.idleKickTimeout?.player || null;
     this._idleTimeoutForSpectator = data.idleKickTimeout?.spectator || null;
