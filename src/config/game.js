@@ -5,7 +5,7 @@ import weapons from '../data/weapons.js';
 export default {
   isDevMode: false, // флаг режима разработки
 
-  maxPlayers: 10,
+  maxPlayers: 30,
 
   parts: {
     models,
