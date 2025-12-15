@@ -9,8 +9,8 @@ export default function bombTexture(params, renderer) {
   const graphics = new Graphics();
 
   // базовый размер
-  const size = 40;
-  const borderWidth = 2;
+  const size = 20;
+  const borderWidth = 1;
 
   // внешний контур
   graphics.rect(0, 0, size, size).fill(colorOuter);
