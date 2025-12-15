@@ -13,7 +13,6 @@ export default class FunnelEffect extends BaseEffect {
     this._assets = assets;
     this.x = x;
     this.y = y;
-    this.sortableChildren = true;
     this._funnelDurationMs = 20000;
     this._funnelFadeDurationMs = 4000;
     this._elapsedMs = 0;
@@ -22,14 +21,9 @@ export default class FunnelEffect extends BaseEffect {
     this._smokeSpawningStopped = false;
 
     this._funnel = this._createFunnelSprite();
-    this._funnel.zIndex = 2;
-    this.addChild(this._funnel);
-
-    // параметры дыма
     this._smoke = new SmokeEffect(this._assets);
 
-    this._smoke.zIndex = 1;
-    this.addChild(this._smoke);
+    this.addChild(this._funnel, this._smoke);
   }
 
   _createFunnelSprite() {
@@ -94,6 +88,8 @@ export default class FunnelEffect extends BaseEffect {
       this._smoke.destroy();
       this._smoke = null;
     }
+
+    this._funnel = null;
 
     super.destroy(options);
   }

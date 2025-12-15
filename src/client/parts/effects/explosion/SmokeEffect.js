@@ -1,4 +1,4 @@
-import { Sprite } from 'pixi.js';
+import ParticlePool from './ParticlePool.js';
 import BaseEffect from '../BaseEffect.js';
 
 export default class SmokeEffect extends BaseEffect {
@@ -10,17 +10,23 @@ export default class SmokeEffect extends BaseEffect {
     this._particles = [];
     this._isSpawning = true;
 
-    // параметры дыма
-    this._particleSpawnRateMs = 300;
-    this._particleMaxLifeMs = 1000;
-    this._particleColor = 0x494949;
-    this._initialScale = 0.02;
-    this._maxScale = 0.04;
-    this._initialAlpha = 0.8; // начальная прозрачность
-    this._initialOffsetX = 3;
-    this._initialOffsetY = 3;
-    this._stretch = 2;
+    this._particleSpawnRateMs = 50;
+    this._particleMaxLifeMs = 2000;
+
+    // Размеры
+    this._minStartScale = 0.02;
+    this._maxStartScale = 0.05;
+
+    this._startAlpha = 0.1;
+    this._initialOffsetX = 15;
+    this._initialOffsetY = 15;
+
     this._lastSpawnTime = 0;
+
+    // стартовый залп
+    for (let i = 0; i < 30; i += 1) {
+      this._createParticle();
+    }
   }
 
   stopSpawning() {
@@ -28,26 +34,52 @@ export default class SmokeEffect extends BaseEffect {
   }
 
   _createParticle() {
-    const particle = new Sprite(this.explosionTexture);
+    // получение из пула вместо new Sprite
+    const particle = ParticlePool.get(this.explosionTexture);
 
     particle.anchor.set(0.5);
-    particle.tint = this._particleColor;
-    particle.scale.set(this._initialScale);
-    particle.alpha = this._initialAlpha;
 
-    // случайный начальный поворот, чтобы сломать прямые линии
-    particle.rotation = (Math.random() - 0.5) * 0.5; // небольшой наклон
+    // вариация цвета
+    const grayLevel = 0.2 + Math.random() * 0.4;
+    const colorVal = Math.floor(grayLevel * 255);
 
+    particle.tint = (colorVal << 16) | (colorVal << 8) | colorVal;
+
+    // размер
+    const startScale =
+      this._minStartScale +
+      Math.random() * (this._maxStartScale - this._minStartScale);
+
+    // искажение пропорций
+    const aspectX = 0.6 + Math.random() * 0.8;
+    const aspectY = 0.6 + Math.random() * 0.8;
+
+    particle.scale.set(startScale * aspectX, startScale * aspectY);
+
+    particle.alpha = this._startAlpha + Math.random() * 0.1;
+    particle.rotation = Math.random() * Math.PI * 2;
+
+    // начальная позиция
     particle.x = (Math.random() - 0.5) * this._initialOffsetX;
     particle.y = (Math.random() - 0.5) * this._initialOffsetY;
 
     particle.customData = {
       life: 0,
-      driftX: (Math.random() - 0.5) * 0.2,
-      driftY: -Math.random() * 0.35,
-      // каждая частица получает свой уникальный множитель растяжения
-      // от 80% до 120% от базового
-      stretchFactor: this._stretch * (0.8 + Math.random() * 0.4),
+      maxLife: this._particleMaxLifeMs * (0.7 + Math.random() * 0.6),
+      aspectRatioX: aspectX,
+      aspectRatioY: aspectY,
+
+      // движение
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: -0.3 - Math.random() * 0.4,
+
+      // рыскание (Sway)
+      swaySpeed: 0.002 + Math.random() * 0.003,
+      swayAmp: 0.025 + Math.random() * 0.05,
+      swayOffset: Math.random() * 100,
+      rotationSpeed: (Math.random() - 0.5) * 0.05,
+      targetScale: 0.08 + Math.random() * 0.08,
+      startScale,
     };
 
     this.addChild(particle);
@@ -59,46 +91,69 @@ export default class SmokeEffect extends BaseEffect {
       return;
     }
 
+    // ограничение в 100мс,
+    // чтобы предотвратит спавн тысячи частиц
+    deltaMs = Math.min(deltaMs, 100);
+
     if (this._isSpawning) {
       this._lastSpawnTime += deltaMs;
 
-      if (this._lastSpawnTime > this._particleSpawnRateMs) {
+      while (this._lastSpawnTime > this._particleSpawnRateMs) {
         this._createParticle();
-        this._lastSpawnTime = 0;
+        this._lastSpawnTime -= this._particleSpawnRateMs;
       }
     }
 
     for (let i = this._particles.length - 1; i >= 0; i -= 1) {
       const particle = this._particles[i];
-      particle.customData.life += deltaMs;
+      const data = particle.customData;
 
-      if (particle.customData.life >= this._particleMaxLifeMs) {
-        this.removeChild(particle);
-        particle.destroy(); // уничтожение частицы PIXI.Sprite
+      data.life += deltaMs;
+
+      if (data.life >= data.maxLife) {
+        // возвращение в пул
+        ParticlePool.release(particle);
         this._particles.splice(i, 1);
       } else {
-        const progress = particle.customData.life / this._particleMaxLifeMs;
-        particle.x += particle.customData.driftX * (deltaMs / 16);
-        particle.y += particle.customData.driftY * (deltaMs / 16);
+        const progress = data.life / data.maxLife;
 
-        const scaleGrowth = this._maxScale - this._initialScale;
-        const baseScale = this._initialScale + progress * scaleGrowth;
+        // физика
+        data.vy *= 0.98;
+        data.vx *= 0.95;
 
-        // уникальный stretchFactor для каждой частицы
-        const stretchAmount =
-          1 + progress * (particle.customData.stretchFactor - 1);
-        particle.scale.set(baseScale, baseScale * stretchAmount);
+        const sway =
+          Math.sin(data.life * data.swaySpeed + data.swayOffset) * data.swayAmp;
 
-        // затухание зависит от начальной прозрачности
-        if (progress > 0.5) {
-          const fadeProgress = (progress - 0.5) * 2;
-          particle.alpha = this._initialAlpha * (1 - fadeProgress);
+        particle.x += (data.vx + sway) * (deltaMs / 16);
+        particle.y += data.vy * (deltaMs / 16);
+        particle.rotation += data.rotationSpeed * (deltaMs / 16);
+
+        // масштаб
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const currentBaseScale =
+          data.startScale + (data.targetScale - data.startScale) * ease;
+
+        particle.scale.set(
+          currentBaseScale * data.aspectRatioX,
+          currentBaseScale * data.aspectRatioY,
+        );
+
+        // альфа
+        if (progress < 0.1) {
+          particle.alpha = (progress / 0.1) * this._startAlpha;
+        } else if (progress > 0.4) {
+          const fadeP = (progress - 0.4) / 0.6;
+          particle.alpha = this._startAlpha * (1 - fadeP);
+        } else {
+          particle.alpha = this._startAlpha;
         }
       }
     }
 
     if (!this._isSpawning && this._particles.length === 0 && this._isStarted) {
-      this._completeEffect(); // завершение логики эффекта
+      this._completeEffect();
+
+      // destroy, если эффект завершен, чтобы отписаться от тикера
       if (!this.destroyed) {
         this.destroy();
       }
@@ -106,20 +161,17 @@ export default class SmokeEffect extends BaseEffect {
   }
 
   destroy(options) {
-    // очистка массива частиц до вызова super.destroy,
-    // который уничтожит дочерние спрайты
-    // частицы уже уничтожаются в _update,
-    // но на всякий случай, если destroy вызван досрочно
-    for (let i = this._particles.length - 1; i >= 0; i -= 1) {
-      const particle = this._particles[i];
-      if (particle && !particle.destroyed) {
-        this.removeChild(particle);
-        particle.destroy();
-      }
+    // при уничтожении эффекта возвращение живых частиц в пул
+    for (let i = 0; i < this._particles.length; i += 1) {
+      ParticlePool.release(this._particles[i]);
     }
 
-    this._particles = []; // очистка массива ссылок
+    this._particles = [];
 
+    // super.destroy вызовет destroyChildren.
+    // так как выполненен ParticlePool.release, там внутри removeChild;
+    // children у контейнера уже пуст (или почти пуст),
+    // и Pixi не будет пытаться удалить спрайты повторно
     super.destroy(options);
   }
 }
