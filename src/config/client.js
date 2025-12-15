@@ -51,9 +51,9 @@ export default {
           name: 'funnelTexture',
           component: 'ExplosionEffect',
           params: {
-            baseRadius: 50,
-            irregularity: 15,
-            blur: 20,
+            baseRadius: 27,
+            irregularity: 5,
+            blur: 10,
             numPoints: 12,
           },
         },
@@ -134,7 +134,7 @@ export default {
       },
       radar: {
         fixSize: '150',
-        scale: '1:15',
+        scale: '1:10',
       },
     },
 

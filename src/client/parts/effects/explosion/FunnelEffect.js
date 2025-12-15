@@ -26,16 +26,7 @@ export default class FunnelEffect extends BaseEffect {
     this.addChild(this._funnel);
 
     // параметры дыма
-    this._smoke = new SmokeEffect(
-      {
-        spawnRate: 300,
-        maxLife: 4000,
-        maxScale: 0.06,
-        initialAlpha: 0.3,
-        stretch: 7,
-      },
-      this._assets,
-    );
+    this._smoke = new SmokeEffect(this._assets);
 
     this._smoke.zIndex = 1;
     this.addChild(this._smoke);
