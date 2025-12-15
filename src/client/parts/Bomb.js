@@ -25,17 +25,25 @@ export default class Bomb extends Container {
     const scale = this._size / textureSize;
     this.body.scale.set(scale);
 
+    // фиксированный размер шрифта для рендера текстуры,
+    // чтобы текст был четким (векторное качество)
+    const renderFontSize = 64;
+
+    // масштаб под размер бомбы
+    const fontScale = this._size / 1.2 / renderFontSize;
+
     this.text = new Text({
       style: {
         fontFamily: 'Arial',
-        fontSize: this._size / 1.2,
-        fill: 0xff1010,
+        fontSize: renderFontSize,
+        fill: 0xffffff,
         align: 'center',
       },
     });
 
     this.text.anchor.set(0.5);
-    this.text.x = 0.5; // центр текста относительно родительского контейнера
+    this.text.scale.set(fontScale);
+    this.text.x = 0;
     this.text.y = 0;
 
     // накопленное время с момента создания

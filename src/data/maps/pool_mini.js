@@ -1,7 +1,7 @@
 export default {
   setId: 'c1',
 
-  scale: 0.9,
+  scale: 0.6,
 
   spriteSheet: {
     img: 'tiles.png',
