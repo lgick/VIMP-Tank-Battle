@@ -11,14 +11,11 @@ export default class ExplosionEffectController extends Container {
     this.radius = data[2];
 
     this._assets = assets;
-
     this._soundManager = dependencies.soundManager;
 
     this.x = this.originX;
     this.y = this.originY;
 
-    this.zIndex = 4;
-    this.sortableChildren = true;
     this.explosion = null;
     this.funnel = null;
     this._isDestroyed = false;
@@ -36,6 +33,8 @@ export default class ExplosionEffectController extends Container {
       return;
     }
 
+    const parentContainer = this.parent;
+
     this.funnel = new FunnelEffect(
       this.originX,
       this.originY,
@@ -44,7 +43,7 @@ export default class ExplosionEffectController extends Container {
     );
 
     this.funnel.zIndex = 2;
-    this.parent.addChild(this.funnel);
+    parentContainer.addChild(this.funnel);
 
     this.explosion = new ExplosionEffect(
       this.originX,
@@ -54,10 +53,9 @@ export default class ExplosionEffectController extends Container {
       this._assets,
     );
 
-    // взрыв в контроллер
-    this.addChild(this.explosion);
+    this.explosion.zIndex = 4;
+    parentContainer.addChild(this.explosion);
 
-    // воронка и взрыв
     this.funnel.run();
     this.explosion.run();
   }
@@ -78,6 +76,8 @@ export default class ExplosionEffectController extends Container {
       return;
     }
 
+    // когда исчезает воронка (она длится дольше взрыва),
+    // уничтожение всего контроллера
     this.destroy();
   }
 
@@ -107,6 +107,10 @@ export default class ExplosionEffectController extends Container {
       this.parent.removeChild(this);
     }
 
-    super.destroy({ children: true, texture: true, baseTexture: true });
+    super.destroy({
+      children: true,
+      texture: true,
+      baseTexture: true,
+    });
   }
 }
