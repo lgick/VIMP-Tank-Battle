@@ -20,7 +20,7 @@ export default {
     maxReverseSpeed: -130,
 
     // коэффициент желаемой интенсивности поворота (зависит от инерции)
-    baseTurnTorqueFactor: 105,
+    baseTurnTorqueFactor: 115,
     // сопротивление движению
     // (чем выше значение, тем больше сопротивление)
     damping: {

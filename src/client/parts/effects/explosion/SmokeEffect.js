@@ -2,9 +2,8 @@ import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
 
 export default class SmokeEffect extends BaseEffect {
-  constructor(options = {}, assets) {
-    // если вдруг потребуется onComplete для SmokeEffect
-    super(options.onComplete);
+  constructor(assets) {
+    super();
 
     this.explosionTexture = assets.explosionTexture;
 
@@ -12,16 +11,15 @@ export default class SmokeEffect extends BaseEffect {
     this._isSpawning = true;
 
     // параметры дыма
-    this._particleSpawnRateMs = options.spawnRate ?? 1000;
-    this._particleMaxLifeMs = options.maxLife ?? 3000;
-    this._particleColor = options.color ?? 0x494949;
-    this._initialScale = options.initialScale ?? 0.02;
-    this._maxScale = options.maxScale ?? 0.04;
-    this._initialAlpha = options.initialAlpha ?? 0.25; // начальная прозрачность
-    this._initialOffsetX = options.initialOffsetX ?? 3;
-    this._initialOffsetY = options.initialOffsetY ?? 3;
-    this._stretch = options.stretch ?? 5;
-
+    this._particleSpawnRateMs = 300;
+    this._particleMaxLifeMs = 1000;
+    this._particleColor = 0x494949;
+    this._initialScale = 0.02;
+    this._maxScale = 0.04;
+    this._initialAlpha = 0.8; // начальная прозрачность
+    this._initialOffsetX = 3;
+    this._initialOffsetY = 3;
+    this._stretch = 2;
     this._lastSpawnTime = 0;
   }
 

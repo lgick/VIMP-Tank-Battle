@@ -22,7 +22,7 @@ export default class TankRadar extends Container {
     this._teamId = data[9];
 
     // масштаб контейнера
-    this.scale.set(7, 7);
+    this.scale.set(5, 5);
 
     this.create();
   }
