@@ -7,6 +7,7 @@ export default {
     if (pool.length > 0) {
       const sprite = pool.pop();
       sprite.texture = texture;
+      // Сброс базовых параметров, чтобы не наследовать состояние с прошлой жизни
       sprite.alpha = 1;
       sprite.scale.set(1);
       sprite.rotation = 0;
@@ -23,7 +24,7 @@ export default {
       return;
     }
 
-    // удаление со сцены, чтобы не рисовался, пока лежит в пуле
+    // Удаляем со сцены, чтобы он не рисовался, пока лежит в пуле
     if (sprite.parent) {
       sprite.parent.removeChild(sprite);
     }
