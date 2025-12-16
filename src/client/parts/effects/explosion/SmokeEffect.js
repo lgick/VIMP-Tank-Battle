@@ -1,4 +1,4 @@
-import ParticlePool from './ParticlePool.js';
+import ParticlePool from '../../ParticlePool.js';
 import BaseEffect from '../BaseEffect.js';
 
 export default class SmokeEffect extends BaseEffect {

@@ -1,47 +1,54 @@
-import { Container, Ticker, Sprite } from 'pixi.js';
+import { Container, Ticker } from 'pixi.js';
+import ParticlePool from './ParticlePool.js';
 
 // глобальные переменные для ветра
-const globalWindX = 50;
-const globalWindY = 30;
+const globalWindX = 0;
+const globalWindY = 0;
 
 const SMOKE_CONFIG = {
   // размеры и жизнь частиц
-  particleLifetime: { min: 1200, max: 2000 },
-  particleStartSizeFactor: { 2: 1, 1: 1, 0: 0.3 }, // множитель в начале
-  particleEndSizeFactor: { 2: 1.5, 1: 1.5, 0: 0.3 }, // множитель в конце
+  particleLifetime: { min: 800, max: 1800 },
+
+  // конфигурация размеров:
+  // 1 (сильный урон) - самый крупный дым
+  // 2 (средний урон) - средний дым
+  // 0 (уничтожен) - маленький дым (тление)
+  particleStartSizeFactor: { 1: 2.0, 2: 1.0, 0: 0.25 },
+  particleEndSizeFactor: { 1: 3.0, 2: 2.0, 0: 1.0 },
 
   // прозрачность
-  particleStartAlpha: 0.25,
-  particleEndAlpha: 0,
+  particleStartAlpha: 0.08,
+  particleEndAlpha: 0.0,
 
-  // цвет дыма
   particleColor: 0x333333,
-  // общая частота спавна для потоков
-  particleSpawnRate: { 2: 30, 1: 40, 0: 50 },
 
-  // скорость относительно танка
+  // конфигурация спавна (частиц в секунду):
+  // 1 - густой поток
+  // 2 - умеренный поток
+  // 0 - редкий дым
+  particleSpawnRate: { 1: 60, 2: 50, 0: 30 },
+
+  // направление дыма
   particleInitialVelocity: {
-    away: { min: 35, max: 50 }, // скорость назад относительно танка
-    side: { min: -8, max: 8 }, // скорость вбок относительно танка
+    away: { min: -10, max: 100 },
+    side: { min: -30, max: 30 },
   },
 
-  windInfluence: 1.6,
-  emitterMovementInfluence: 0.7,
-  // общий разброс скорости в случайном направлении
+  // сопротивление воздуха
+  airResistance: 0.92,
+
   particleVelocityVariance: 10,
 
-  // множитель к половине ширине для смещения потоков дыма (0=центр, 1=края)
-  streamOffsetFactor: 0.3,
-  // смещение точки испускания назад
-  emissionPointBackwardOffsetFactor: 0,
+  // сдвиг труб друг относительно друга
+  streamOffsetFactor: 0.1,
+
+  // количество частиц при "взрыве" (смене состояния)
+  // эффект резкого облака дыма при получении урона
+  burstParticleCount: 3,
 };
 
 function randomRange(min, max) {
   return Math.random() * (max - min) + min;
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
 }
 
 export default class Smoke extends Container {
@@ -50,11 +57,8 @@ export default class Smoke extends Container {
 
     this.zIndex = 4;
 
-    // ассет для частиц дыма
     this._smokeTexture = assets.smokeTexture;
 
-    // параметры с сервера:
-    // [x, y, rotation, gunRotation, vX, vY, condition, size, teamId]
     this._emitterX = data[0];
     this._emitterY = data[1];
     this._emitterRotation = data[2];
@@ -62,21 +66,18 @@ export default class Smoke extends Container {
     this._emitterVY = data[5];
     this._engineLoad = data[6];
     this._condition = data[7];
-    this._size = data[8];
 
-    // соотношение сторон танка: 4(width):3(height)
+    this._size = data[8];
     this._width = this._size * 4;
     this._height = this._size * 3;
 
-    // коэффициент масштаба на основе площади.
-    // Используем sqrt для менее резкого масштабирования
-    // Math.max чтобы размер не был слишком маленьким для очень мелких танков
     this._particleScaleMultiplier = Math.max(
       0.5,
       Math.sqrt(this._width * this._height * 0.001),
     );
 
     this._particles = [];
+
     this._particleContainer = new Container();
     this.addChild(this._particleContainer);
 
@@ -87,6 +88,8 @@ export default class Smoke extends Container {
   }
 
   update(data) {
+    const prevCondition = this._condition;
+
     this._emitterX = data[0];
     this._emitterY = data[1];
     this._emitterRotation = data[2];
@@ -94,6 +97,36 @@ export default class Smoke extends Container {
     this._emitterVY = data[5];
     this._engineLoad = data[6];
     this._condition = data[7];
+
+    // если состояние изменилось и
+    // новое состояние подразумевает наличие дыма (не 3)
+    if (this._condition !== prevCondition && this._condition !== 3) {
+      this._triggerSmokeBurst();
+    }
+  }
+
+  // метод для создания мгновенного облака частиц
+  _triggerSmokeBurst() {
+    let numStreams = 0;
+
+    if (this._condition === 1) {
+      numStreams = 2;
+    } else if (this._condition === 2) {
+      numStreams = 1;
+    } else if (this._condition === 0) {
+      numStreams = 1;
+    }
+
+    if (numStreams > 0) {
+      const count = SMOKE_CONFIG.burstParticleCount;
+      const particlesPerStream = Math.ceil(count / numStreams);
+
+      for (let i = 0; i < particlesPerStream; i += 1) {
+        for (let s = 0; s < numStreams; s += 1) {
+          this.spawnParticle(s, numStreams, true);
+        }
+      }
+    }
   }
 
   _updateParticles(deltaMs) {
@@ -101,175 +134,203 @@ export default class Smoke extends Container {
       return;
     }
 
-    const deltaTime = deltaMs / 1000.0; // время в секундах
-
-    // спавн новых частиц
+    const deltaTime = deltaMs / 1000.0;
     this._timeSinceLastSpawn += deltaMs;
 
-    // определяем количество потоков
-    let numStreams = 1;
+    let numStreams = 0;
 
-    if (this._condition === 1) {
+    // норма: дыма нет
+    if (this._condition === 3) {
+      numStreams = 0;
+
+      // значительные повреждения: сильный дым (из двух труб или просто широкий)
+    } else if (this._condition === 1) {
       numStreams = 2;
+
+      // незначительные повреждения: средний дым (один поток)
+    } else if (this._condition === 2) {
+      numStreams = 1;
+
+      // уничтожен: небольшой остаточный дым
     } else if (this._condition === 0) {
-      numStreams = 3;
+      numStreams = 1;
     }
 
-    const spawnRate = SMOKE_CONFIG.particleSpawnRate[this._condition];
-    // интервал определяет, как часто происходит "пачка" спавна
-    // (для всех потоков сразу)
-    const spawnInterval = 1000.0 / spawnRate;
+    // частота спавна или 0, если состояние не определено
+    const spawnRate = SMOKE_CONFIG.particleSpawnRate[this._condition] || 0;
 
-    //let spawnedThisFrame = 0;
+    // если spawnRate 0 (или бесконечность),
+    // интервал будет Infinity, цикл не запустится
+    const spawnInterval = spawnRate > 0 ? 1000.0 / spawnRate : Infinity;
 
-    // если пора спавнить, спавним частицы для каждого потока
-    while (this._timeSinceLastSpawn >= spawnInterval) {
-      for (let i = 0; i < numStreams; i++) {
-        this.spawnParticle(i, numStreams);
+    if (numStreams > 0 && spawnRate > 0) {
+      while (this._timeSinceLastSpawn >= spawnInterval) {
+        for (let i = 0; i < numStreams; i += 1) {
+          this.spawnParticle(i, numStreams);
+        }
+        this._timeSinceLastSpawn -= spawnInterval;
       }
-
-      this._timeSinceLastSpawn -= spawnInterval;
-      //spawnedThisFrame += numStreams;
+    } else {
+      // сброс таймера, если дыма нет
+      this._timeSinceLastSpawn = 0;
     }
 
-    // обновление существующих частиц
+    // предварительный расчет трения
+    const frictionFactor = Math.pow(SMOKE_CONFIG.airResistance, deltaMs / 16.0);
+    const oneMinusFriction = 1 - frictionFactor;
+
+    // обратный цикл для безопасного удаления
     for (let i = this._particles.length - 1; i >= 0; i -= 1) {
       const particle = this._particles[i];
-
       particle.age += deltaMs;
 
       if (particle.age >= particle.lifetime) {
         this._particleContainer.removeChild(particle.graphics);
-        particle.graphics.destroy();
+        ParticlePool.release(particle.graphics);
         this._particles.splice(i, 1);
         continue;
       }
 
-      const lifeProgress = particle.age / particle.lifetime;
-
-      particle.vx += globalWindX * SMOKE_CONFIG.windInfluence * deltaTime;
-      particle.vy += globalWindY * SMOKE_CONFIG.windInfluence * deltaTime;
+      // ветер и трение
+      particle.vx =
+        particle.vx + (globalWindX - particle.vx) * oneMinusFriction;
+      particle.vy =
+        particle.vy + (globalWindY - particle.vy) * oneMinusFriction;
 
       particle.x += particle.vx * deltaTime;
       particle.y += particle.vy * deltaTime;
 
-      const currentSizeFactor = lerp(
-        particle.startSizeFactor,
-        particle.endSizeFactor,
-        lifeProgress,
-      );
+      // интерполяция параметров
+      const lifeProgress = particle.age / particle.lifetime;
+      // простое квадратичное затухание
+      const ease = 1 - (1 - lifeProgress) * (1 - lifeProgress);
 
-      const currentAlpha = lerp(
-        particle.startAlpha,
-        particle.endAlpha,
-        lifeProgress,
-      );
+      const currentSizeFactor =
+        particle.startSizeFactor +
+        (particle.endSizeFactor - particle.startSizeFactor) * ease;
+      const currentAlpha =
+        particle.startAlpha +
+        (particle.endAlpha - particle.startAlpha) * lifeProgress;
 
       const currentScale = currentSizeFactor * this._particleScaleMultiplier;
 
-      particle.graphics.x = particle.x;
-      particle.graphics.y = particle.y;
-      particle.graphics.scale.set(currentScale);
-      particle.graphics.alpha = currentAlpha;
+      const spr = particle.graphics;
+      spr.x = particle.x;
+      spr.y = particle.y;
+      spr.scale.set(currentScale);
+      spr.alpha = currentAlpha;
+      spr.rotation += particle.rotSpeed * deltaTime;
     }
   }
 
-  // расчет смещения и скорости с учетом вращения
-  // создает одну частицу дыма для заданного потока с учетом вращения эмиттера
-  spawnParticle(streamIndex, numStreams) {
+  spawnParticle(streamIndex, numStreams, isBurst = false) {
     const lifetime = randomRange(
       SMOKE_CONFIG.particleLifetime.min,
       SMOKE_CONFIG.particleLifetime.max,
     );
-    const startSizeFactor =
-      SMOKE_CONFIG.particleStartSizeFactor[this._condition];
-    const endSizeFactor = SMOKE_CONFIG.particleEndSizeFactor[this._condition];
-    const startAlpha = SMOKE_CONFIG.particleStartAlpha;
-    const endAlpha = SMOKE_CONFIG.particleEndAlpha;
-    const angle = this._emitterRotation;
-    const cosAngle = Math.cos(angle);
-    const sinAngle = Math.sin(angle);
 
-    // расчет локального смещения точки спавна
-    let localOffsetX = 0;
-    const streamDisplacement =
-      (this._width / 1.5) * SMOKE_CONFIG.streamOffsetFactor;
+    // параметры из конфига или дефолтные маленькие значения
+    let startSizeFactor =
+      SMOKE_CONFIG.particleStartSizeFactor[this._condition] || 0.3;
+    let endSizeFactor =
+      SMOKE_CONFIG.particleEndSizeFactor[this._condition] || 1.0;
 
-    if (numStreams === 2) {
-      localOffsetX =
-        streamIndex === 0 ? -streamDisplacement : streamDisplacement;
-    } else if (numStreams === 3) {
-      localOffsetX = (streamIndex - 1) * streamDisplacement;
+    // параметры по умолчанию
+    let startAlpha = SMOKE_CONFIG.particleStartAlpha;
+    let velocityMultiplier = 1.0;
+
+    // если эффект взрыва
+    if (isBurst) {
+      // огромный размер
+      startSizeFactor *= 2.0;
+      endSizeFactor *= 2.5;
+
+      // густота (дым непрозрачный)
+      startAlpha = 0.8;
+
+      // дальность полета (мощный импульс скорости)
+      velocityMultiplier = 2.0;
     }
 
-    // смещение назад от центра танка
-    const localOffsetY =
-      this._height * SMOKE_CONFIG.emissionPointBackwardOffsetFactor;
+    const angle = this._emitterRotation;
 
-    // поворот локального смещения и расчет глобальной точки спавна
-    const rotatedOffsetX = localOffsetX * cosAngle - localOffsetY * sinAngle;
-    const rotatedOffsetY = localOffsetX * sinAngle + localOffsetY * cosAngle;
+    // векторы направления
+    const backAngle = angle + Math.PI;
+    const cosBack = Math.cos(backAngle);
+    const sinBack = Math.sin(backAngle);
 
-    const spawnX = this._emitterX + rotatedOffsetX;
-    const spawnY = this._emitterY + rotatedOffsetY;
+    const rightAngle = angle + Math.PI / 2;
+    const cosRight = Math.cos(rightAngle);
+    const sinRight = Math.sin(rightAngle);
 
-    // расчет начальной скорости с учетом вращения
-    const speedAway = randomRange(
+    // смещение вбок
+    let offsetSide = 0;
+    const streamDisplacement =
+      (this._width / 2) * SMOKE_CONFIG.streamOffsetFactor;
+
+    if (numStreams === 2) {
+      offsetSide = streamIndex === 0 ? -streamDisplacement : streamDisplacement;
+    } else if (numStreams === 3) {
+      offsetSide = (streamIndex - 1) * streamDisplacement;
+    }
+
+    // смещение назад
+    const offsetBack = this._height * 0.22;
+
+    // точка спавна
+    const spawnX =
+      this._emitterX + cosBack * offsetBack + cosRight * offsetSide;
+    const spawnY =
+      this._emitterY + sinBack * offsetBack + sinRight * offsetSide;
+
+    // скорость
+    let ejectionSpeed = randomRange(
       SMOKE_CONFIG.particleInitialVelocity.away.min,
       SMOKE_CONFIG.particleInitialVelocity.away.max,
     );
-    const speedSide = randomRange(
+    let sideSpeed = randomRange(
       SMOKE_CONFIG.particleInitialVelocity.side.min,
       SMOKE_CONFIG.particleInitialVelocity.side.max,
     );
 
-    // компоненты скорости относительно танка
-    const baseVX = -sinAngle * speedAway + cosAngle * speedSide;
-    const baseVY = cosAngle * speedAway + sinAngle * speedSide;
+    // ускорение для взрыва
+    ejectionSpeed *= velocityMultiplier;
+    sideSpeed *= velocityMultiplier;
 
-    // добавляем случайный разброс
-    const varianceAngle = Math.random() * Math.PI * 2;
+    let vx = cosBack * ejectionSpeed + cosRight * sideSpeed;
+    let vy = sinBack * ejectionSpeed + sinRight * sideSpeed;
 
-    // используем общий разброс
-    const varianceMagnitude = SMOKE_CONFIG.particleVelocityVariance;
-    const varianceVX = Math.cos(varianceAngle) * varianceMagnitude;
-    const varianceVY = Math.sin(varianceAngle) * varianceMagnitude;
+    const variance = SMOKE_CONFIG.particleVelocityVariance;
 
-    // итоговая начальная скорость частицы
-    const initialVX =
-      baseVX +
-      varianceVX +
-      this._emitterVX * SMOKE_CONFIG.emitterMovementInfluence;
-    const initialVY =
-      baseVY +
-      varianceVY +
-      this._emitterVY * SMOKE_CONFIG.emitterMovementInfluence;
+    vx += randomRange(-variance, variance);
+    vy += randomRange(-variance, variance);
 
-    // создание графики и объекта частицы
-    const graphics = new Sprite(this._smokeTexture);
+    // дым не наследует скорость танка (0), чтобы оставаться "в воздухе"
+    vx += this._emitterVX;
+    vy += this._emitterVY;
+
+    const graphics = ParticlePool.get(this._smokeTexture);
     graphics.anchor.set(0.5);
     graphics.tint = SMOKE_CONFIG.particleColor;
-
-    graphics.x = spawnX; // начальная позиция с поворотом
+    graphics.x = spawnX;
     graphics.y = spawnY;
     graphics.alpha = startAlpha;
-
-    // начальный масштаб будет startSizeFactor * this._particleScaleMultiplier
-    const initialScale = startSizeFactor * this._particleScaleMultiplier;
-    graphics.scale.set(initialScale);
+    graphics.scale.set(startSizeFactor * this._particleScaleMultiplier);
+    graphics.rotation = randomRange(0, Math.PI * 2);
 
     const particle = {
       graphics,
       x: spawnX,
       y: spawnY,
-      vx: initialVX, // начальная скорость с поворотом
-      vy: initialVY,
+      vx,
+      vy,
       age: 0,
       lifetime,
       startSizeFactor,
       endSizeFactor,
       startAlpha,
-      endAlpha,
+      endAlpha: SMOKE_CONFIG.particleEndAlpha,
+      rotSpeed: randomRange(-1, 1),
     };
 
     this._particleContainer.addChild(graphics);
@@ -286,22 +347,15 @@ export default class Smoke extends Container {
   destroy(options) {
     this._stopTimer();
 
-    // уничтожаем частицы, если они еще остались
-    for (let i = this._particles.length - 1; i >= 0; i -= 1) {
-      this._particleContainer.removeChild(this._particles[i].graphics);
-      this._particles[i].graphics.destroy();
+    // все активные частицы в пул
+    for (let i = 0; i < this._particles.length; i += 1) {
+      ParticlePool.release(this._particles[i].graphics);
     }
 
     this._particles = [];
 
-    this._particleContainer.destroy({
-      children: true,
-      texture: false, // текстуры общие
-      baseTexture: false,
-    });
-
     super.destroy({
-      children: true, // уничтожит particleContainer, если он еще не уничтожен
+      children: true,
       texture: false,
       baseTexture: false,
       ...options,
