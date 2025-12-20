@@ -447,11 +447,7 @@ function runModules(data) {
   //==========================================//
 
   const chatModel = new ChatModel({
-    listLimit: chatData.params.listLimit,
-    lineTime: chatData.params.lineTime,
-    cacheMin: chatData.params.cacheMin,
-    cacheMax: chatData.params.cacheMax,
-    messages: chatData.params.messages,
+    ...chatData.params,
     sanitizeMessage,
     formatMessage,
   });

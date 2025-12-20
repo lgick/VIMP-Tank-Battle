@@ -130,11 +130,11 @@ export default {
       vimp: {
         aspectRatio: '3:2',
         screenRatio: 1,
-        scale: '2:1',
+        scale: '2.5:1',
       },
       radar: {
         fixSize: '150',
-        scale: '1:10',
+        scale: '1:8',
       },
     },
 

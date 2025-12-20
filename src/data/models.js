@@ -14,10 +14,10 @@ export default {
     brakingFactor: 1,
 
     // целевая максимальная скорость вперед (юнитов/с)
-    maxForwardSpeed: 160,
+    maxForwardSpeed: 180,
     // целевая максимальная скорость назад (юнитов/с)
     // (значение должно быть отрицательным)
-    maxReverseSpeed: -130,
+    maxReverseSpeed: -150,
 
     // коэффициент желаемой интенсивности поворота (зависит от инерции)
     baseTurnTorqueFactor: 115,
