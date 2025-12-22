@@ -1,12 +1,38 @@
 import Publisher from '../../../lib/Publisher.js';
 import Factory from '../../../lib/factory.js';
 
-// GameModel
+// линейная интерполяция
+function lerp(start, end, alpha) {
+  return start + (end - start) * alpha;
+}
 
+// GameModel
 export default class GameModel {
-  constructor(assetsCollection, dependenciesCollection) {
+  constructor(assetsCollection, dependenciesCollection, data) {
     // коллекция ассетов (Map)
     this._assets = assetsCollection || new Map();
+
+    // пропорции изображения на полотне
+    const [w, h] = (data.baseScale || '1:1')
+      .split(':')
+      .map(value => Number(value));
+
+    this._baseScale = Number((w / h).toFixed(2));
+
+    if (data.cameraSettings) {
+      this._dynamicCamera = true;
+      this._lerpFactor = data.cameraSettings?.lerpFactor;
+      this._lookAheadFactor = data.cameraSettings?.lookAheadFactor;
+      this._zoomOutFactor = data.cameraSettings?.zoomOutFactor;
+      this._minZoomLimit = data.cameraSettings?.minZoomLimit || 1.0;
+    }
+
+    // состояние для динамической камеры
+    this._prevCoordX = 0; // предыдущая координата X
+    this._prevCoordY = 0; // предыдущая координата Y
+    this._currentLookAheadX = 0; // текущее смещение камеры по X
+    this._currentLookAheadY = 0; // текущее смещение камеры по Y
+    this._currentExtraZoom = 1.0; // множитель зума (1.0 = без изменений)
 
     // коллекция зависимостей (Map)
     this._dependencies = dependenciesCollection || new Map();
@@ -168,5 +194,60 @@ export default class GameModel {
         }
       });
     }
+  }
+
+  // вычисляет координаты для отображения
+  updateScreenCoords(coords) {
+    const { x, y } = coords;
+
+    if (this._dynamicCamera) {
+      // расчет вектора скорости на основе изменения координат
+      const vX = x - this._prevCoordX;
+      const vY = y - this._prevCoordY;
+
+      this._prevCoordX = x;
+      this._prevCoordY = y;
+
+      // плавная интерполяция смещения
+      this._currentLookAheadX = lerp(
+        this._currentLookAheadX,
+        vX * this._lookAheadFactor,
+        this._lerpFactor,
+      );
+
+      this._currentLookAheadY = lerp(
+        this._currentLookAheadY,
+        vY * this._lookAheadFactor,
+        this._lerpFactor,
+      );
+
+      // скорость (magnitude)
+      const speed = Math.sqrt(vX * vX + vY * vY);
+
+      // расчет динамического зума
+      // (чем выше скорость, тем меньше масштаб (отдаление))
+      // формула: 1 / (1 + speed * factor) создаст плавную кривую уменьшения
+      let targetExtraZoom = 1 / (1 + speed * this._zoomOutFactor);
+
+      // ограничение максимального отдаления
+      if (targetExtraZoom < this._minZoomLimit) {
+        targetExtraZoom = this._minZoomLimit;
+      }
+
+      // плавная интерполяция зума
+      this._currentExtraZoom = lerp(
+        this._currentExtraZoom,
+        targetExtraZoom,
+        this._lerpFactor,
+      );
+    }
+
+    this.publisher.emit('updateScreenCoords', {
+      coords: {
+        x: x + this._currentLookAheadX,
+        y: y + this._currentLookAheadY,
+      },
+      scale: this._baseScale * this._currentExtraZoom,
+    });
   }
 }

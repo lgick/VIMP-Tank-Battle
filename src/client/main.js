@@ -76,7 +76,6 @@ const techInformer = document.getElementById('tech-informer');
 let techInformList = []; // массив системных сообщений
 
 const CTRL = {}; // контроллеры
-const scale = {}; // масштаб
 let gameSets = {}; // наборы конструкторов (id: [наборы])
 let entitiesOnCanvas = {}; // сущности, отображаемые на полотнах
 let currentMapSetId; // текущий id набора конструкторов для карт
@@ -142,14 +141,9 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       CTRL[canvasId] = makeGameController(
         assetProvider.getAssetsCollection(),
         dependencyProvider.getDependenciesCollection(),
+        options,
         app,
       );
-
-      // пропорции изображения на полотне
-      const [w, h] = (options.scale || '1:1')
-        .split(':')
-        .map(value => Number(value));
-      scale[canvasId] = Number((w / h).toFixed(2));
     },
   );
 
@@ -508,8 +502,17 @@ function runModules(data) {
 }
 
 // создает экземпляр игры
-function makeGameController(assetsCollection, dependenciesCollection, app) {
-  const model = new GameModel(assetsCollection, dependenciesCollection);
+function makeGameController(
+  assetsCollection,
+  dependenciesCollection,
+  options,
+  app,
+) {
+  const model = new GameModel(
+    assetsCollection,
+    dependenciesCollection,
+    options,
+  );
   const view = new GameView(model, app);
   const controller = new GameCtrl(model, view);
 
@@ -519,7 +522,7 @@ function makeGameController(assetsCollection, dependenciesCollection, app) {
 // обновляет полотна
 function updateGameControllers() {
   Object.keys(CTRL).forEach(canvasId => {
-    CTRL[canvasId].update(coords, scale[canvasId]);
+    CTRL[canvasId].updateScreenCoords(coords);
   });
 }
 
