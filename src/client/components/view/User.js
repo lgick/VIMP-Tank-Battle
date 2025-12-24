@@ -18,14 +18,14 @@ export default class UserView {
     this.publisher = new Publisher();
 
     onkeydown = event => {
-      userView.publisher.emit('keyDown', event);
+      this.publisher.emit('keyDown', event);
     };
 
     onkeyup = event => {
-      userView.publisher.emit('keyUp', event);
+      this.publisher.emit('keyUp', event);
     };
 
-    onmouseup = onmousedown = onmousemove = this._resetCursorHideTimer;
+    onmouseup = onmousedown = onmousemove = () => this._resetCursorHideTimer();
 
     onresize = () => {
       userView.publisher.emit('resize', {
