@@ -406,7 +406,7 @@ server {
   # img-src 'self' data: blob:; # Разрешение картинкок с data: и blob:
   # font-src 'self'; # Шрифты только со своего домена
   # worker-src 'self' blob:; # Разрешение на web workers и blob URL
-  add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://__DOMAIN__; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:;" always;
+  add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://__DOMAIN__ data:; img-src 'self' data: blob:; font-src 'self'; worker-src 'self' blob:;" always;
 
   # --- СЖАТИЕ (Brotli & Gzip) ---
   # Brotli, если браузер клиента его поддерживает.
