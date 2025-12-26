@@ -1,11 +1,15 @@
 import './style.css';
 import { Application } from 'pixi.js';
+import InputListener from './InputListener.js';
 import AuthModel from './components/model/Auth.js';
 import AuthView from './components/view/Auth.js';
 import AuthCtrl from './components/controller/Auth.js';
-import UserModel from './components/model/User.js';
-import UserView from './components/view/User.js';
-import UserCtrl from './components/controller/User.js';
+import CanvasManagerModel from './components/model/CanvasManager.js';
+import CanvasManagerView from './components/view/CanvasManager.js';
+import CanvasManagerCtrl from './components/controller/CanvasManager.js';
+import ControlsModel from './components/model/Controls.js';
+import ControlsView from './components/view/Controls.js';
+import ControlsCtrl from './components/controller/Controls.js';
 import GameModel from './components/model/Game.js';
 import GameView from './components/view/Game.js';
 import GameCtrl from './components/controller/Game.js';
@@ -67,7 +71,11 @@ const modules = {};
 const soundManager = new SoundManager();
 let soundData = {};
 
+const inputListener = new InputListener();
+
 let modulesConfig = {};
+let initIdList = [];
+const apps = {};
 
 let gameInformer = null;
 let gameInformList = []; // массив игровых сообщений
@@ -76,7 +84,6 @@ const techInformer = document.getElementById('tech-informer');
 let techInformList = []; // массив системных сообщений
 
 const CTRL = {}; // контроллеры
-const scale = {}; // масштаб
 let gameSets = {}; // наборы конструкторов (id: [наборы])
 let entitiesOnCanvas = {}; // сущности, отображаемые на полотнах
 let currentMapSetId; // текущий id набора конструкторов для карт
@@ -101,14 +108,15 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   techInformList = data.techInformList;
 
   modulesConfig = data.modules;
+  initIdList = data.initIdList;
 
   const bakedAssets = data.parts.bakedAssets || {};
   const componentDependencies = data.parts.componentDependencies || {};
   soundData = data.parts.sounds || {};
 
   // создание полотен игры
-  const initPromises = Object.entries(modulesConfig.canvasOptions).map(
-    async ([canvasId, options]) => {
+  const initPromises = Object.keys(modulesConfig.canvasManager).map(
+    async canvasId => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
       const assetProvider = new BakingProvider();
@@ -145,11 +153,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
         app,
       );
 
-      // пропорции изображения на полотне
-      const [w, h] = (options.scale || '1:1')
-        .split(':')
-        .map(value => Number(value));
-      scale[canvasId] = Number((w / h).toFixed(2));
+      apps[canvasId] = app;
     },
   );
 
@@ -198,6 +202,15 @@ socketMethods[PS_AUTH_RESULT] = async err => {
     await soundManager.init(soundData);
     runModules(modulesConfig);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    for (const id of initIdList) {
+      const elem = document.getElementById(id);
+
+      if (elem) {
+        elem.style.display = 'block';
+      }
+    }
+
     sending(PC_MODULES_READY);
   }
 };
@@ -259,7 +272,7 @@ socketMethods[PS_MAP_DATA] = data => {
 
   removeMap(currentMapSetId);
   createMap(setId, staticData);
-  updateGameControllers();
+  modules.canvasManager.updateCoords(coords);
   sending(PC_MAP_READY);
 };
 
@@ -307,11 +320,11 @@ socketMethods[PS_TECH_INFORM_DATA] = data => {
       message = data;
     }
 
-    modules.user?.disableKeys();
+    modules.controls?.disableKeys();
     techInformer.textContent = message;
     techInformer.style.display = 'block';
   } else {
-    modules.user?.enableKeys();
+    modules.controls?.enableKeys();
     techInformer.textContent = '';
     techInformer.style.display = 'none';
   }
@@ -351,7 +364,7 @@ socketMethods[PS_CLEAR] = function (setIdList) {
   }
 
   soundManager.reset();
-  updateGameControllers();
+  modules.canvasManager.updateCoords(coords);
 };
 
 // console
@@ -383,7 +396,7 @@ function shotData(data) {
   soundManager.processAudibility();
   soundManager.updateActiveSounds();
 
-  updateGameControllers();
+  modules.canvasManager.updateCoords(coords);
 
   // панель
   if (panel !== 0) {
@@ -407,16 +420,15 @@ function shotData(data) {
 
   // набор клавиш
   if (typeof keySet === 'number') {
-    modules.user.changeKeySet(keySet);
+    modules.controls.changeKeySet(keySet);
   }
 }
 
 // создает пользователя
 function runModules(data) {
   const {
-    canvasOptions,
-    keys,
-    displayIdList,
+    canvasManager: canvasManagerData,
+    controls: controlsData,
     chat: chatData,
     panel: panelData,
     stat: statData,
@@ -424,23 +436,32 @@ function runModules(data) {
   } = data;
 
   //==========================================//
-  // User Module
+  // CanvasManager Module
   //==========================================//
 
-  const userModel = new UserModel({
-    sizeOptions: canvasOptions,
-    keys,
-  });
+  const canvasManagerModel = new CanvasManagerModel(canvasManagerData);
 
-  const userView = new UserView(userModel, displayIdList);
+  const canvasManagerView = new CanvasManagerView(canvasManagerModel, apps);
 
-  modules.user = new UserCtrl(userModel, userView);
+  modules.canvasManager = new CanvasManagerCtrl(
+    canvasManagerModel,
+    canvasManagerView,
+  );
 
   // инициализация
-  modules.user.init({
+  modules.canvasManager.resize({
     width: innerWidth,
     height: innerHeight,
   });
+
+  //==========================================//
+  // Controls Module
+  //==========================================//
+
+  const controlsModel = new ControlsModel(controlsData);
+  const controlsView = new ControlsView(controlsModel);
+
+  modules.controls = new ControlsCtrl(controlsModel, controlsView);
 
   //==========================================//
   // Chat Module
@@ -492,21 +513,44 @@ function runModules(data) {
   //==========================================//
 
   // событие активации режима
-  userModel.publisher.on('mode', openMode);
+  controlsModel.publisher.on('mode', openMode);
 
   // подписка на данные от пользователя для режимов
-  userModel.publisher.on('chat', modules.chat.updateCmd.bind(modules.chat));
-  userModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
-  userModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
+  controlsModel.publisher.on('chat', modules.chat.updateCmd.bind(modules.chat));
+  controlsModel.publisher.on('stat', modules.stat.close.bind(modules.stat));
+  controlsModel.publisher.on('vote', modules.vote.assignKey.bind(modules.vote));
 
-  // после ресайза элементов происходит перерисовка кадра
-  userView.publisher.on('redraw', updateGameControllers);
+  inputListener.publisher.on(
+    'keyDown',
+    modules.controls.add.bind(modules.controls),
+  );
+  inputListener.publisher.on(
+    'keyUp',
+    modules.controls.remove.bind(modules.controls),
+  );
+  inputListener.publisher.on(
+    'mouseAction',
+    modules.controls.mouseAction.bind(modules.controls),
+  );
+  inputListener.publisher.on(
+    'resize',
+    modules.canvasManager.resize.bind(modules.canvasManager),
+  );
 
-  chatModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
-  statModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
-  voteModel.publisher.on('mode', modules.user.switchMode.bind(modules.user));
+  chatModel.publisher.on(
+    'mode',
+    modules.controls.switchMode.bind(modules.controls),
+  );
+  statModel.publisher.on(
+    'mode',
+    modules.controls.switchMode.bind(modules.controls),
+  );
+  voteModel.publisher.on(
+    'mode',
+    modules.controls.switchMode.bind(modules.controls),
+  );
 
-  userModel.publisher.on('socket', data => sending(PC_KEYS_DATA, data));
+  controlsModel.publisher.on('socket', data => sending(PC_KEYS_DATA, data));
   chatModel.publisher.on('socket', data => sending(PC_CHAT_DATA, data));
   voteModel.publisher.on('socket', data => sending(PC_VOTE_DATA, data));
 }
@@ -518,13 +562,6 @@ function makeGameController(assetsCollection, dependenciesCollection, app) {
   const controller = new GameCtrl(model, view);
 
   return controller;
-}
-
-// обновляет полотна
-function updateGameControllers() {
-  Object.keys(CTRL).forEach(canvasId => {
-    CTRL[canvasId].update(coords, scale[canvasId]);
-  });
 }
 
 // открывает режим

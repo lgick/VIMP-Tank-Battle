@@ -30,11 +30,6 @@ export default class GameCtrl {
     }
   }
 
-  // обновляет представление относительно пользователя
-  update(coords, scale) {
-    this._view.update(coords, scale);
-  }
-
   // удаляет данные игры
   remove(constructor, id) {
     this._model.remove(constructor, id);
