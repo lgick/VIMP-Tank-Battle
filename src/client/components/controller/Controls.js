@@ -1,29 +1,17 @@
-// Singleton UserCtrl
+// Singleton ControlsCtrl
 
-let userCtrl;
+let controlsCtrl;
 
-export default class UserCtrl {
+export default class ControlsCtrl {
   constructor(model, view) {
-    if (userCtrl) {
-      return userCtrl;
+    if (controlsCtrl) {
+      return controlsCtrl;
     }
 
-    userCtrl = this;
+    controlsCtrl = this;
 
     this._model = model;
     this._view = view;
-
-    this._vPublic = view.publisher;
-
-    this._vPublic.on('keyDown', 'add', this);
-    this._vPublic.on('keyUp', 'remove', this);
-    this._vPublic.on('resize', 'resize', this);
-  }
-
-  // инициализация
-  init(data) {
-    this._model.resize(data);
-    this._view.init();
   }
 
   // добавляет клавишу
@@ -46,11 +34,6 @@ export default class UserCtrl {
     this._model.changeKeySet(keySet);
   }
 
-  // обновляет размеры
-  resize(data) {
-    this._model.resize(data);
-  }
-
   // разблокирует возможность нажатия клавиш
   enableKeys() {
     this._model.setKeysEnabled(true);
@@ -59,5 +42,10 @@ export default class UserCtrl {
   // блокирует возможность нажатия клавиш
   disableKeys() {
     this._model.setKeysEnabled(false);
+  }
+
+  // реакция на движение мыши
+  mouseAction() {
+    this._view.resetCursorHideTimer();
   }
 }
