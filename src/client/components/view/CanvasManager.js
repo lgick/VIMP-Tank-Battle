@@ -25,10 +25,9 @@ export default class CanvasManagerView {
 
   // изменяет размеры canvas
   resize({ id, sizes }) {
-    const elem = document.getElementById(id);
+    const app = this._apps[id];
 
-    elem.style.width = `${sizes.width}px`;
-    elem.style.height = `${sizes.height}px`;
+    app.renderer.resize(sizes.width, sizes.height);
   }
 
   // вычисляет координаты для отображения и обновляет полотно
