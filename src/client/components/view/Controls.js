@@ -15,7 +15,7 @@ export default class ControlsView {
     this._cursorTimerId = null;
   }
 
-  // показывает курсор и запускает таймер его сокрытия
+  // показывает курсор и запускает таймер его скрытия
   resetCursorHideTimer() {
     // сбрасывает старый таймер
     clearTimeout(this._cursorTimerId);

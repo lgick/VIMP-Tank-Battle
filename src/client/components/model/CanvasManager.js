@@ -24,7 +24,6 @@ export default class CanvasManagerModel {
     for (const canvasName in data) {
       if (Object.hasOwn(data, canvasName)) {
         const canvasData = data[canvasName];
-        const screenRatio = canvasData.screenRatio || 1;
         const [w, h] = (canvasData.baseScale || '1:1')
           .split(':')
           .map(value => Number(value));
@@ -34,7 +33,6 @@ export default class CanvasManagerModel {
           ...data[canvasName],
           baseScale,
           currentScale: baseScale,
-          screenRatio,
         };
       }
     }
@@ -49,8 +47,7 @@ export default class CanvasManagerModel {
 
     for (const canvasName in this._data) {
       if (Object.hasOwn(this._data, canvasName)) {
-        const { fixSize, screenRatio, aspectRatio, baseScale } =
-          this._data[canvasName];
+        const { fixSize, aspectRatio, baseScale } = this._data[canvasName];
         let width, height;
 
         // если есть фиксированный размер полотна
@@ -68,18 +65,18 @@ export default class CanvasManagerModel {
             const widthRatio = parseInt(parts[0], 10);
             const heightRatio = parseInt(parts[1], 10);
 
-            width = Math.round(screenWidth * screenRatio);
+            width = screenWidth;
             height = (width / widthRatio) * heightRatio;
 
             // если фактическая высота больше полученной,
             // то вычисления производятся относительно высоты
             if (height > screenHeight) {
-              height = Math.round(screenHeight * screenRatio);
+              height = screenHeight;
               width = (height / heightRatio) * widthRatio;
             }
           } else {
-            width = Math.round(screenWidth * screenRatio);
-            height = Math.round(screenHeight * screenRatio);
+            width = screenWidth;
+            height = screenHeight;
           }
 
           // Приводим к числу с целым значением
