@@ -16,6 +16,11 @@ export default class CanvasManagerModel {
     this._coordX = 0; // координата X
     this._coordY = 0; // координата Y
 
+    // ширина экрана, при которой масштаб игры = 1.0 * baseScale
+    // если экран меньше этого значения,
+    // картинка canvas будет пропорционально уменьшаться
+    this._designWidth = 1920; // Full HD
+
     for (const canvasName in data) {
       if (Object.hasOwn(data, canvasName)) {
         const canvasData = data[canvasName];
@@ -28,6 +33,7 @@ export default class CanvasManagerModel {
         this._data[canvasName] = {
           ...data[canvasName],
           baseScale,
+          currentScale: baseScale,
           screenRatio,
         };
       }
@@ -43,7 +49,8 @@ export default class CanvasManagerModel {
 
     for (const canvasName in this._data) {
       if (Object.hasOwn(this._data, canvasName)) {
-        const { fixSize, screenRatio, aspectRatio } = this._data[canvasName];
+        const { fixSize, screenRatio, aspectRatio, baseScale } =
+          this._data[canvasName];
         let width, height;
 
         // если есть фиксированный размер полотна
@@ -78,6 +85,9 @@ export default class CanvasManagerModel {
           // Приводим к числу с целым значением
           width = +width.toFixed();
           height = +height.toFixed();
+
+          this._data[canvasName].currentScale =
+            (width / this._designWidth) * baseScale;
         }
 
         this.publisher.emit('resize', {
@@ -89,10 +99,12 @@ export default class CanvasManagerModel {
         });
       }
     }
+
+    this.updateCoords({ x: this._coordX, y: this._coordY });
   }
 
   // вычисляет координаты для отображения
-  updateCoords(coords = { x: this._coordX, y: this._coordY }) {
+  updateCoords(coords) {
     const x = coords.x;
     const y = coords.y;
 
@@ -101,15 +113,13 @@ export default class CanvasManagerModel {
 
     for (const canvasName in this._data) {
       if (Object.hasOwn(this._data, canvasName)) {
-        const scale = this._data[canvasName].baseScale;
-
         this.publisher.emit('updateCoords', {
           id: canvasName,
           coords: {
             x,
             y,
           },
-          scale,
+          scale: this._data[canvasName].currentScale,
         });
       }
     }
