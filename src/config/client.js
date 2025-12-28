@@ -131,7 +131,6 @@ export default {
     canvasManager: {
       vimp: {
         aspectRatio: '3:2',
-        screenRatio: 1,
         baseScale: '5:1',
       },
       radar: {
