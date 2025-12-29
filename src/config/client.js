@@ -124,24 +124,22 @@ export default {
     sounds,
   },
 
+  initIdList: ['vimp', 'radar', 'panel', 'chat'],
+
   // ***** modules ***** //
   modules: {
-    canvasOptions: {
+    canvasManager: {
       vimp: {
         aspectRatio: '3:2',
-        screenRatio: 1,
-        scale: '2:1',
+        baseScale: '5:1',
       },
       radar: {
         fixSize: '150',
-        scale: '1:10',
+        baseScale: '1:8',
       },
     },
 
-    displayIdList: ['vimp', 'radar', 'panel', 'chat'],
-
-    // keys
-    keys: {
+    controls: {
       keySetList: [
         // spectator keyset
         {
@@ -173,7 +171,6 @@ export default {
       },
     },
 
-    // chat
     chat: {
       elems: {
         chatBox: 'chat-box',
@@ -224,7 +221,6 @@ export default {
       },
     },
 
-    // panel
     panel: {
       elems: {
         time: 'panel-time',
@@ -243,7 +239,6 @@ export default {
       },
     },
 
-    // stat
     stat: {
       elems: {
         stat: 'stat',
@@ -271,7 +266,6 @@ export default {
       },
     },
 
-    // vote
     vote: {
       elems: {
         voteId: 'vote',
