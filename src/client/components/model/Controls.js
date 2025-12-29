@@ -1,22 +1,20 @@
 import Publisher from '../../../lib/Publisher.js';
 
-// Singleton UserModel
+// Singleton ControlsModel
 
-let userModel;
+let controlsModel;
 
-export default class UserModel {
+export default class ControlsModel {
   constructor(data) {
-    if (userModel) {
-      return userModel;
+    if (controlsModel) {
+      return controlsModel;
     }
 
-    userModel = this;
+    controlsModel = this;
 
-    this._sizeOptions = data.sizeOptions;
-
-    this._keySetList = data.keys.keySetList;
-    this._modes = data.keys.modes;
-    this._cmds = data.keys.cmds;
+    this._keySetList = data.keySetList;
+    this._modes = data.modes;
+    this._cmds = data.cmds;
 
     this._currentKeySet = this._keySetList[0]; // текущий набор клавиш
     this._currentModes = {}; // статусы режимов
@@ -112,58 +110,6 @@ export default class UserModel {
   changeKeySet(key) {
     this._currentKeySet = this._keySetList[key];
     this._pressedKeys = {};
-  }
-
-  // рассчитывает размеры элементов с учетом пропорций
-  resize(data) {
-    const screenWidth = data.width;
-    const screenHeight = data.height;
-    const sizes = {};
-    let width, height;
-
-    for (const p of Object.keys(this._sizeOptions)) {
-      const fixSize = this._sizeOptions[p].fixSize;
-      const screenRatio = this._sizeOptions[p].screenRatio || 1;
-      const aspectRatio = this._sizeOptions[p].aspectRatio;
-
-      // если есть фиксированный размер полотна
-      if (fixSize) {
-        const parts = fixSize.split(':');
-
-        width = +parts[0];
-        height = +parts[1] ? parts[1] : parts[0];
-      } else {
-        // если задано соотношение сторон
-        if (aspectRatio) {
-          const parts = aspectRatio.split(':');
-
-          // строку в число
-          const widthRatio = parseInt(parts[0], 10);
-          const heightRatio = parseInt(parts[1], 10);
-
-          width = Math.round(screenWidth * screenRatio);
-          height = (width / widthRatio) * heightRatio;
-
-          // если фактическая высота больше полученной,
-          // то вычисления производятся относительно высоты
-          if (height > screenHeight) {
-            height = Math.round(screenHeight * screenRatio);
-            width = (height / heightRatio) * widthRatio;
-          }
-        } else {
-          width = Math.round(screenWidth * screenRatio);
-          height = Math.round(screenHeight * screenRatio);
-        }
-
-        // Приводим к числу с целым значением
-        width = +width.toFixed();
-        height = +height.toFixed();
-      }
-
-      sizes[p] = { width, height };
-    }
-
-    this.publisher.emit('resize', sizes);
   }
 
   // задаёт возможность нажатия клавиш

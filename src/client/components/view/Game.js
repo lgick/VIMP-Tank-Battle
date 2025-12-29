@@ -41,18 +41,6 @@ export default class GameView {
     instance.run();
   }
 
-  // вычисляет координаты для отображения
-  // пользователя по центру игры и обновляет полотно
-  update(coords, scale) {
-    const width = this._app.canvas.width;
-    const height = this._app.canvas.height;
-    const x = +(width / 2 - coords.x * scale).toFixed();
-    const y = +(height / 2 - coords.y * scale).toFixed();
-
-    this._app.stage.updateTransform({ x, y, scaleX: scale, scaleY: scale });
-    this._app.render();
-  }
-
   // удаляет экземпляр с полотна
   remove(instance) {
     instance.destroy();
