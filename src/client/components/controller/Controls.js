@@ -44,8 +44,8 @@ export default class ControlsCtrl {
     this._model.setKeysEnabled(false);
   }
 
-  // реакция на движение мыши
-  mouseAction() {
+  // скрывает курсор
+  resetCursorHideTimer() {
     this._view.resetCursorHideTimer();
   }
 }

@@ -447,8 +447,6 @@ function runModules(data) {
     canvasManagerModel,
     canvasManagerView,
   );
-
-  // инициализация
   modules.canvasManager.resize({
     width: innerWidth,
     height: innerHeight,
@@ -462,6 +460,7 @@ function runModules(data) {
   const controlsView = new ControlsView(controlsModel);
 
   modules.controls = new ControlsCtrl(controlsModel, controlsView);
+  modules.controls.resetCursorHideTimer();
 
   //==========================================//
   // Chat Module
@@ -530,7 +529,7 @@ function runModules(data) {
   );
   inputListener.publisher.on(
     'mouseAction',
-    modules.controls.mouseAction.bind(modules.controls),
+    modules.controls.resetCursorHideTimer.bind(modules.controls),
   );
   inputListener.publisher.on(
     'resize',
