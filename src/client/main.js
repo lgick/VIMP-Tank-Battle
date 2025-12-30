@@ -115,7 +115,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   soundData = data.parts.sounds || {};
 
   // создание полотен игры
-  const initPromises = Object.keys(modulesConfig.canvasManager).map(
+  const initPromises = Object.keys(modulesConfig.canvasManager.canvases).map(
     async canvasId => {
       const canvas = document.getElementById(canvasId);
       const app = new Application();
