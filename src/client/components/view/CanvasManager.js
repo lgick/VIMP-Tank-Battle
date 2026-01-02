@@ -34,8 +34,8 @@ export default class CanvasManagerView {
   updateCoords({ id, coords, scale }) {
     const app = this._apps[id];
     const { width, height } = app.canvas;
-    const x = +(width / 2 - coords.x * scale).toFixed();
-    const y = +(height / 2 - coords.y * scale).toFixed();
+    const x = width / 2 - coords.x * scale;
+    const y = height / 2 - coords.y * scale;
 
     app.stage.position.set(x, y);
     app.stage.scale.set(scale);

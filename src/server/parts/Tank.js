@@ -366,7 +366,7 @@ class Tank extends BaseModel {
     const position = body.getPosition();
     const angle = body.getAngle();
 
-    return [+position.x.toFixed(), +position.y.toFixed(), +angle.toFixed(2)];
+    return [+position.x.toFixed(2), +position.y.toFixed(2), +angle.toFixed(2)];
   }
 
   // меняет данные игрока (координаты, команду)
@@ -419,12 +419,12 @@ class Tank extends BaseModel {
       const vel = this._body.getLinearVelocity();
 
       data.playerData = [
-        Math.round(pos.x),
-        Math.round(pos.y),
+        +pos.x.toFixed(2),
+        +pos.y.toFixed(2),
         +this._body.getAngle().toFixed(2),
         +this._body.gunRotation.toFixed(2),
-        +vel.x.toFixed(1),
-        +vel.y.toFixed(1),
+        +vel.x.toFixed(2),
+        +vel.y.toFixed(2),
         +this._engineLoad.toFixed(2),
         this._condition,
       ];
@@ -441,12 +441,12 @@ class Tank extends BaseModel {
     const vel = this._body.getLinearVelocity();
 
     return [
-      Math.round(pos.x), // координаты x
-      Math.round(pos.y), // координаты y
+      +pos.x.toFixed(2), // координаты x
+      +pos.y.toFixed(2), // координаты y
       +this._body.getAngle().toFixed(2), // угол корпуса танка (радианы)
       +this._body.gunRotation.toFixed(2), // угол поворота башни (радианы)
-      +vel.x.toFixed(1), // скорость по x (мировая)
-      +vel.y.toFixed(1), // скорость по y (мировая)
+      +vel.x.toFixed(2), // скорость по x (мировая)
+      +vel.y.toFixed(2), // скорость по y (мировая)
       +this._engineLoad.toFixed(2), // нагрузка двигателя
       this._condition, // состояние танка
       this._modelData.size, // размер танка
