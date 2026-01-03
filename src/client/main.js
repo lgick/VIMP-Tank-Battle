@@ -272,7 +272,7 @@ socketMethods[PS_MAP_DATA] = data => {
 
   removeMap(currentMapSetId);
   createMap(setId, staticData);
-  modules.canvasManager.updateCoords(coords);
+  modules.canvasManager.updateCoords(coords, true);
   sending(PC_MAP_READY);
 };
 
@@ -364,7 +364,7 @@ socketMethods[PS_CLEAR] = function (setIdList) {
   }
 
   soundManager.reset();
-  modules.canvasManager.updateCoords(coords);
+  modules.canvasManager.updateCoords(coords, true);
 };
 
 // console
