@@ -21,13 +21,7 @@ export default class CanvasManagerModel {
     this._coordX = 0; // текущая координата X игрока
     this._coordY = 0; // текущая координата Y игрока
 
-    // координаты рассчёта физики камеры
-    this._prevCoordX = null;
-    this._prevCoordY = null;
-
-    // сглаженный вектор скорости (фильтр шума сети)
-    this._avgDx = 0;
-    this._avgDy = 0;
+    this._awaitingTeleport = false; // флаг ожидания телепорта
 
     // текущие смещения камеры (для плавности)
     this._camOffsetX = 0;
@@ -39,6 +33,13 @@ export default class CanvasManagerModel {
 
     this._lookAheadFactor = camConfig.lookAheadFactor || 0;
 
+    // dead zone по правилу "0.5 пикселя"
+    const safeFactor = Math.max(this._lookAheadFactor, 1);
+
+    // если lookAheadFactor = 30, deadZone ≈ 0.016
+    // если lookAheadFactor = 0,deadZone = 0.5
+    this._deadZone = 0.5 / safeFactor;
+
     let rawZoomFactor = camConfig.zoomOutFactor || 0;
 
     // ограничение рамками 0-9
@@ -47,7 +48,6 @@ export default class CanvasManagerModel {
 
     this._maxZoomOut = camConfig.maxZoomOut || 1;
     this._smoothness = camConfig.smoothness || 1;
-    this._inputSmoothness = camConfig._inputSmoothness || 0.1;
 
     // ширина экрана, при которой масштаб игры = 1.0 * baseScale
     // если экран меньше этого значения,
@@ -132,7 +132,7 @@ export default class CanvasManagerModel {
       }
     }
 
-    this.updateCoords({ x: this._coordX, y: this._coordY }, true);
+    this.updateCoords({ x: this._coordX, y: this._coordY });
   }
 
   // вычисляет координаты для отображения
@@ -140,50 +140,55 @@ export default class CanvasManagerModel {
     const x = coords.x;
     const y = coords.y;
 
-    // инициализация предыдущих координат при первом запуске
-    if (this._prevCoordX === null) {
-      this._prevCoordX = x;
-      this._prevCoordY = y;
+    // если запрошен сброс,
+    // то активация флага ожидания новых координат
+    if (forceReset) {
+      this._awaitingTeleport = true;
     }
 
     // расчет скорости (вектор движения)
-    let dx = x - this._prevCoordX;
-    let dy = y - this._prevCoordY;
+    let dx = x - this._coordX;
+    let dy = y - this._coordY;
 
-    // если был скачок координат (телепорт), обнуление дельты
-    if (Math.abs(dx) > 100 || Math.abs(dy) > 100 || forceReset) {
+    // скорость движения
+    let speed = Math.sqrt(dx * dx + dy * dy);
+
+    // если движение медленнее порога dead zone
+    if (speed < this._deadZone) {
       dx = 0;
       dy = 0;
-      this._avgDx = 0;
-      this._avgDy = 0;
+      speed = 0;
+    }
+
+    // если ожидается скачок координат (телепорт)
+    if (this._awaitingTeleport) {
+      // сбрoc смещения, пока в режиме ожидания
       this._camOffsetX = 0;
       this._camOffsetY = 0;
       this._camZoomModifier = 1;
+
+      // если новые координаты изменили скорость,
+      // сработал телепорт
+      if (speed !== 0) {
+        // сброс инерции для этого кадра,
+        // чтобы камера "телепортировалась" вместе с игроком,
+        // а не летела к нему через lerp
+        dx = 0;
+        dy = 0;
+        speed = 0;
+
+        // телепорт завершён, отключение флага
+        this._awaitingTeleport = false;
+      }
+
+      // если скорость нулевая,
+      // значит координаты еще не обновились (старые 0 0)
+      // флаг _awaitingTeleport в режиме ожидания координат
     }
-
-    // фильтрация "шума" (low-pass filter)
-    // если приходят нули между движениями,
-    // этот фильтр не даст скорости упасть мгновенно
-    this._avgDx = lerp(this._avgDx, dx, this._inputSmoothness);
-    this._avgDy = lerp(this._avgDy, dy, this._inputSmoothness);
-
-    // защита от бесконечно малых значений (дрейфа камеры в покое)
-    if (Math.abs(this._avgDx) < 0.01) {
-      this._avgDx = 0;
-    }
-
-    if (Math.abs(this._avgDy) < 0.01) {
-      this._avgDy = 0;
-    }
-
-    // скорость движения
-    const speed = Math.sqrt(
-      this._avgDx * this._avgDx + this._avgDy * this._avgDy,
-    );
 
     // сдвиг камеры в сторону движения
-    const targetOffsetX = this._avgDx * this._lookAheadFactor;
-    const targetOffsetY = this._avgDy * this._lookAheadFactor;
+    const targetOffsetX = dx * this._lookAheadFactor;
+    const targetOffsetY = dy * this._lookAheadFactor;
 
     // зум: чем быстрее, тем меньше масштаб (отдаление)
     const targetZoomModifier = Math.max(
@@ -200,8 +205,6 @@ export default class CanvasManagerModel {
       this._smoothness,
     );
 
-    this._prevCoordX = x;
-    this._prevCoordY = y;
     this._coordX = x;
     this._coordY = y;
 
