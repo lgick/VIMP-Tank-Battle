@@ -1,5 +1,10 @@
 import Publisher from '../../../lib/Publisher.js';
 
+// линейная интерполяция
+function lerp(start, end, alpha) {
+  return start + (end - start) * alpha;
+}
+
 // Singleton CanvasManagerModel
 
 let canvasManagerModel;
@@ -13,26 +18,57 @@ export default class CanvasManagerModel {
     canvasManagerModel = this;
 
     this._data = {};
-    this._coordX = 0; // координата X
-    this._coordY = 0; // координата Y
+    this._coordX = 0; // текущая координата X игрока
+    this._coordY = 0; // текущая координата Y игрока
+
+    this._awaitingTeleport = false; // флаг ожидания телепорта
+
+    // текущие смещения камеры (для плавности)
+    this._camOffsetX = 0;
+    this._camOffsetY = 0;
+    this._camZoomModifier = 1;
+
+    // настройки камеры из конфига
+    const camConfig = data.dynamicCamera || {};
+
+    this._lookAheadFactor = camConfig.lookAheadFactor || 0;
+
+    // dead zone по правилу "0.5 пикселя"
+    const safeFactor = Math.max(this._lookAheadFactor, 1);
+
+    // если lookAheadFactor = 30, deadZone ≈ 0.016
+    // если lookAheadFactor = 0,deadZone = 0.5
+    this._deadZone = 0.5 / safeFactor;
+
+    let rawZoomFactor = camConfig.zoomOutFactor || 0;
+
+    // ограничение рамками 0-9
+    rawZoomFactor = Math.max(0, Math.min(9, rawZoomFactor));
+    this._zoomOutFactor = rawZoomFactor * 0.1;
+
+    this._maxZoomOut = camConfig.maxZoomOut || 1;
+    this._smoothness = camConfig.smoothness || 1;
 
     // ширина экрана, при которой масштаб игры = 1.0 * baseScale
     // если экран меньше этого значения,
     // картинка canvas будет пропорционально уменьшаться
     this._designWidth = 1920; // Full HD
 
-    for (const canvasName in data) {
-      if (Object.hasOwn(data, canvasName)) {
-        const canvasData = data[canvasName];
+    const canvases = data.canvases || {};
+
+    for (const canvasName in canvases) {
+      if (Object.hasOwn(canvases, canvasName)) {
+        const canvasData = canvases[canvasName];
         const [w, h] = (canvasData.baseScale || '1:1')
           .split(':')
           .map(value => Number(value));
         const baseScale = Number((w / h).toFixed(2));
 
         this._data[canvasName] = {
-          ...data[canvasName],
+          ...canvasData,
           baseScale,
           currentScale: baseScale,
+          dynamicCamera: !!canvasData.dynamicCamera,
         };
       }
     }
@@ -79,7 +115,6 @@ export default class CanvasManagerModel {
             height = screenHeight;
           }
 
-          // Приводим к числу с целым значением
           width = +width.toFixed();
           height = +height.toFixed();
 
@@ -101,23 +136,104 @@ export default class CanvasManagerModel {
   }
 
   // вычисляет координаты для отображения
-  updateCoords(coords) {
+  updateCoords(coords, forceReset = false) {
     const x = coords.x;
     const y = coords.y;
+
+    // если запрошен сброс,
+    // то активация флага ожидания новых координат
+    if (forceReset) {
+      this._awaitingTeleport = true;
+    }
+
+    // расчет скорости (вектор движения)
+    let dx = x - this._coordX;
+    let dy = y - this._coordY;
+
+    // скорость движения
+    let speed = Math.sqrt(dx * dx + dy * dy);
+
+    // если движение медленнее порога dead zone
+    if (speed < this._deadZone) {
+      dx = 0;
+      dy = 0;
+      speed = 0;
+    }
+
+    // если ожидается скачок координат (телепорт)
+    if (this._awaitingTeleport) {
+      // сбрoc смещения, пока в режиме ожидания
+      this._camOffsetX = 0;
+      this._camOffsetY = 0;
+      this._camZoomModifier = 1;
+
+      // если новые координаты изменили скорость,
+      // сработал телепорт
+      if (speed !== 0) {
+        // сброс инерции для этого кадра,
+        // чтобы камера "телепортировалась" вместе с игроком,
+        // а не летела к нему через lerp
+        dx = 0;
+        dy = 0;
+        speed = 0;
+
+        // телепорт завершён, отключение флага
+        this._awaitingTeleport = false;
+      }
+
+      // если скорость нулевая,
+      // значит координаты еще не обновились (старые 0 0)
+      // флаг _awaitingTeleport в режиме ожидания координат
+    }
+
+    // сдвиг камеры в сторону движения
+    const targetOffsetX = dx * this._lookAheadFactor;
+    const targetOffsetY = dy * this._lookAheadFactor;
+
+    // зум: чем быстрее, тем меньше масштаб (отдаление)
+    const targetZoomModifier = Math.max(
+      this._maxZoomOut,
+      1 - speed * this._zoomOutFactor,
+    );
+
+    // сглаживание (lerp)
+    this._camOffsetX = lerp(this._camOffsetX, targetOffsetX, this._smoothness);
+    this._camOffsetY = lerp(this._camOffsetY, targetOffsetY, this._smoothness);
+    this._camZoomModifier = lerp(
+      this._camZoomModifier,
+      targetZoomModifier,
+      this._smoothness,
+    );
 
     this._coordX = x;
     this._coordY = y;
 
     for (const canvasName in this._data) {
       if (Object.hasOwn(this._data, canvasName)) {
-        this.publisher.emit('updateCoords', {
-          id: canvasName,
-          coords: {
-            x,
-            y,
-          },
-          scale: this._data[canvasName].currentScale,
-        });
+        const { dynamicCamera, currentScale } = this._data[canvasName];
+
+        // если для полотна включена динамическая камера
+        if (dynamicCamera) {
+          const camX = x + this._camOffsetX;
+          const camY = y + this._camOffsetY;
+          const finalScale = currentScale * this._camZoomModifier;
+
+          this.publisher.emit('updateCoords', {
+            id: canvasName,
+            coords: {
+              x: camX,
+              y: camY,
+            },
+            scale: finalScale,
+          });
+        } else {
+          // если динамическая камера выключена
+          this.publisher.emit('updateCoords', {
+            id: canvasName,
+            coords: { x, y },
+            scale: currentScale,
+          });
+        }
       }
     }
   }
