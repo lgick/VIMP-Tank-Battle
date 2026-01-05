@@ -181,6 +181,11 @@ class VIMP {
         coords = this._game.getPosition(gameId);
       }
 
+      if (user.forceCameraReset === true) {
+        coords[2] = true;
+        user.forceCameraReset = false;
+      }
+
       // если у игрока активен эффект тряски камеры
       if (user.shakeDuration > 0) {
         // расчёт текущей интенсивности с затуханием
@@ -191,8 +196,8 @@ class VIMP {
         const offsetX = (Math.random() - 0.5) * 2 * currentIntensity;
         const offsetY = (Math.random() - 0.5) * 2 * currentIntensity;
 
-        coords[0] += offsetX;
-        coords[1] += offsetY;
+        coords[0] = +(coords[0] + offsetX).toFixed(2);
+        coords[1] = +(coords[1] + offsetY).toFixed(2);
 
         // оставшаяся длительность
         // dt в секундах, duration в мс
@@ -349,6 +354,7 @@ class VIMP {
         user.teamId = this._spectatorId;
         user.isWatching = true;
         user.watchedGameId = this._activePlayersList[0] || null;
+        user.forceCameraReset = true;
 
         this._teamSizes[this._spectatorTeam].add(gameId);
 
@@ -453,6 +459,7 @@ class VIMP {
 
         if (team === this._spectatorTeam) {
           user.isWatching = true;
+          user.forceCameraReset = true;
           this._socketManager.sendSpectatorDefaultShot(socketId);
         } else {
           this._setActivePlayer(user, getRespawnData(team));
@@ -605,6 +612,7 @@ class VIMP {
 
     user.isWatching = true;
     user.watchedGameId = this._activePlayersList[0] || null;
+    user.forceCameraReset = true;
 
     this._removeFromActivePlayers(gameId);
     this._removedPlayersList.push({ gameId, model });
@@ -621,6 +629,7 @@ class VIMP {
 
     user.isWatching = false;
     user.watchedGameId = null;
+    user.forceCameraReset = true;
 
     // если это не бот
     if (!user.isBot) {
@@ -786,6 +795,7 @@ class VIMP {
       if (victimId !== killerId) {
         // отслеживание противника
         victimUser.watchedGameId = killerId;
+        victimUser.forceCameraReset = true;
 
         // если кто-то наблюдал за victimId — переназначить на killerId
         this._replaceWatchedPlayer(victimId, killerId);
@@ -881,6 +891,8 @@ class VIMP {
       isWatching: true,
       // id наблюдаемого игрока
       watchedGameId: this._activePlayersList[0] || null,
+      // флаг для сброса камеры клиента
+      forceCameraReset: true,
       // текущая интенсивность тряски камеры
       shakeIntensity: 0,
       // оставшаяся длительность тряски камеры
@@ -956,10 +968,12 @@ class VIMP {
         // next player
         if (name === this._spectatorKeys.nextPlayer) {
           user.watchedGameId = this._getNextActivePlayerForUser(gameId);
+          user.forceCameraReset = true;
 
           // prev player
         } else if (name === this._spectatorKeys.prevPlayer) {
           user.watchedGameId = this._getNextActivePlayerForUser(gameId, true);
+          user.forceCameraReset = true;
         }
       }
     } else {
