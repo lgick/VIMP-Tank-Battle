@@ -226,7 +226,7 @@ class Game {
     this._playersData[gameId].updateKeys(keyData);
   }
 
-  // возвращает координаты игрока [x, y, angle]
+  // возвращает координаты игрока [x, y]
   getPosition(gameId) {
     return this._playersData[gameId].getPosition();
   }
