@@ -87,7 +87,6 @@ const CTRL = {}; // контроллеры
 let gameSets = {}; // наборы конструкторов (id: [наборы])
 let entitiesOnCanvas = {}; // сущности, отображаемые на полотнах
 let currentMapSetId; // текущий id набора конструкторов для карт
-const coords = { x: 0, y: 0 }; // координаты
 const socketMethods = []; // методы для обработки сокет-данных
 
 // SOCKET МЕТОДЫ
@@ -272,7 +271,6 @@ socketMethods[PS_MAP_DATA] = data => {
 
   removeMap(currentMapSetId);
   createMap(setId, staticData);
-  modules.canvasManager.updateCoords(coords, true);
   sending(PC_MAP_READY);
 };
 
@@ -364,7 +362,6 @@ socketMethods[PS_CLEAR] = function (setIdList) {
   }
 
   soundManager.reset();
-  modules.canvasManager.updateCoords(coords, true);
 };
 
 // console
@@ -388,15 +385,12 @@ function shotData(data) {
 
   // координаты
   if (crds !== 0) {
-    coords.x = crds[0];
-    coords.y = crds[1];
-    soundManager.setListenerPosition(coords.x, coords.y);
+    soundManager.setListenerPosition(crds[0], crds[1]);
+    modules.canvasManager.updateCoords(crds);
   }
 
   soundManager.processAudibility();
   soundManager.updateActiveSounds();
-
-  modules.canvasManager.updateCoords(coords);
 
   // панель
   if (panel !== 0) {
