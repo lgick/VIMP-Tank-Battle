@@ -21,8 +21,6 @@ export default class CanvasManagerModel {
     this._coordX = 0; // текущая координата X игрока
     this._coordY = 0; // текущая координата Y игрока
 
-    this._awaitingTeleport = false; // флаг ожидания телепорта
-
     // текущие смещения камеры (для плавности)
     this._camOffsetX = 0;
     this._camOffsetY = 0;
@@ -138,25 +136,33 @@ export default class CanvasManagerModel {
       }
     }
 
-    this.updateCoords({ x: this._coordX, y: this._coordY });
+    this.updateCoords(this._coordX, this._coordY);
   }
 
   // вычисляет координаты для отображения
-  updateCoords(coords, forceReset = false) {
-    const x = coords.x;
-    const y = coords.y;
+  updateCoords(x, y, cameraReset) {
+    // если сброс динамических данных камеры (телепорт/респаун/смена игрока)
+    if (cameraReset) {
+      this._coordX = x;
+      this._coordY = y;
 
-    // если запрошен сброс,
-    // то активация флага ожидания новых координат
-    if (forceReset) {
-      this._awaitingTeleport = true;
+      // сброс инерции камеры (смещение и зум)
+      this._camOffsetX = 0;
+      this._camOffsetY = 0;
+      this._camZoomModifier = 1;
+
+      // сброс накопителя сглаживания скорости
+      this._avgDx = 0;
+      this._avgDy = 0;
+      this._avgSpeed = 0;
     }
 
-    // расчет скорости (вектор движения)
+    // расчет движения
+    // если был сброс, dx/dy будут равны 0 (т.к. только что обновился _coordX/Y)
     let dx = x - this._coordX;
     let dy = y - this._coordY;
 
-    // мгновенная скорость движения
+    // скорость движения
     let speed = Math.sqrt(dx * dx + dy * dy);
 
     // если движение медленнее порога dead zone
@@ -166,35 +172,7 @@ export default class CanvasManagerModel {
       speed = 0;
     }
 
-    // если ожидается скачок координат (телепорт)
-    if (this._awaitingTeleport) {
-      // сбрoc смещения, пока в режиме ожидания
-      this._camOffsetX = 0;
-      this._camOffsetY = 0;
-      this._camZoomModifier = 1;
-      this._avgDx = 0;
-      this._avgDy = 0;
-      this._avgSpeed = 0;
-
-      // если новые координаты изменили скорость,
-      // сработал телепорт
-      if (speed !== 0) {
-        // сброс инерции для этого кадра
-        dx = 0;
-        dy = 0;
-        speed = 0;
-
-        // телепорт завершён, отключение флага
-        this._awaitingTeleport = false;
-      }
-
-      // если скорость нулевая,
-      // значит координаты еще не обновились (старые 0 0)
-      // флаг _awaitingTeleport в режиме ожидания координат
-    }
-
-    // фильтрация шума скорости
-    // (позволяет игнорировать сетевой джиттер)
+    // фильтрация шума скорости (позволяет игнорировать сетевой джиттер)
     this._avgDx = lerp(this._avgDx, dx, this._smoothnessVelocity);
     this._avgDy = lerp(this._avgDy, dy, this._smoothnessVelocity);
     this._avgSpeed = lerp(this._avgSpeed, speed, this._smoothnessVelocity);
