@@ -28,6 +28,16 @@ export default class CanvasManagerModel {
     this._camOffsetY = 0;
     this._camZoomModifier = 1;
 
+    // средние значения вектора движения и скорости
+    this._avgDx = 0;
+    this._avgDy = 0;
+    this._avgSpeed = 0;
+
+    // ширина экрана, при которой масштаб игры = 1.0 * baseScale
+    // если экран меньше этого значения,
+    // картинка canvas будет пропорционально уменьшаться
+    this._designWidth = 1920; // Full HD
+
     // настройки камеры из конфига
     const camConfig = data.dynamicCamera || {};
 
@@ -47,12 +57,11 @@ export default class CanvasManagerModel {
     this._zoomOutFactor = rawZoomFactor * 0.1;
 
     this._maxZoomOut = camConfig.maxZoomOut || 1;
-    this._smoothness = camConfig.smoothness || 1;
 
-    // ширина экрана, при которой масштаб игры = 1.0 * baseScale
-    // если экран меньше этого значения,
-    // картинка canvas будет пропорционально уменьшаться
-    this._designWidth = 1920; // Full HD
+    // плавность изменений динамической камеры:
+    this._smoothnessPosition = camConfig.smoothnessPosition || 0.05;
+    this._smoothnessZoom = camConfig.smoothnessZoom || 0.005;
+    this._smoothnessVelocity = camConfig.smoothnessVelocity || 0.1;
 
     const canvases = data.canvases || {};
 
@@ -124,10 +133,7 @@ export default class CanvasManagerModel {
 
         this.publisher.emit('resize', {
           id: canvasName,
-          sizes: {
-            width,
-            height,
-          },
+          sizes: { width, height },
         });
       }
     }
@@ -150,7 +156,7 @@ export default class CanvasManagerModel {
     let dx = x - this._coordX;
     let dy = y - this._coordY;
 
-    // скорость движения
+    // мгновенная скорость движения
     let speed = Math.sqrt(dx * dx + dy * dy);
 
     // если движение медленнее порога dead zone
@@ -166,13 +172,14 @@ export default class CanvasManagerModel {
       this._camOffsetX = 0;
       this._camOffsetY = 0;
       this._camZoomModifier = 1;
+      this._avgDx = 0;
+      this._avgDy = 0;
+      this._avgSpeed = 0;
 
       // если новые координаты изменили скорость,
       // сработал телепорт
       if (speed !== 0) {
-        // сброс инерции для этого кадра,
-        // чтобы камера "телепортировалась" вместе с игроком,
-        // а не летела к нему через lerp
+        // сброс инерции для этого кадра
         dx = 0;
         dy = 0;
         speed = 0;
@@ -186,23 +193,39 @@ export default class CanvasManagerModel {
       // флаг _awaitingTeleport в режиме ожидания координат
     }
 
+    // фильтрация шума скорости
+    // (позволяет игнорировать сетевой джиттер)
+    this._avgDx = lerp(this._avgDx, dx, this._smoothnessVelocity);
+    this._avgDy = lerp(this._avgDy, dy, this._smoothnessVelocity);
+    this._avgSpeed = lerp(this._avgSpeed, speed, this._smoothnessVelocity);
+
     // сдвиг камеры в сторону движения
-    const targetOffsetX = dx * this._lookAheadFactor;
-    const targetOffsetY = dy * this._lookAheadFactor;
+    const targetOffsetX = this._avgDx * this._lookAheadFactor;
+    const targetOffsetY = this._avgDy * this._lookAheadFactor;
 
     // зум: чем быстрее, тем меньше масштаб (отдаление)
     const targetZoomModifier = Math.max(
       this._maxZoomOut,
-      1 - speed * this._zoomOutFactor,
+      1 - this._avgSpeed * this._zoomOutFactor,
     );
 
-    // сглаживание (lerp)
-    this._camOffsetX = lerp(this._camOffsetX, targetOffsetX, this._smoothness);
-    this._camOffsetY = lerp(this._camOffsetY, targetOffsetY, this._smoothness);
+    // сглаживание движения камеры
+    this._camOffsetX = lerp(
+      this._camOffsetX,
+      targetOffsetX,
+      this._smoothnessPosition,
+    );
+    this._camOffsetY = lerp(
+      this._camOffsetY,
+      targetOffsetY,
+      this._smoothnessPosition,
+    );
+
+    // сглаживание зума
     this._camZoomModifier = lerp(
       this._camZoomModifier,
       targetZoomModifier,
-      this._smoothness,
+      this._smoothnessZoom,
     );
 
     this._coordX = x;
