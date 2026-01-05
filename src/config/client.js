@@ -129,13 +129,33 @@ export default {
   // ***** modules ***** //
   modules: {
     canvasManager: {
-      vimp: {
-        aspectRatio: '3:2',
-        baseScale: '5:1',
+      dynamicCamera: {
+        // сила смещения камеры вперед (чем больше, тем дальше смотрит)
+        lookAheadFactor: 30,
+
+        // чувствительность зума (0 - 9)
+        // 0 - зум отключен
+        // 3 - стандартный баланс
+        // 9 - максимальная чувствительность
+        // (зум срабатывает от малейшего движения)
+        zoomOutFactor: 8,
+
+        // максимально возможное отдаление (0.7 от базового масштаба)
+        maxZoomOut: 0.7,
+
+        // плавность движения камеры (0.01 - очень плавно, 0.1 - резко)
+        smoothness: 0.01,
       },
-      radar: {
-        fixSize: '150',
-        baseScale: '1:8',
+      canvases: {
+        vimp: {
+          aspectRatio: '16:9',
+          baseScale: '5:1',
+          dynamicCamera: true,
+        },
+        radar: {
+          fixSize: '150',
+          baseScale: '1:8',
+        },
       },
     },
 
