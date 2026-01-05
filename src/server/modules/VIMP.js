@@ -175,7 +175,7 @@ class VIMP {
 
           coords = this._game.getPosition(user.watchedGameId);
         } else {
-          coords = [0, 0, 0];
+          coords = [0, 0];
         }
       } else {
         coords = this._game.getPosition(gameId);

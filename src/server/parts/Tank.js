@@ -364,9 +364,8 @@ class Tank extends BaseModel {
   getPosition() {
     const body = this.getBody();
     const position = body.getPosition();
-    const angle = body.getAngle();
 
-    return [+position.x.toFixed(2), +position.y.toFixed(2), +angle.toFixed(2)];
+    return [+position.x.toFixed(2), +position.y.toFixed(2)];
   }
 
   // меняет данные игрока (координаты, команду)
