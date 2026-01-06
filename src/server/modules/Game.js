@@ -349,7 +349,7 @@ class Game {
     const weaponConfig = this._weapons[weaponName];
 
     // если эффект тряски есть
-    if (weaponConfig?.cameraShake) {
+    if (weaponConfig.cameraShake) {
       this._services.vimp.triggerCameraShake(
         targetGameId,
         weaponConfig.cameraShake,
