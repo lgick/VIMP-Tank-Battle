@@ -158,6 +158,7 @@ export default {
           aspectRatio: '16:9',
           baseScale: '5:1',
           dynamicCamera: true,
+          shakeCamera: true,
         },
         radar: {
           fixSize: '150',
