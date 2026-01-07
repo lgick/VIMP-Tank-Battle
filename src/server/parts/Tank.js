@@ -290,6 +290,8 @@ class Tank extends BaseModel {
 
     // крутящий момент для поворота
     let torque = 0;
+
+    // базовый фактор поворота
     let turnFactor = 1.0;
 
     // если скорость очень мала, используем базовый фактор
@@ -299,19 +301,16 @@ class Tank extends BaseModel {
 
     // если движение назад,
     // дополнительно умножение фактора на _REVERSE_TURN_MULTIPLIER
-    if (back) {
+    if (currentForwardSpeed < 0) {
       turnFactor *= this._REVERSE_TURN_MULTIPLIER;
     }
 
-    // определяем направление руля по клавише "назад"
-    const turnDirection = back ? -1 : 1;
-
     if (left) {
-      torque = -this._effectiveTurnTorque * turnFactor * turnDirection;
+      torque = -this._effectiveTurnTorque * turnFactor;
     }
 
     if (right) {
-      torque = this._effectiveTurnTorque * turnFactor * turnDirection;
+      torque = this._effectiveTurnTorque * turnFactor;
     }
 
     if (torque !== 0) {
