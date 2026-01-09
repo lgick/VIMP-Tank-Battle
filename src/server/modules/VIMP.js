@@ -5,6 +5,7 @@ import Vote from './Vote.js';
 import Game from './Game.js';
 import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
+import SnapshotManager from './SnapshotManager.js';
 import Bots from './bots/index.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
 import { isValidName } from '../../lib/validators.js';
@@ -74,6 +75,11 @@ class VIMP {
 
     this._socketManager = socketManager;
 
+    this._snapshotManager = new SnapshotManager(
+      this._game,
+      data.timers.networkSendRate,
+    );
+
     this._bots = new Bots(this, this._game, this._panel, this._stat);
 
     this._RTTManager = new RTTManager(data.rtt, {
@@ -133,31 +139,34 @@ class VIMP {
     this._game.updateData(dt);
 
     if (this._bots.getBotCount() > 0) {
-      const playerList = this._game.getAlivePlayers();
       this._bots.updateBots(dt);
-      this._bots.buildSpatialGrid(playerList);
+      this._bots.buildSpatialGrid(this._game.getAlivePlayers());
+    }
+
+    // получение снимка (snapshot)
+    const gameSnapshot = this._snapshotManager.processTick();
+
+    // если null, значит пока не время отправлять данные
+    if (!gameSnapshot) {
+      return;
     }
 
     // список пользователей готовых к игре
-    const userList = Object.values(this._users).filter(
-      user => user.isReady === true,
-    );
-
-    const game = this._game.getGameData();
+    const userList = Object.values(this._users).filter(user => user.isReady);
     const panelUpdates = this._panel.processUpdates();
     const stat = this._stat.getLast();
     const chat = this._chat.shift();
     const vote = this._vote.shift();
 
-    game[this._currentMapData.setId] = this._game.getDynamicMapData();
+    gameSnapshot[this._currentMapData.setId] = this._game.getDynamicMapData();
 
     // игроки для удаления с полотна
     while (this._removedPlayersList.length) {
       const user = this._removedPlayersList.pop();
       const model = user.model;
 
-      game[model] = game[model] || {};
-      game[model][user.gameId] = null;
+      gameSnapshot[model] = gameSnapshot[model] || {};
+      gameSnapshot[model][user.gameId] = null;
     }
 
     const getUserData = gameId => {
@@ -206,7 +215,7 @@ class VIMP {
         voteUser = vote;
       }
 
-      return [game, coords, panel, stat, chatUser, voteUser];
+      return [gameSnapshot, coords, panel, stat, chatUser, voteUser];
     };
 
     // отправка данных
@@ -318,6 +327,8 @@ class VIMP {
     this._panel.reset();
     this._stat.reset();
     this._resetVote();
+
+    this._snapshotManager.reset();
 
     this._game.clear();
     this._game.createMap(this._scaledMapData);

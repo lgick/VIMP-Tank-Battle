@@ -1,10 +1,21 @@
 import BaseModel from './BaseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck';
 
-class Tank extends BaseModel {
-  // максимальный шаг в 1/30 секунды
-  _MAX_DT = 1 / 30;
+const FORWARD = new Vec2(1, 0);
+const RIGHT = new Vec2(0, 1);
+const ZERO = new Vec2(0, 0);
 
+// линейная интерполяция между x и y, коэффициент a ∈ [0,1]
+function lerp(x, y, a) {
+  return x * (1 - a) + y * a;
+}
+
+// округление
+function round(val) {
+  return Math.round(val * 100) / 100;
+}
+
+class Tank extends BaseModel {
   // порог скорости для фактора поворота
   _TURN_SPEED_THRESHOLD = 10;
 
@@ -92,11 +103,6 @@ class Tank extends BaseModel {
     this.takeDamage(0);
   }
 
-  // линейная интерполяция между x и y, коэффициент a ∈ [0,1]
-  lerp(x, y, a) {
-    return x * (1 - a) + y * a;
-  }
-
   // проверяет, жив ли танк
   isAlive() {
     return this._condition > 0;
@@ -119,7 +125,7 @@ class Tank extends BaseModel {
 
       // остановка танка при уничтожении,
       // сброс нажатых клавиш
-      this._body.setLinearVelocity(new Vec2(0, 0));
+      this._body.setLinearVelocity(ZERO);
       this._body.setAngularVelocity(0);
       this.resetKeys();
 
@@ -143,7 +149,7 @@ class Tank extends BaseModel {
   // получение боковой скорости
   getLateralVelocity(body) {
     // вектор вправо отн. танка
-    const currentRightNormal = body.getWorldVector(new Vec2(0, 1));
+    const currentRightNormal = body.getWorldVector(RIGHT);
     // проекция скорости на правый вектор
     return Vec2.dot(currentRightNormal, body.getLinearVelocity());
   }
@@ -166,9 +172,6 @@ class Tank extends BaseModel {
 
     this._shotData = null; // сброс данных стрельбы
 
-    // ограничение максимального dt, оно может сильно скакать
-    dt = Math.min(dt, this._MAX_DT);
-
     this.updateRemainingCooldowns(dt);
 
     // сначала обновляем поворот башни (если нажаты клавиши)
@@ -178,7 +181,7 @@ class Tank extends BaseModel {
     }
 
     if (this._centeringGun) {
-      body.gunRotation = this.lerp(
+      body.gunRotation = lerp(
         body.gunRotation,
         0,
         Math.min(1, this._gunCenterSpeed * dt),
@@ -240,7 +243,7 @@ class Tank extends BaseModel {
     }
 
     const currentVelocity = body.getLinearVelocity();
-    const forwardVec = body.getWorldVector(new Vec2(1, 0));
+    const forwardVec = body.getWorldVector(FORWARD);
     const currentForwardSpeed = Vec2.dot(currentVelocity, forwardVec);
 
     // сила против бокового скольжения
@@ -286,7 +289,12 @@ class Tank extends BaseModel {
     const strain = Math.max(0, this._engineThrottle - speedRatio);
 
     this._engineLoad = this._engineThrottle + strain * this._STRAIN_FACTOR;
-    this._engineLoad = Math.max(0, this._engineLoad); // Ограничиваем снизу
+
+    // ограничение диапазона от 0.0 до 2.0 (или 1.5)
+    // 0.0 - тишина
+    // 1.0 - обычная езда
+    // >1.0 - нагрузка (упор в стену, разгон в гору)
+    this._engineLoad = Math.max(0, Math.min(this._engineLoad, 2.0));
 
     // крутящий момент для поворота
     let torque = 0;
@@ -343,7 +351,7 @@ class Tank extends BaseModel {
   getFireDirection(weaponName) {
     const body = this.getBody();
     const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    let directionVec = Rot.mulVec2(new Rot(totalAngle), new Vec2(1, 0));
+    let directionVec = Rot.mulVec2(new Rot(totalAngle), FORWARD);
     const weaponConfig = this.weapons[weaponName];
 
     if (weaponConfig && weaponConfig.spread > 0) {
@@ -383,12 +391,19 @@ class Tank extends BaseModel {
     });
 
     // остановка танка
-    body.setLinearVelocity(new Vec2(0, 0));
+    body.setLinearVelocity(ZERO);
     body.setAngularVelocity(0);
     body.setPosition(new Vec2(x, y));
     body.setAngle(angle);
     this._body.gunRotation = 0;
-    this.fullUserData = true;
+
+    // сброс физики управления
+    this._engineThrottle = 0;
+    this._engineLoad = 0;
+    this._centeringGun = false;
+
+    // сброс нажатых клавиш
+    this.resetKeys();
   }
 
   _getSpeedRatio(currentForwardSpeed) {
@@ -406,49 +421,35 @@ class Tank extends BaseModel {
     return +speedRatio.toFixed(4);
   }
 
-  getData() {
-    const data = {};
+  // возвращает и сбрасывает данные о выстреле
+  getShotData() {
+    const data = this._shotData;
 
-    if (this.fullUserData === true) {
-      this.fullUserData = false;
-      data.playerData = this.getFullData();
-    } else {
-      const pos = this._body.getPosition();
-      const vel = this._body.getLinearVelocity();
-
-      data.playerData = [
-        +pos.x.toFixed(2),
-        +pos.y.toFixed(2),
-        +this._body.getAngle().toFixed(2),
-        +this._body.gunRotation.toFixed(2),
-        +vel.x.toFixed(2),
-        +vel.y.toFixed(2),
-        +this._engineLoad.toFixed(2),
-        this._condition,
-      ];
+    if (!data) {
+      return null;
     }
 
-    data.shotData = this._shotData;
     this._shotData = null;
 
     return data;
   }
 
-  getFullData() {
+  // возвращение состояния танка
+  getData() {
     const pos = this._body.getPosition();
     const vel = this._body.getLinearVelocity();
 
     return [
-      +pos.x.toFixed(2), // координаты x
-      +pos.y.toFixed(2), // координаты y
-      +this._body.getAngle().toFixed(2), // угол корпуса танка (радианы)
-      +this._body.gunRotation.toFixed(2), // угол поворота башни (радианы)
-      +vel.x.toFixed(2), // скорость по x (мировая)
-      +vel.y.toFixed(2), // скорость по y (мировая)
-      +this._engineLoad.toFixed(2), // нагрузка двигателя
-      this._condition, // состояние танка
-      this._modelData.size, // размер танка
-      this.teamId, // id команды
+      round(pos.x),
+      round(pos.y),
+      round(this._body.getAngle()),
+      round(this._body.gunRotation),
+      round(vel.x),
+      round(vel.y),
+      round(this._engineLoad),
+      this._condition,
+      this._modelData.size,
+      this.teamId,
     ];
   }
 }
