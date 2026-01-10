@@ -1,4 +1,5 @@
 import { Vec2 } from 'planck';
+import { roundTo2Decimals } from '../../lib/formatters.js';
 
 // Singleton HitscanService
 
@@ -87,12 +88,12 @@ class HitscanService {
 
     // данные для отображения трассера
     return [
-      +startPoint.x.toFixed(1),
-      +startPoint.y.toFixed(1),
-      +endPoint.x,
-      +endPoint.y,
-      +bodyPosition.x.toFixed(1),
-      +bodyPosition.y.toFixed(1),
+      roundTo2Decimals(startPoint.x),
+      roundTo2Decimals(startPoint.y),
+      endPoint.x,
+      endPoint.y,
+      roundTo2Decimals(bodyPosition.x),
+      roundTo2Decimals(bodyPosition.y),
       wasHit,
     ];
   }

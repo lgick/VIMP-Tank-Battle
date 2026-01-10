@@ -1,5 +1,6 @@
 import { Container, Ticker } from 'pixi.js';
 import ParticlePool from './ParticlePool.js';
+import { lerp, randomRange } from '../../lib/math.js';
 
 // глобальные переменные для ветра
 const globalWindX = 0;
@@ -46,10 +47,6 @@ const SMOKE_CONFIG = {
   // эффект резкого облака дыма при получении урона
   burstParticleCount: 3,
 };
-
-function randomRange(min, max) {
-  return Math.random() * (max - min) + min;
-}
 
 export default class Smoke extends Container {
   constructor(data, assets) {
@@ -205,12 +202,17 @@ export default class Smoke extends Container {
       // простое квадратичное затухание
       const ease = 1 - (1 - lifeProgress) * (1 - lifeProgress);
 
-      const currentSizeFactor =
-        particle.startSizeFactor +
-        (particle.endSizeFactor - particle.startSizeFactor) * ease;
-      const currentAlpha =
-        particle.startAlpha +
-        (particle.endAlpha - particle.startAlpha) * lifeProgress;
+      const currentSizeFactor = lerp(
+        particle.startSizeFactor,
+        particle.endSizeFactor,
+        ease,
+      );
+
+      const currentAlpha = lerp(
+        particle.startAlpha,
+        particle.endAlpha,
+        lifeProgress,
+      );
 
       const currentScale = currentSizeFactor * this._particleScaleMultiplier;
 

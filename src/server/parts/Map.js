@@ -1,4 +1,6 @@
 import { BoxShape, Vec2 } from 'planck';
+import { roundTo2Decimals } from '../../lib/formatters.js';
+import { degToRad } from '../../lib/math.js';
 
 // Singleton Map
 
@@ -126,7 +128,7 @@ class Map {
   createDynamic() {
     for (let i = 0, len = this._physicsDynamic.length; i < len; i += 1) {
       const data = this._physicsDynamic[i];
-      const angle = (data.angle * Math.PI) / 180;
+      const angle = degToRad(data.angle);
       const posX = data.position[0];
       const posY = data.position[1];
 
@@ -175,9 +177,9 @@ class Map {
       const pos = body.getPosition();
 
       data[id] = [
-        Math.round(pos.x),
-        Math.round(pos.y),
-        +body.getAngle().toFixed(2),
+        roundTo2Decimals(pos.x),
+        roundTo2Decimals(pos.y),
+        roundTo2Decimals(body.getAngle()),
       ];
     }
 

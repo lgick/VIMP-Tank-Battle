@@ -1,4 +1,5 @@
 import Publisher from '../../../lib/Publisher.js';
+import { lerp } from '../../../lib/math.js';
 
 // Singleton PanelView
 
@@ -92,15 +93,9 @@ export default class PanelView {
     }
 
     const localProgress = (progress - start.p) / (end.p - start.p);
-    const r = Math.round(
-      start.c.r * (1 - localProgress) + end.c.r * localProgress,
-    );
-    const g = Math.round(
-      start.c.g * (1 - localProgress) + end.c.g * localProgress,
-    );
-    const b = Math.round(
-      start.c.b * (1 - localProgress) + end.c.b * localProgress,
-    );
+    const r = Math.round(lerp(start.c.r, end.c.r, localProgress));
+    const g = Math.round(lerp(start.c.g, end.c.g, localProgress));
+    const b = Math.round(lerp(start.c.b, end.c.b, localProgress));
 
     return `rgb(${r}, ${g}, ${b})`;
   }
