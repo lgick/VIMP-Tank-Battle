@@ -1,19 +1,11 @@
 import BaseModel from './BaseModel.js';
 import { BoxShape, Vec2, Rot } from 'planck';
+import { lerp, degToRad, clamp, randomRange } from '../../lib/math.js';
+import { roundTo2Decimals } from '../../lib/formatters.js';
 
 const FORWARD = new Vec2(1, 0);
 const RIGHT = new Vec2(0, 1);
 const ZERO = new Vec2(0, 0);
-
-// линейная интерполяция между x и y, коэффициент a ∈ [0,1]
-function lerp(x, y, a) {
-  return x * (1 - a) + y * a;
-}
-
-// округление
-function round(val) {
-  return Math.round(val * 100) / 100;
-}
 
 class Tank extends BaseModel {
   // порог скорости для фактора поворота
@@ -68,7 +60,7 @@ class Tank extends BaseModel {
     this._body = data.world.createBody({
       type: 'dynamic',
       position: new Vec2(data.position[0], data.position[1]),
-      angle: data.angle * (Math.PI / 180),
+      angle: degToRad(data.angle),
       angularDamping: this._modelData.damping.angular,
       linearDamping: this._modelData.damping.linear,
     });
@@ -294,7 +286,7 @@ class Tank extends BaseModel {
     // 0.0 - тишина
     // 1.0 - обычная езда
     // >1.0 - нагрузка (упор в стену, разгон в гору)
-    this._engineLoad = Math.max(0, Math.min(this._engineLoad, 2.0));
+    this._engineLoad = clamp(this._engineLoad, 0, 2.0);
 
     // крутящий момент для поворота
     let torque = 0;
@@ -355,7 +347,7 @@ class Tank extends BaseModel {
     const weaponConfig = this.weapons[weaponName];
 
     if (weaponConfig && weaponConfig.spread > 0) {
-      const spreadVal = (Math.random() - 0.5) * 2 * weaponConfig.spread;
+      const spreadVal = randomRange(-weaponConfig.spread, weaponConfig.spread);
       directionVec = Rot.mulVec2(new Rot(spreadVal), directionVec);
     }
 
@@ -380,7 +372,7 @@ class Tank extends BaseModel {
     const respawnData = data.respawnData;
     const x = respawnData[0];
     const y = respawnData[1];
-    const angle = respawnData[2] * (Math.PI / 180);
+    const angle = degToRad(respawnData[2]);
     const body = this._body;
 
     this.teamId = data.teamId;
@@ -410,10 +402,11 @@ class Tank extends BaseModel {
     let speedRatio = 0;
 
     if (currentForwardSpeed > 0) {
-      speedRatio = Math.min(currentForwardSpeed / this._maxForwardSpeed, 1);
+      speedRatio = clamp(currentForwardSpeed / this._maxForwardSpeed, 0, 1);
     } else if (currentForwardSpeed < 0) {
-      speedRatio = Math.min(
+      speedRatio = clamp(
         Math.abs(currentForwardSpeed / this._maxReverseSpeed),
+        0,
         1,
       );
     }
@@ -440,13 +433,13 @@ class Tank extends BaseModel {
     const vel = this._body.getLinearVelocity();
 
     return [
-      round(pos.x),
-      round(pos.y),
-      round(this._body.getAngle()),
-      round(this._body.gunRotation),
-      round(vel.x),
-      round(vel.y),
-      round(this._engineLoad),
+      roundTo2Decimals(pos.x),
+      roundTo2Decimals(pos.y),
+      roundTo2Decimals(this._body.getAngle()),
+      roundTo2Decimals(this._body.gunRotation),
+      roundTo2Decimals(vel.x),
+      roundTo2Decimals(vel.y),
+      roundTo2Decimals(this._engineLoad),
       this._condition,
       this._modelData.size,
       this.teamId,

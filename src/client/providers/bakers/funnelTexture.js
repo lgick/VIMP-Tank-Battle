@@ -1,4 +1,5 @@
 import { Graphics, BlurFilter, Rectangle } from 'pixi.js';
+import { randomRange } from '../../../lib/math.js';
 
 // создаёт процедурную текстуру размытой кляксы для эффекта воронки
 // params.baseRadius - Базовый радиус фигуры.
@@ -16,7 +17,7 @@ export default function funnelTexture(params, renderer) {
 
   for (let i = 0; i < numPoints; i += 1) {
     const angle = (i / numPoints) * Math.PI * 2;
-    const r = baseRadius + (Math.random() - 0.5) * 2 * irregularity;
+    const r = baseRadius + randomRange(-irregularity, irregularity);
 
     path.push(center + r * Math.cos(angle), center + r * Math.sin(angle));
   }

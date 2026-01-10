@@ -41,7 +41,7 @@ export default {
     // максимальный угол поворота башни
     maxGunAngle: 1.4,
     // скорость поворота башни
-    gunRotationSpeed: 3.0,
+    gunRotationSpeed: 5.0,
     // скорость поворота башни в центр
     gunCenterSpeed: 10.0,
   },

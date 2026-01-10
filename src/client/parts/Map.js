@@ -1,4 +1,5 @@
 import { Container, Sprite, Assets, Spritesheet, Rectangle } from 'pixi.js';
+import { degToRad } from '../../lib/math.js';
 
 export default class Map extends Container {
   constructor(data, _assets, dependencies) {
@@ -39,7 +40,7 @@ export default class Map extends Container {
       this._baseTexturePromise = Assets.load(this._assetUrl);
 
       this.zIndex = data.layer || 2;
-      this._rotation = (data.angle * Math.PI) / 180;
+      this._rotation = degToRad(data.angle);
       this._width = data.width;
       this._height = data.height;
       this._x = data.position[0];

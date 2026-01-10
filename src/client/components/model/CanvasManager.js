@@ -1,9 +1,5 @@
 import Publisher from '../../../lib/Publisher.js';
-
-// линейная интерполяция
-function lerp(start, end, alpha) {
-  return start + (end - start) * alpha;
-}
+import { lerp, clamp } from '../../../lib/math.js';
 
 // Singleton CanvasManagerModel
 
@@ -54,18 +50,13 @@ export default class CanvasManagerModel {
     // если lookAheadFactor = 0,deadZone = 0.5
     this._deadZone = 0.5 / safeFactor;
 
-    let rawZoomFactor = camConfig.zoomOutFactor || 0;
-
-    // ограничение рамками 0-9
-    rawZoomFactor = Math.max(0, Math.min(9, rawZoomFactor));
-    this._zoomOutFactor = rawZoomFactor * 0.1;
-
+    this._zoomOutFactor = clamp(camConfig.zoomOutFactor ?? 0, 0, 1);
     this._maxZoomOut = camConfig.maxZoomOut || 1;
 
     // плавность изменений динамической камеры:
-    this._smoothnessPosition = camConfig.smoothnessPosition || 0.05;
-    this._smoothnessZoom = camConfig.smoothnessZoom || 0.005;
-    this._smoothnessVelocity = camConfig.smoothnessVelocity || 0.1;
+    this._smoothnessPosition = clamp(camConfig.smoothnessPosition ?? 0.1, 0, 1);
+    this._smoothnessZoom = clamp(camConfig.smoothnessZoom ?? 0.005, 0, 1);
+    this._smoothnessVelocity = clamp(camConfig.smoothnessVelocity ?? 0.1, 0, 1);
 
     const canvases = data.canvases || {};
 
