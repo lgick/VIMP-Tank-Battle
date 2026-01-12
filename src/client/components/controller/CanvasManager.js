@@ -15,8 +15,8 @@ export default class CanvasManagerCtrl {
   }
 
   // обновляет представление относительно пользователя
-  updateCoords([x, y, cameraReset]) {
-    this._model.updateCoords(x, y, cameraReset);
+  updateCoords([x, y, cameraReset, shakeData]) {
+    this._model.updateCoords(x, y, cameraReset, shakeData);
   }
 
   // обновляет размеры

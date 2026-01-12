@@ -237,7 +237,7 @@ export default class SocketManager {
    */
   sendFirstShot(socketId) {
     this._send(socketId, this._PORT_FIRST_SHOT_DATA, [
-      this._game.getFullPlayersData(), // game
+      this._game.getPlayersData(), // game
       0, // coords
       this._panel.getEmptyPanel(), // panel
       this._stat.getFull(), // stat

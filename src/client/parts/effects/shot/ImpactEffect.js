@@ -1,19 +1,10 @@
 import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
+import { lerp, randomRange } from '../../../../lib/math.js';
 
 // диаметр "запеченной" текстуры частицы
 // рассчитывается как (radius + blur) * 2 из client.js (4 + 1) * 2 = 10
 const BAKED_PARTICLE_DIAMETER = 10;
-
-// функция для линейной интерполяции
-function lerp(a, b, t) {
-  return a * (1 - t) + b * t;
-}
-
-// функция для случайного числа в диапазоне
-function randomRange(min, max) {
-  return Math.random() * (max - min) + min;
-}
 
 export default class ImpactEffect extends BaseEffect {
   constructor(x, y, impactDirectionX, impactDirectionY, onComplete, assets) {

@@ -1,4 +1,5 @@
 import { Container, Sprite } from 'pixi.js';
+import { lerp, clamp } from '../../lib/math.js';
 
 // скорость (высота тона) на холостом ходу
 const MIN_ENGINE_RATE = 1;
@@ -29,17 +30,18 @@ function calculateEngineSoundParams(load) {
   // интерполяция скорости (pitch) и громкости,
   // разделение базовой нагрузки (до 1.0)
   // и нагрузки от напряжения (свыше 1.0).
-  const baseLoad = Math.min(load, 1.0);
+  const baseLoad = clamp(load, 0, 1);
   const strainLoad = Math.max(0, load - 1.0);
 
   const rate =
-    MIN_ENGINE_RATE +
-    (MAX_ENGINE_RATE - MIN_ENGINE_RATE) * baseLoad +
+    lerp(MIN_ENGINE_RATE, MAX_ENGINE_RATE, baseLoad) +
     (STRAIN_ENGINE_RATE - MAX_ENGINE_RATE) * strainLoad;
 
-  const volumeFactor =
-    MIN_ENGINE_VOLUME_FACTOR +
-    (MAX_ENGINE_VOLUME_FACTOR - MIN_ENGINE_VOLUME_FACTOR) * baseLoad;
+  const volumeFactor = lerp(
+    MIN_ENGINE_VOLUME_FACTOR,
+    MAX_ENGINE_VOLUME_FACTOR,
+    baseLoad,
+  );
 
   return { rate, volumeFactor };
 }
