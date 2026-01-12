@@ -91,14 +91,14 @@ class BotManager {
    * @private
    */
   _getGameId() {
-    const prefix = 'Player';
+    const prefix = '_';
     let counter = 0;
 
-    while (this._bots.has(`${prefix} ${counter}`)) {
+    while (this._bots.has(`${prefix}${counter}`)) {
       counter += 1;
     }
 
-    return `${prefix} ${counter}`;
+    return `${prefix}${counter}`;
   }
 
   /**
@@ -149,7 +149,7 @@ class BotManager {
       }
 
       const gameId = this._getGameId();
-      const name = this._vimp.checkName(gameId);
+      const name = this._vimp.checkName(`Bot${gameId}`);
       const teamId = this._vimp._teams[targetTeam];
       const botData = {
         name,
