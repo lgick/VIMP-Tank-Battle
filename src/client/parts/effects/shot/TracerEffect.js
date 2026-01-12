@@ -1,10 +1,6 @@
 import { Graphics } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
-
-// функция для линейной интерполяции
-function lerp(a, b, t) {
-  return a * (1 - t) + b * t;
-}
+import { lerp, clamp } from '../../../../lib/math.js';
 
 export default class TracerEffect extends BaseEffect {
   constructor(startX, startY, endX, endY, onComplete) {
@@ -93,7 +89,7 @@ export default class TracerEffect extends BaseEffect {
     this.graphics.circle(x, y, radius);
     this.graphics.fill({
       color,
-      alpha: Math.max(0, Math.min(1, alpha)),
+      alpha: clamp(alpha, 0, 1),
     });
   }
 
@@ -134,10 +130,8 @@ export default class TracerEffect extends BaseEffect {
         Math.sin(this.elapsedTime * this.config.alphaPulseFrequency) *
         this.config.alphaPulseAmplitude;
       let currentTracerAlpha = baseTracerAlpha + pulse;
-      currentTracerAlpha = Math.max(
-        0,
-        Math.min(this.config.alphaStart, currentTracerAlpha),
-      );
+
+      currentTracerAlpha = clamp(currentTracerAlpha, 0, this.config.alphaStart);
 
       const shrinkProgress = Math.pow(
         tracerDrawProgress,

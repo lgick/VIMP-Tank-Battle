@@ -1,9 +1,5 @@
 import Publisher from '../../../lib/Publisher.js';
-
-// линейная интерполяция
-function lerp(start, end, alpha) {
-  return start + (end - start) * alpha;
-}
+import { lerp, clamp } from '../../../lib/math.js';
 
 // Singleton CanvasManagerModel
 
@@ -25,6 +21,12 @@ export default class CanvasManagerModel {
     this._camOffsetX = 0;
     this._camOffsetY = 0;
     this._camZoomModifier = 1;
+
+    // параметры тряски камеры
+    this._shakeIntensity = 0;
+    this._shakeDuration = 0;
+    this._shakeTotalDuration = 0;
+    this._lastShakeTime = 0;
 
     // средние значения вектора движения и скорости
     this._avgDx = 0;
@@ -48,18 +50,13 @@ export default class CanvasManagerModel {
     // если lookAheadFactor = 0,deadZone = 0.5
     this._deadZone = 0.5 / safeFactor;
 
-    let rawZoomFactor = camConfig.zoomOutFactor || 0;
-
-    // ограничение рамками 0-9
-    rawZoomFactor = Math.max(0, Math.min(9, rawZoomFactor));
-    this._zoomOutFactor = rawZoomFactor * 0.1;
-
+    this._zoomOutFactor = clamp(camConfig.zoomOutFactor ?? 0, 0, 1);
     this._maxZoomOut = camConfig.maxZoomOut || 1;
 
     // плавность изменений динамической камеры:
-    this._smoothnessPosition = camConfig.smoothnessPosition || 0.05;
-    this._smoothnessZoom = camConfig.smoothnessZoom || 0.005;
-    this._smoothnessVelocity = camConfig.smoothnessVelocity || 0.1;
+    this._smoothnessPosition = clamp(camConfig.smoothnessPosition ?? 0.1, 0, 1);
+    this._smoothnessZoom = clamp(camConfig.smoothnessZoom ?? 0.005, 0, 1);
+    this._smoothnessVelocity = clamp(camConfig.smoothnessVelocity ?? 0.1, 0, 1);
 
     const canvases = data.canvases || {};
 
@@ -76,6 +73,7 @@ export default class CanvasManagerModel {
           baseScale,
           currentScale: baseScale,
           dynamicCamera: !!canvasData.dynamicCamera,
+          shakeCamera: !!canvasData.shakeCamera,
         };
       }
     }
@@ -139,8 +137,50 @@ export default class CanvasManagerModel {
     this.updateCoords(this._coordX, this._coordY);
   }
 
+  // рассчитывает текущее смещение тряски
+  _calculateShakeOffset(shakeData) {
+    // обработка новых данных о тряске
+    if (typeof shakeData === 'string') {
+      const [intensity, duration] = shakeData.split(':').map(Number);
+      this._shakeIntensity = intensity;
+      this._shakeTotalDuration = duration;
+      this._shakeDuration = duration;
+      this._lastShakeTime = Date.now();
+    }
+
+    let shakeX = 0;
+    let shakeY = 0;
+
+    if (this._shakeDuration > 0) {
+      const now = Date.now();
+      const dt = now - (this._lastShakeTime || now);
+      this._lastShakeTime = now;
+
+      // уменьшение длительности
+      this._shakeDuration -= dt;
+
+      if (this._shakeDuration > 0) {
+        // расчет затухания
+        const currentIntensity =
+          this._shakeIntensity *
+          (this._shakeDuration / this._shakeTotalDuration);
+
+        // случайное смещение
+        shakeX = (Math.random() - 0.5) * 2 * currentIntensity;
+        shakeY = (Math.random() - 0.5) * 2 * currentIntensity;
+      } else {
+        this._shakeDuration = 0;
+      }
+    } else {
+      // обновление времени для следующего старта
+      this._lastShakeTime = Date.now();
+    }
+
+    return { shakeX, shakeY };
+  }
+
   // вычисляет координаты для отображения
-  updateCoords(x, y, cameraReset) {
+  updateCoords(x, y, cameraReset, shakeData) {
     // если сброс динамических данных камеры (телепорт/респаун/смена игрока)
     if (cameraReset) {
       this._coordX = x;
@@ -155,7 +195,13 @@ export default class CanvasManagerModel {
       this._avgDx = 0;
       this._avgDy = 0;
       this._avgSpeed = 0;
+
+      // сброс эффекта тряски
+      this._shakeDuration = 0;
     }
+
+    // расчет смещения тряски
+    const { shakeX, shakeY } = this._calculateShakeOffset(shakeData);
 
     // расчет движения
     // если был сброс, dx/dy будут равны 0 (т.к. только что обновился _coordX/Y)
@@ -211,12 +257,20 @@ export default class CanvasManagerModel {
 
     for (const canvasName in this._data) {
       if (Object.hasOwn(this._data, canvasName)) {
-        const { dynamicCamera, currentScale } = this._data[canvasName];
+        const { dynamicCamera, currentScale, shakeCamera } =
+          this._data[canvasName];
 
         // если для полотна включена динамическая камера
         if (dynamicCamera) {
-          const camX = x + this._camOffsetX;
-          const camY = y + this._camOffsetY;
+          let camX = x + this._camOffsetX;
+          let camY = y + this._camOffsetY;
+
+          // добавление эффекта тряски
+          if (shakeCamera) {
+            camX += shakeX;
+            camY += shakeY;
+          }
+
           const finalScale = currentScale * this._camZoomModifier;
 
           this.publisher.emit('updateCoords', {
@@ -229,9 +283,18 @@ export default class CanvasManagerModel {
           });
         } else {
           // если динамическая камера выключена
+          let finalX = x;
+          let finalY = y;
+
+          // добавление эффекта тряски
+          if (shakeCamera) {
+            finalX += shakeX;
+            finalY += shakeY;
+          }
+
           this.publisher.emit('updateCoords', {
             id: canvasName,
-            coords: { x, y },
+            coords: { x: finalX, y: finalY },
             scale: currentScale,
           });
         }

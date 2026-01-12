@@ -150,6 +150,32 @@ class Game {
 
     // хранение данных эффектов завершения оружия
     this._lastWeaponEffects = {};
+
+    // хранение данных о новых выстрелах между отправками сети
+    this._newShotsData = {};
+
+    // набор орудий, из которых стреляли в текущем тике
+    this._activeWeaponKeys = new Set();
+
+    // кеш данных игроков для отправки (чтобы не вызывать getData дважды)
+    this._cachedPlayersData = {};
+
+    this.initNewShotsData();
+  }
+
+  // инициализация контейнеров для каждого оружия
+  initNewShotsData() {
+    this._newShotsData = {};
+
+    for (const weaponName in this._weapons) {
+      if (Object.hasOwn(this._weapons, weaponName)) {
+        if (this._weapons[weaponName].type === 'hitscan') {
+          this._newShotsData[weaponName] = [];
+        } else {
+          this._newShotsData[weaponName] = {};
+        }
+      }
+    }
   }
 
   // получает сервисы
@@ -193,6 +219,7 @@ class Game {
     if (this._playersData[gameId]) {
       this._world.destroyBody(this._playersData[gameId].getBody());
       delete this._playersData[gameId];
+      delete this._cachedPlayersData[gameId];
     }
   }
 
@@ -210,6 +237,7 @@ class Game {
     }
 
     this._playersData = {};
+    this._cachedPlayersData = {};
 
     return [...modelNameSet];
   }
@@ -217,7 +245,7 @@ class Game {
   // меняет имя игрока
   changeName(gameId, name) {
     if (this._playersData[gameId]) {
-      this._playersData[gameId].changeName(name);
+      this._playersData[gameId].name = name;
     }
   }
 
@@ -253,19 +281,19 @@ class Game {
     this._playersData = {};
     this._removeShots();
     this._lastExpiredShotsData = {};
+    this._lastWeaponEffects = {};
+
+    this._activeWeaponKeys.clear();
+
+    this.initNewShotsData();
+
+    this._cachedPlayersData = {};
     this._accumulator = 0;
   }
 
   // обновляет данные физики
   updateData(dt) {
-    // обновляем модели игроков
-    for (const gameId in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameId)) {
-        this._playersData[gameId].updateData(dt);
-      }
-    }
-
-    // накапливаем прошедшее время
+    // накапливание прошедшего времени
     this._accumulator += dt;
 
     // защита от "спирали смерти":
@@ -275,26 +303,72 @@ class Game {
       this._accumulator = this._maxAccumulatedTime;
     }
 
-    // делаем столько фиксированных шагов, сколько нужно
+    // делаем столько фиксированных шагов, сколько требуется
     while (this._accumulator >= this._timeStep) {
-      // оружие, чье время жизни истекло на этом шаге (не hitscan оружие)
+      // обновление логики игроков строго по фиксированному времени
+      for (const gameId in this._playersData) {
+        if (Object.hasOwn(this._playersData, gameId)) {
+          const player = this._playersData[gameId];
+
+          // this._timeStep для стабильности физики
+          player.updateData(this._timeStep);
+
+          // получение данных (выстрелы)
+          const shotData = player.getShotData();
+
+          if (shotData) {
+            const weaponName = player.currentWeapon;
+            const weaponConfig = this._weapons[weaponName];
+
+            if (weaponConfig.type === 'hitscan') {
+              const shot = this._hitscanService.processShot({
+                ...shotData,
+                gameId,
+                weaponName,
+              });
+
+              this._newShotsData[weaponName].push(shot);
+            } else if (weaponConfig.type === 'explosive') {
+              const shot = this._createWeaponAction(
+                gameId,
+                weaponName,
+                shotData,
+              );
+
+              this._newShotsData[weaponName][shot.shotId] = shot.getData();
+            }
+
+            this._activeWeaponKeys.add(weaponName);
+          }
+        }
+      }
+
+      // обработка исчезновения пуль по времени
       const expiredByTimeData = this._processShotsExpiredByTime();
+
       this._mergeShotOutcomeData(expiredByTimeData);
 
+      // шаг физического мира
       this._world.step(
         this._timeStep,
         this._velocityIterations,
         this._positionIterations,
       );
 
-      // обрабатываем все события контактов,
-      // которые произошли на этом шаге
+      // обработка коллизий
       this._processContactEvents();
 
-      // удаляем все тела, которые были помечены на удаление
+      // удаление тел
       this._destroyQueuedBodies();
 
       this._accumulator -= this._timeStep;
+    }
+
+    // обновление кеша состояния
+    for (const gameId in this._playersData) {
+      if (Object.hasOwn(this._playersData, gameId)) {
+        this._cachedPlayersData[gameId] = this._playersData[gameId].getData();
+      }
     }
   }
 
@@ -349,7 +423,7 @@ class Game {
     const weaponConfig = this._weapons[weaponName];
 
     // если эффект тряски есть
-    if (weaponConfig?.cameraShake) {
+    if (weaponConfig.cameraShake) {
       this._services.vimp.triggerCameraShake(
         targetGameId,
         weaponConfig.cameraShake,
@@ -514,54 +588,68 @@ class Game {
     return outcomeData;
   }
 
-  // возвращает данные
-  getGameData() {
-    const gameData = {
-      ...this._lastExpiredShotsData,
-      ...this._lastWeaponEffects,
-    };
+  // возвращает события (выстрелы, взрывы, удаление пуль)
+  getEvents() {
+    const events = {};
+    let hasEvents = false;
 
-    this._lastExpiredShotsData = {};
-    this._lastWeaponEffects = {};
+    // новые выстрелы
+    for (const key of this._activeWeaponKeys) {
+      const val = this._newShotsData[key];
+      events[key] = val;
+      hasEvents = true;
+
+      // пустые контейнеры для следующего тика
+      if (Array.isArray(val)) {
+        this._newShotsData[key] = [];
+      } else {
+        this._newShotsData[key] = {};
+      }
+    }
+
+    // очистка набора активных оружий для следующего тика
+    this._activeWeaponKeys.clear();
+
+    // исчезновение пуль
+    if (Object.keys(this._lastExpiredShotsData).length > 0) {
+      Object.assign(events, this._lastExpiredShotsData);
+      this._lastExpiredShotsData = {};
+      hasEvents = true;
+    }
+
+    // эффекты взрывов
+    if (Object.keys(this._lastWeaponEffects).length > 0) {
+      Object.assign(events, this._lastWeaponEffects);
+      this._lastWeaponEffects = {};
+      hasEvents = true;
+    }
+
+    return hasEvents ? events : null;
+  }
+
+  // возвращает текущее состояние мира (игроки)
+  getWorldState() {
+    const state = {};
 
     for (const gameId in this._playersData) {
       if (Object.hasOwn(this._playersData, gameId)) {
         const player = this._playersData[gameId];
         const model = player.model;
-        const { playerData, shotData } = player.getData();
 
-        gameData[model] = gameData[model] || {};
-        gameData[model][gameId] = playerData;
+        const playerData = this._cachedPlayersData[gameId];
 
-        // если есть данные для создания пули (взрыва)
-        if (shotData !== null) {
-          const weaponName = player.currentWeapon;
-          const weaponConfig = this._weapons[weaponName];
-
-          if (weaponConfig.type === 'hitscan') {
-            const shot = this._hitscanService.processShot({
-              ...shotData,
-              gameId,
-              weaponName,
-            });
-
-            gameData[weaponName] = gameData[weaponName] || [];
-            gameData[weaponName].push(shot);
-          } else if (weaponConfig.type === 'explosive') {
-            const shot = this._createWeaponAction(gameId, weaponName, shotData);
-
-            gameData[weaponName] = gameData[weaponName] || {};
-            gameData[weaponName][shot.shotId] = shot.getData();
-          }
+        if (playerData) {
+          state[model] = state[model] || {};
+          state[model][gameId] = playerData;
         }
       }
     }
 
-    return gameData;
+    return state;
   }
 
   // возвращает полные данные всех игроков
-  getFullPlayersData() {
+  getPlayersData() {
     const gameData = {};
 
     for (const gameId in this._playersData) {
@@ -570,7 +658,7 @@ class Game {
         const model = player.model;
 
         gameData[model] = gameData[model] || {};
-        gameData[model][gameId] = player.getFullData();
+        gameData[model][gameId] = player.getData();
       }
     }
 

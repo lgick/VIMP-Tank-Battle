@@ -5,6 +5,7 @@ import Vote from './Vote.js';
 import Game from './Game.js';
 import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
+import SnapshotManager from './SnapshotManager.js';
 import Bots from './bots/index.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
 import { isValidName } from '../../lib/validators.js';
@@ -74,6 +75,11 @@ class VIMP {
 
     this._socketManager = socketManager;
 
+    this._snapshotManager = new SnapshotManager(
+      this._game,
+      data.timers.networkSendRate,
+    );
+
     this._bots = new Bots(this, this._game, this._panel, this._stat);
 
     this._RTTManager = new RTTManager(data.rtt, {
@@ -133,31 +139,34 @@ class VIMP {
     this._game.updateData(dt);
 
     if (this._bots.getBotCount() > 0) {
-      const playerList = this._game.getAlivePlayers();
       this._bots.updateBots(dt);
-      this._bots.buildSpatialGrid(playerList);
+      this._bots.buildSpatialGrid(this._game.getAlivePlayers());
+    }
+
+    // получение снимка (snapshot)
+    const gameSnapshot = this._snapshotManager.processTick();
+
+    // если null, значит пока не время отправлять данные
+    if (!gameSnapshot) {
+      return;
     }
 
     // список пользователей готовых к игре
-    const userList = Object.values(this._users).filter(
-      user => user.isReady === true,
-    );
-
-    const game = this._game.getGameData();
+    const userList = Object.values(this._users).filter(user => user.isReady);
     const panelUpdates = this._panel.processUpdates();
     const stat = this._stat.getLast();
     const chat = this._chat.shift();
     const vote = this._vote.shift();
 
-    game[this._currentMapData.setId] = this._game.getDynamicMapData();
+    gameSnapshot[this._currentMapData.setId] = this._game.getDynamicMapData();
 
     // игроки для удаления с полотна
     while (this._removedPlayersList.length) {
       const user = this._removedPlayersList.pop();
       const model = user.model;
 
-      game[model] = game[model] || {};
-      game[model][user.gameId] = null;
+      gameSnapshot[model] = gameSnapshot[model] || {};
+      gameSnapshot[model][user.gameId] = null;
     }
 
     const getUserData = gameId => {
@@ -186,28 +195,10 @@ class VIMP {
         user.forceCameraReset = false;
       }
 
-      // если у игрока активен эффект тряски камеры
-      if (user.shakeDuration > 0) {
-        // расчёт текущей интенсивности с затуханием
-        const currentIntensity =
-          user.shakeIntensity * (user.shakeDuration / user.shakeTotalDuration);
-
-        // случайное смещение
-        const offsetX = (Math.random() - 0.5) * 2 * currentIntensity;
-        const offsetY = (Math.random() - 0.5) * 2 * currentIntensity;
-
-        coords[0] = +(coords[0] + offsetX).toFixed(2);
-        coords[1] = +(coords[1] + offsetY).toFixed(2);
-
-        // оставшаяся длительность
-        // dt в секундах, duration в мс
-        user.shakeDuration -= dt * 1000;
-
-        if (user.shakeDuration <= 0) {
-          user.shakeDuration = 0;
-          user.shakeIntensity = 0;
-          user.shakeTotalDuration = 0;
-        }
+      // передача данных для тряски (строка 'intensity:duration')
+      if (user.pendingShake) {
+        coords[3] = user.pendingShake;
+        user.pendingShake = null;
       }
 
       // если общих сообщений нет
@@ -224,7 +215,7 @@ class VIMP {
         voteUser = vote;
       }
 
-      return [game, coords, panel, stat, chatUser, voteUser];
+      return [gameSnapshot, coords, panel, stat, chatUser, voteUser];
     };
 
     // отправка данных
@@ -336,6 +327,8 @@ class VIMP {
     this._panel.reset();
     this._stat.reset();
     this._resetVote();
+
+    this._snapshotManager.reset();
 
     this._game.clear();
     this._game.createMap(this._scaledMapData);
@@ -842,14 +835,12 @@ class VIMP {
     return this._activePlayersList[0] || null;
   }
 
-  // запускает тряску камеры у игрока
+  // активирует тряску камеры у игрока
   triggerCameraShake(gameId, shakeParams) {
     const user = this._users[gameId];
 
     if (user) {
-      user.shakeIntensity = shakeParams.intensity;
-      user.shakeDuration = shakeParams.duration;
-      user.shakeTotalDuration = shakeParams.duration;
+      user.pendingShake = `${shakeParams.intensity}:${shakeParams.duration}`;
     }
   }
 
@@ -893,12 +884,8 @@ class VIMP {
       watchedGameId: this._activePlayersList[0] || null,
       // флаг для сброса камеры клиента
       forceCameraReset: true,
-      // текущая интенсивность тряски камеры
-      shakeIntensity: 0,
-      // оставшаяся длительность тряски камеры
-      shakeDuration: 0,
-      // общая длительность тряски для расчета затухания
-      shakeTotalDuration: 0,
+      // данные для тряски камеры
+      pendingShake: null,
       // фиксация времени активности пользователя
       lastActionTime: Date.now(),
     };

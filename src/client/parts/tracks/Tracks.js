@@ -1,5 +1,6 @@
 import { Container, Ticker } from 'pixi.js';
 import TrackMark from './TrackMark.js';
+import { normalizeAngle } from '../../../lib/math.js';
 
 export default class Tracks extends Container {
   constructor(data, assets) {
@@ -118,15 +119,9 @@ export default class Tracks extends Container {
     // текущая линейная скорость (пикселей за время deltaMs)
     const currentSpeed = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-    let rotationDiff = this._currentRotation - this._prevRotation;
-
-    while (rotationDiff > Math.PI) {
-      rotationDiff -= 2 * Math.PI;
-    }
-
-    while (rotationDiff < -Math.PI) {
-      rotationDiff += 2 * Math.PI;
-    }
+    const rotationDiff = normalizeAngle(
+      this._currentRotation - this._prevRotation,
+    );
 
     // текущая угловая скорость (радианы за время deltaMs)
     const currentAngularSpeed = Math.abs(rotationDiff);

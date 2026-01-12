@@ -1,4 +1,5 @@
 import { Vec2, Rot } from 'planck';
+import { randomRange } from '../../../lib/math.js';
 
 // константы для поведения бота
 const AI_UPDATE_INTERVAL = 0.1; // как часто бот принимает решения (в секундах)
@@ -563,7 +564,8 @@ class BotController {
 
     const targetAngle =
       Math.atan2(directionToTarget.y, directionToTarget.x) +
-      (Math.random() - 0.5) * AIM_INACCURACY;
+      randomRange(-AIM_INACCURACY / 2, AIM_INACCURACY / 2);
+
     const currentGunAngle = this._myBody.getAngle() + this._myBody.gunRotation;
     let angleDifference = targetAngle - currentGunAngle;
     angleDifference = Math.atan2(
@@ -664,7 +666,7 @@ class BotController {
     const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
     const rightVec = this._myBody.getWorldVector(new Vec2(0, 1));
     const strafeDirection = Math.random() > 0.5 ? 1 : -1;
-    const strafeDistance = 100 + Math.random() * 100;
+    const strafeDistance = randomRange(100, 200);
 
     this._repositionTarget = Vec2.add(
       myPosVec,

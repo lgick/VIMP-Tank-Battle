@@ -12,7 +12,6 @@ class BaseModel {
 
     this._weaponConstructorType =
       this._weapons[this._currentWeapon].type || null;
-    this._fullUserData = true;
 
     // битмаска текущего состояния нажатых клавиш
     this._currentKeys = 0;
@@ -46,14 +45,6 @@ class BaseModel {
 
   set teamId(teamId) {
     this._teamId = teamId;
-  }
-
-  get fullUserData() {
-    return this._fullUserData;
-  }
-
-  set fullUserData(bool) {
-    this._fullUserData = bool;
   }
 
   get name() {
@@ -203,12 +194,6 @@ class BaseModel {
 
     // сообщаем сервису панели, что активное оружие изменилось
     this._services.panel.setActiveWeapon(this._gameId, this._currentWeapon);
-  }
-
-  // меняет имя игрока
-  changeName(name) {
-    this._name = name;
-    this._fullUserData = true;
   }
 }
 
