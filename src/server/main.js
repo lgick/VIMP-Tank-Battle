@@ -66,7 +66,7 @@ console.info('------------------------------------------');
 console.info('Server Settings:');
 console.info(`-> Domain: ${config.get('server:domain')}`);
 console.info(`-> Port: ${config.get('server:port')}`);
-console.info(`-> Player limit: ${config.get('server:maxPlayers')}`);
+console.info(`-> Player limit: ${config.get('game:maxPlayers')}`);
 console.info(`-> Current map: ${config.get('game:currentMap')}`);
 console.info(`-> Round time: ${config.get('game:timers:roundTime')}`);
 console.info(`-> Map time: ${config.get('game:timers:mapTime')}`);

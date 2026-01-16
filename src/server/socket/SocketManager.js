@@ -274,7 +274,7 @@ export default class SocketManager {
   /**
    * Отправка базовых данных игрока.
    * @param {string} socketId
-   * @param {string} gameId - ID игрока в игре.
+   * @param {number} gameId - ID игрока в игре.
    */
   sendPlayerDefaultShot(socketId, gameId) {
     this._send(socketId, this._PORT_SHOT_DATA, [

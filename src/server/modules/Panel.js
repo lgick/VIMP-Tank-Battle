@@ -12,7 +12,7 @@ class Panel {
 
     this._config = config;
 
-    this._data = {};
+    this._data = new Map();
     this._timerManager = null;
 
     this._emptyPanel = Object.values(this._config).map(item => item.key);
@@ -33,34 +33,30 @@ class Panel {
 
   // сбрасывает внутреннее состояние пользователей к дефолтному
   reset() {
-    for (const gameId in this._data) {
-      if (Object.hasOwn(this._data, gameId)) {
-        const user = this._data[gameId];
-
-        user.values = { ...this._defaultPanel };
-        user.pendingChanges = {}; // очистка, без добавления новых данных
-      }
+    for (const user of this._data.values()) {
+      user.values = { ...this._defaultPanel };
+      user.pendingChanges = {}; // очистка, без добавления новых данных
     }
   }
 
   // добавляет пользователя
   addUser(gameId) {
-    this._data[gameId] = {
+    this._data.set(gameId, {
       values: { ...this._defaultPanel },
       pendingChanges: {}, // объект для хранения только измененных данных
-    };
+    });
   }
 
   // удаляет пользователя
   removeUser(gameId) {
-    delete this._data[gameId];
+    this._data.delete(gameId);
   }
 
   // очищает ожидающие изменения для пользователя
   // требуется, когда состояние пользователя резко меняется
   // (например при уничтожении)
   invalidate(gameId) {
-    const user = this._data[gameId];
+    const user = this._data.get(gameId);
 
     if (user) {
       user.pendingChanges = {};
@@ -72,7 +68,12 @@ class Panel {
   // value: значение
   // operation: 'set', 'decrement', 'increment'
   updateUser(gameId, param, value, operation = 'decrement') {
-    const user = this._data[gameId];
+    const user = this._data.get(gameId);
+
+    if (!user) {
+      return;
+    }
+
     const values = user.values;
     const currentValue = values[param];
     let newValue;
@@ -95,13 +96,21 @@ class Panel {
 
   // устанавливает активное оружие
   setActiveWeapon(gameId, weaponKey) {
-    const user = this._data[gameId];
-    user.pendingChanges['wa'] = weaponKey;
+    const user = this._data.get(gameId);
+
+    if (user) {
+      user.pendingChanges['wa'] = weaponKey;
+    }
   }
 
   // проверяет, достаточно ли у пользователя ресурсов для действия
   hasResources(gameId, param, value) {
-    const user = this._data[gameId];
+    const user = this._data.get(gameId);
+
+    if (!user) {
+      return false;
+    }
+
     const currentValue = user.values[param];
 
     return currentValue >= value;
@@ -109,14 +118,18 @@ class Panel {
 
   // возвращает текущее значение параметра для пользователя
   getCurrentValue(gameId, param) {
-    const user = this._data[gameId];
+    const user = this._data.get(gameId);
+
+    if (!user) {
+      return undefined;
+    }
 
     return user.values[param];
   }
 
   // вычисляет все обновления панели за один тик
   processUpdates() {
-    const updates = {};
+    const updates = new Map();
     const currentTime = this._timerManager.getRoundTimeLeft();
     const timeChanged = currentTime !== this._lastSentRoundTime;
 
@@ -124,36 +137,38 @@ class Panel {
       this._lastSentRoundTime = currentTime;
     }
 
-    for (const gameId in this._data) {
-      if (Object.hasOwn(this._data, gameId)) {
-        const user = this._data[gameId];
-        const userChanges = user.pendingChanges;
-        const userData = [];
+    for (const [gameId, user] of this._data) {
+      const userChanges = user.pendingChanges;
+      const userData = [];
 
-        if (timeChanged) {
-          userData.push(`t:${currentTime}`);
-        }
-
-        for (const key in userChanges) {
-          if (Object.hasOwn(userChanges, key)) {
-            userData.push(`${key}:${userChanges[key]}`);
-          }
-        }
-
-        if (userData.length) {
-          updates[gameId] = userData;
-        }
-
-        user.pendingChanges = {};
+      if (timeChanged) {
+        userData.push(`t:${currentTime}`);
       }
+
+      for (const key in userChanges) {
+        if (Object.hasOwn(userChanges, key)) {
+          userData.push(`${key}:${userChanges[key]}`);
+        }
+      }
+
+      if (userData.length) {
+        updates.set(gameId, userData);
+      }
+
+      user.pendingChanges = {};
     }
 
     return updates;
   }
 
-  // возвращает полный набор данных для инициализации панели игрока
+  // возвращает массив данных для инициализации панели игрока
   getFullPanel(gameId) {
-    const user = this._data[gameId];
+    const user = this._data.get(gameId);
+
+    if (!user) {
+      return [];
+    }
+
     user.pendingChanges = {}; // очистка старых изменений
 
     const panelData = [`t:${this._lastSentRoundTime}`];

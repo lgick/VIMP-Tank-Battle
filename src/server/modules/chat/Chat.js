@@ -13,17 +13,17 @@ class Chat {
     chat = this;
 
     this._list = [];
-    this._userList = {};
+    this._userList = new Map();
   }
 
   // добавляет пользователя
   addUser(gameId) {
-    this._userList[gameId] = [];
+    this._userList.set(gameId, []);
   }
 
   // удаляет пользователя
   removeUser(gameId) {
-    delete this._userList[gameId];
+    this._userList.delete(gameId);
   }
 
   // добавляет сообщение
@@ -46,9 +46,9 @@ class Chat {
   // добавляет системное сообщение для пользователя
   pushSystemByUser(gameId, message, params) {
     if (typeof message === 'string') {
-      this._userList[gameId].push(buildSystemMessage(message, params));
+      this._userList.get(gameId)?.push(buildSystemMessage(message, params));
     } else {
-      this._userList[gameId].push(message);
+      this._userList.get(gameId)?.push(message);
     }
   }
 
@@ -59,7 +59,7 @@ class Chat {
 
   // возвращает сообщение для пользователя
   shiftByUser(gameId) {
-    return this._userList[gameId].shift();
+    return this._userList.get(gameId)?.shift();
   }
 }
 

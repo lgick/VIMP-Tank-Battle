@@ -10,7 +10,7 @@ class Vote {
     vote = this;
 
     this._list = []; // данные для всех игроков
-    this._userList = {}; // данные для игрока
+    this._userList = new Map(); // данные для игрока
 
     this._activeVoteName = null; // имя активного голосования
     this._activeVoteCategory = null; // категория активного голосования
@@ -22,10 +22,8 @@ class Vote {
   reset() {
     this._list = [];
 
-    for (const gameId in this._userList) {
-      if (Object.hasOwn(this._userList, gameId)) {
-        this._userList[gameId] = [];
-      }
+    for (const gameId of this._userList.keys()) {
+      this._userList.set(gameId, []);
     }
 
     this._activeVoteName = null;
@@ -36,12 +34,12 @@ class Vote {
 
   // добавляет пользователя
   addUser(gameId) {
-    this._userList[gameId] = [];
+    this._userList.set(gameId, []);
   }
 
   // удаляет пользователя
   removeUser(gameId) {
-    delete this._userList[gameId];
+    this._userList.delete(gameId);
   }
 
   // добавляет данные голосования
@@ -51,7 +49,7 @@ class Vote {
 
   // добавляет данные голосования для пользователя
   pushByUser(gameId, arr) {
-    this._userList[gameId].push(arr);
+    this._userList.get(gameId)?.push(arr);
   }
 
   // возвращает данные
@@ -61,7 +59,7 @@ class Vote {
 
   // возвращает данные для пользователя
   shiftByUser(gameId) {
-    return this._userList[gameId].shift();
+    return this._userList.get(gameId)?.shift();
   }
 
   // запуск голосования и рассылки данных

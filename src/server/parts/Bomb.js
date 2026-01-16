@@ -37,7 +37,7 @@ class Bomb {
 
     const potentialTargets = new Set();
 
-    // 1. Находим все потенциальные цели в радиусе взрыва
+    // поиск целей в радиусе взрыва
     world.queryAABB(aabb, fixture => {
       const body = fixture.getBody();
       const userData = body.getUserData();
@@ -51,14 +51,15 @@ class Bomb {
       if (distance < radius) {
         potentialTargets.add({ body, userData, distance });
       }
+
       return true;
     });
 
-    // 2. Для каждой цели применяем урон без проверки линии видимости
+    // урон для каждой цели без проверки линии видимости
     for (const target of potentialTargets) {
       const { body: targetBody, userData: targetUserData, distance } = target;
 
-      // Рассчитываем и применяем урон и импульс для всех в радиусе
+      // урон и импульс для всех в радиусе
       const falloff = 1 - distance / radius;
       const actualDamage = Math.round(damage * falloff);
       const actualImpulse = impulseMagnitude * falloff;
@@ -86,7 +87,7 @@ class Bomb {
       }
     }
 
-    // 3. Формирование данных для визуализации взрыва на клиенте
+    // данные для визуализации взрыва на клиенте
     const explosionData = [
       +bombPosition.x.toFixed(1),
       +bombPosition.y.toFixed(1),

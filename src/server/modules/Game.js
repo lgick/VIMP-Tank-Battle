@@ -1,6 +1,7 @@
 import planck from 'planck';
 import Factory from '../../lib/factory.js';
 import constructors from '../parts/index.js';
+import IdGenerator, { ID_FORMATS } from '../../lib/IdGenerator.js';
 
 // Singleton Game
 
@@ -94,18 +95,14 @@ class Game {
       ),
     ];
 
-    // данные игроков { gameId: playerInstance }
-    this._playersData = {};
+    // данные игроков
+    this._playersData = new Map();
 
-    // общий список активных пуль { shotId: shotObject }
-    this._shotsData = {};
-
-    // созданные пули в момент времени (кольцевой буфер)
-    // { stepTick: [shotId1, shotId2] }
-    this._shotsAtTime = {};
+    // активные пули
+    this._shotsData = new Map();
 
     // id для пуль
-    this._currentShotId = 0;
+    this._shotIdGen = new IdGenerator(ID_FORMATS.UINT16);
 
     // инициализация времени жизни пуль и кольцевого буфера
     let maxLifetimeMs = 0;
@@ -141,9 +138,10 @@ class Game {
     // текущий тик для кольцевого буфера, от 0 до _maxShotTimeInSteps-1
     this._currentStepTick = 0;
 
-    for (let i = 0, len = this._maxShotTimeInSteps; i < len; i += 1) {
-      this._shotsAtTime[i] = [];
-    }
+    // созданные пули в момент времени (кольцевой буфер)
+    this._shotsAtTime = new Array(this._maxShotTimeInSteps)
+      .fill(null)
+      .map(() => []);
 
     // хранение данных об удаленных пулях между updateData и getGameData
     this._lastExpiredShotsData = {};
@@ -158,7 +156,7 @@ class Game {
     this._activeWeaponKeys = new Set();
 
     // кеш данных игроков для отправки (чтобы не вызывать getData дважды)
-    this._cachedPlayersData = {};
+    this._cachedPlayersData = new Map();
 
     this.initNewShotsData();
   }
@@ -197,29 +195,33 @@ class Game {
   createPlayer(gameId, model, name, teamId, data) {
     const modelData = this._models[model];
 
-    this._playersData[gameId] = this._Factory(modelData.constructor, {
-      world: this._world,
-      playerKeys: this._playerKeys,
-      model,
-      name,
+    this._playersData.set(
       gameId,
-      teamId,
-      currentWeapon: modelData.currentWeapon,
-      weapons: this._weapons,
-      services: this._services,
-      modelData,
-      position: [data[0], data[1]],
-      angle: data[2],
-    });
+      this._Factory(modelData.constructor, {
+        world: this._world,
+        playerKeys: this._playerKeys,
+        model,
+        name,
+        gameId,
+        teamId,
+        currentWeapon: modelData.currentWeapon,
+        weapons: this._weapons,
+        services: this._services,
+        modelData,
+        position: [data[0], data[1]],
+        angle: data[2],
+      }),
+    );
   }
 
   // удаляет игрока
   removePlayer(gameId) {
-    // если игрок существует
-    if (this._playersData[gameId]) {
-      this._world.destroyBody(this._playersData[gameId].getBody());
-      delete this._playersData[gameId];
-      delete this._cachedPlayersData[gameId];
+    const player = this._playersData.get(gameId);
+
+    if (player) {
+      this._world.destroyBody(player.getBody());
+      this._playersData.delete(gameId);
+      this._cachedPlayersData.delete(gameId);
     }
   }
 
@@ -227,41 +229,44 @@ class Game {
   _removePlayers() {
     const modelNameSet = new Set();
 
-    for (const gameId in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameId)) {
-        const player = this._playersData[gameId];
-
-        modelNameSet.add(player.model);
-        this._world.destroyBody(player.getBody());
-      }
+    for (const player of this._playersData.values()) {
+      modelNameSet.add(player.model);
+      this._world.destroyBody(player.getBody());
     }
 
-    this._playersData = {};
-    this._cachedPlayersData = {};
+    this._playersData.clear();
+    this._cachedPlayersData.clear();
 
     return [...modelNameSet];
   }
 
   // меняет имя игрока
   changeName(gameId, name) {
-    if (this._playersData[gameId]) {
-      this._playersData[gameId].name = name;
+    const player = this._playersData.get(gameId);
+
+    if (player) {
+      player.name = name;
     }
   }
 
   // обновляет нажатые клавиши
   updateKeys(gameId, keyData) {
-    this._playersData[gameId].updateKeys(keyData);
+    this._playersData.get(gameId)?.updateKeys(keyData);
   }
 
-  // возвращает координаты игрока [x, y]
+  // возвращает координаты игрока [x, y] или undefined
   getPosition(gameId) {
-    return this._playersData[gameId].getPosition();
+    return this._playersData.get(gameId)?.getPosition();
+  }
+
+  // возвращает данные игрока или undefined
+  getPlayer(gameId) {
+    return this._playersData.get(gameId);
   }
 
   // меняет данные игрока при переходе из одной команды в другую
   changePlayerData(gameId, data) {
-    this._playersData[gameId].changePlayerData(data);
+    this._playersData.get(gameId)?.changePlayerData(data);
   }
 
   // стирает данные игрового мира
@@ -278,7 +283,7 @@ class Game {
       body = nextBody;
     }
 
-    this._playersData = {};
+    this._playersData.clear();
     this._removeShots();
     this._lastExpiredShotsData = {};
     this._lastWeaponEffects = {};
@@ -287,7 +292,7 @@ class Game {
 
     this.initNewShotsData();
 
-    this._cachedPlayersData = {};
+    this._cachedPlayersData.clear();
     this._accumulator = 0;
   }
 
@@ -296,7 +301,7 @@ class Game {
     // накапливание прошедшего времени
     this._accumulator += dt;
 
-    // защита от "спирали смерти":
+    // защита от "спирали смерти"
     // если накопилось слишком много времени (сильный лаг),
     // ограничение, чтобы не выполнять слишком много шагов физики за раз
     if (this._accumulator > this._maxAccumulatedTime) {
@@ -306,40 +311,32 @@ class Game {
     // делаем столько фиксированных шагов, сколько требуется
     while (this._accumulator >= this._timeStep) {
       // обновление логики игроков строго по фиксированному времени
-      for (const gameId in this._playersData) {
-        if (Object.hasOwn(this._playersData, gameId)) {
-          const player = this._playersData[gameId];
+      for (const player of this._playersData.values()) {
+        player.updateData(this._timeStep);
 
-          // this._timeStep для стабильности физики
-          player.updateData(this._timeStep);
+        // получение данных (выстрелы)
+        const shotData = player.getShotData();
 
-          // получение данных (выстрелы)
-          const shotData = player.getShotData();
+        if (shotData) {
+          const weaponName = player.currentWeapon;
+          const weaponConfig = this._weapons[weaponName];
+          const gameId = player.gameId;
 
-          if (shotData) {
-            const weaponName = player.currentWeapon;
-            const weaponConfig = this._weapons[weaponName];
+          if (weaponConfig.type === 'hitscan') {
+            const shot = this._hitscanService.processShot({
+              ...shotData,
+              gameId,
+              weaponName,
+            });
 
-            if (weaponConfig.type === 'hitscan') {
-              const shot = this._hitscanService.processShot({
-                ...shotData,
-                gameId,
-                weaponName,
-              });
+            this._newShotsData[weaponName].push(shot);
+          } else if (weaponConfig.type === 'explosive') {
+            const shot = this._createWeaponAction(gameId, weaponName, shotData);
 
-              this._newShotsData[weaponName].push(shot);
-            } else if (weaponConfig.type === 'explosive') {
-              const shot = this._createWeaponAction(
-                gameId,
-                weaponName,
-                shotData,
-              );
-
-              this._newShotsData[weaponName][shot.shotId] = shot.getData();
-            }
-
-            this._activeWeaponKeys.add(weaponName);
+            this._newShotsData[weaponName][shot.shotId] = shot.getData();
           }
+
+          this._activeWeaponKeys.add(weaponName);
         }
       }
 
@@ -365,32 +362,33 @@ class Game {
     }
 
     // обновление кеша состояния
-    for (const gameId in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameId)) {
-        this._cachedPlayersData[gameId] = this._playersData[gameId].getData();
-      }
+    for (const player of this._playersData.values()) {
+      this._cachedPlayersData.set(player.gameId, player.getData());
     }
   }
 
   // получение списка активных игроков
   getAlivePlayers() {
-    return Object.entries(this._playersData)
-      .filter(([_, player]) => player.isAlive())
-      .map(([gameId, player]) => {
-        const pos = player.getPosition();
+    const result = [];
 
-        return {
-          gameId,
+    for (const player of this._playersData.values()) {
+      if (player.isAlive()) {
+        const pos = player.getPosition();
+        result.push({
+          gameId: player.gameId,
           teamId: player.teamId,
           x: pos[0],
           y: pos[1],
-        };
-      });
+        });
+      }
+    }
+
+    return result;
   }
 
   // проверка жив ли игрок
   isAlive(gameId) {
-    const player = this._playersData[gameId];
+    const player = this._playersData.get(gameId);
 
     if (player && player.isAlive()) {
       return true;
@@ -401,7 +399,7 @@ class Game {
 
   //  применение урона игроку
   applyDamage(targetGameId, shooterGameId, weaponName, damageValue) {
-    const player = this._playersData[targetGameId];
+    const player = this._playersData.get(targetGameId);
 
     // если игрок не существует или уже уничтожен, ничего не делаем
     if (this.isAlive(targetGameId) === false) {
@@ -409,7 +407,7 @@ class Game {
     }
 
     const targetTeamId = player.teamId;
-    const shooterTeamId = this._playersData[shooterGameId]?.teamId;
+    const shooterTeamId = this._playersData.get(shooterGameId)?.teamId;
 
     // проверка на дружественный огонь
     if (
@@ -512,7 +510,7 @@ class Game {
 
       // если это был снаряд, нужно обновить данные для клиентов
       if (userData && userData.type === 'shot') {
-        delete this._shotsData[userData.shotId];
+        this._shotsData.delete(userData.shotId);
 
         this._mergeShotOutcomeData({
           [userData.weaponName]: { [userData.shotId]: null },
@@ -550,7 +548,7 @@ class Game {
 
     for (let i = 0, len = shotsInCurrentTick.length; i < len; i += 1) {
       const shotId = shotsInCurrentTick[i];
-      const shot = this._shotsData[shotId];
+      const shot = this._shotsData.get(shotId);
 
       // если пуля все еще существует (не была уничтожена досрочно)
       if (shot) {
@@ -572,7 +570,7 @@ class Game {
         }
 
         this._world.destroyBody(shot.getBody());
-        delete this._shotsData[shotId];
+        this._shotsData.delete(shotId);
 
         // помечаем исходный снаряд (бомбу) как удаленный
         outcomeData[weaponName] = outcomeData[weaponName] || {};
@@ -580,7 +578,8 @@ class Game {
       }
     }
 
-    this._shotsAtTime[this._currentStepTick] = []; // очищаем текущий слот
+    shotsInCurrentTick.length = 0; // очищаем текущий слот
+
     // переходим к следующему слоту
     this._currentStepTick =
       (this._currentStepTick + 1) % this._maxShotTimeInSteps;
@@ -631,17 +630,13 @@ class Game {
   getWorldState() {
     const state = {};
 
-    for (const gameId in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameId)) {
-        const player = this._playersData[gameId];
-        const model = player.model;
+    for (const player of this._playersData.values()) {
+      const { model, gameId } = player;
+      const playerData = this._cachedPlayersData.get(gameId);
 
-        const playerData = this._cachedPlayersData[gameId];
-
-        if (playerData) {
-          state[model] = state[model] || {};
-          state[model][gameId] = playerData;
-        }
+      if (playerData) {
+        state[model] = state[model] || {};
+        state[model][gameId] = playerData;
       }
     }
 
@@ -652,14 +647,11 @@ class Game {
   getPlayersData() {
     const gameData = {};
 
-    for (const gameId in this._playersData) {
-      if (Object.hasOwn(this._playersData, gameId)) {
-        const player = this._playersData[gameId];
-        const model = player.model;
+    for (const player of this._playersData.values()) {
+      const { model, gameId } = player;
 
-        gameData[model] = gameData[model] || {};
-        gameData[model][gameId] = player.getData();
-      }
+      gameData[model] = gameData[model] || {};
+      gameData[model][gameId] = player.getData();
     }
 
     return gameData;
@@ -672,7 +664,7 @@ class Game {
     const lifetimeSeconds = lifetimeMs / 1000.0;
     let lifetimeInSteps = Math.ceil(lifetimeSeconds / this._timeStep);
 
-    const player = this._playersData[gameId];
+    const player = this._playersData.get(gameId);
 
     if (lifetimeInSteps < 1) {
       lifetimeInSteps = 1;
@@ -686,9 +678,7 @@ class Game {
       }
     }
 
-    this._currentShotId += 1;
-
-    const shotId = this._currentShotId.toString(36);
+    const shotId = this._shotIdGen.next();
 
     // слот, в который будет помещена пуля для удаления
     const removalTick =
@@ -711,7 +701,7 @@ class Game {
     shot.shotId = shotId;
     shot.weaponName = weaponName;
 
-    this._shotsData[shotId] = shot;
+    this._shotsData.set(shotId, shot);
     this._shotsAtTime[removalTick].push(shotId);
 
     return shot;
@@ -732,22 +722,20 @@ class Game {
   _removeShots() {
     const weaponNameSet = new Set();
 
-    this._currentShotId = 0;
+    this._shotIdGen.reset();
 
-    for (const shotId in this._shotsData) {
-      if (Object.hasOwn(this._shotsData, shotId)) {
-        const shot = this._shotsData[shotId];
-
-        weaponNameSet.add(shot.weaponName);
-        this._world.destroyBody(shot.getBody());
-      }
+    for (const shot of this._shotsData.values()) {
+      weaponNameSet.add(shot.weaponName);
+      this._world.destroyBody(shot.getBody());
     }
-    this._shotsData = {};
+
+    this._shotsData.clear();
 
     // очистка кольцевого буфера
     for (let i = 0; i < this._maxShotTimeInSteps; i += 1) {
-      this._shotsAtTime[i] = [];
+      this._shotsAtTime[i].length = 0;
     }
+
     this._currentStepTick = 0;
 
     return [...weaponNameSet];

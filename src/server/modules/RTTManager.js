@@ -52,7 +52,7 @@ export default class RTTManager {
 
   /**
    * @description Добавляет нового пользователя в систему отслеживания RTT.
-   * @param {string} gameId - Уникальный идентификатор пользователя.
+   * @param {number} gameId - Уникальный идентификатор пользователя.
    */
   addUser(gameId) {
     this._users.set(gameId, {
@@ -65,7 +65,7 @@ export default class RTTManager {
 
   /**
    * @description Удаляет пользователя из системы отслеживания RTT.
-   * @param {string} gameId - Уникальный идентификатор пользователя.
+   * @param {number} gameId - Уникальный идентификатор пользователя.
    */
   removeUser(gameId) {
     this._users.delete(gameId);
@@ -117,7 +117,7 @@ export default class RTTManager {
    * @description Обрабатывает ответное сообщение 'pong' от клиента.
    * Вычисляет новый RTT, обновляет статистику и проверяет
    * на превышение максимальной задержки.
-   * @param {string} gameId - Идентификатор пользователя,
+   * @param {number} gameId - Идентификатор пользователя,
    * от которого пришел 'pong'.
    * @param {number} pingId - ID пинга, на который пришел ответ.
    * @returns {number|null} - Рассчитанное значение RTT (latency) или null,
