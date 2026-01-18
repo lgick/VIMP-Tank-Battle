@@ -1,7 +1,7 @@
 import planck from 'planck';
 import Factory from '../../lib/factory.js';
 import constructors from '../parts/index.js';
-import IdGenerator, { ID_FORMATS } from '../../lib/IdGenerator.js';
+import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
 
 // Singleton Game
 
@@ -101,8 +101,8 @@ class Game {
     // активные пули
     this._shotsData = new Map();
 
-    // id для пуль
-    this._shotIdGen = new IdGenerator(ID_FORMATS.UINT16);
+    // id для пуль. (UINT16: до 65535 одновременных пуль)
+    this._shotIdGen = new BinaryGenId(ID_FORMATS.UINT16);
 
     // инициализация времени жизни пуль и кольцевого буфера
     let maxLifetimeMs = 0;
@@ -511,6 +511,7 @@ class Game {
       // если это был снаряд, нужно обновить данные для клиентов
       if (userData && userData.type === 'shot') {
         this._shotsData.delete(userData.shotId);
+        this._shotIdGen.release(userData.shotId);
 
         this._mergeShotOutcomeData({
           [userData.weaponName]: { [userData.shotId]: null },
@@ -571,6 +572,7 @@ class Game {
 
         this._world.destroyBody(shot.getBody());
         this._shotsData.delete(shotId);
+        this._shotIdGen.release(shotId);
 
         // помечаем исходный снаряд (бомбу) как удаленный
         outcomeData[weaponName] = outcomeData[weaponName] || {};
@@ -678,6 +680,7 @@ class Game {
       }
     }
 
+    // новый ID для пули
     const shotId = this._shotIdGen.next();
 
     // слот, в который будет помещена пуля для удаления
@@ -722,14 +725,13 @@ class Game {
   _removeShots() {
     const weaponNameSet = new Set();
 
-    this._shotIdGen.reset();
-
     for (const shot of this._shotsData.values()) {
       weaponNameSet.add(shot.weaponName);
       this._world.destroyBody(shot.getBody());
     }
 
     this._shotsData.clear();
+    this._shotIdGen.reset(); // сброс генератора
 
     // очистка кольцевого буфера
     for (let i = 0; i < this._maxShotTimeInSteps; i += 1) {

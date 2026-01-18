@@ -9,7 +9,7 @@ import SnapshotManager from './SnapshotManager.js';
 import Bots from './bots/index.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
 import { isValidName } from '../../lib/validators.js';
-import IdGenerator, { ID_FORMATS } from '../../lib/IdGenerator.js';
+import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
 
 // Singleton VIMP
 
@@ -38,7 +38,7 @@ class VIMP {
     this._idleTimeoutForSpectator = data.idleKickTimeout?.spectator || null;
 
     this._users = new Map(); // игроки
-    this._userIdGen = new IdGenerator(ID_FORMATS.UINT8);
+    this._userIdGen = new BinaryGenId(ID_FORMATS.UINT8);
 
     // команды
     // team: teamId; { team1: 1, team2: 2, spectators: 3 }
@@ -857,17 +857,21 @@ class VIMP {
     }
   }
 
-  // возвращает уникальный id
-  getGameId() {
+  // создаёт уникальный gameId
+  createGameId() {
     return this._userIdGen.next();
+  }
+
+  // удаляет уникальный gameId
+  removeGameId(gameId) {
+    this._userIdGen.release(gameId);
   }
 
   // создает нового игрока
   createUser(params, socketId, cb) {
-    const gameId = this.getGameId();
+    const gameId = this.createGameId();
     const name = this.checkName(params.name);
 
-    // ДАННЫЕ ПОЛЬЗОВАТЕЛЯ
     this._users.set(gameId, {
       // gameId игрока
       gameId,
@@ -926,6 +930,7 @@ class VIMP {
     this._chat.removeUser(gameId);
     this._vote.removeUser(gameId);
     this._panel.removeUser(gameId);
+    this.removeGameId(gameId);
 
     // если не наблюдатель
     if (team !== this._spectatorTeam) {
