@@ -200,15 +200,15 @@ class Stat {
     }
   }
 
-  // возвращает последние изменения
+  // возвращает последние изменения или undefined
   getLast() {
-    let stat = [this._lastBody, this._lastHead];
+    const stat = [this._lastBody, this._lastHead];
 
     this._lastBody = [];
     this._lastHead = [];
 
     if (!stat[0].length && !stat[1].length) {
-      stat = 0;
+      return;
     }
 
     return stat;
@@ -216,7 +216,7 @@ class Stat {
 
   // возвращает полную статистику
   getFull() {
-    let stat = [];
+    const stat = [];
 
     stat[0] = [];
     stat[1] = [];
@@ -229,10 +229,6 @@ class Stat {
 
     for (const headStat of this._head.values()) {
       stat[1].push(headStat);
-    }
-
-    if (!stat[0].length && !stat[1].length) {
-      stat = 0;
     }
 
     // true указывает, что обновление статистики полное

@@ -154,7 +154,7 @@ class VIMP {
     }
 
     const panelUpdates = this._panel.processUpdates();
-    const stat = this._stat.getLast();
+    const stat = this._stat.getLast() || 0;
     const chat = this._chat.shift();
     const vote = this._vote.shift();
 
