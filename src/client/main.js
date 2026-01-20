@@ -36,13 +36,14 @@ import wsports from '../config/wsports.js';
 import parts from './parts/index.js';
 
 // PS (server ports): порты получения данные от сервера
-const PS_CONFIG_DATA = wsports.server.CONFIG_DATA;
+const PS_CONFIG = wsports.server.CONFIG;
 const PS_AUTH_DATA = wsports.server.AUTH_DATA;
 const PS_AUTH_RESULT = wsports.server.AUTH_RESULT;
 const PS_MAP_DATA = wsports.server.MAP_DATA;
-const PS_FIRST_SHOT_DATA = wsports.server.FIRST_SHOT_DATA;
-const PS_SHOT_DATA = wsports.server.SHOT_DATA;
-const PS_SOUND_DATA = wsports.server.SOUND_DATA;
+const PS_FIRST_EVENTS = wsports.server.FIRST_EVENTS;
+const PS_EVENTS = wsports.server.EVENTS;
+const PS_SNAPSHOT = wsports.server.SNAPSHOT;
+const PS_SOUND = wsports.server.SOUND;
 const PS_GAME_INFORM_DATA = wsports.server.GAME_INFORM_DATA;
 const PS_TECH_INFORM_DATA = wsports.server.TECH_INFORM_DATA;
 const PS_MISC = wsports.server.MISC;
@@ -55,7 +56,7 @@ const PC_CONFIG_READY = wsports.client.CONFIG_READY;
 const PC_AUTH_RESPONSE = wsports.client.AUTH_RESPONSE;
 const PC_MODULES_READY = wsports.client.MODULES_READY;
 const PC_MAP_READY = wsports.client.MAP_READY;
-const PC_FIRST_SHOT_READY = wsports.client.FIRST_SHOT_READY;
+const PC_FIRST_EVENTS_READY = wsports.client.FIRST_EVENTS_READY;
 const PC_KEYS_DATA = wsports.client.KEYS_DATA;
 const PC_CHAT_DATA = wsports.client.CHAT_DATA;
 const PC_VOTE_DATA = wsports.client.VOTE_DATA;
@@ -92,7 +93,7 @@ const socketMethods = []; // методы для обработки сокет-�
 // SOCKET МЕТОДЫ
 
 // config data
-socketMethods[PS_CONFIG_DATA] = async data => {
+socketMethods[PS_CONFIG] = async data => {
   gameSets = data.parts.gameSets;
   entitiesOnCanvas = data.parts.entitiesOnCanvas;
 
@@ -274,21 +275,22 @@ socketMethods[PS_MAP_DATA] = data => {
   sending(PC_MAP_READY);
 };
 
-// первый shot сразу после загрузки карты
-socketMethods[PS_FIRST_SHOT_DATA] = data => {
-  shotData(data);
+// первый events сразу после загрузки карты
+socketMethods[PS_FIRST_EVENTS] = data => {
+  eventsData(data);
 
-  // подтверждение получения первого шота
-  sending(PC_FIRST_SHOT_READY);
+  // подтверждение получения
+  sending(PC_FIRST_EVENTS_READY);
 };
 
-// shot data
-socketMethods[PS_SHOT_DATA] = shotData;
+// events data
+socketMethods[PS_EVENTS] = eventsData;
+
+// snapshot data
+socketMethods[PS_SNAPSHOT] = snapshotData;
 
 // sound data
-socketMethods[PS_SOUND_DATA] = sample => {
-  soundManager.playSystemSound(sample);
-};
+socketMethods[PS_SOUND] = sample => soundManager.playSystemSound(sample);
 
 // game inform data
 socketMethods[PS_GAME_INFORM_DATA] = data => {
@@ -365,32 +367,12 @@ socketMethods[PS_CLEAR] = function (setIdList) {
 };
 
 // console
-socketMethods[PS_CONSOLE] = data => {
-  console.log(data);
-};
+socketMethods[PS_CONSOLE] = console.log;
 
 // ФУНКЦИИ
 
-function shotData(data) {
-  const [game, crds, panel, stat, chat, vote, keySet] = data;
-
-  // данные игры
-  Object.entries(game).forEach(([p, instances]) => {
-    const nameArr = gameSets[p];
-
-    nameArr.forEach(name => {
-      CTRL[entitiesOnCanvas[name]].parse(name, instances);
-    });
-  });
-
-  // координаты
-  if (crds !== 0) {
-    soundManager.setListenerPosition(crds[0], crds[1]);
-    modules.canvasManager.updateCoords(crds);
-  }
-
-  soundManager.processAudibility();
-  soundManager.updateActiveSounds();
+function eventsData(data) {
+  const [panel, stat, chat, vote, keySet] = data;
 
   // панель
   if (panel !== 0) {
@@ -416,6 +398,28 @@ function shotData(data) {
   if (typeof keySet === 'number') {
     modules.controls.changeKeySet(keySet);
   }
+}
+
+function snapshotData(data) {
+  const [game, crds] = data;
+
+  // данные игры
+  Object.entries(game).forEach(([p, instances]) => {
+    const nameArr = gameSets[p];
+
+    nameArr.forEach(name => {
+      CTRL[entitiesOnCanvas[name]].parse(name, instances);
+    });
+  });
+
+  // координаты
+  if (crds !== 0) {
+    soundManager.setListenerPosition(crds[0], crds[1]);
+    modules.canvasManager.updateCoords(crds);
+  }
+
+  soundManager.processAudibility();
+  soundManager.updateActiveSounds();
 }
 
 // создает пользователя

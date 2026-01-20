@@ -15,13 +15,14 @@ const GAME_CODES = {
 
 export default class SocketManager {
   constructor(ports) {
-    this._PORT_CONFIG_DATA = ports.CONFIG_DATA;
+    this._PORT_CONFIG = ports.CONFIG;
     this._PORT_AUTH_DATA = ports.AUTH_DATA;
     this._PORT_AUTH_RESULT = ports.AUTH_RESULT;
     this._PORT_MAP_DATA = ports.MAP_DATA;
-    this._PORT_FIRST_SHOT_DATA = ports.FIRST_SHOT_DATA;
-    this._PORT_SHOT_DATA = ports.SHOT_DATA;
-    this._PORT_SOUND_DATA = ports.SOUND_DATA;
+    this._PORT_FIRST_EVENTS = ports.FIRST_EVENTS;
+    this._PORT_EVENTS = ports.EVENTS;
+    this._PORT_SNAPSHOT = ports.SNAPSHOT;
+    this._PORT_SOUND = ports.SOUND;
     this._PORT_GAME_INFORM_DATA = ports.GAME_INFORM_DATA;
     this._PORT_TECH_INFORM_DATA = ports.TECH_INFORM_DATA;
     this._PORT_MISC = ports.MISC;
@@ -161,7 +162,7 @@ export default class SocketManager {
    * @param {*} config
    */
   sendConfig(socketId, config) {
-    this._send(socketId, this._PORT_CONFIG_DATA, config);
+    this._send(socketId, this._PORT_CONFIG, config);
   }
 
   /**
@@ -235,10 +236,8 @@ export default class SocketManager {
    * Отправка первого кадра игры.
    * @param {string} socketId
    */
-  sendFirstShot(socketId) {
-    this._send(socketId, this._PORT_FIRST_SHOT_DATA, [
-      this._game.getPlayersData(), // game
-      0, // coords
+  sendFirstEvents(socketId) {
+    this._send(socketId, this._PORT_FIRST_EVENTS, [
       this._panel.getEmptyPanel(), // panel
       this._stat.getFull(), // stat
       0, // chat
@@ -252,9 +251,7 @@ export default class SocketManager {
    * @param {string} socketId
    */
   sendFirstVote(socketId) {
-    this._send(socketId, this._PORT_SHOT_DATA, [
-      {}, // game
-      0, // coords
+    this._send(socketId, this._PORT_EVENTS, [
       0, // panel
       0, // stat
       0, // chat
@@ -265,10 +262,19 @@ export default class SocketManager {
   /**
    * Отправка игровых данных.
    * @param {string} socketId
-   * @param {*} shotData
+   * @param {*} data
    */
-  sendShot(socketId, shotData) {
-    this._send(socketId, this._PORT_SHOT_DATA, shotData);
+  sendSnapshot(socketId, data) {
+    this._send(socketId, this._PORT_SNAPSHOT, data);
+  }
+
+  /**
+   * Отправка данных модулей.
+   * @param {string} socketId
+   * @param {*} data
+   */
+  sendEvents(socketId, data) {
+    this._send(socketId, this._PORT_EVENTS, data);
   }
 
   /**
@@ -276,10 +282,8 @@ export default class SocketManager {
    * @param {string} socketId
    * @param {number} gameId - ID игрока в игре.
    */
-  sendPlayerDefaultShot(socketId, gameId) {
-    this._send(socketId, this._PORT_SHOT_DATA, [
-      {}, // game
-      0, // coords
+  sendPlayerDefaultEvents(socketId, gameId) {
+    this._send(socketId, this._PORT_EVENTS, [
       this._panel.getFullPanel(gameId), // panel
       0, // stat
       0, // chat
@@ -292,10 +296,8 @@ export default class SocketManager {
    * Отправка базовых данных наблюдателя.
    * @param {string} socketId
    */
-  sendSpectatorDefaultShot(socketId) {
-    this._send(socketId, this._PORT_SHOT_DATA, [
-      {}, // game
-      0, // coords
+  sendSpectatorDefaultEvents(socketId) {
+    this._send(socketId, this._PORT_EVENTS, [
       this._panel.getEmptyPanel(), // panel
       0, // stat
       0, // chat
@@ -309,7 +311,7 @@ export default class SocketManager {
    * @param {string} socketId
    */
   sendRoundStart(socketId) {
-    this._send(socketId, this._PORT_SOUND_DATA, 'roundStart');
+    this._send(socketId, this._PORT_SOUND, 'roundStart');
     this._send(socketId, this._PORT_GAME_INFORM_DATA, GAME_CODES['roundStart']);
   }
 
@@ -335,7 +337,7 @@ export default class SocketManager {
    * @param {string} socketId
    */
   sendVictory(socketId) {
-    this._send(socketId, this._PORT_SOUND_DATA, 'victory');
+    this._send(socketId, this._PORT_SOUND, 'victory');
   }
 
   /**
@@ -343,7 +345,7 @@ export default class SocketManager {
    * @param {string} socketId
    */
   sendDefeat(socketId) {
-    this._send(socketId, this._PORT_SOUND_DATA, 'defeat');
+    this._send(socketId, this._PORT_SOUND, 'defeat');
   }
 
   /**
@@ -363,7 +365,7 @@ export default class SocketManager {
    * @param {string} socketId
    */
   sendFragSound(socketId) {
-    this._send(socketId, this._PORT_SOUND_DATA, 'frag');
+    this._send(socketId, this._PORT_SOUND, 'frag');
   }
 
   /**
@@ -371,6 +373,6 @@ export default class SocketManager {
    * @param {string} socketId
    */
   sendGameOverSound(socketId) {
-    this._send(socketId, this._PORT_SOUND_DATA, 'gameOver');
+    this._send(socketId, this._PORT_SOUND, 'gameOver');
   }
 }

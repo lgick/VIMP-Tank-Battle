@@ -170,6 +170,10 @@ class Map {
 
   // возвращает краткие данные динамических элементов
   getDynamicMapData() {
+    if (!this._dynamicBodies.length) {
+      return;
+    }
+
     const data = {};
 
     for (let i = 0, len = this._dynamicBodies.length; i < len; i += 1) {

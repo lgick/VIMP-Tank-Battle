@@ -11,7 +11,7 @@ const PC_CONFIG_READY = config.get('wsports:client:CONFIG_READY');
 const PC_AUTH_RESPONSE = config.get('wsports:client:AUTH_RESPONSE');
 const PC_MODULES_READY = config.get('wsports:client:MODULES_READY');
 const PC_MAP_READY = config.get('wsports:client:MAP_READY');
-const PC_FIRST_SHOT_READY = config.get('wsports:client:FIRST_SHOT_READY');
+const PC_FIRST_EVENTS_READY = config.get('wsports:client:FIRST_EVENTS_READY');
 const PC_KEYS_DATA = config.get('wsports:client:KEYS_DATA');
 const PC_CHAT_DATA = config.get('wsports:client:CHAT_DATA');
 const PC_VOTE_DATA = config.get('wsports:client:VOTE_DATA');
@@ -87,7 +87,7 @@ export default server => {
         false, // AUTH_RESPONSE
         false, // MODULES_READY
         false, // MAP_READY
-        false, // FIRST_SHOT_READY
+        false, // FIRST_EVENTS_READY
         false, // KEYS_DATA
         false, // CHAT_DATA
         false, // VOTE_DATA
@@ -151,7 +151,7 @@ export default server => {
       socketMethods[PC_MODULES_READY] = () => {
         ws.socket.socketMethods[PC_MODULES_READY] = false;
         ws.socket.socketMethods[PC_MAP_READY] = true;
-        ws.socket.socketMethods[PC_FIRST_SHOT_READY] = true;
+        ws.socket.socketMethods[PC_FIRST_EVENTS_READY] = true;
         ws.socket.socketMethods[PC_KEYS_DATA] = true;
         ws.socket.socketMethods[PC_CHAT_DATA] = true;
         ws.socket.socketMethods[PC_VOTE_DATA] = true;
@@ -165,9 +165,9 @@ export default server => {
         vimp.mapReady(gameId);
       };
 
-      // 4: first shot ready
-      socketMethods[PC_FIRST_SHOT_READY] = () => {
-        vimp.firstShotReady(gameId);
+      // 4: first events ready
+      socketMethods[PC_FIRST_EVENTS_READY] = () => {
+        vimp.firstEventsReady(gameId);
       };
 
       // 5: keys data

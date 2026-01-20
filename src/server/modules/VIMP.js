@@ -148,85 +148,100 @@ class VIMP {
     // получение снимка (snapshot)
     const gameSnapshot = this._snapshotManager.processTick();
 
-    // если null, значит пока не время отправлять данные
-    if (!gameSnapshot) {
-      return;
-    }
+    // если gameSnapshot, значит время отправлять данные snapshot
+    if (gameSnapshot) {
+      const dynamicMapData = this._game.getDynamicMapData();
 
-    const panelUpdates = this._panel.processUpdates();
-    const stat = this._stat.getLast() || 0;
-    const chat = this._chat.shift();
-    const vote = this._vote.shift();
-
-    gameSnapshot[this._currentMapData.setId] = this._game.getDynamicMapData();
-
-    // игроки для удаления с полотна
-    while (this._removedPlayersList.length) {
-      const user = this._removedPlayersList.pop();
-      const model = user.model;
-
-      gameSnapshot[model] = gameSnapshot[model] || {};
-      gameSnapshot[model][user.gameId] = null;
-    }
-
-    for (const user of this._users.values()) {
-      if (!user.isReady) {
-        continue;
+      if (dynamicMapData) {
+        gameSnapshot[this._currentMapData.setId] = dynamicMapData;
       }
 
-      const gameId = user.gameId;
-      let userData, chatUser, voteUser;
-      const panel = panelUpdates.get(gameId) || 0;
+      // игроки для удаления с полотна
+      while (this._removedPlayersList.length) {
+        const user = this._removedPlayersList.pop();
+        const model = user.model;
 
-      if (user.isWatching === true) {
-        // если есть играющие пользователи
-        if (this._activePlayersList.length) {
-          // если наблюдаемый игрок не существует среди играющих
-          if (!this._activePlayersList.includes(user.watchedGameId)) {
-            user.watchedGameId = this._activePlayersList[0];
+        gameSnapshot[model] = gameSnapshot[model] || {};
+        gameSnapshot[model][user.gameId] = null;
+      }
+
+      for (const user of this._users.values()) {
+        if (!user.isReady) {
+          continue;
+        }
+
+        const gameId = user.gameId;
+        let userData;
+
+        if (user.isWatching === true) {
+          // если есть играющие пользователи
+          if (this._activePlayersList.length) {
+            // если наблюдаемый игрок не существует среди играющих
+            if (!this._activePlayersList.includes(user.watchedGameId)) {
+              user.watchedGameId = this._activePlayersList[0];
+            }
+
+            userData = this._game.getPosition(user.watchedGameId) || [0, 0];
+          } else {
+            userData = [0, 0];
+          }
+        } else {
+          userData = this._game.getPosition(gameId) || [0, 0];
+        }
+
+        if (user.forceCameraReset === true) {
+          userData[2] = true;
+          user.forceCameraReset = false;
+        }
+
+        // передача данных для тряски (строка 'intensity:duration')
+        if (user.pendingShake) {
+          userData[3] = user.pendingShake;
+          user.pendingShake = null;
+        }
+
+        this._socketManager.sendSnapshot(user.socketId, [
+          gameSnapshot,
+          userData,
+        ]);
+      }
+    } else {
+      const stat = this._stat.getLast() || 0;
+      const chat = this._chat.shift() || 0;
+      const vote = this._vote.shift() || 0;
+
+      if (stat || chat || vote) {
+        for (const user of this._users.values()) {
+          if (!user.isReady) {
+            continue;
           }
 
-          userData = this._game.getPosition(user.watchedGameId) || [0, 0];
-        } else {
-          userData = [0, 0];
+          this._socketManager.sendEvents(user.socketId, [0, stat, chat, vote]);
         }
       } else {
-        userData = this._game.getPosition(gameId) || [0, 0];
-      }
+        const panelUpdates = this._panel.processUpdates();
 
-      if (user.forceCameraReset === true) {
-        userData[2] = true;
-        user.forceCameraReset = false;
-      }
+        for (const user of this._users.values()) {
+          if (!user.isReady) {
+            continue;
+          }
 
-      // передача данных для тряски (строка 'intensity:duration')
-      if (user.pendingShake) {
-        userData[3] = user.pendingShake;
-        user.pendingShake = null;
-      }
+          const gameId = user.gameId;
 
-      // если общих сообщений нет
-      if (!chat) {
-        chatUser = this._chat.shiftByUser(gameId) || 0;
-      } else {
-        chatUser = chat;
-      }
+          const panel = panelUpdates.get(gameId) || 0;
+          const chat = this._chat.shiftByUser(gameId) || 0;
+          const vote = this._vote.shiftByUser(gameId) || 0;
 
-      // если общих данных для голосования нет
-      if (!vote) {
-        voteUser = this._vote.shiftByUser(gameId) || 0;
-      } else {
-        voteUser = vote;
+          if (panel || chat || vote) {
+            this._socketManager.sendEvents(user.socketId, [
+              panel,
+              0,
+              chat,
+              vote,
+            ]);
+          }
+        }
       }
-
-      this._socketManager.sendShot(user.socketId, [
-        gameSnapshot,
-        userData,
-        panel,
-        stat,
-        chatUser,
-        voteUser,
-      ]);
     }
   }
 
@@ -402,13 +417,13 @@ class VIMP {
 
     // если игрок ещё не готов
     if (user.isReady === false) {
-      // отправка первого shot
-      this._socketManager.sendFirstShot(user.socketId);
+      // отправка первого events
+      this._socketManager.sendFirstEvents(user.socketId);
     }
   }
 
   // сообщает о готовности игрока к игре
-  firstShotReady(gameId) {
+  firstEventsReady(gameId) {
     const user = this._users.get(gameId);
 
     if (!user) {
@@ -469,7 +484,7 @@ class VIMP {
       if (team === this._spectatorTeam) {
         user.isWatching = true;
         user.forceCameraReset = true;
-        this._socketManager.sendSpectatorDefaultShot(socketId);
+        this._socketManager.sendSpectatorDefaultEvents(socketId);
       } else {
         this._setActivePlayer(user, getRespawnData(team));
       }
@@ -633,7 +648,7 @@ class VIMP {
     this._removeFromActivePlayers(gameId);
     this._removedPlayersList.push({ gameId, model });
     this._game.removePlayer(gameId);
-    this._socketManager.sendSpectatorDefaultShot(user.socketId);
+    this._socketManager.sendSpectatorDefaultEvents(user.socketId);
   }
 
   // перевод игрока в активные игроки
@@ -649,7 +664,7 @@ class VIMP {
 
     // если это не бот
     if (!user.isBot) {
-      this._socketManager.sendPlayerDefaultShot(user.socketId, gameId);
+      this._socketManager.sendPlayerDefaultEvents(user.socketId, gameId);
     }
 
     this._stat.updateUser(gameId, teamId, { status: '' });
@@ -789,7 +804,7 @@ class VIMP {
     this._panel.invalidate(victimId);
 
     if (!victimUser.isBot) {
-      this._socketManager.sendSpectatorDefaultShot(victimUser.socketId);
+      this._socketManager.sendSpectatorDefaultEvents(victimUser.socketId);
       this._socketManager.sendGameOverSound(victimUser.socketId);
     }
 
