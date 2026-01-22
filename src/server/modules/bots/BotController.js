@@ -32,17 +32,16 @@ const TARGET_SCAN_INTERVAL = 1.5; // интервал поиска новой ц
  */
 class BotController {
   /**
-   * @param {VIMP} vimp
+   * @param {BotManager} botManager
    * @param {Game} game
-   * @param {Panel} panel
-   * @param {SpatialManager} spatialManager
-   * @param {object} botData
+   * @param {object} params
    */
-  constructor(vimp, game, panel, spatialManager, botData) {
-    this._vimp = vimp;
+  constructor(botManager, game, params) {
+    this._botManager = botManager;
     this._game = game;
-    this._panel = panel;
-    this._botData = botData;
+    this._gameId = params.gameId;
+    this._teamId = params.teamId;
+
     this._world = this._game._world;
 
     this._target = null;
@@ -80,24 +79,25 @@ class BotController {
       gunRight: false,
     };
 
-    this._spatialManager = spatialManager;
-
-    this._myPosition = null;
-    this._myBody = null;
+    this._position = null;
+    this._body = null;
   }
 
   /**
-   * @description Обновляет состояние нажатия клавиш и отправляет команду в игру.
+   * @description Обновляет состояние нажатия клавиш
+   * и отправляет команду в игру.
    * @param {string} keyName - Название клавиши.
    * @param {boolean} isDown - true, если клавиша нажата, иначе false.
    * @private
    */
   _setKeyState(keyName, isDown) {
-    if (this._keyStates[keyName] !== isDown) {
-      this._keyStates[keyName] = isDown;
-      const action = isDown ? 'down' : 'up';
-      this._game.updateKeys(this._botData.gameId, { action, name: keyName });
+    const action = isDown ? 'down' : 'up';
+
+    if (this._keyStates[keyName]) {
+      this._keyStates[keyName] = isDown ? true : false;
     }
+
+    this._game.updateKeys(this._gameId, { action, name: keyName });
   }
 
   /**
@@ -106,11 +106,11 @@ class BotController {
    */
   _updateCachedData() {
     try {
-      this._myPosition = this._game.getPosition(this._botData.gameId);
-      this._myBody = this._game._playersData[this._botData.gameId]?.getBody();
+      this._position = this._game.getPosition(this._gameId);
+      this._body = this._game.getPlayer(this._gameId).getBody();
     } catch (e) {
-      this._myPosition = null;
-      this._myBody = null;
+      this._position = null;
+      this._body = null;
     }
   }
 
@@ -121,7 +121,7 @@ class BotController {
   update(dt) {
     this._updateCachedData();
 
-    if (!this._myBody || !this._game.isAlive(this._botData.gameId)) {
+    if (!this._body || !this._game.isAlive(this._gameId)) {
       if (this.state !== 'DEAD') {
         this.state = 'DEAD';
         this.releaseAllKeys();
@@ -142,7 +142,7 @@ class BotController {
 
     if (this._stuckTimer >= 1.5) {
       this._stuckTimer = 0;
-      const currentPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+      const currentPosVec = new Vec2(this._position[0], this._position[1]);
 
       if (this._lastPosition) {
         const distSq = Vec2.distanceSquared(currentPosVec, this._lastPosition);
@@ -187,7 +187,14 @@ class BotController {
 
     this._targetScanTimer = TARGET_SCAN_INTERVAL;
 
-    this._target = this.findClosestEnemy();
+    if (this._position) {
+      this._target = this._botManager.findClosestEnemy(
+        this._gameId,
+        this._teamId,
+        this._position.x,
+        this._position.y,
+      );
+    }
 
     if (this._target) {
       this._patrolTarget = null;
@@ -196,10 +203,12 @@ class BotController {
 
       if (targetPos) {
         this._lastKnownPosition = new Vec2(targetPos[0], targetPos[1]);
-        const isVisible = this._vimp._bots.hasLineOfSight(
-          new Vec2(this._myPosition[0], this._myPosition[1]),
+
+        const isVisible = this._botManager.hasLineOfSight(
+          new Vec2(this._position[0], this._position[1]),
           this._lastKnownPosition,
         );
+
         this.state = isVisible ? 'ATTACKING' : 'NAVIGATING';
       }
 
@@ -224,12 +233,12 @@ class BotController {
    * @private
    */
   setNewPatrolTarget() {
-    const randomNode = this._vimp._bots.getRandomNavNode();
+    const randomNode = this._botManager.getRandomNavNode();
 
-    if (randomNode && this._myPosition) {
+    if (randomNode && this._position) {
       this._patrolTarget = randomNode;
-      const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
-      this._path = this._vimp._bots.findPath(myPosVec, this._patrolTarget);
+      const myPosVec = new Vec2(this._position[0], this._position[1]);
+      this._path = this._botManager.findPath(myPosVec, this._patrolTarget);
       this._pathIndex = 0;
     }
   }
@@ -253,7 +262,7 @@ class BotController {
 
       if (this._repositionTimer > 0 && this._repositionTarget) {
         this.moveTo(this._repositionTarget, true);
-        const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+        const myPosVec = new Vec2(this._position[0], this._position[1]);
 
         if (Vec2.distanceSquared(myPosVec, this._repositionTarget) < 50 * 50) {
           this._repositionTimer = 0;
@@ -267,7 +276,7 @@ class BotController {
 
     if (this.state === 'SEARCHING' && this._lastKnownPosition) {
       this.moveTo(this._lastKnownPosition, true);
-      const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+      const myPosVec = new Vec2(this._position[0], this._position[1]);
 
       if (
         Vec2.distanceSquared(myPosVec, this._lastKnownPosition) <
@@ -282,7 +291,7 @@ class BotController {
     if (this.state === 'PATROLLING') {
       if (this._path && this._patrolTarget) {
         this.followPath();
-        const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+        const myPosVec = new Vec2(this._position[0], this._position[1]);
 
         if (
           Vec2.distanceSquared(myPosVec, this._patrolTarget) <
@@ -313,7 +322,7 @@ class BotController {
     const nextWaypoint = this._path[this._pathIndex];
     this.moveTo(nextWaypoint, true);
 
-    const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
+    const myPosVec = new Vec2(this._position[0], this._position[1]);
 
     if (
       Vec2.distanceSquared(myPosVec, nextWaypoint) <
@@ -321,40 +330,6 @@ class BotController {
     ) {
       this._pathIndex += 1;
     }
-  }
-
-  /**
-   * @description Ищет ближайшего живого врага.
-   * @returns {object | null} - Данные врага или null.
-   */
-  findClosestEnemy() {
-    if (!this._myPosition) {
-      return null;
-    }
-
-    const myVec = new Vec2(this._myPosition[0], this._myPosition[1]);
-    const candidates = this._spatialManager.queryNearby(myVec.x, myVec.y);
-    let closestEnemy = null;
-    let minDistanceSq = Infinity;
-
-    for (const { gameId, teamId, x, y } of candidates) {
-      if (gameId === this._botData.gameId || teamId === this._botData.teamId) {
-        continue;
-      }
-
-      const distanceSq = Vec2.distanceSquared(myVec, new Vec2(x, y));
-
-      if (
-        distanceSq < minDistanceSq &&
-        distanceSq < MAX_FIRING_DISTANCE * MAX_FIRING_DISTANCE * 1.5
-      ) {
-        minDistanceSq = distanceSq;
-        closestEnemy =
-          this._vimp._users[gameId] || this._vimp._bots.getBotById(gameId);
-      }
-    }
-
-    return closestEnemy;
   }
 
   /**
@@ -370,11 +345,11 @@ class BotController {
    * @param {boolean} [isStaticPoint=false]
    */
   moveTo(target, isStaticPoint = false) {
-    if (!this._myBody) {
+    if (!this._body) {
       return;
     }
 
-    const myPosition = this._myBody.getPosition();
+    const myPosition = this._body.getPosition();
     let targetPosition;
 
     if (isStaticPoint) {
@@ -387,7 +362,7 @@ class BotController {
       }
 
       targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
-      const targetBody = this._game._playersData[target]?.getBody();
+      const targetBody = this._game.getPlayer(target)?.getBody();
 
       if (targetBody) {
         const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
@@ -397,6 +372,7 @@ class BotController {
 
     const directionToTarget = Vec2.sub(targetPosition, myPosition);
 
+    // если расстояние до цели меньше MIN_TARGET_DISTANCE (бот на месте)
     if (
       directionToTarget.lengthSquared() <
       MIN_TARGET_DISTANCE * MIN_TARGET_DISTANCE
@@ -410,15 +386,24 @@ class BotController {
     const dirToTargetNorm = Vec2.clone(directionToTarget);
     dirToTargetNorm.normalize();
 
-    // возврат вызова надежного метода избегания препятствий
-    const finalDirection = this.avoidObstacles(this._myBody, dirToTargetNorm);
+    // корректировка курса (объезд препятствий)
+    // бот знает идеальное направление к цели (dirToTargetNorm),
+    // но он передает этот вектор в метод avoidObstacles:
+    // если впереди стена, avoidObstacles вернет вектор,
+    // отклоненный в сторону от стены;
+    // если чисто — вернет исходный вектор
+    const finalDirection = this.avoidObstacles(this._body, dirToTargetNorm);
 
-    const forwardVec = this._myBody.getWorldVector(new Vec2(1, 0));
+    const forwardVec = this._body.getWorldVector(new Vec2(1, 0));
     const angleToTarget = Math.atan2(
       Vec2.cross(forwardVec, finalDirection),
       Vec2.dot(forwardVec, finalDirection),
     );
-    const turnThreshold = 0.2;
+
+    // мертвая зона (~6 градусов)
+    // (чтобы танк не дергался влево-вправо,
+    // когда он уже смотрит почти точно на цель)
+    const turnThreshold = 0.1;
 
     if (angleToTarget > turnThreshold) {
       this._setKeyState('right', true);
@@ -518,9 +503,9 @@ class BotController {
       return;
     }
 
-    const botTank = this._game._playersData[this._botData.gameId];
+    const botTank = this._game.getPlayer(this._gameId);
 
-    if (!botTank || !this._myBody) {
+    if (!botTank || !this._body) {
       return;
     }
 
@@ -530,10 +515,10 @@ class BotController {
       return;
     }
 
-    const myPosition = this._myBody.getPosition();
+    const myPosition = this._body.getPosition();
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
 
-    if (!this._vimp._bots.hasLineOfSight(myPosition, targetPosition)) {
+    if (!this._botManager.hasLineOfSight(myPosition, targetPosition)) {
       return;
     }
 
@@ -546,7 +531,7 @@ class BotController {
 
     if (shouldUseBomb) {
       if (currentWeapon !== 'w2') {
-        this._game.updateKeys(this._botData.gameId, {
+        this._game.updateKeys(this._gameId, {
           action: 'down',
           name: 'nextWeapon',
         });
@@ -554,7 +539,7 @@ class BotController {
         return;
       }
     } else if (currentWeapon === 'w2') {
-      this._game.updateKeys(this._botData.gameId, {
+      this._game.updateKeys(this._gameId, {
         action: 'down',
         name: 'nextWeapon',
       });
@@ -566,7 +551,7 @@ class BotController {
       Math.atan2(directionToTarget.y, directionToTarget.x) +
       randomRange(-AIM_INACCURACY / 2, AIM_INACCURACY / 2);
 
-    const currentGunAngle = this._myBody.getAngle() + this._myBody.gunRotation;
+    const currentGunAngle = this._body.getAngle() + this._body.gunRotation;
     let angleDifference = targetAngle - currentGunAngle;
     angleDifference = Math.atan2(
       Math.sin(angleDifference),
@@ -588,13 +573,9 @@ class BotController {
         if (
           shouldUseBomb &&
           currentWeapon === 'w2' &&
-          this._panel.hasResources(this._botData.gameId, 'w2', 1)
+          this._botManager.hasResources(this._gameId, 'w2', 1)
         ) {
-          this._game.updateKeys(this._botData.gameId, {
-            action: 'down',
-            name: 'fire',
-          });
-
+          this._setKeyState('fire', true);
           this._bombCooldownTimer = BOMB_COOLDOWN;
           this._repositionTimer = 2.0;
           this.calculateNewCombatPosition();
@@ -605,12 +586,8 @@ class BotController {
         ) {
           this._firingTimer =
             MIN_FIRING_DELAY + Math.random() * RANDOM_FIRING_DELAY;
-          if (this._panel.hasResources(this._botData.gameId, 'w1', 1)) {
-            this._game.updateKeys(this._botData.gameId, {
-              action: 'down',
-              name: 'fire',
-            });
-
+          if (this._botManager.hasResources(this._gameId, 'w1', 1)) {
+            this._setKeyState('fire', true);
             this._repositionTimer = 2.0;
             this.calculateNewCombatPosition();
           }
@@ -625,46 +602,26 @@ class BotController {
   handleClearingObstacle() {
     this.releaseAllKeys();
 
-    if (!this._myBody) {
-      this.state = 'IDLE';
+    if (!this._body) {
       return;
     }
 
-    const currentGunAngle = this._myBody.getAngle() + this._myBody.gunRotation;
-    const bodyAngle = this._myBody.getAngle();
-    let angleDifference = bodyAngle - currentGunAngle;
-    angleDifference = Math.atan2(
-      Math.sin(angleDifference),
-      Math.cos(angleDifference),
-    );
-    const aimThreshold = 0.1;
-
-    if (angleDifference > aimThreshold) {
-      this._setKeyState('gunRight', true);
-    } else if (angleDifference < -aimThreshold) {
-      this._setKeyState('gunLeft', true);
-    } else {
-      this._setKeyState('gunLeft', false);
-      this._setKeyState('gunRight', false);
-      this._game.updateKeys(this._botData.gameId, {
-        action: 'down',
-        name: 'fire',
-      });
-      this._aiUpdateTimer = 0.5;
-      this.state = 'PATROLLING';
-    }
+    this._setKeyState('gunCenter', true);
+    this._setKeyState('back', true);
+    this._aiUpdateTimer = 0.5;
+    this.state = 'PATROLLING';
   }
 
   /**
    * @description Рассчитывает новую боевую позицию для стрейфа.
    */
   calculateNewCombatPosition() {
-    if (!this._myPosition || !this._myBody) {
+    if (!this._position || !this._body) {
       return;
     }
 
-    const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
-    const rightVec = this._myBody.getWorldVector(new Vec2(0, 1));
+    const myPosVec = new Vec2(this._position[0], this._position[1]);
+    const rightVec = this._body.getWorldVector(new Vec2(0, 1));
     const strafeDirection = Math.random() > 0.5 ? 1 : -1;
     const strafeDistance = randomRange(100, 200);
 

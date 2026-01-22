@@ -374,6 +374,7 @@ class Game {
     for (const player of this._playersData.values()) {
       if (player.isAlive()) {
         const pos = player.getPosition();
+
         result.push({
           gameId: player.gameId,
           teamId: player.teamId,

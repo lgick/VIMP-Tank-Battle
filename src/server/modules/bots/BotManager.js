@@ -1,3 +1,4 @@
+import { Vec2 } from 'planck';
 import BotController from './BotController.js';
 import NavigationSystem from './NavigationSystem.js';
 import SpatialManager from './SpatialManager.js';
@@ -76,6 +77,17 @@ class BotManager {
   }
 
   /**
+   * @description Проверяет наличие ресурсов для огня
+   * @param {number} gameId - Идентификатор бота.
+   * @param {string} weaponName - Название оружия.
+   * @param {number} value - Требуемое количество.
+   * @returns {boolean}
+   */
+  hasResources(gameId, weaponName, value) {
+    return this._panel.hasResources(gameId, weaponName, value);
+  }
+
+  /**
    * @description Возвращает координаты случайного узла из навигационного графа.
    * Используется для определения цели патрулирования.
    * @returns {Vec2 | null} Координаты случайной точки или null,
@@ -83,22 +95,6 @@ class BotManager {
    */
   getRandomNavNode() {
     return this._navigationSystem.getRandomNode();
-  }
-
-  /**
-   * @description Генерирует уникальный идентификатор для бота.
-   * @returns {string} Уникальный gameId для бота.
-   * @private
-   */
-  _getGameId() {
-    const prefix = '_';
-    let counter = 0;
-
-    while (this._bots.has(`${prefix}${counter}`)) {
-      counter += 1;
-    }
-
-    return `${prefix}${counter}`;
   }
 
   /**
@@ -120,8 +116,7 @@ class BotManager {
     let createdCount = 0;
 
     for (let i = 0; i < count; i += 1) {
-      const totalPlayers =
-        Object.keys(this._vimp._users).length + this._bots.size;
+      const totalPlayers = this._vimp._users.size + this._bots.size;
 
       if (this._vimp._maxPlayers && totalPlayers >= this._vimp._maxPlayers) {
         break; // достигнут глобальный лимит игроков
@@ -148,8 +143,8 @@ class BotManager {
         continue;
       }
 
-      const gameId = this._getGameId();
-      const name = this._vimp.checkName(`Bot${gameId}`);
+      const gameId = this._vimp.createGameId();
+      const name = this._vimp.checkName(`Bot${i}`);
       const teamId = this._vimp._teams[targetTeam];
       const botData = {
         name,
@@ -161,13 +156,7 @@ class BotManager {
       };
 
       // контроллер для бота
-      const controller = new BotController(
-        this._vimp,
-        this._game,
-        this._panel,
-        this._spatialManager,
-        botData,
-      );
+      const controller = new BotController(this, this._game, botData);
 
       this._botControllers.set(gameId, controller);
       this._bots.set(gameId, botData);
@@ -200,6 +189,42 @@ class BotManager {
       : [...this._bots.keys()];
 
     botsToRemove.forEach(gameId => this._removeBotById(gameId));
+  }
+
+  /**
+   * @description Ищет ближайшего живого врага.
+   * @param {number} gameId - gameId игрока.
+   * @param {number} teamId - teamId игрока.
+   * @param {number} x - Координата X центра поиска.
+   * @param {number} y - Координата Y центра поиска.
+   * @returns {object | null} - Данные врага или null.
+   */
+  findClosestEnemy(gameId, teamId, x, y) {
+    const vec = new Vec2(x, y);
+    const candidates = this._spatialManager.queryNearby(vec.x, vec.y);
+    let closestEnemy = null;
+    let minDistanceSq = Infinity;
+
+    for (const candidate of candidates) {
+      const candidateGameId = candidate.gameId;
+      if (candidateGameId === gameId || candidate.teamId === teamId) {
+        continue;
+      }
+
+      const distanceSq = Vec2.distanceSquared(
+        vec,
+        new Vec2(candidate.x, candidate.y),
+      );
+
+      if (distanceSq < minDistanceSq) {
+        minDistanceSq = distanceSq;
+        closestEnemy =
+          this._vimp._users.get(candidateGameId) ||
+          this.getBotById(candidateGameId);
+      }
+    }
+
+    return closestEnemy;
   }
 
   /**
@@ -247,6 +272,7 @@ class BotManager {
     this._vimp._teamSizes[botData.team].delete(gameId);
     this._game.removePlayer(gameId);
     this._bots.delete(gameId);
+    this._vimp.removeGameId(gameId);
   }
 
   /**
@@ -259,6 +285,7 @@ class BotManager {
     for (const botData of this._bots.values()) {
       if (botData.team === teamName) {
         this._removeBotById(botData.gameId);
+
         return true;
       }
     }

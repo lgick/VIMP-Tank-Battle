@@ -39,7 +39,7 @@ class SpatialManager {
   /**
    * @description Добавляет сущность (игрока/бота) в сетку.
    * @param {object} entity - Данные сущности.
-   * @param {string} entity.gameId
+   * @param {number} entity.gameId
    * @param {number} entity.teamId
    * @param {number} entity.x - Координата X
    * @param {number} entity.y - Координата Y
