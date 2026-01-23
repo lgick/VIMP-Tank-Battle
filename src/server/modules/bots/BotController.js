@@ -1,4 +1,5 @@
 import { Vec2, Rot } from 'planck';
+import StuckResolver from './StuckResolver.js';
 import { randomRange } from '../../../lib/math.js';
 
 // константы для поведения бота
@@ -24,6 +25,11 @@ const BOMB_COOLDOWN = 0; // перезарядка бомбы в секунда�
 
 const REPATH_INTERVAL = 1.0; // частота пересчёта пути (секунды)
 const TARGET_SCAN_INTERVAL = 1.5; // интервал поиска новой цели (секунды)
+
+const RAY_LEFT = new Rot(Math.PI / 6); // левый луч
+const RAY_RIGHT = new Rot(-Math.PI / 6); // правый луч
+const RAY_LEFT_WIDE = new Rot(Math.PI / 2.2); // более широкий левый луч
+const RAY_RIGHT_WIDE = new Rot(-Math.PI / 2.2); // более широкий правый луч
 
 /**
  * @class BotController
@@ -60,9 +66,10 @@ class BotController {
 
     this._lastKnownPosition = null;
 
-    // свойства для обнаружения застревания
-    this._stuckTimer = 0;
+    // застревания
+    this._stuckDetectTimer = 0;
     this._lastPosition = null;
+    this._stuckResolver = new StuckResolver(this);
 
     // свойства для тактики "стреляй и двигайся"
     this._repositionTimer = 0;
@@ -122,11 +129,8 @@ class BotController {
     this._updateCachedData();
 
     if (!this._body || !this._game.isAlive(this._gameId)) {
-      if (this.state !== 'DEAD') {
-        this.state = 'DEAD';
-        this.releaseAllKeys();
-      }
-
+      this.state = 'DEAD';
+      this.releaseAllKeys();
       return;
     }
 
@@ -137,27 +141,38 @@ class BotController {
     this._targetScanTimer -= dt;
     this._repositionTimer = Math.max(0, this._repositionTimer - dt);
 
-    // обнаружение застревания
-    this._stuckTimer += dt;
+    this._stuckDetectTimer += dt;
 
-    if (this._stuckTimer >= 1.5) {
-      this._stuckTimer = 0;
-      const currentPosVec = new Vec2(this._position[0], this._position[1]);
+    if (this._stuckDetectTimer >= 1.5 && this._position) {
+      this._stuckDetectTimer = 0;
+
+      const cur = new Vec2(this._position[0], this._position[1]);
 
       if (this._lastPosition) {
-        const distSq = Vec2.distanceSquared(currentPosVec, this._lastPosition);
+        const distSq = Vec2.distanceSquared(cur, this._lastPosition);
 
         if (
+          distSq < 10 &&
           (this.state === 'NAVIGATING' ||
             this.state === 'SEARCHING' ||
-            this.state === 'PATROLLING') &&
-          distSq < 10
+            this.state === 'PATROLLING')
         ) {
           this.state = 'CLEARING_OBSTACLE';
+          this._stuckResolver.reset();
         }
       }
 
-      this._lastPosition = currentPosVec;
+      this._lastPosition = cur;
+    }
+
+    if (this.state === 'CLEARING_OBSTACLE') {
+      const escaped = this._stuckResolver.update(dt);
+
+      if (escaped) {
+        this.state = 'PATROLLING';
+      }
+
+      return;
     }
 
     if (this._aiUpdateTimer <= 0) {
@@ -165,12 +180,8 @@ class BotController {
       this.makeDecision();
     }
 
-    if (this.state === 'CLEARING_OBSTACLE') {
-      this.handleClearingObstacle();
-    } else {
-      this.executeMovement();
-      this.executeAimAndShoot();
-    }
+    this.executeMovement();
+    this.executeAimAndShoot();
   }
 
   /**
@@ -181,6 +192,10 @@ class BotController {
    * 3. Патрулировать.
    */
   makeDecision() {
+    if (this.state === 'CLEARING_OBSTACLE') {
+      return;
+    }
+
     if (this._targetScanTimer > 0 && this.state !== 'PATROLLING') {
       return;
     }
@@ -191,32 +206,33 @@ class BotController {
       this._target = this._botManager.findClosestEnemy(
         this._gameId,
         this._teamId,
-        this._position.x,
-        this._position.y,
+        this._position[0],
+        this._position[1],
       );
     }
 
     if (this._target) {
-      this._patrolTarget = null;
-      this._path = null;
       const targetPos = this._game.getPosition(this._target.gameId);
 
-      if (targetPos) {
-        this._lastKnownPosition = new Vec2(targetPos[0], targetPos[1]);
-
-        const isVisible = this._botManager.hasLineOfSight(
-          new Vec2(this._position[0], this._position[1]),
-          this._lastKnownPosition,
-        );
-
-        this.state = isVisible ? 'ATTACKING' : 'NAVIGATING';
+      if (!targetPos) {
+        return;
       }
+
+      this._lastKnownPosition = new Vec2(targetPos[0], targetPos[1]);
+
+      const visible = this._botManager.hasLineOfSight(
+        new Vec2(this._position[0], this._position[1]),
+        this._lastKnownPosition,
+      );
+
+      this.state = visible ? 'ATTACKING' : 'NAVIGATING';
 
       return;
     }
 
     if (this._lastKnownPosition) {
       this.state = 'SEARCHING';
+
       return;
     }
 
@@ -434,8 +450,10 @@ class BotController {
     const myPosition = myBody.getPosition();
     const rays = {
       center: desiredDirection,
-      left: Rot.mulVec2(new Rot(Math.PI / 6), desiredDirection),
-      right: Rot.mulVec2(new Rot(-Math.PI / 6), desiredDirection),
+      left: Rot.mulVec2(RAY_LEFT, desiredDirection),
+      right: Rot.mulVec2(RAY_RIGHT, desiredDirection),
+      leftWide: Rot.mulVec2(RAY_LEFT_WIDE, desiredDirection),
+      rightWide: Rot.mulVec2(RAY_RIGHT_WIDE, desiredDirection),
     };
     const steerCorrection = new Vec2(0, 0);
     let obstaclesDetected = false;
