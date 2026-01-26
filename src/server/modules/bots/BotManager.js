@@ -13,12 +13,16 @@ const SPATIAL_CELL_SIZE = 600;
  */
 class BotManager {
   /**
+   * @param {object} parts - Данные моделей и оружия игры.
    * @param {VIMP} vimp - Экземпляр основного класса игры VIMP.
    * @param {Game} game - Экземпляр игрового движка (физика).
    * @param {Panel} panel - Экземпляр менеджера панели игрока.
    * @param {Stat} stat - Экземпляр менеджера статистики.
    */
-  constructor(vimp, game, panel, stat) {
+  constructor(parts, vimp, game, panel, stat) {
+    this._models = parts.models;
+    this._weapons = parts.weapons;
+
     this._vimp = vimp;
     this._game = game;
     this._panel = panel;
@@ -151,6 +155,7 @@ class BotManager {
         gameId,
         team: targetTeam,
         teamId,
+        modelData: this._models[this._model],
         model: this._model,
         isBot: true,
       };
@@ -195,13 +200,11 @@ class BotManager {
    * @description Ищет ближайшего живого врага.
    * @param {number} gameId - gameId игрока.
    * @param {number} teamId - teamId игрока.
-   * @param {number} x - Координата X центра поиска.
-   * @param {number} y - Координата Y центра поиска.
+   * @param {Vec2} vec2 - Координаты центра поиска.
    * @returns {object | null} - Данные врага или null.
    */
-  findClosestEnemy(gameId, teamId, x, y) {
-    const vec = new Vec2(x, y);
-    const candidates = this._spatialManager.queryNearby(vec.x, vec.y);
+  findClosestEnemy(gameId, teamId, vec2) {
+    const candidates = this._spatialManager.queryNearby(vec2.x, vec2.y);
     let closestEnemy = null;
     let minDistanceSq = Infinity;
 
@@ -212,7 +215,7 @@ class BotManager {
       }
 
       const distanceSq = Vec2.distanceSquared(
-        vec,
+        vec2,
         new Vec2(candidate.x, candidate.y),
       );
 

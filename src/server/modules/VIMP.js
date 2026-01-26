@@ -6,7 +6,7 @@ import Game from './Game.js';
 import RTTManager from './RTTManager.js';
 import TimerManager from './TimerManager.js';
 import SnapshotManager from './SnapshotManager.js';
-import Bots from './bots/index.js';
+import BotManager from './bots/index.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
 import { isValidName } from '../../lib/validators.js';
 import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
@@ -82,7 +82,13 @@ class VIMP {
       data.timers.networkSendRate,
     );
 
-    this._bots = new Bots(this, this._game, this._panel, this._stat);
+    this._botManager = new BotManager(
+      data.parts,
+      this,
+      this._game,
+      this._panel,
+      this._stat,
+    );
 
     this._RTTManager = new RTTManager(data.rtt, {
       onKickForMissedPings: gameId => this._kickForMissedPings(gameId),
@@ -140,9 +146,9 @@ class VIMP {
     // обновление данных и физики
     this._game.updateData(dt);
 
-    if (this._bots.getBotCount() > 0) {
-      this._bots.updateBots(dt);
-      this._bots.buildSpatialGrid(this._game.getAlivePlayers());
+    if (this._botManager.getBotCount() > 0) {
+      this._botManager.updateBots(dt);
+      this._botManager.buildSpatialGrid(this._game.getAlivePlayers());
     }
 
     // получение снимка (snapshot)
@@ -328,10 +334,10 @@ class VIMP {
     }
 
     this._scaledMapData = scaleMapData(this._currentMapData);
-    this._bots.createMap(this._scaledMapData);
-    const botCounts = this._bots.getBotCountsPerTeam();
-    this._bots.removeBots();
-    this._bots.clearSpatialGrid();
+    this._botManager.createMap(this._scaledMapData);
+    const botCounts = this._botManager.getBotCountsPerTeam();
+    this._botManager.removeBots();
+    this._botManager.clearSpatialGrid();
 
     // если нет индивидуального конструктора для создания карты
     if (!this._currentMapData.setId) {
@@ -378,7 +384,7 @@ class VIMP {
     // воссоздание ботов на новой карте
     for (const [team, count] of Object.entries(botCounts)) {
       if (count > 0) {
-        this._bots.createBots(count, team);
+        this._botManager.createBots(count, team);
       }
     }
 
@@ -493,7 +499,7 @@ class VIMP {
     }
 
     // создание ботов на карте
-    for (const botData of this._bots.getBots()) {
+    for (const botData of this._botManager.getBots()) {
       this._setActivePlayer(botData, getRespawnData(botData.team));
     }
   }
@@ -550,7 +556,7 @@ class VIMP {
       respawns[newTeam].length <= this._teamSizes[newTeam].size
     ) {
       // попытка удалить одного бота, чтобы освободить место
-      const botRemoved = this._bots.removeOneBotForPlayer(newTeam);
+      const botRemoved = this._botManager.removeOneBotForPlayer(newTeam);
 
       if (!botRemoved) {
         this._chat.pushSystemByUser(gameId, 'TEAMS_TEAM_FULL', [
@@ -735,7 +741,7 @@ class VIMP {
     }
 
     // проверка на живых ботов в команде
-    for (const botData of this._bots.getBots()) {
+    for (const botData of this._botManager.getBots()) {
       // если нашелся живой бот, команда не уничтожена
       if (
         botData.teamId === victimTeamId &&
@@ -788,7 +794,7 @@ class VIMP {
   // обрабатывает уничтожение игрока, обновляет статистику
   reportKill(victimId, killerId = null) {
     const victimUser =
-      this._users.get(victimId) || this._bots.getBotById(victimId);
+      this._users.get(victimId) || this._botManager.getBotById(victimId);
 
     if (!victimUser) {
       return;
@@ -810,7 +816,7 @@ class VIMP {
 
     if (killerId) {
       const killerUser =
-        this._users.get(killerId) || this._bots.getBotById(killerId);
+        this._users.get(killerId) || this._botManager.getBotById(killerId);
 
       // если это не самоубийство
       if (victimId !== killerId) {
@@ -1245,14 +1251,14 @@ class VIMP {
 
         // если команда на удаление ботов, но удалять нечего
         if (count === 0) {
-          if (team && this._bots.getBotCountForTeam(team) === 0) {
+          if (team && this._botManager.getBotCountForTeam(team) === 0) {
             this._chat.pushSystemByUser(gameId, 'BOT_REMOVED_FROM_TEAM', [
               team,
             ]);
             break;
           }
 
-          if (this._bots.getBotCount() === 0) {
+          if (this._botManager.getBotCount() === 0) {
             this._chat.pushSystemByUser(gameId, 'BOT_REMOVED');
             break;
           }
@@ -1285,19 +1291,19 @@ class VIMP {
   // исполняет команду /bot
   _executeBotCommand(count, team) {
     if (team) {
-      this._bots.removeBots(team);
+      this._botManager.removeBots(team);
 
       if (count > 0) {
-        count = this._bots.createBots(count, team);
+        count = this._botManager.createBots(count, team);
         this._chat.pushSystem('BOT_CREATED_FOR_TEAM', [count, team]);
       } else {
         this._chat.pushSystem('BOT_REMOVED_FROM_TEAM', [team]);
       }
     } else {
-      this._bots.removeBots();
+      this._botManager.removeBots();
 
       if (count > 0) {
-        count = this._bots.createBots(count, null);
+        count = this._botManager.createBots(count, null);
         this._chat.pushSystem('BOT_CREATED', [count]);
       } else {
         this._chat.pushSystem('BOT_REMOVED');

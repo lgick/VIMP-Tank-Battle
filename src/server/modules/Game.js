@@ -192,7 +192,7 @@ class Game {
   }
 
   // создает игрока
-  createPlayer(gameId, model, name, teamId, data) {
+  createPlayer(gameId, model, name, teamId, respawnData) {
     const modelData = this._models[model];
 
     this._playersData.set(
@@ -208,8 +208,8 @@ class Game {
         weapons: this._weapons,
         services: this._services,
         modelData,
-        position: [data[0], data[1]],
-        angle: data[2],
+        position: [respawnData[0], respawnData[1]],
+        angle: respawnData[2],
       }),
     );
   }
