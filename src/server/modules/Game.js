@@ -192,7 +192,7 @@ class Game {
   }
 
   // создает игрока
-  createPlayer(gameId, model, name, teamId, respawnData) {
+  createPlayer(gameId, model, teamId, respawnData) {
     const modelData = this._models[model];
 
     this._playersData.set(
@@ -201,7 +201,6 @@ class Game {
         world: this._world,
         playerKeys: this._playerKeys,
         model,
-        name,
         gameId,
         teamId,
         currentWeapon: modelData.currentWeapon,
@@ -238,15 +237,6 @@ class Game {
     this._cachedPlayersData.clear();
 
     return [...modelNameSet];
-  }
-
-  // меняет имя игрока
-  changeName(gameId, name) {
-    const player = this._playersData.get(gameId);
-
-    if (player) {
-      player.name = name;
-    }
   }
 
   // обновляет нажатые клавиши

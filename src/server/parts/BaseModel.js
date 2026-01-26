@@ -1,7 +1,6 @@
 class BaseModel {
   constructor(data) {
     this._model = data.model;
-    this._name = data.name;
     this._gameId = data.gameId;
     this._teamId = data.teamId;
     this._currentWeapon = data.currentWeapon;
@@ -45,14 +44,6 @@ class BaseModel {
 
   set teamId(teamId) {
     this._teamId = teamId;
-  }
-
-  get name() {
-    return this._name;
-  }
-
-  set name(name) {
-    this._name = name;
   }
 
   get keysData() {

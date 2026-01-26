@@ -1,15 +1,14 @@
+import Game from './Game.js';
 import Panel from './Panel.js';
 import Stat from './Stat.js';
 import Chat from './chat/index.js';
 import Vote from './Vote.js';
-import Game from './Game.js';
-import RTTManager from './RTTManager.js';
-import TimerManager from './TimerManager.js';
-import SnapshotManager from './SnapshotManager.js';
-import BotManager from './bots/index.js';
+import UserManager from '../managers/UserManager.js';
+import RTTManager from '../managers/RTTManager.js';
+import TimerManager from '../managers/TimerManager.js';
+import SnapshotManager from '../managers/SnapshotManager.js';
+import BotManager from '../managers/bots/index.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
-import { isValidName } from '../../lib/validators.js';
-import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
 
 // Singleton VIMP
 
@@ -25,53 +24,34 @@ class VIMP {
 
     this._isDevMode = data.isDevMode || false; // флаг режима разработки
 
+    this._isRoundEnding = false; // флаг, если раунд процессе завершения
+    this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
+    this._maxPlayers = data.maxPlayers; // максимальное количество игроков
+    this._spectatorTeam = data.spectatorTeam; // название команды наблюдателей
+
+    this._userManager = new UserManager(
+      data.idleKickTimeout,
+      data.teams,
+      data.spectatorTeam,
+    );
+
     this._maps = data.maps; // карты
     this._mapScale = data.mapScale;
     this._mapList = Object.keys(this._maps); // список карт массивом
     this._mapsInVote = data.mapsInVote; // карт в голосовании
     this._mapSetId = data.mapSetId; // дефолтный id конструктора карт
     this._currentMap = data.currentMap; // название текущей карты
-    this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
-    this._maxPlayers = data.maxPlayers; // максимальное количество игроков
-
-    this._idleTimeoutForPlayer = data.idleKickTimeout?.player || null;
-    this._idleTimeoutForSpectator = data.idleKickTimeout?.spectator || null;
-
-    this._users = new Map(); // игроки
-    this._userIdGen = new BinaryGenId(ID_FORMATS.UINT8);
-
-    // команды
-    // team: teamId; { team1: 1, team2: 2, spectators: 3 }
-    this._teams = data.teams;
-    // название команды наблюдателя
-    this._spectatorTeam = data.spectatorTeam;
-    // id команды наблюдателя
-    this._spectatorId = this._teams[this._spectatorTeam];
-    // количество игроков в командах
-    // { team1: new Set(), team2: new Set(), spectators: new Set() }
-    this._teamSizes = {};
-
-    // список gameId активных игроков на полотне для наблюдения
-    // (кроме убитых игроков)
-    this._activePlayersList = [];
-    // список gameId игроков для удаления с полотна
-    this._removedPlayersList = [];
-
     this._currentMapData = null; // данные текущей карты
     this._scaledMapData = null; // масштабированные данные текущей карты
-
     this._startMapNumber = 0; // номер первой карты в голосовании
 
-    this._isRoundEnding = false; // флаг, если раунд процессе завершения
-
-    // инициализация сервисов
     this._game = new Game(
       data.parts,
       data.playerKeys,
       data.timers.timeStep / 1000,
     );
     this._panel = new Panel(data.panel);
-    this._stat = new Stat(data.stat, this._teams);
+    this._stat = new Stat(data.stat, this.teams);
     this._chat = new Chat();
     this._vote = new Vote();
 
@@ -84,7 +64,7 @@ class VIMP {
 
     this._botManager = new BotManager(
       data.parts,
-      this,
+      this._userManager,
       this._game,
       this._panel,
       this._stat,
@@ -115,24 +95,16 @@ class VIMP {
 
   // кикает за задержку в ответе на ping
   _kickForMaxLatency(gameId) {
-    const user = this._users.get(gameId);
-
-    if (user) {
-      console.warn(`[RTT] Kick ${user.name} — pong latency exceeded`);
-      this._socketManager.close(user.socketId, 4003, 'kickForMaxLatency');
-      this.removeUser(gameId);
-    }
+    console.warn(`[RTT] Kick user - pong latency exceeded`);
+    this._socketManager.close(gameId, 4003, 'kickForMaxLatency');
+    this.removeUser(gameId);
   }
 
   // кикает за превышение прокусков ответа на ping
   _kickForMissedPings(gameId) {
-    const user = this._users.get(gameId);
-
-    if (user) {
-      console.warn(`[RTT] Kick ${user.name} — no response to pings`);
-      this._socketManager.close(user.socketId, 4004, 'kickForMissedPings');
-      this.removeUser(gameId);
-    }
+    console.warn(`[RTT] Kick user - no response to pings`);
+    this._socketManager.close(gameId, 4004, 'kickForMissedPings');
+    this.removeUser(gameId);
   }
 
   // запускает голосование за смену карты
@@ -153,6 +125,7 @@ class VIMP {
 
     // получение снимка (snapshot)
     const gameSnapshot = this._snapshotManager.processTick();
+    const userManager = this._userManager;
 
     // если gameSnapshot, значит время отправлять данные snapshot
     if (gameSnapshot) {
@@ -163,125 +136,49 @@ class VIMP {
       }
 
       // игроки для удаления с полотна
-      while (this._removedPlayersList.length) {
-        const user = this._removedPlayersList.pop();
-        const model = user.model;
+      userManager.writeRemovedPlayersToSnapshot(gameSnapshot);
 
-        gameSnapshot[model] = gameSnapshot[model] || {};
-        gameSnapshot[model][user.gameId] = null;
-      }
-
-      for (const user of this._users.values()) {
-        if (!user.isReady) {
-          continue;
-        }
-
-        const gameId = user.gameId;
-        let userData;
-
-        if (user.isWatching === true) {
-          // если есть играющие пользователи
-          if (this._activePlayersList.length) {
-            // если наблюдаемый игрок не существует среди играющих
-            if (!this._activePlayersList.includes(user.watchedGameId)) {
-              user.watchedGameId = this._activePlayersList[0];
-            }
-
-            userData = this._game.getPosition(user.watchedGameId) || [0, 0];
-          } else {
-            userData = [0, 0];
-          }
-        } else {
-          userData = this._game.getPosition(gameId) || [0, 0];
-        }
-
-        if (user.forceCameraReset === true) {
-          userData[2] = true;
-          user.forceCameraReset = false;
-        }
-
-        // передача данных для тряски (строка 'intensity:duration')
-        if (user.pendingShake) {
-          userData[3] = user.pendingShake;
-          user.pendingShake = null;
-        }
-
-        this._socketManager.sendSnapshot(user.socketId, [
+      userManager.forEachSnapshotTarget((userId, watchingId, shake, reset) => {
+        this._socketManager.sendSnapshot(userId, [
           gameSnapshot,
-          userData,
+          [this._game.getPosition(watchingId) || [0, 0], shake, reset],
         ]);
-      }
+      });
     } else {
       const stat = this._stat.getLast() || 0;
       const chat = this._chat.shift() || 0;
       const vote = this._vote.shift() || 0;
 
       if (stat || chat || vote) {
-        for (const user of this._users.values()) {
-          if (!user.isReady) {
-            continue;
-          }
-
-          this._socketManager.sendEvents(user.socketId, [0, stat, chat, vote]);
-        }
+        userManager.forEachReadyUserId(gameId => {
+          this._socketManager.sendEvents(gameId, [0, stat, chat, vote]);
+        });
       } else {
         const panelUpdates = this._panel.processUpdates();
 
-        for (const user of this._users.values()) {
-          if (!user.isReady) {
-            continue;
-          }
-
-          const gameId = user.gameId;
-
+        userManager.forEachReadyUserId(gameId => {
           const panel = panelUpdates.get(gameId) || 0;
           const chat = this._chat.shiftByUser(gameId) || 0;
           const vote = this._vote.shiftByUser(gameId) || 0;
 
           if (panel || chat || vote) {
-            this._socketManager.sendEvents(user.socketId, [
-              panel,
-              0,
-              chat,
-              vote,
-            ]);
+            this._socketManager.sendEvents(gameId, [panel, 0, chat, vote]);
           }
-        }
+        });
       }
     }
   }
 
   // проверяет игроков на бездействие и кикает, если превышен порог
   _kickIdleUsers() {
-    const now = Date.now();
-
-    const usersToKick = [];
-
-    for (const user of this._users.values()) {
-      if (user.isReady !== true) {
-        continue;
-      }
-
-      const idleThreshold =
-        user.teamId === this._spectatorId
-          ? this._idleTimeoutForSpectator
-          : this._idleTimeoutForPlayer;
-
-      if (idleThreshold !== null) {
-        const idleTime = now - user.lastActionTime;
-
-        if (idleTime > idleThreshold) {
-          usersToKick.push(user);
-        }
-      }
-    }
+    const usersToKick = this._userManager.getReadyUsersToKick();
 
     // кик неактивных пользователей
-    for (let i = 0; i < usersToKick.length; i += 1) {
-      const user = usersToKick[i];
+    for (let i = 0, len = usersToKick.length; i < len; i += 1) {
+      const gameId = usersToKick[i];
 
-      this._socketManager.close(user.socketId, 4005, 'kickIdle');
-      this.removeUser(user.gameId);
+      this._socketManager.close(gameId, 4005, 'kickIdle');
+      this.removeUser(gameId);
     }
   }
 
@@ -290,11 +187,7 @@ class VIMP {
     const users = this._RTTManager.scheduleNextPing();
 
     for (const [gameId, { pingIdCounter }] of users) {
-      const user = this._users.get(gameId);
-
-      if (user) {
-        this._socketManager.sendPing(user.socketId, pingIdCounter);
-      }
+      this._socketManager.sendPing(gameId, pingIdCounter);
     }
   }
 
@@ -347,11 +240,6 @@ class VIMP {
     // остановка всех игровых таймеров и отложенных вызовов
     this._timerManager.stopGameTimers();
 
-    this._resetTeamSizes();
-
-    this._activePlayersList = [];
-    this._removedPlayersList = [];
-
     this._panel.reset();
     this._stat.reset();
     this._resetVote();
@@ -361,23 +249,13 @@ class VIMP {
     this._game.clear();
     this._game.createMap(this._scaledMapData);
 
-    for (const user of this._users.values()) {
-      const gameId = user.gameId;
+    const userList = this._userManager.initializeAllUsersAsSpectators();
 
-      this._socketManager.sendClear(user.socketId);
+    for (let i = 0, len = userList.length; i < len; i += 1) {
+      const { gameId, oldTeamId, newTeamId } = userList[i];
 
-      // перемещение пользователя в наблюдатели
-      this._stat.moveUser(gameId, user.teamId, this._spectatorId);
-
-      // обнулить параметры
-      user.team = this._spectatorTeam;
-      user.teamId = this._spectatorId;
-      user.isWatching = true;
-      user.watchedGameId = this._activePlayersList[0] || null;
-      user.forceCameraReset = true;
-
-      this._teamSizes[this._spectatorTeam].add(gameId);
-
+      this._socketManager.sendClear(gameId);
+      this._stat.moveUser(gameId, oldTeamId, newTeamId);
       this.sendMap(gameId);
     }
 
@@ -393,23 +271,18 @@ class VIMP {
 
   // отправляет карту
   sendMap(gameId) {
-    const user = this._users.get(gameId);
-
-    if (!user) {
+    if (!this._userManager.isUser(gameId)) {
       return;
     }
 
-    const socketId = user.socketId;
-
-    user.isReady = false;
-    user.currentMap = this._currentMap;
-    this._socketManager.sendTechInform(socketId, 'loading');
-    this._socketManager.sendMap(socketId, this._currentMapData);
+    this._userManager.setUserMap(gameId, this._currentMap);
+    this._socketManager.sendTechInform(gameId, 'loading');
+    this._socketManager.sendMap(gameId, this._currentMapData);
   }
 
   // сообщает о загрузке карты
   mapReady(gameId) {
-    const user = this._users.get(gameId);
+    const user = this._userManager.getUser(gameId);
 
     if (!user) {
       return;
@@ -418,29 +291,27 @@ class VIMP {
     // если карта не актуальна
     if (user.currentMap !== this._currentMap) {
       this.sendMap(gameId);
+
       return;
     }
 
-    // если игрок ещё не готов
-    if (user.isReady === false) {
-      // отправка первого events
-      this._socketManager.sendFirstEvents(user.socketId);
+    // если игрок ещё не готов, отправка первого events
+    if (!this._userManager.isUserReady(gameId)) {
+      this._socketManager.sendFirstEvents(gameId);
     }
   }
 
   // сообщает о готовности игрока к игре
   firstEventsReady(gameId) {
-    const user = this._users.get(gameId);
+    const user = this._userManager.getUser(gameId);
 
     if (!user) {
       return;
     }
 
-    const socketId = user.socketId;
-
-    user.isReady = true;
-    this._socketManager.sendTechInform(socketId); // скрывает экран загрузки
-    this._socketManager.sendFirstVote(socketId);
+    this._userManager.setUserReady(gameId);
+    this._socketManager.sendTechInform(gameId); // скрывает экран загрузки
+    this._socketManager.sendFirstVote(gameId);
     this._chat.pushSystem('USER_JOINED', [user.name]);
   }
 
@@ -456,20 +327,40 @@ class VIMP {
     this._isRoundEnding = false; // сброс флага завершения раунда
 
     const respawns = this._scaledMapData.respawns;
-    const respId = Object.keys(this._teams)
-      .filter(key => key !== this._spectatorTeam)
-      .reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+
+    // локальный map для подсчета выданных спавнов
+    const respawnCounters = new Map();
+
+    // заполнение нулями для всех команд, представленных на карте
+    for (const teamName of Object.keys(respawns)) {
+      respawnCounters.set(teamName, 0);
+    }
 
     function getRespawnData(team) {
-      const number = respId[team];
+      let index = respawnCounters.get(team); // текущий индекс для команды
 
-      respId[team] += 1;
+      // если команда не найдена в респаунах
+      if (typeof index === 'undefined') {
+        return [0, 0, 0];
+      }
 
-      return respawns[team][number];
+      const data = respawns[team][index]; // координаты [x, y, angle]
+
+      index += 1;
+
+      // если игроков больше чем точек спавна, начинается с начала
+      // это предотвращает undefined, если на карте 5 точек, а игроков 6
+      if (index >= respawns[team].length) {
+        index = 0;
+      }
+
+      respawnCounters.set(team, index);
+
+      return data;
     }
 
     // очищение списка играющих
-    this._activePlayersList = [];
+    this._userManager.clearAlivePlayers();
 
     this._panel.reset();
 
@@ -477,62 +368,39 @@ class VIMP {
 
     this._game.createMap(this._scaledMapData);
 
-    for (const user of this._users.values()) {
-      if (user.isReady === false) {
-        continue;
-      }
+    this._userManager.forEachReadyUser(user => {
+      const { gameId, team } = user;
 
-      const socketId = user.socketId;
-      const team = user.team;
-
-      this._socketManager.sendClear(socketId, setIdList);
+      this._socketManager.sendClear(gameId, setIdList);
 
       if (team === this._spectatorTeam) {
-        user.isWatching = true;
-        user.forceCameraReset = true;
-        this._socketManager.sendSpectatorDefaultEvents(socketId);
+        this._userManager.setSpectator(gameId);
+        this._socketManager.sendSpectatorDefaultEvents(gameId);
       } else {
-        this._setActivePlayer(user, getRespawnData(team));
+        this._setActivePlayer(gameId, getRespawnData(team));
       }
 
-      this._socketManager.sendRoundStart(socketId);
-    }
+      this._socketManager.sendRoundStart(gameId);
+    });
 
     // создание ботов на карте
     for (const botData of this._botManager.getBots()) {
-      this._setActivePlayer(botData, getRespawnData(botData.team));
+      this._setActivePlayer(botData.gameId, getRespawnData(botData.team), true);
     }
-  }
-
-  // проверяет имя
-  checkName(name, number = 1) {
-    for (const user of this._users.values()) {
-      if (user.name === name) {
-        if (number > 1) {
-          name = name.slice(0, name.lastIndexOf('#')) + '#' + number;
-        } else {
-          name = name + '#' + number;
-        }
-
-        return this.checkName(name, number + 1);
-      }
-    }
-
-    return name;
   }
 
   // меняет ник игрока
   _changeName(gameId, name) {
-    const user = this._users.get(gameId);
-    const oldName = user.name;
+    const userData = this._userManager.changeUserName(gameId, name);
 
-    if (isValidName(name)) {
-      name = this.checkName(name);
-      user.name = name;
+    if (userData) {
+      const { teamId, oldName, newName } = userData;
+
+      // TODO удалить name в game
       this._game.changeName(gameId, name);
-      this._stat.updateUser(gameId, user.teamId, { name });
-      this._chat.pushSystem('NAME_CHANGED', [oldName, name]);
-      this._socketManager.sendName(user.socketId, name);
+      this._stat.updateUser(gameId, teamId, { name: newName });
+      this._chat.pushSystem('NAME_CHANGED', [oldName, newName]);
+      this._socketManager.sendName(gameId, newName);
     } else {
       this._chat.pushSystemByUser(gameId, 'NAME_INVALID');
     }
@@ -540,9 +408,7 @@ class VIMP {
 
   // меняет команду игрока
   _changeTeam(gameId, newTeam) {
-    const user = this._users.get(gameId);
-    const currentTeam = user.team;
-    const respawns = this._scaledMapData.respawns;
+    const currentTeam = this._userManager.getUserTeam(gameId);
 
     // если игрок выбирает свою текущую команду
     if (newTeam === currentTeam) {
@@ -550,12 +416,15 @@ class VIMP {
       return;
     }
 
-    // если новая команда не наблюдатель и нет свободных респаунов
+    const respawns = this._scaledMapData.respawns;
+    const teamSize = this._userManager.getTeamSize(newTeam);
+
+    // если новая команда не наблюдатель и нет свободных респаунов,
+    // попытка удалить одного бота, чтобы освободить место
     if (
       newTeam !== this._spectatorTeam &&
-      respawns[newTeam].length <= this._teamSizes[newTeam].size
+      respawns[newTeam].length <= teamSize
     ) {
-      // попытка удалить одного бота, чтобы освободить место
       const botRemoved = this._botManager.removeOneBotForPlayer(newTeam);
 
       if (!botRemoved) {
@@ -569,42 +438,27 @@ class VIMP {
     }
 
     // на этом этапе смена команды доступна
-    this._teamSizes[currentTeam].delete(gameId);
-    this._teamSizes[newTeam].add(gameId);
+    this._userManager.changeTeamSets(gameId, newTeam, currentTeam);
 
-    const oldTeamId = user.teamId;
-    const newTeamId = this._teams[newTeam];
-
-    user.team = newTeam;
-    user.teamId = newTeamId;
+    const { teamId: oldTeamId, team: oldTeam } =
+      this._userManager.getUserTeamData(gameId);
+    const newTeamId = this._userManager.changeUserTeam(gameId, newTeam);
 
     this._stat.moveUser(gameId, oldTeamId, newTeamId);
 
-    // подсчет активных игроков
-    let activePlayersCount = 0;
-
-    for (const user of this._users.values()) {
-      if (user.teamId !== this._spectatorId && user.gameId !== gameId) {
-        activePlayersCount += 1;
-
-        // требуется знать, меньше ли 2
-        if (activePlayersCount >= 2) {
-          break;
-        }
-      }
-    }
-
-    // если активных игроков меньше 2-х, рестарт раунда
-    if (activePlayersCount < 2) {
+    // если количество активных игроков за исключением пользователя
+    // меньше 2, рестарт раунда
+    if (this._userManager.getPlayerCountWithout(gameId) < 2) {
       this._stat.reset();
       this._initiateNewRound();
       this._chat.pushSystemByUser(gameId, 'TEAMS_NEW_TEAM', [newTeam]);
+
       return;
     }
 
     // если переход из активного игрока в наблюдатели
-    if (newTeamId === this._spectatorId) {
-      this._setSpectatorFromActivePlayer(user);
+    if (newTeam === this._spectatorTeam) {
+      this._setSpectatorFromActivePlayer(gameId);
       this._chat.pushSystemByUser(gameId, 'TEAMS_NOW_SPECTATOR');
       return;
     }
@@ -620,17 +474,17 @@ class VIMP {
 
       // если пользователь был активным игроком,
       // перевести его в наблюдатели до следующего раунда
-      if (oldTeamId !== this._spectatorId) {
-        this._setSpectatorFromActivePlayer(user);
+      if (oldTeam !== this._spectatorTeam) {
+        this._setSpectatorFromActivePlayer(gameId);
       }
       // игра активным игроком возможна в текущем раунде
     } else {
-      const respawnIndex = this._teamSizes[newTeam].size - 1;
+      const respawnIndex = this._userManager.getTeamSize(newTeam) - 1;
       const respawnData = respawns[newTeam][respawnIndex];
 
       // переход из наблюдателя в игрока
-      if (oldTeamId === this._spectatorId) {
-        this._setActivePlayer(user, respawnData);
+      if (oldTeam === this._spectatorTeam) {
+        this._setActivePlayer(gameId, respawnData);
         // смена игровой команды
       } else {
         this._game.changePlayerData(gameId, {
@@ -643,83 +497,28 @@ class VIMP {
   }
 
   // перевод активного игрока в наблюдатели
-  _setSpectatorFromActivePlayer(user) {
-    const gameId = user.gameId;
-    const model = user.model;
-
-    user.isWatching = true;
-    user.watchedGameId = this._activePlayersList[0] || null;
-    user.forceCameraReset = true;
-
-    this._removeFromActivePlayers(gameId);
-    this._removedPlayersList.push({ gameId, model });
+  _setSpectatorFromActivePlayer(gameId) {
+    this._userManager.setSpectatorFromActivePlayer(gameId);
+    this._userManager.addToRemovedPlayers(gameId);
     this._game.removePlayer(gameId);
-    this._socketManager.sendSpectatorDefaultEvents(user.socketId);
+    this._socketManager.sendSpectatorDefaultEvents(gameId);
   }
 
   // перевод игрока в активные игроки
-  _setActivePlayer(user, respawnData) {
-    const gameId = user.gameId;
-    const teamId = user.teamId;
-    const name = user.name;
-    const model = user.model;
+  _setActivePlayer(gameId, respawnData, isBot) {
+    const { teamId, model, name } = this._userManager.setActivePlayer(gameId);
 
-    user.isWatching = false;
-    user.watchedGameId = null;
-    user.forceCameraReset = true;
-
-    // если это не бот
-    if (!user.isBot) {
-      this._socketManager.sendPlayerDefaultEvents(user.socketId, gameId);
+    if (!isBot) {
+      this._socketManager.sendPlayerDefaultEvents(gameId);
     }
 
     this._stat.updateUser(gameId, teamId, { status: '' });
+    // TODO name teamId не нужны в game
     this._game.createPlayer(gameId, model, name, teamId, respawnData);
-    this._addToActivePlayers(gameId);
-  }
-
-  // сбрасывает this._teamSizes в нулевые значения
-  _resetTeamSizes() {
-    this._teamSizes = Object.keys(this._teams).reduce((acc, key) => {
-      acc[key] = new Set();
-      return acc;
-    }, {});
-  }
-
-  // добавляет в список играющих пользователей
-  _addToActivePlayers(gameId) {
-    if (!this._activePlayersList.includes(gameId)) {
-      this._activePlayersList.push(gameId);
-    }
-  }
-
-  // удаляет из списка играющих пользователей
-  _removeFromActivePlayers(gameId) {
-    this._activePlayersList = this._activePlayersList.filter(
-      id => id !== gameId,
-    );
-
-    // удаление из watchedGameId других игроков
-    for (const user of this._users.values()) {
-      if (user.watchedGameId === gameId) {
-        user.watchedGameId = this._activePlayersList[0] || null;
-      }
-    }
-  }
-
-  // заменяет наблюдаемого игрока (victimId) на killerId
-  _replaceWatchedPlayer(victimId, killerId) {
-    if (this._activePlayersList.includes(killerId)) {
-      for (const user of this._users.values()) {
-        if (user.watchedGameId === victimId) {
-          user.watchedGameId = killerId;
-        }
-      }
-    }
   }
 
   // проверяет уничтожение всей команды
-  _checkTeamWipe(victimTeamId, killerTeamId) {
+  _checkTeamWipe(victimTeam, killerTeam) {
     // если раунд уже в процессе завершения
     if (this._isRoundEnding) {
       return;
@@ -727,32 +526,28 @@ class VIMP {
 
     let winnerTeam = null;
 
-    // если команда наблюдателей, проверка не требуется
-    if (victimTeamId === this._spectatorId) {
+    // если команда наблюдателей, или если есть живые игроки
+    if (
+      victimTeam === this._spectatorTeam ||
+      this._userManager.getAlivePlayerCountByTeam(victimTeam) > 0
+    ) {
       return;
     }
 
-    // проверка на живых игроков в команде
-    for (const user of this._users.values()) {
-      // если нашелся живой игрок, команда не уничтожена
-      if (user.teamId === victimTeamId && this._game.isAlive(user.gameId)) {
-        return;
-      }
-    }
-
+    // TODO боты будут в userManager, isAlive не нужен
     // проверка на живых ботов в команде
     for (const botData of this._botManager.getBots()) {
       // если нашелся живой бот, команда не уничтожена
-      if (
-        botData.teamId === victimTeamId &&
-        this._game.isAlive(botData.gameId)
-      ) {
+      if (botData.team === victimTeam && this._game.isAlive(botData.gameId)) {
         return;
       }
     }
 
     // активация флага завершения раунда
     this._isRoundEnding = true;
+
+    const victimTeamId = this._userManager.getTeamId(victimTeam);
+    const killerTeamId = this._userManager.getTeamId(killerTeam);
 
     // запись поражения команде
     this._stat.updateHead(victimTeamId, 'deaths', 1);
@@ -761,30 +556,27 @@ class VIMP {
     if (killerTeamId && killerTeamId !== victimTeamId) {
       this._stat.updateHead(killerTeamId, 'score', 1);
 
-      winnerTeam = Object.keys(this._teams).find(
-        key => this._teams[key] === killerTeamId,
-      );
+      winnerTeam = this._userManager.getTeamName(killerTeamId);
     }
 
+    // если есть команда-победитель
     if (winnerTeam) {
-      for (const user of this._users.values()) {
-        const socketId = user.socketId;
+      this._userManager.forEachReadyUser(user => {
+        const gameId = user.gameId;
 
-        if (user.teamId === victimTeamId) {
-          this._socketManager.sendDefeat(socketId);
+        if (user.team === victimTeam) {
+          this._socketManager.sendDefeat(gameId);
         } else {
-          this._socketManager.sendVictory(socketId);
+          this._socketManager.sendVictory(gameId);
         }
 
-        this._socketManager.sendRoundEnd(socketId, winnerTeam);
-      }
+        this._socketManager.sendRoundEnd(gameId, winnerTeam);
+      });
     } else {
-      for (const user of this._users.values()) {
-        const socketId = user.socketId;
-
-        this._socketManager.sendDefeat(socketId);
-        this._socketManager.sendRoundEnd(socketId);
-      }
+      this._userManager.forEachReadyUserId(gameId => {
+        this._socketManager.sendDefeat(gameId);
+        this._socketManager.sendRoundEnd(gameId);
+      });
     }
 
     this._timerManager.stopRoundTimer();
@@ -792,15 +584,15 @@ class VIMP {
   }
 
   // обрабатывает уничтожение игрока, обновляет статистику
-  reportKill(victimId, killerId = null) {
+  reportKill(victimId, killerId) {
     const victimUser =
-      this._users.get(victimId) || this._botManager.getBotById(victimId);
+      this._userManager.getUser(victimId) ||
+      this._botManager.getBotById(victimId);
 
     if (!victimUser) {
       return;
     }
 
-    victimUser.isWatching = true;
     this._stat.updateUser(victimId, victimUser.teamId, {
       deaths: 1,
       status: 'dead',
@@ -810,196 +602,102 @@ class VIMP {
     this._panel.invalidate(victimId);
 
     if (!victimUser.isBot) {
-      this._socketManager.sendSpectatorDefaultEvents(victimUser.socketId);
-      this._socketManager.sendGameOverSound(victimUser.socketId);
+      this._socketManager.sendSpectatorDefaultEvents(victimId);
+      this._socketManager.sendGameOverSound(victimId);
     }
 
-    if (killerId) {
-      const killerUser =
-        this._users.get(killerId) || this._botManager.getBotById(killerId);
+    const killerUser =
+      this._userManager.getUser(killerId) ||
+      this._botManager.getBotById(killerId);
 
-      // если это не самоубийство
-      if (victimId !== killerId) {
-        // отслеживание противника
-        victimUser.watchedGameId = killerId;
-        victimUser.forceCameraReset = true;
-
-        // если кто-то наблюдал за victimId — переназначить на killerId
-        this._replaceWatchedPlayer(victimId, killerId);
-
-        // если это не убийство игрока своей команды
-        if (victimUser.teamId !== killerUser.teamId) {
-          this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
-          // иначе если это огонь по своим
-        } else {
-          this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
-        }
-
-        if (!killerUser.isBot) {
-          this._socketManager.sendFragSound(killerUser.socketId);
-        }
+    // если это не самоубийство
+    if (victimId !== killerId) {
+      // если это не убийство игрока своей команды
+      if (victimUser.teamId !== killerUser.teamId) {
+        this._stat.updateUser(killerId, killerUser.teamId, { score: 1 });
+        // иначе если это огонь по своим
+      } else {
+        this._stat.updateUser(killerId, killerUser.teamId, { score: -1 });
       }
 
-      this._chat.pushSystem('REPORT_KILL', [killerUser.name, victimUser.name]);
-
-      // проверка на уничтожение всей команды противника
-      this._checkTeamWipe(victimUser.teamId, killerUser.teamId);
-    }
-  }
-
-  // меняет и возвращает gameId наблюдаемого игрока
-  _getNextActivePlayerForUser(gameId, back) {
-    const currentId = this._users.get(gameId)?.watchedGameId;
-    let key = this._activePlayersList.indexOf(currentId);
-
-    // если есть наблюдаемый игрок
-    if (key !== -1) {
-      // если поиск назад
-      key = back ? key - 1 : key + 1;
-
-      if (key < 0) {
-        key = this._activePlayersList.length - 1;
-      } else if (key >= this._activePlayersList.length) {
-        key = 0;
+      if (!killerUser.isBot) {
+        this._socketManager.sendFragSound(killerUser.gameId);
       }
-
-      return this._activePlayersList[key];
     }
 
-    return this._activePlayersList[0] || null;
+    // перевод в наблюдатели
+    this._userManager.setSpectatorFromActivePlayer(victimId, killerId);
+
+    this._chat.pushSystem('REPORT_KILL', [killerUser.name, victimUser.name]);
+
+    // проверка на уничтожение всей команды противника
+    this._checkTeamWipe(victimUser.team, killerUser.team);
   }
 
   // активирует тряску камеры у игрока
   triggerCameraShake(gameId, shakeParams) {
-    const user = this._users.get(gameId);
-
-    if (user) {
-      user.pendingShake = `${shakeParams.intensity}:${shakeParams.duration}`;
-    }
-  }
-
-  // создаёт уникальный gameId
-  createGameId() {
-    return this._userIdGen.next();
-  }
-
-  // удаляет уникальный gameId
-  removeGameId(gameId) {
-    this._userIdGen.release(gameId);
+    this._userManager.activateCameraShake(gameId, shakeParams);
   }
 
   // создает нового игрока
-  createUser(params, socketId, cb) {
-    const gameId = this.createGameId();
-    const name = this.checkName(params.name);
-
-    this._users.set(gameId, {
-      // gameId игрока
-      gameId,
-      // socketId игрока, для ws коммуникации
-      socketId,
-      // флаг готовности игрока
-      isReady: false,
-      // текущая карта игры
-      currentMap: null,
-      // имя пользователя
-      name,
-      // модель игрока
-      model: params.model,
-      // название команды
-      team: this._spectatorTeam,
-      // id команды
-      teamId: this._spectatorId,
-      // флаг наблюдателя за игрой
-      // (true у игроков, которые в текущий момент наблюдают за игрой)
-      isWatching: true,
-      // id наблюдаемого игрока
-      watchedGameId: this._activePlayersList[0] || null,
-      // флаг для сброса камеры клиента
-      forceCameraReset: true,
-      // данные для тряски камеры
-      pendingShake: null,
-      // фиксация времени активности пользователя
-      lastActionTime: Date.now(),
-    });
+  createUser(gameId, params) {
+    const { name, teamId } = this._userManager.addUser(gameId, params);
 
     this._chat.addUser(gameId);
     this._vote.addUser(gameId);
-    this._stat.addUser(gameId, this._spectatorId, { name });
+    this._stat.addUser(gameId, teamId, { name });
     this._panel.addUser(gameId);
     this._RTTManager.addUser(gameId);
-
-    this._teamSizes[this._spectatorTeam].add(gameId);
-
-    process.nextTick(() => {
-      cb(gameId);
-    });
   }
 
   // удаляет игрока полностью из игры
   removeUser(gameId) {
-    const user = this._users.get(gameId);
+    const user = this._userManager.getUser(gameId);
 
     if (!user) {
       return;
     }
 
-    const { team, teamId, model } = user;
+    const { teamId, team, name } = user;
 
     this._RTTManager.removeUser(gameId);
     this._stat.removeUser(gameId, teamId);
     this._chat.removeUser(gameId);
     this._vote.removeUser(gameId);
     this._panel.removeUser(gameId);
-    this.removeGameId(gameId);
 
     // если не наблюдатель
     if (team !== this._spectatorTeam) {
       // удаление из модуля game
       this._game.removePlayer(gameId);
-
-      // удаление из списка играющих на полотне
-      this._removeFromActivePlayers(gameId);
-
-      // добавление в список удаляемых игроков у пользователей
-      this._removedPlayersList.push({
-        gameId,
-        model,
-      });
     }
 
-    // обновление счетчиков команд
-    this._teamSizes[team].delete(gameId);
-
-    this._users.delete(gameId);
-
-    this._chat.pushSystem('USER_LEFT', [user.name]);
+    this._userManager.removeUser(gameId);
+    this._chat.pushSystem('USER_LEFT', [name]);
   }
 
   // обновляет команды
   updateKeys(gameId, keyStr) {
-    const user = this._users.get(gameId);
+    const user = this._userManager.getUser(gameId);
 
     if (!user) {
       return;
     }
 
-    const [action, name] = keyStr.split(':');
+    this._userManager.touchUserActivity(gameId);
 
-    user.lastActionTime = Date.now();
+    const [action, name] = keyStr.split(':');
 
     if (user.isWatching === true) {
       // если нажатие
       if (action === 'down') {
         // next player
         if (name === this._spectatorKeys.nextPlayer) {
-          user.watchedGameId = this._getNextActivePlayerForUser(gameId);
-          user.forceCameraReset = true;
+          this._userManager.getNextAlivePlayerForUser(gameId);
 
           // prev player
         } else if (name === this._spectatorKeys.prevPlayer) {
-          user.watchedGameId = this._getNextActivePlayerForUser(gameId, true);
-          user.forceCameraReset = true;
+          this._userManager.getNextAlivePlayerForUser(gameId, true);
         }
       }
     } else {
@@ -1009,13 +707,13 @@ class VIMP {
 
   // добавляет сообщение
   pushMessage(gameId, message) {
-    const user = this._users.get(gameId);
+    const user = this._userManager.getReadyUser(gameId);
 
-    if (!user || user.isReady === false) {
+    if (!user) {
       return;
     }
 
-    user.lastActionTime = Date.now();
+    this._userManager.touchUserActivity(gameId);
 
     message = sanitizeMessage(message);
 
@@ -1030,19 +728,19 @@ class VIMP {
 
   // обрабатывает vote-данные пользователя
   parseVote(gameId, data) {
-    const user = this._users.get(gameId);
+    const user = this._userManager.getReadyUser(gameId);
 
-    if (!user || user.isReady === false) {
+    if (!user) {
       return;
     }
 
-    user.lastActionTime = Date.now();
+    this._userManager.touchUserActivity(gameId);
 
     // если данные 'строка' (запрос данных)
     if (typeof data === 'string') {
       // если запрос списка команд
       if (data === 'teams') {
-        this._vote.pushByUser(gameId, Object.keys(this._teams));
+        this._vote.pushByUser(gameId, this._userManager.getTeamList());
 
         // если запрос всех карт
       } else if (data === 'maps') {
@@ -1059,7 +757,7 @@ class VIMP {
       // если пользователь захотел сменить карту
       if (type === 'mapChange') {
         // если пользователь один в игре (смена карты)
-        if (this._users.size === 1) {
+        if (this._userManager.getUserCount(user => !user.isBot) === 1) {
           this._currentMap = value;
           this._createMap();
 
@@ -1109,15 +807,9 @@ class VIMP {
     if (gameId && typeof mapName === 'string') {
       const voteName = 'mapChangeByUser';
 
-      const userName = this._users.get(gameId).name;
+      const userName = this._userManager.getUserName(gameId);
       const payload = { name: voteName, params: [userName, mapName] };
-      const userList = [];
-
-      for (const id of this._users.keys()) {
-        if (id !== gameId) {
-          userList.push(id);
-        }
-      }
+      const userList = this._userManager.getReadyUsersWithout(gameId);
 
       this._createVote({
         voteName,
@@ -1228,9 +920,9 @@ class VIMP {
       // /bot 10          # создаёт 10 ботов, распределив их равномерно
       // /bot 0           # удаляет всех ботов
       case '/bot': {
-        const user = this._users.get(gameId);
+        const user = this._userManager.getReadyUser(gameId);
 
-        if (user.teamId === this._spectatorId) {
+        if (user.team === this._spectatorTeam) {
           this._chat.pushSystemByUser(gameId, 'BOT_PLAYERS_ONLY');
           break;
         }
@@ -1244,7 +936,7 @@ class VIMP {
         }
 
         // если команда не соответствует
-        if (team && (!this._teams[team] || team === this._spectatorTeam)) {
+        if (team && !this._userManager.isPlayingTeam(team)) {
           this._chat.pushSystemByUser(gameId, 'BOT_INVALID_TEAM');
           break;
         }
@@ -1264,22 +956,14 @@ class VIMP {
           }
         }
 
-        // проверка количества активных игроков
-        let activePlayerCount = 0;
-
-        for (const user of this._users.values()) {
-          if (user.teamId !== this._spectatorId) {
-            activePlayerCount += 1;
-          }
-        }
-
-        // если игрок один, выполнение команды
-        if (activePlayerCount <= 1) {
+        // если активный игрок один, выполнение команды
+        if (this._userManager.getHumanPlayerCount() <= 1) {
           this._executeBotCommand(count, team);
           // иначе игроков больше, запуск голосования
         } else {
           this._initiateBotVote(gameId, count, team);
         }
+
         break;
       }
 
@@ -1315,7 +999,7 @@ class VIMP {
 
   // инициирует голосование за ботов
   _initiateBotVote(gameId, count, team) {
-    const userName = this._users.get(gameId).name;
+    const userName = this._userManager.getUserName(gameId);
     const voteCategory = 'botManagement';
     let voteName;
     let voteArgs;
@@ -1343,13 +1027,7 @@ class VIMP {
     }
 
     const payload = { name: voteName, params: voteArgs };
-    const userList = [];
-
-    for (const id of this._users.keys()) {
-      if (id !== gameId) {
-        userList.push(id);
-      }
-    }
+    const userList = this._userManager.getReadyUsersWithout(gameId);
 
     this._createVote({
       voteName,
@@ -1434,7 +1112,7 @@ class VIMP {
     const latency = this._RTTManager.handlePong(gameId, pingId);
 
     if (latency !== null) {
-      const user = this._users.get(gameId);
+      const user = this._userManager.getUser(gameId);
 
       if (user) {
         this._stat.updateUser(gameId, user.teamId, { latency });

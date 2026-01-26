@@ -68,7 +68,7 @@ export default {
   // если null — кик отключен
   idleKickTimeout: {
     player: 120000, // для игрока (2 минуты)
-    spectator: null, // для наблюдателя
+    spectator: Infinity, // для наблюдателя
   },
 
   stat: {

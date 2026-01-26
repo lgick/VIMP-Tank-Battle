@@ -25,7 +25,11 @@ class TimerManager extends AbstractTimer {
     this._idleCheckInterval = timers.idleCheckInterval;
     this._rttPingInterval = timers.rttPingInterval;
 
-    this._callbacks = callbacks;
+    this._onMapTimeEnd = callbacks.onMapTimeEnd;
+    this._onRoundTimeEnd = callbacks.onRoundTimeEnd;
+    this._onShotTick = callbacks.onShotTick;
+    this._onIdleCheck = callbacks.onIdleCheck;
+    this._onSendPing = callbacks.onSendPing;
 
     // временные метки для расчетов оставшегося времени
     this._startMapTime = 0;
@@ -62,7 +66,7 @@ class TimerManager extends AbstractTimer {
   startMapTimer() {
     this.stopMapTimer();
     this._startMapTime = Date.now();
-    this._startTimer('map', this._callbacks.onMapTimeEnd, this._mapTime);
+    this._startTimer('map', this._onMapTimeEnd, this._mapTime);
   }
 
   // останавливает таймер карты
@@ -81,7 +85,7 @@ class TimerManager extends AbstractTimer {
   startRoundTimer() {
     this.stopRoundTimer();
     this._startRoundTime = Date.now();
-    this._startTimer('round', this._callbacks.onRoundTimeEnd, this._roundTime);
+    this._startTimer('round', this._onRoundTimeEnd, this._roundTime);
   }
 
   // останавливает таймер раунда
@@ -116,7 +120,7 @@ class TimerManager extends AbstractTimer {
       this._expectedTickTime = now; // сброс базы для расчета дрейфа
     }
 
-    this._callbacks.onShotTick(dt);
+    this._onShotTick(dt);
 
     const drift = now - this._expectedTickTime;
     const nextTimeout = Math.max(0, this._timeStep - drift);
@@ -185,7 +189,7 @@ class TimerManager extends AbstractTimer {
   startRoundRestartDelay() {
     this._startTimer(
       'roundRestartDelay',
-      this._callbacks.onRoundTimeEnd,
+      this._onRoundTimeEnd,
       this._roundRestartDelay,
     );
   }
@@ -207,7 +211,7 @@ class TimerManager extends AbstractTimer {
 
   // логика одного "тика" для проверки на бездействие
   _idleCheckTick() {
-    this._callbacks.onIdleCheck();
+    this._onIdleCheck();
 
     // перезапуск таймера для следующей проверки
     this._startTimer(
@@ -220,7 +224,7 @@ class TimerManager extends AbstractTimer {
   // запускает периодическую проверку на бездействие
   startIdleCheckTimer() {
     // если есть интервал и callback
-    if (this._idleCheckInterval && this._callbacks.onIdleCheck) {
+    if (this._idleCheckInterval && this._onIdleCheck) {
       this._stopIdleCheckTimer();
       this._idleCheckTick();
     }
@@ -233,7 +237,7 @@ class TimerManager extends AbstractTimer {
 
   // логика одного "тика" для отправки пингов
   _rttPingTick() {
-    this._callbacks.onSendPing();
+    this._onSendPing();
 
     // перезапуск таймера для следующего пинга
     this._startTimer(
@@ -246,7 +250,7 @@ class TimerManager extends AbstractTimer {
   // запускает отправку пингов
   _startRttPingTimer() {
     // если есть интервал и callback
-    if (this._rttPingInterval && this._callbacks.onSendPing) {
+    if (this._rttPingInterval && this._onSendPing) {
       this._stopRttPingTimer();
       this._rttPingTick();
     }

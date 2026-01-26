@@ -14,16 +14,17 @@ const SPATIAL_CELL_SIZE = 600;
 class BotManager {
   /**
    * @param {object} parts - Данные моделей и оружия игры.
-   * @param {VIMP} vimp - Экземпляр основного класса игры VIMP.
+   * @param {UserManager} userManager - Состояние игроков.
    * @param {Game} game - Экземпляр игрового движка (физика).
    * @param {Panel} panel - Экземпляр менеджера панели игрока.
    * @param {Stat} stat - Экземпляр менеджера статистики.
    */
-  constructor(parts, vimp, game, panel, stat) {
+  constructor(parts, userManager, game, panel, stat) {
     this._models = parts.models;
     this._weapons = parts.weapons;
 
-    this._vimp = vimp;
+    this._userManager = userManager;
+
     this._game = game;
     this._panel = panel;
     this._stat = stat;
@@ -113,16 +114,19 @@ class BotManager {
       return 0;
     }
 
-    const playableTeams = Object.keys(this._vimp._teams).filter(
-      t => t !== this._vimp._spectatorTeam,
+    const playableTeams = Object.keys(this._userManager.teams).filter(
+      t => t !== this._userManager.spectatorTeam,
     );
 
     let createdCount = 0;
 
     for (let i = 0; i < count; i += 1) {
-      const totalPlayers = this._vimp._users.size + this._bots.size;
+      const totalPlayers = this._userManager.users.size + this._bots.size;
 
-      if (this._vimp._maxPlayers && totalPlayers >= this._vimp._maxPlayers) {
+      if (
+        this._userManager.maxPlayers &&
+        totalPlayers >= this._userManager.maxPlayers
+      ) {
         break; // достигнут глобальный лимит игроков
       }
 
@@ -131,8 +135,8 @@ class BotManager {
       if (!targetTeam) {
         // логика равномерного распределения
         targetTeam = playableTeams.sort((a, b) => {
-          const sizeA = this._vimp._teamSizes[a]?.size || 0;
-          const sizeB = this._vimp._teamSizes[b]?.size || 0;
+          const sizeA = this._userManager.teamSizes[a]?.size || 0;
+          const sizeB = this._userManager.teamSizes[b]?.size || 0;
           return sizeA - sizeB;
         })[0];
       }
@@ -140,16 +144,17 @@ class BotManager {
       if (
         !targetTeam ||
         !this._respawns[targetTeam] ||
-        this._vimp._teamSizes[targetTeam].size >=
+        this._userManager.teamSizes[targetTeam].size >=
           this._respawns[targetTeam].length
       ) {
         // нет свободных мест в команде, или команда не найдена
         continue;
       }
 
-      const gameId = this._vimp.createGameId();
-      const name = this._vimp.checkName(`Bot${i}`);
-      const teamId = this._vimp._teams[targetTeam];
+      // генерация ID и имени
+      const gameId = this._userManager.createGameId();
+      const name = this._userManager.checkName(`Bot${i}`);
+      const teamId = this._userManager.teams[targetTeam];
       const botData = {
         name,
         gameId,
@@ -173,7 +178,9 @@ class BotManager {
         latency: 'BOT',
       });
       this._panel.addUser(gameId);
-      this._vimp._teamSizes[targetTeam].add(gameId);
+
+      // обновление размера команды
+      this._userManager.teamSizes[targetTeam].add(gameId);
 
       createdCount += 1;
     }
@@ -222,7 +229,7 @@ class BotManager {
       if (distanceSq < minDistanceSq) {
         minDistanceSq = distanceSq;
         closestEnemy =
-          this._vimp._users.get(candidateGameId) ||
+          this._userManager.users.get(candidateGameId) ||
           this.getBotById(candidateGameId);
       }
     }
@@ -270,12 +277,13 @@ class BotManager {
     }
 
     // удаление бота из систем игры
-    this._stat.removeUser(gameId, botData.teamId);
+    this._stat.removeUser(gameId);
     this._panel.removeUser(gameId);
-    this._vimp._teamSizes[botData.team].delete(gameId);
+
+    this._userManager.teamSizes[botData.team].delete(gameId);
+
     this._game.removePlayer(gameId);
     this._bots.delete(gameId);
-    this._vimp.removeGameId(gameId);
   }
 
   /**
@@ -312,6 +320,10 @@ class BotManager {
    */
   getBots() {
     return this._bots.values();
+  }
+
+  getBotIds() {
+    return this._bots.keys();
   }
 
   /**

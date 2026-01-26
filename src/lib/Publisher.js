@@ -5,7 +5,7 @@
  */
 class Publisher {
   constructor() {
-    // Объект для хранения подписчиков по типу события
+    // объект для хранения подписчиков по типу события
     this.subs = {};
   }
 
@@ -35,8 +35,19 @@ class Publisher {
    * @param {*} data - Данные, которые передаются подписчикам.
    */
   emit(type, data) {
-    const subscribers = this.subs[type] || [];
-    subscribers.forEach(({ fn, context }) => fn.call(context, data));
+    const subscribers = this.subs[type];
+
+    // если подписчиков нет
+    if (!subscribers) {
+      return;
+    }
+
+    for (let i = 0, len = subscribers.length; i < len; i += 1) {
+      const sub = subscribers[i];
+
+      // вызов call с сохраненным контекстом
+      sub.fn.call(sub.context, data);
+    }
   }
 }
 
