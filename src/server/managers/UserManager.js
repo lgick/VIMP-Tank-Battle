@@ -126,7 +126,13 @@ class UserManager {
 
   forEachReadyUser(fn) {
     for (const gameId of this._readyUsers) {
-      fn(this._users[gameId]);
+      fn(this._users.get(gameId));
+    }
+  }
+
+  forEachAlivePlayer(fn) {
+    for (let i = 0, len = this._alivePlayers.length; i < len; i += 1) {
+      fn(this._users.get(this._alivePlayers[i]));
     }
   }
 
@@ -134,6 +140,10 @@ class UserManager {
     for (const gameId of this._readyUsers) {
       fn(gameId);
     }
+  }
+
+  isServerFull() {
+    return this._users.size >= this._maxPlayers;
   }
 
   getReadyUsersWithout(gameId) {
@@ -325,6 +335,10 @@ class UserManager {
     for (const key in this._teamSets) {
       this._teamSets[key].clear();
     }
+  }
+
+  isAlive(gameId) {
+    return this._alivePlayers.includes(gameId);
   }
 
   _addToAlivePlayers(gameId) {

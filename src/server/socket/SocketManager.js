@@ -5,6 +5,7 @@ const TECH_CODES = {
   kickIdle: [3],
   kickForMaxLatency: [4],
   kickForMissedPings: [5],
+  failedToJoinGame: [6],
 };
 
 const GAME_CODES = {

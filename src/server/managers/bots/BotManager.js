@@ -48,6 +48,12 @@ class BotManager {
     for (const controller of this._botControllers.values()) {
       controller.update(dt);
     }
+
+    for (const [gameId, controller] of this._botControllers) {
+      if (this._userManager.isAlive(gameId)) {
+        controller.update(dt);
+      }
+    }
   }
 
   /**
@@ -121,20 +127,13 @@ class BotManager {
     let createdCount = 0;
 
     for (let i = 0; i < count; i += 1) {
-      const totalPlayers = this._userManager.users.size + this._bots.size;
-
-      if (
-        this._userManager.maxPlayers &&
-        totalPlayers >= this._userManager.maxPlayers
-      ) {
-        break; // достигнут глобальный лимит игроков
+      if (this._userManager.isServerFull()) {
+        break;
       }
 
-      let targetTeam = teamName;
-
-      if (!targetTeam) {
+      if (!teamName) {
         // логика равномерного распределения
-        targetTeam = playableTeams.sort((a, b) => {
+        teamName = playableTeams.sort((a, b) => {
           const sizeA = this._userManager.teamSizes[a]?.size || 0;
           const sizeB = this._userManager.teamSizes[b]?.size || 0;
           return sizeA - sizeB;
@@ -142,10 +141,10 @@ class BotManager {
       }
 
       if (
-        !targetTeam ||
-        !this._respawns[targetTeam] ||
-        this._userManager.teamSizes[targetTeam].size >=
-          this._respawns[targetTeam].length
+        !teamName ||
+        !this._respawns[teamName] ||
+        this._userManager.teamSizes[teamName].size >=
+          this._respawns[teamName].length
       ) {
         // нет свободных мест в команде, или команда не найдена
         continue;
@@ -154,11 +153,11 @@ class BotManager {
       // генерация ID и имени
       const gameId = this._userManager.createGameId();
       const name = this._userManager.checkName(`Bot${i}`);
-      const teamId = this._userManager.teams[targetTeam];
+      const teamId = this._userManager.teams[teamName];
       const botData = {
-        name,
         gameId,
-        team: targetTeam,
+        name,
+        team: teamName,
         teamId,
         modelData: this._models[this._model],
         model: this._model,
@@ -180,7 +179,7 @@ class BotManager {
       this._panel.addUser(gameId);
 
       // обновление размера команды
-      this._userManager.teamSizes[targetTeam].add(gameId);
+      this._userManager.teamSizes[teamName].add(gameId);
 
       createdCount += 1;
     }
@@ -240,14 +239,16 @@ class BotManager {
   /**
    * @description Заполняет пространственную сетку объектами игроков.
    * Перед заполнением сетка очищается.
-   * @param {Array} playerList - Массив игроков для вставки в сетку.
    */
-  buildSpatialGrid(playerList = []) {
+  buildSpatialGrid() {
     this._spatialManager.clear();
 
-    for (let i = 0; i < playerList.length; i += 1) {
-      this._spatialManager.insert(playerList[i]);
-    }
+    this._userManager.forEachAlivePlayer(user => {
+      const gameId = user.gameId;
+      const vec2Pos = this._game.getPosition(gameId);
+
+      this._spatialManager.insert(gameId, user.teamId, vec2Pos.x, vec2Pos.y);
+    });
   }
 
   /**
@@ -289,12 +290,18 @@ class BotManager {
   /**
    * @description Удаляет одного бота из указанной команды,
    * чтобы освободить место.
-   * @param {string} teamName - Имя команды.
+   * @param {string | undefined} teamName - Имя команды.
    * @returns {boolean} - true, если бот был удален, иначе false.
    */
   removeOneBotForPlayer(teamName) {
     for (const botData of this._bots.values()) {
-      if (botData.team === teamName) {
+      if (teamName) {
+        if (botData.team === teamName) {
+          this._removeBotById(botData.gameId);
+
+          return true;
+        }
+      } else {
         this._removeBotById(botData.gameId);
 
         return true;

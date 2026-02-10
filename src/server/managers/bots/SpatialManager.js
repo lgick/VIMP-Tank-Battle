@@ -38,14 +38,13 @@ class SpatialManager {
 
   /**
    * @description Добавляет сущность (игрока/бота) в сетку.
-   * @param {object} entity - Данные сущности.
-   * @param {number} entity.gameId
-   * @param {number} entity.teamId
-   * @param {number} entity.x - Координата X
-   * @param {number} entity.y - Координата Y
+   * @param {number} gameId
+   * @param {number} teamId
+   * @param {number} x - Координата X
+   * @param {number} y - Координата Y
    */
-  insert(entity) {
-    const key = this._getCellKey(entity.x, entity.y);
+  insert(gameId, teamId, x, y) {
+    const key = this._getCellKey(x, y);
 
     if (!this._grid.has(key)) {
       this._grid.set(key, []);
@@ -53,12 +52,12 @@ class SpatialManager {
 
     // сохранение только необходимых данных для быстрой фильтрации
     this._grid.get(key).push({
-      gameId: entity.gameId,
-      teamId: entity.teamId,
+      gameId,
+      teamId,
       // x, y можно не сохранять, они нужны были только для определения ячейки,
       // но могут пригодиться для первичной грубой проверки.
-      x: entity.x,
-      y: entity.y,
+      x,
+      y,
     });
   }
 

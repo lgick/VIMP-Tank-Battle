@@ -1,17 +1,11 @@
 import { Vec2 } from 'planck';
-import { roundTo2Decimals } from '../../lib/formatters.js';
-
-// Singleton HitscanService
-
-let hitscanService;
+import { roundTo1Decimal, roundTo2Decimals } from '../../lib/formatters.js';
 
 class HitscanService {
   constructor(data) {
-    if (hitscanService) {
-      return hitscanService;
-    }
-
-    hitscanService = this;
+    // Убрана проверка "if (hitscanService) return..."
+    // Теперь Factory будет всегда создавать новый экземпляр при перезапуске игры,
+    // что гарантирует использование актуального data.world.
 
     this._world = data.world;
     this._weapons = data.weapons;
@@ -22,16 +16,14 @@ class HitscanService {
   processShot(params) {
     const {
       gameId, // id стреляющего
-      weaponName, // имя оружия из weaponsConfig
-      startPoint, // мировая точка начала луча (например, дуло оружия)
-      direction, // нормализованный мировой вектор направления луча
+      weaponName, // имя оружия
+      startPoint, // точка начала
+      direction, // вектор направления
       bodyPosition,
     } = params;
 
     const weaponConfig = this._weapons[weaponName];
-    const range = weaponConfig.range || 1000; // дальность
-
-    // величина импульса
+    const range = weaponConfig.range || 1000;
     const impulseMagnitude = weaponConfig.impulseMagnitude || 0;
 
     // конечная точка луча
@@ -39,41 +31,41 @@ class HitscanService {
 
     let closestHitFixture = null;
     let hitPoint = null;
-    let closestFraction = 1.0; // отслеживание ближайшего попадания
+    let closestFraction = 1.0;
 
     this._world.rayCast(
       startPoint,
       endPointRay,
       (fixture, point, _normal, fraction) => {
+        // Игнорируем сенсоры (зоны подбора и т.д.)
         if (fixture.isSensor()) {
           return -1.0;
         }
 
-        closestHitFixture = fixture; // сохраняем фикстуру, в которую попали
+        closestHitFixture = fixture;
         hitPoint = point.clone();
-        closestFraction = fraction; // новая максимальная доля для луча
+        closestFraction = fraction;
 
-        // продолжить луч, но искать пересечения только до этой точки
         return fraction;
       },
     );
 
     let actualImpactPoint = null;
-    // попадание, если fraction < 1.0
+    // fraction < 1.0 означает, что луч во что-то уперся раньше конца
     const wasHit = closestHitFixture !== null && closestFraction < 1.0;
 
     if (wasHit) {
-      actualImpactPoint = hitPoint; // ближайшая точка попадания
+      actualImpactPoint = hitPoint;
       const hitBody = closestHitFixture.getBody();
       const hitUserData = hitBody.getUserData();
 
-      // если тело динамическое, то применение физического импульса
+      // применение импульса к динамическим телам
       if (impulseMagnitude > 0 && hitBody.isDynamic()) {
         const impulseVector = direction.mul(impulseMagnitude);
-
         hitBody.applyLinearImpulse(impulseVector, hitPoint, true);
       }
 
+      // нанесение урона (делегируется в Game)
       if (hitUserData && hitUserData.type === 'player') {
         this._game.applyDamage(hitUserData.gameId, gameId, weaponName);
       }
@@ -81,12 +73,15 @@ class HitscanService {
 
     const endPoint = actualImpactPoint
       ? {
-          x: +actualImpactPoint.x.toFixed(1),
-          y: +actualImpactPoint.y.toFixed(1),
+          x: roundTo1Decimal(actualImpactPoint.x),
+          y: roundTo1Decimal(actualImpactPoint.y),
         }
-      : { x: +endPointRay.x.toFixed(1), y: +endPointRay.y.toFixed(1) };
+      : {
+          x: roundTo1Decimal(endPointRay.x),
+          y: roundTo1Decimal(endPointRay.y),
+        };
 
-    // данные для отображения трассера
+    // возвращаем данные для отрисовки трассера
     return [
       roundTo2Decimals(startPoint.x),
       roundTo2Decimals(startPoint.y),

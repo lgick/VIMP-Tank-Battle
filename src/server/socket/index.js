@@ -138,7 +138,12 @@ export default server => {
             ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
             ws.socket.socketMethods[PC_MODULES_READY] = true;
 
-            vimp.createUser(data, gameId);
+            const result = vimp.createUser(data, gameId);
+
+            if (!result) {
+              return;
+            }
+
             socketManager.sendTechInform(gameId, 'loading');
           }
 

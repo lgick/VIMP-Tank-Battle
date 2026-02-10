@@ -39,15 +39,40 @@ class Map {
     this._physicsDynamic = mapData.physicsDynamic || [];
     this._frames = mapData.spriteSheet.frames;
 
-    // удаление старых данных, если они были загружены ранее
-    this.destroyMap();
+    this._createStatic();
+    this._createDynamic();
+  }
 
-    this.createStatic();
-    this.createDynamic();
+  // сбрасывает динамические объекты
+  resetDynamicMap() {
+    this._destroyDynamicBodies();
+    this._createDynamic();
+  }
+
+  // возвращает данные динамических элементов
+  getDynamicMapData() {
+    if (!this._dynamicBodies.length) {
+      return;
+    }
+
+    const data = {};
+
+    for (let i = 0, len = this._dynamicBodies.length; i < len; i += 1) {
+      const [id, body] = this._dynamicBodies[i];
+      const pos = body.getPosition();
+
+      data[id] = [
+        roundTo2Decimals(pos.x),
+        roundTo2Decimals(pos.y),
+        roundTo2Decimals(body.getAngle()),
+      ];
+    }
+
+    return data;
   }
 
   // ищет прямоугольные области для статических тел
-  searchStaticBlock(y0, x0) {
+  _searchStaticBlock(y0, x0) {
     let y = y0;
     let x = x0;
     let wCounter = 0;
@@ -97,14 +122,14 @@ class Map {
   }
 
   // создает статические элементы карты
-  createStatic() {
+  _createStatic() {
     for (let y = 0, lenY = this._map.length; y < lenY; y += 1) {
       for (let x = 0, lenX = this._map[y].length; x < lenX; x += 1) {
         const tile = this._map[y][x];
 
         // если найден статический элемент
         if (this._physicsStatic.indexOf(tile) !== -1) {
-          const sizes = this.searchStaticBlock(y, x);
+          const sizes = this._searchStaticBlock(y, x);
           const posX = x * this._step + sizes[0] / 2;
           const posY = y * this._step + sizes[1] / 2;
 
@@ -125,7 +150,7 @@ class Map {
   }
 
   // создает динамические элементы карты
-  createDynamic() {
+  _createDynamic() {
     for (let i = 0, len = this._physicsDynamic.length; i < len; i += 1) {
       const data = this._physicsDynamic[i];
       const angle = degToRad(data.angle);
@@ -157,37 +182,25 @@ class Map {
     }
   }
 
-  // удаляет все динамические элементы из мира
-  destroyMap() {
+  // удаляет статические тела
+  _destroyStaticBodies() {
     while (this._staticBodies.length) {
       this._world.destroyBody(this._staticBodies.pop());
     }
+  }
 
+  // удаляет динамические тела
+  _destroyDynamicBodies() {
     while (this._dynamicBodies.length) {
-      this._world.destroyBody(this._dynamicBodies.pop()[1]);
+      const [_id, body] = this._dynamicBodies.pop();
+      this._world.destroyBody(body);
     }
   }
 
-  // возвращает краткие данные динамических элементов
-  getDynamicMapData() {
-    if (!this._dynamicBodies.length) {
-      return;
-    }
-
-    const data = {};
-
-    for (let i = 0, len = this._dynamicBodies.length; i < len; i += 1) {
-      const [id, body] = this._dynamicBodies[i];
-      const pos = body.getPosition();
-
-      data[id] = [
-        roundTo2Decimals(pos.x),
-        roundTo2Decimals(pos.y),
-        roundTo2Decimals(body.getAngle()),
-      ];
-    }
-
-    return data;
+  // удаляет все элементы из мира
+  clear() {
+    this._destroyStaticBodies();
+    this._destroyDynamicBodies();
   }
 }
 

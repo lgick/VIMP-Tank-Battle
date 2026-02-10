@@ -1,5 +1,5 @@
 import { BoxShape, Vec2, AABB } from 'planck';
-import { roundTo2Decimals } from '../../lib/formatters.js';
+import { roundTo1Decimal, roundTo2Decimals } from '../../lib/formatters.js';
 
 class Bomb {
   constructor(data) {
@@ -89,8 +89,8 @@ class Bomb {
 
     // данные для визуализации взрыва на клиенте
     const explosionData = [
-      +bombPosition.x.toFixed(1),
-      +bombPosition.y.toFixed(1),
+      roundTo1Decimal(bombPosition.x),
+      roundTo1Decimal(bombPosition.y),
       radius,
     ];
 

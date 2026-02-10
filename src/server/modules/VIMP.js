@@ -26,10 +26,10 @@ class VIMP {
 
     this._isRoundEnding = false; // флаг, если раунд процессе завершения
     this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
-    this._maxPlayers = data.maxPlayers; // максимальное количество игроков
     this._spectatorTeam = data.spectatorTeam; // название команды наблюдателей
 
     this._userManager = new UserManager(
+      data.maxPlayers,
       data.idleKickTimeout,
       data.teams,
       data.spectatorTeam,
@@ -46,6 +46,7 @@ class VIMP {
     this._startMapNumber = 0; // номер первой карты в голосовании
 
     this._game = new Game(
+      this._userManager,
       data.parts,
       data.playerKeys,
       data.timers.timeStep / 1000,
@@ -120,7 +121,7 @@ class VIMP {
 
     if (this._botManager.getBotCount() > 0) {
       this._botManager.updateBots(dt);
-      this._botManager.buildSpatialGrid(this._game.getAlivePlayers());
+      this._botManager.buildSpatialGrid();
     }
 
     // получение снимка (snapshot)
@@ -138,10 +139,10 @@ class VIMP {
       // игроки для удаления с полотна
       userManager.writeRemovedPlayersToSnapshot(gameSnapshot);
 
-      userManager.forEachSnapshotTarget((userId, watchingId, shake, reset) => {
-        this._socketManager.sendSnapshot(userId, [
+      userManager.forEachSnapshotTarget((gameId, watchingId, shake, reset) => {
+        this._socketManager.sendSnapshot(gameId, [
           gameSnapshot,
-          [this._game.getPosition(watchingId) || [0, 0], shake, reset],
+          [this._game.getPlayerCoordsOrZero(watchingId), shake, reset],
         ]);
       });
     } else {
@@ -361,17 +362,14 @@ class VIMP {
 
     // очищение списка играющих
     this._userManager.clearAlivePlayers();
-
     this._panel.reset();
-
-    const setIdList = this._game.removePlayersAndShots();
-
-    this._game.createMap(this._scaledMapData);
+    this._game.removePlayersAndShots();
+    this._game.resetDynamicMap();
 
     this._userManager.forEachReadyUser(user => {
       const { gameId, team } = user;
 
-      this._socketManager.sendClear(gameId, setIdList);
+      this._socketManager.sendClear(gameId, this._game.getEntitiesToClear());
 
       if (team === this._spectatorTeam) {
         this._userManager.setSpectator(gameId);
@@ -488,9 +486,9 @@ class VIMP {
         // смена игровой команды
       } else {
         this._game.changePlayerData(gameId, {
-          respawnData,
-          teamId: newTeamId,
           gameId,
+          teamId: newTeamId,
+          respawnData,
         });
       }
     }
@@ -506,15 +504,14 @@ class VIMP {
 
   // перевод игрока в активные игроки
   _setActivePlayer(gameId, respawnData, isBot) {
-    const { teamId, model, name } = this._userManager.setActivePlayer(gameId);
+    const { teamId, model } = this._userManager.setActivePlayer(gameId);
 
     if (!isBot) {
       this._socketManager.sendPlayerDefaultEvents(gameId);
     }
 
     this._stat.updateUser(gameId, teamId, { status: '' });
-    // TODO name teamId не нужны в game
-    this._game.createPlayer(gameId, model, name, teamId, respawnData);
+    this._game.createPlayer(gameId, model, teamId, respawnData);
   }
 
   // проверяет уничтожение всей команды
@@ -534,11 +531,13 @@ class VIMP {
       return;
     }
 
-    // TODO боты будут в userManager, isAlive не нужен
     // проверка на живых ботов в команде
     for (const botData of this._botManager.getBots()) {
       // если нашелся живой бот, команда не уничтожена
-      if (botData.team === victimTeam && this._game.isAlive(botData.gameId)) {
+      if (
+        botData.team === victimTeam &&
+        this._userManager.isAlive(botData.gameId)
+      ) {
         return;
       }
     }
@@ -634,13 +633,20 @@ class VIMP {
     this._checkTeamWipe(victimUser.team, killerUser.team);
   }
 
-  // активирует тряску камеры у игрока
-  triggerCameraShake(gameId, shakeParams) {
-    this._userManager.activateCameraShake(gameId, shakeParams);
-  }
-
   // создает нового игрока
   createUser(gameId, params) {
+    if (this._userManager.isServerFull()) {
+      const botRemoved = this._botManager.removeOneBotForPlayer();
+
+      if (!botRemoved) {
+        console.warn(`[VIMP] Kick user - failed to join game`);
+        this._socketManager.close(gameId, 4006, 'failedToJoinGame');
+        this.removeUser(gameId);
+
+        return false;
+      }
+    }
+
     const { name, teamId } = this._userManager.addUser(gameId, params);
 
     this._chat.addUser(gameId);
@@ -648,6 +654,8 @@ class VIMP {
     this._stat.addUser(gameId, teamId, { name });
     this._panel.addUser(gameId);
     this._RTTManager.addUser(gameId);
+
+    return true;
   }
 
   // удаляет игрока полностью из игры

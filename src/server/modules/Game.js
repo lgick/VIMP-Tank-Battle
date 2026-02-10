@@ -1,14 +1,15 @@
-import planck from 'planck';
+import planck, { Vec2 } from 'planck';
 import Factory from '../../lib/factory.js';
 import constructors from '../parts/index.js';
-import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
+import WeaponManager from '../managers/WeaponManager.js';
+import { degToRad, roundTo2Decimals } from '../../lib/math.js';
 
 // Singleton Game
 
 let game;
 
 class Game {
-  constructor(parts, playerKeys, timeStep) {
+  constructor(userManager, parts, playerKeys, timeStep) {
     if (game) {
       return game;
     }
@@ -18,6 +19,7 @@ class Game {
     this._Factory = Factory;
     this._Factory.add(constructors);
 
+    this._userManager = userManager;
     this._models = parts.models;
     this._weapons = parts.weapons;
 
@@ -36,10 +38,10 @@ class Game {
       }
     }
 
-    this._playerKeys = {
-      keys,
-      oneShotMask,
-    };
+    this._playerKeys = { keys, oneShotMask };
+
+    // хранилище состояния танков: gameId -> condition (10, 9, 8, .., 0)
+    this._playerConditions = new Map();
 
     // интервал фиксированного шага физики (в секундах, например 1 / 120)
     this._timeStep = timeStep;
@@ -74,106 +76,26 @@ class Game {
     // конструктор карт
     this._map = this._Factory(parts.mapConstructor, this._world);
 
-    this._hitscanWeapons = Object.fromEntries(
-      Object.entries(this._weapons).filter(
-        ([, weaponData]) => weaponData.type === 'hitscan',
-      ),
+    // инициализация менеджера оружия
+    this._weaponManager = new WeaponManager(
+      this,
+      this._Factory,
+      this._world,
+      this._weapons,
+      this._friendlyFire,
     );
 
-    // сервис вычисления hitscan выстрелов
-    this._hitscanService = this._Factory(parts.hitscanService, {
-      world: this._world,
-      weapons: this._hitscanWeapons,
-      game: this,
-    });
+    this._weaponManager.init(parts, this._timeStep);
 
-    this._weaponEffectList = [
-      ...new Set(
-        Object.values(this._weapons)
-          .filter(weapon => weapon.shotOutcomeId)
-          .map(weapon => weapon.shotOutcomeId),
-      ),
+    // список сущностей для очистки
+    this._entitiesToClear = [
+      ...Object.keys(this._models),
+      ...Object.keys(this._weapons),
+      ...this._weaponManager.getWeaponEffectList(),
     ];
 
     // данные игроков
     this._playersData = new Map();
-
-    // активные пули
-    this._shotsData = new Map();
-
-    // id для пуль. (UINT16: до 65535 одновременных пуль)
-    this._shotIdGen = new BinaryGenId(ID_FORMATS.UINT16);
-
-    // инициализация времени жизни пуль и кольцевого буфера
-    let maxLifetimeMs = 0;
-
-    // не для hitscan оружия
-    for (const weaponName in this._weapons) {
-      if (
-        Object.hasOwn(this._weapons, weaponName) &&
-        this._weapons[weaponName].type !== 'hitscan'
-      ) {
-        const weapon = this._weapons[weaponName];
-        const time = weapon.time; // время жизни в ms
-
-        if (time > maxLifetimeMs) {
-          maxLifetimeMs = time;
-        }
-      }
-    }
-
-    // если пули часто уничтожаются досрочно, большой запас не так критичен,
-    // уменьшение буфера до x1.5
-    const maxLifetimeWithBufferSeconds = (maxLifetimeMs / 1000.0) * 1.5;
-
-    // максимальное количество шагов в кольцевом буфере
-    this._maxShotTimeInSteps = Math.ceil(
-      maxLifetimeWithBufferSeconds / this._timeStep,
-    );
-
-    if (this._maxShotTimeInSteps < 1) {
-      this._maxShotTimeInSteps = 1; // минимум 1 шаг
-    }
-
-    // текущий тик для кольцевого буфера, от 0 до _maxShotTimeInSteps-1
-    this._currentStepTick = 0;
-
-    // созданные пули в момент времени (кольцевой буфер)
-    this._shotsAtTime = new Array(this._maxShotTimeInSteps)
-      .fill(null)
-      .map(() => []);
-
-    // хранение данных об удаленных пулях между updateData и getGameData
-    this._lastExpiredShotsData = {};
-
-    // хранение данных эффектов завершения оружия
-    this._lastWeaponEffects = {};
-
-    // хранение данных о новых выстрелах между отправками сети
-    this._newShotsData = {};
-
-    // набор орудий, из которых стреляли в текущем тике
-    this._activeWeaponKeys = new Set();
-
-    // кеш данных игроков для отправки (чтобы не вызывать getData дважды)
-    this._cachedPlayersData = new Map();
-
-    this.initNewShotsData();
-  }
-
-  // инициализация контейнеров для каждого оружия
-  initNewShotsData() {
-    this._newShotsData = {};
-
-    for (const weaponName in this._weapons) {
-      if (Object.hasOwn(this._weapons, weaponName)) {
-        if (this._weapons[weaponName].type === 'hitscan') {
-          this._newShotsData[weaponName] = [];
-        } else {
-          this._newShotsData[weaponName] = {};
-        }
-      }
-    }
   }
 
   // получает сервисы
@@ -186,6 +108,11 @@ class Game {
     this._map.createMap(mapData);
   }
 
+  // сбрасывает динамические объекты карты
+  resetDynamicMap() {
+    this._map.resetDynamicMap();
+  }
+
   // возвращает данные динамических элементов
   getDynamicMapData() {
     return this._map.getDynamicMapData();
@@ -195,22 +122,28 @@ class Game {
   createPlayer(gameId, model, teamId, respawnData) {
     const modelData = this._models[model];
 
+    const body = this._world.createBody({
+      type: 'dynamic',
+      position: new Vec2(respawnData[0], respawnData[1]),
+      angle: degToRad(respawnData[2]),
+      angularDamping: modelData.damping.angular,
+      linearDamping: modelData.damping.linear,
+    });
+
     this._playersData.set(
       gameId,
       this._Factory(modelData.constructor, {
-        world: this._world,
-        playerKeys: this._playerKeys,
-        model,
         gameId,
+        model,
         teamId,
-        currentWeapon: modelData.currentWeapon,
-        weapons: this._weapons,
-        services: this._services,
+        body,
+        playerKeys: this._playerKeys,
         modelData,
-        position: [respawnData[0], respawnData[1]],
-        angle: respawnData[2],
       }),
     );
+
+    this._weaponManager.registerPlayer(gameId, modelData.currentWeapon);
+    this._playerConditions.set(gameId, 10);
   }
 
   // удаляет игрока
@@ -220,33 +153,32 @@ class Game {
     if (player) {
       this._world.destroyBody(player.getBody());
       this._playersData.delete(gameId);
-      this._cachedPlayersData.delete(gameId);
+      this._weaponManager.unregisterPlayer(gameId);
+      this._playerConditions.delete(gameId);
     }
-  }
-
-  // удаляет всех игроков и возвращает список удаленных моделей (игроков, дыма)
-  _removePlayers() {
-    const modelNameSet = new Set();
-
-    for (const player of this._playersData.values()) {
-      modelNameSet.add(player.model);
-      this._world.destroyBody(player.getBody());
-    }
-
-    this._playersData.clear();
-    this._cachedPlayersData.clear();
-
-    return [...modelNameSet];
   }
 
   // обновляет нажатые клавиши
   updateKeys(gameId, keyData) {
-    this._playersData.get(gameId)?.updateKeys(keyData);
+    this._playersData.get(gameId).updateKeys(keyData);
   }
 
-  // возвращает координаты игрока [x, y] или undefined
+  // возвращает Vec2 координаты игрока
   getPosition(gameId) {
-    return this._playersData.get(gameId)?.getPosition();
+    return this._playersData.get(gameId).getPosition();
+  }
+
+  // возвращает координаты игрока или [0, 0] (если игрока нет)
+  getPlayerCoordsOrZero(gameId) {
+    const player = this._playersData.get(gameId);
+
+    if (player) {
+      const vec2Pos = player.getPosition();
+
+      return [roundTo2Decimals(vec2Pos.x), roundTo2Decimals(vec2Pos.y)];
+    }
+
+    return [0, 0];
   }
 
   // возвращает данные игрока или undefined
@@ -256,40 +188,12 @@ class Game {
 
   // меняет данные игрока при переходе из одной команды в другую
   changePlayerData(gameId, data) {
-    this._playersData.get(gameId)?.changePlayerData(data);
-  }
-
-  // стирает данные игрового мира
-  clear() {
-    // сброс сил
-    this._world.clearForces();
-
-    // процесс удаления всех тел
-    let body = this._world.getBodyList();
-
-    while (body) {
-      const nextBody = body.getNext();
-      this._world.destroyBody(body);
-      body = nextBody;
-    }
-
-    this._playersData.clear();
-    this._removeShots();
-    this._lastExpiredShotsData = {};
-    this._lastWeaponEffects = {};
-
-    this._activeWeaponKeys.clear();
-
-    this.initNewShotsData();
-
-    this._cachedPlayersData.clear();
-    this._accumulator = 0;
+    this._playersData.get(gameId).changePlayerData(data);
   }
 
   // обновляет данные физики
   updateData(dt) {
-    // накапливание прошедшего времени
-    this._accumulator += dt;
+    this._accumulator += dt; // накапливание прошедшего времени
 
     // защита от "спирали смерти"
     // если накопилось слишком много времени (сильный лаг),
@@ -300,40 +204,46 @@ class Game {
 
     // делаем столько фиксированных шагов, сколько требуется
     while (this._accumulator >= this._timeStep) {
+      this._weaponManager.update(this._timeStep); // обновление логики оружия
+
       // обновление логики игроков строго по фиксированному времени
       for (const player of this._playersData.values()) {
+        const gameId = player.gameId;
+        const panel = this._services.panel;
+
         player.updateData(this._timeStep);
 
+        // статус смены оружия (1, -1 или 0)
+        const weaponChangeStatus = player.consumeWeaponChangeStatus();
+
+        // если команда на смену
+        if (weaponChangeStatus !== 0) {
+          const newWeapon = this._weaponManager.switchWeapon(
+            gameId,
+            weaponChangeStatus,
+          );
+
+          panel.setActiveWeapon(gameId, newWeapon);
+        }
+
         // получение данных (выстрелы)
-        const shotData = player.getShotData();
+        const shotData = player.consumeShotData();
 
         if (shotData) {
-          const weaponName = player.currentWeapon;
-          const weaponConfig = this._weapons[weaponName];
-          const gameId = player.gameId;
+          const [weaponName, weaponConfig] =
+            this._weaponManager.getWeapon(gameId);
+          const consumption = weaponConfig.consumption || 1;
 
-          if (weaponConfig.type === 'hitscan') {
-            const shot = this._hitscanService.processShot({
-              ...shotData,
-              gameId,
-              weaponName,
-            });
-
-            this._newShotsData[weaponName].push(shot);
-          } else if (weaponConfig.type === 'explosive') {
-            const shot = this._createWeaponAction(gameId, weaponName, shotData);
-
-            this._newShotsData[weaponName][shot.shotId] = shot.getData();
+          // проверка наличия патронов
+          if (!panel.hasResources(gameId, weaponName, consumption)) {
+            return;
           }
 
-          this._activeWeaponKeys.add(weaponName);
+          // списание патронов
+          panel.updateUser(gameId, weaponName, consumption, 'decrement');
+          this._weaponManager.fire(gameId, player.teamId, shotData);
         }
       }
-
-      // обработка исчезновения пуль по времени
-      const expiredByTimeData = this._processShotsExpiredByTime();
-
-      this._mergeShotOutcomeData(expiredByTimeData);
 
       // шаг физического мира
       this._world.step(
@@ -342,63 +252,23 @@ class Game {
         this._positionIterations,
       );
 
-      // обработка коллизий
-      this._processContactEvents();
-
-      // удаление тел
-      this._destroyQueuedBodies();
+      this._processContactEvents(); // обработка коллизий
+      this._destroyQueuedBodies(); // удаление тел
 
       this._accumulator -= this._timeStep;
     }
-
-    // обновление кеша состояния
-    for (const player of this._playersData.values()) {
-      this._cachedPlayersData.set(player.gameId, player.getData());
-    }
-  }
-
-  // получение списка активных игроков
-  getAlivePlayers() {
-    const result = [];
-
-    for (const player of this._playersData.values()) {
-      if (player.isAlive()) {
-        const pos = player.getPosition();
-
-        result.push({
-          gameId: player.gameId,
-          teamId: player.teamId,
-          x: pos[0],
-          y: pos[1],
-        });
-      }
-    }
-
-    return result;
-  }
-
-  // проверка жив ли игрок
-  isAlive(gameId) {
-    const player = this._playersData.get(gameId);
-
-    if (player && player.isAlive()) {
-      return true;
-    }
-
-    return false;
   }
 
   //  применение урона игроку
   applyDamage(targetGameId, shooterGameId, weaponName, damageValue) {
-    const player = this._playersData.get(targetGameId);
-
     // если игрок не существует или уже уничтожен, ничего не делаем
-    if (this.isAlive(targetGameId) === false) {
+    if (!this._userManager.isAlive(targetGameId)) {
       return;
     }
 
+    const player = this._playersData.get(targetGameId);
     const targetTeamId = player.teamId;
-    const shooterTeamId = this._playersData.get(shooterGameId)?.teamId;
+    const shooterTeamId = this._playersData.get(shooterGameId).teamId;
 
     // проверка на дружественный огонь
     if (
@@ -409,24 +279,36 @@ class Game {
       return;
     }
 
-    const weaponConfig = this._weapons[weaponName];
+    const weaponConfig = this._weaponManager.getWeaponConfig(weaponName);
 
     // если эффект тряски есть
     if (weaponConfig.cameraShake) {
-      this._services.vimp.triggerCameraShake(
+      this._userManager.activateCameraShake(
         targetGameId,
         weaponConfig.cameraShake,
       );
     }
 
     // если урон не передан, берётся из конфига оружия
-    const damage =
-      typeof damageValue === 'number' ? damageValue : weaponConfig?.damage || 0;
+    const finalDamage =
+      typeof damageValue === 'number' ? damageValue : weaponConfig.damage || 0;
 
-    const wasDestroyed = player.takeDamage(damage);
+    const currentHealth = this._services.panel.getCurrentValue(
+      targetGameId,
+      'health',
+    );
+    const newHealth = Math.max(0, currentHealth - finalDamage);
+    const newCondition = Math.ceil(newHealth / 10);
 
-    // если игрок был уничтожен именно этим уроном, сообщаем VIMP
-    if (wasDestroyed) {
+    this._services.panel.updateUser(targetGameId, 'health', newHealth, 'set');
+    this._playerConditions.set(targetGameId, newCondition);
+
+    // обработка уничтожения
+    if (newCondition === 0) {
+      player.reset();
+
+      // TODO
+      // если игрок был уничтожен именно этим уроном, сообщаем VIMP
       this._services.vimp.reportKill(targetGameId, shooterGameId);
     }
   }
@@ -468,11 +350,8 @@ class Game {
       const playerData = playerFixture.getBody().getUserData();
       const shotData = shotFixture.getBody().getUserData();
 
-      // Если это оружие взрывного типа (например, бомба),
-      // оно не должно уничтожаться при контакте, а только по таймеру.
-      const weaponConfig = this._weapons[shotData.weaponName];
-      if (weaponConfig && weaponConfig.type === 'explosive') {
-        continue; // Игнорируем контакт и переходим к следующему
+      if (shotData.type === 'explosive') {
+        continue;
       }
 
       // если тело снаряда уже в очереди на удаление, пропускаем
@@ -501,12 +380,7 @@ class Game {
 
       // если это был снаряд, нужно обновить данные для клиентов
       if (userData && userData.type === 'shot') {
-        this._shotsData.delete(userData.shotId);
-        this._shotIdGen.release(userData.shotId);
-
-        this._mergeShotOutcomeData({
-          [userData.weaponName]: { [userData.shotId]: null },
-        });
+        this._weaponManager.onShotContactDestruction(userData);
       }
 
       this._world.destroyBody(body);
@@ -515,108 +389,9 @@ class Game {
     this._bodiesToDestroy.clear();
   }
 
-  // вспомогательный метод для слияния данных об исходе пуль
-  _mergeShotOutcomeData(newData) {
-    for (const weaponName in newData) {
-      if (Object.hasOwn(newData, weaponName)) {
-        this._lastExpiredShotsData[weaponName] =
-          this._lastExpiredShotsData[weaponName] || {};
-
-        const data = newData[weaponName];
-
-        for (const shotId in data) {
-          if (Object.hasOwn(data, shotId)) {
-            this._lastExpiredShotsData[weaponName][shotId] = data[shotId];
-          }
-        }
-      }
-    }
-  }
-
-  // обрабатывает оружие, чье время жизни истекло (не hitscan оружие)
-  _processShotsExpiredByTime() {
-    const shotsInCurrentTick = this._shotsAtTime[this._currentStepTick];
-    const outcomeData = {};
-
-    for (let i = 0, len = shotsInCurrentTick.length; i < len; i += 1) {
-      const shotId = shotsInCurrentTick[i];
-      const shot = this._shotsData.get(shotId);
-
-      // если пуля все еще существует (не была уничтожена досрочно)
-      if (shot) {
-        const weaponName = shot.weaponName;
-        const weapon = this._weapons[weaponName];
-        const shotOutcomeId = weapon.shotOutcomeId;
-
-        // если у оружия есть эффект по истечению времени (например, взрыв)
-        if (shotOutcomeId) {
-          const explosionData = shot.detonate(
-            this._world,
-            this,
-            this._friendlyFire,
-          );
-
-          this._lastWeaponEffects[shotOutcomeId] =
-            this._lastWeaponEffects[shotOutcomeId] || [];
-          this._lastWeaponEffects[shotOutcomeId].push(explosionData);
-        }
-
-        this._world.destroyBody(shot.getBody());
-        this._shotsData.delete(shotId);
-        this._shotIdGen.release(shotId);
-
-        // помечаем исходный снаряд (бомбу) как удаленный
-        outcomeData[weaponName] = outcomeData[weaponName] || {};
-        outcomeData[weaponName][shotId] = null;
-      }
-    }
-
-    shotsInCurrentTick.length = 0; // очищаем текущий слот
-
-    // переходим к следующему слоту
-    this._currentStepTick =
-      (this._currentStepTick + 1) % this._maxShotTimeInSteps;
-
-    return outcomeData;
-  }
-
   // возвращает события (выстрелы, взрывы, удаление пуль)
   getEvents() {
-    const events = {};
-    let hasEvents = false;
-
-    // новые выстрелы
-    for (const key of this._activeWeaponKeys) {
-      const val = this._newShotsData[key];
-      events[key] = val;
-      hasEvents = true;
-
-      // пустые контейнеры для следующего тика
-      if (Array.isArray(val)) {
-        this._newShotsData[key] = [];
-      } else {
-        this._newShotsData[key] = {};
-      }
-    }
-
-    // очистка набора активных оружий для следующего тика
-    this._activeWeaponKeys.clear();
-
-    // исчезновение пуль
-    if (Object.keys(this._lastExpiredShotsData).length > 0) {
-      Object.assign(events, this._lastExpiredShotsData);
-      this._lastExpiredShotsData = {};
-      hasEvents = true;
-    }
-
-    // эффекты взрывов
-    if (Object.keys(this._lastWeaponEffects).length > 0) {
-      Object.assign(events, this._lastWeaponEffects);
-      this._lastWeaponEffects = {};
-      hasEvents = true;
-    }
-
-    return hasEvents ? events : null;
+    return this._weaponManager.getEvents();
   }
 
   // возвращает текущее состояние мира (игроки)
@@ -625,7 +400,7 @@ class Game {
 
     for (const player of this._playersData.values()) {
       const { model, gameId } = player;
-      const playerData = this._cachedPlayersData.get(gameId);
+      const playerData = [];
 
       if (playerData) {
         state[model] = state[model] || {};
@@ -636,102 +411,42 @@ class Game {
     return state;
   }
 
-  // возвращает полные данные всех игроков
-  getPlayersData() {
-    const gameData = {};
+  // возвращает список имён моделей, оружия, эффектов оружия
+  // для удаления на клиенте
+  getEntitiesToClear() {
+    return this._entitiesToClear;
+  }
+
+  // удаляет данные игроков и пуль (в начале раунда)
+  removePlayersAndShots() {
+    this._world.clearForces(); // сброс сил
+    this._accumulator = 0;
+    this._contactEvents = [];
+    this._bodiesToDestroy.clear();
+    this._playerConditions.clear();
+    this._weaponManager.clear();
 
     for (const player of this._playersData.values()) {
-      const { model, gameId } = player;
-
-      gameData[model] = gameData[model] || {};
-      gameData[model][gameId] = player.getData();
+      this._world.destroyBody(player.getBody());
     }
 
-    return gameData;
+    this._playersData.clear();
   }
 
-  // создает действие с оружием и возвращает объект снаряда
-  _createWeaponAction(gameId, weaponName, shotData) {
-    const weaponData = this._weapons[weaponName];
-    const lifetimeMs = weaponData.time;
-    const lifetimeSeconds = lifetimeMs / 1000.0;
-    let lifetimeInSteps = Math.ceil(lifetimeSeconds / this._timeStep);
+  // стирает данные игрового мира (при смене карты)
+  clear() {
+    this.removePlayersAndShots();
+    this._map.clear();
 
-    const player = this._playersData.get(gameId);
+    // удаления всех тел (если остались)
+    let body = this._world.getBodyList();
 
-    if (lifetimeInSteps < 1) {
-      lifetimeInSteps = 1;
+    while (body) {
+      const nextBody = body.getNext();
+
+      this._world.destroyBody(body);
+      body = nextBody;
     }
-
-    if (lifetimeInSteps >= this._maxShotTimeInSteps) {
-      lifetimeInSteps = this._maxShotTimeInSteps - 1;
-
-      if (lifetimeInSteps < 0) {
-        lifetimeInSteps = 0; // на случай если _maxShotTimeInSteps = 1
-      }
-    }
-
-    // новый ID для пули
-    const shotId = this._shotIdGen.next();
-
-    // слот, в который будет помещена пуля для удаления
-    const removalTick =
-      (this._currentStepTick + lifetimeInSteps) % this._maxShotTimeInSteps;
-
-    // создаем экземпляр снаряда (например, Bomb)
-    const shot = this._Factory(weaponData.constructor, {
-      weaponData,
-      position: shotData.bodyPosition,
-      userData: {
-        type: weaponData.type,
-        weaponName,
-        shotId,
-        gameId,
-        teamId: player.teamId,
-      },
-      world: this._world,
-    });
-
-    shot.shotId = shotId;
-    shot.weaponName = weaponName;
-
-    this._shotsData.set(shotId, shot);
-    this._shotsAtTime[removalTick].push(shotId);
-
-    return shot;
-  }
-
-  // удаляет данные игроков и пуль и возвращает список удалённых имён
-  removePlayersAndShots() {
-    return [
-      ...this._removePlayers(),
-      ...this._removeShots(),
-      ...Object.keys(this._hitscanWeapons),
-      ...this._weaponEffectList,
-    ];
-  }
-
-  // сбрасывает currentShotId,
-  // удаляет все пули и возвращает список удаленных имён
-  _removeShots() {
-    const weaponNameSet = new Set();
-
-    for (const shot of this._shotsData.values()) {
-      weaponNameSet.add(shot.weaponName);
-      this._world.destroyBody(shot.getBody());
-    }
-
-    this._shotsData.clear();
-    this._shotIdGen.reset(); // сброс генератора
-
-    // очистка кольцевого буфера
-    for (let i = 0; i < this._maxShotTimeInSteps; i += 1) {
-      this._shotsAtTime[i].length = 0;
-    }
-
-    this._currentStepTick = 0;
-
-    return [...weaponNameSet];
   }
 }
 

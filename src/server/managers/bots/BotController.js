@@ -117,14 +117,7 @@ class BotController {
   update(dt) {
     this.botData = this._game.getPlayer(this._gameId);
 
-    if (!this.botData || !this.botData.isAlive()) {
-      this._state === 'DEAD';
-      this.releaseAllKeys();
-      return;
-    }
-
-    const position = this.botData.getPosition();
-    this.vec2 = Vec2.clone(new Vec2(position[0], position[1]));
+    this.vec2 = Vec2.clone(this.botData.getPosition());
     this.body = this.botData.getBody();
 
     this._aiUpdateTimer -= dt;
@@ -200,13 +193,7 @@ class BotController {
     );
 
     if (this._target) {
-      const targetPos = this._game.getPosition(this._target.gameId);
-
-      if (!targetPos) {
-        return;
-      }
-
-      this._lastKnownPosition = new Vec2(targetPos[0], targetPos[1]);
+      this._lastKnownPosition = this._game.getPosition(this._target.gameId);
 
       const visible = this._botManager.hasLineOfSight(
         this.vec2,
@@ -251,13 +238,6 @@ class BotController {
    * в зависимости от текущего состояния бота.
    */
   _executeMovement() {
-    if (this._target && !this._game.isAlive(this._target.gameId)) {
-      this._target = null;
-      this._lastKnownPosition = null;
-      this._makeDecision();
-      return;
-    }
-
     if (this._state === 'ATTACKING' || this._state === 'NAVIGATING') {
       if (!this._target) {
         return;
@@ -348,19 +328,12 @@ class BotController {
     if (isStaticPoint) {
       targetPosition = target;
     } else {
-      const targetPosArray = this._game.getPosition(target);
+      targetPosition = this._game.getPosition(target);
 
-      if (!targetPosArray) {
-        return;
-      }
+      const targetBody = this._game.getPlayer(target).getBody();
 
-      targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
-      const targetBody = this._game.getPlayer(target)?.getBody();
-
-      if (targetBody) {
-        const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
-        targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
-      }
+      const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
+      targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
     }
 
     const directionToTarget = Vec2.sub(targetPosition, this.vec2);
@@ -486,24 +459,13 @@ class BotController {
    * @description Управляет прицеливанием и стрельбой бота.
    */
   _executeAimAndShoot() {
-    if (
-      this._repositionTimer > 0 ||
-      this._state !== 'ATTACKING' ||
-      !this._target ||
-      !this._game.isAlive(this._target.gameId)
-    ) {
+    if (this._repositionTimer > 0 || this._state !== 'ATTACKING') {
       this.setKeyState('gunLeft', false);
       this.setKeyState('gunRight', false);
       return;
     }
 
-    const targetPosArray = this._game.getPosition(this._target.gameId);
-
-    if (!targetPosArray) {
-      return;
-    }
-
-    const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
+    const targetPosition = this._game.getPosition(this._target.gameId);
 
     if (!this._botManager.hasLineOfSight(this.vec2, targetPosition)) {
       return;

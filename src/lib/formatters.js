@@ -23,11 +23,28 @@ export const formatMessage = (message = '', arr = []) => {
 };
 
 /**
+ * Округляет число до 1 знака после запятой.
+ * @param {number} value - Число для округления.
+ * @returns {number}
+ * @example
+ * roundTo1Decimal(10.567); // 10.6
+ */
+export const roundTo1Decimal = value => Math.round(value * 10) / 10;
+
+/**
  * Округляет число до 2-х знаков после запятой.
  * @param {number} value - Число для округления.
  * @returns {number}
  * @example
- * round(10.567);      // 10.57
- * round(10.567, 1);  // 10.6
+ * roundTo2Decimals(10.567); // 10.57
  */
 export const roundTo2Decimals = value => Math.round(value * 100) / 100;
+
+/**
+ * Округляет число до 4-х знаков после запятой.
+ * @param {number} value - Число для округления.
+ * @returns {number}
+ * @example
+ * roundTo4Decimals(10.56447); // 10.5645
+ */
+export const roundTo4Decimals = value => Math.round(value * 10000) / 10000;
