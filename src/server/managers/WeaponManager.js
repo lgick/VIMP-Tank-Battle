@@ -29,9 +29,9 @@ export default class WeaponManager {
     this._currentTime = 0;
   }
 
-  // возвращает список оружия
-  getWeaponList() {
-    return weaponList;
+  // возвращает список всех сущностей
+  getAllEntities() {
+    return Object.keys(weaponConfig);
   }
 
   // возвращает данные по оружию
@@ -191,7 +191,6 @@ export default class WeaponManager {
   _detonateProjectile(proj) {
     const pos = proj.body.getPosition();
     const nextConfig = weaponConfig[proj.nextWeapon];
-    const { type, radius, damage } = nextConfig;
 
     this._physicalSystem.despawn(proj.body); // удаление из физического мира
     this._idGenerator.release(proj.shotId); // освобождение id
@@ -201,6 +200,12 @@ export default class WeaponManager {
       modelId: proj.modelId,
       shotId: proj.shotId,
     });
+
+    if (!nextConfig) {
+      return;
+    }
+
+    const { type, radius, damage } = nextConfig;
 
     // если эффект взрыва
     if (type === 'aoe') {
