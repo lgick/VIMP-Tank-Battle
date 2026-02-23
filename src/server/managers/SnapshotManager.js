@@ -2,6 +2,12 @@
 
 let snapshotManager;
 
+// TODO ARRAYBUFFER
+// stash@{0}: WIP on refactor: bb6036e game
+// stash@{1}: WIP on refactor: c3dfdff game
+// https://chatgpt.com/c/698e4c64-50d0-832b-861f-7c005eebef28
+// https://aistudio.google.com/prompts/1PcQGomr1IH95JwrH0p4CyeKUel5TD1Iy
+
 class SnapshotManager {
   /**
    * @param {Game} game - Экземпляр игры (для получения данных)

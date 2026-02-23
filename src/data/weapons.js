@@ -1,4 +1,6 @@
-export default {
+const weaponList = ['w1', 'w2'];
+
+const weaponConfig = {
   // bullet
   w1: {
     type: 'hitscan',
@@ -7,7 +9,6 @@ export default {
     range: 1500, // максимальная дальность выстрела (в игровых юнитах)
     fireRate: 0.01, // кулдаун между выстрелами (0 - отсутствует)
     spread: 0, // разброс в радианах (0 для идеальной точности)
-    consumption: 1, // расход патронов за один выстрел
     cameraShake: {
       intensity: 20, // сила тряски (в пикселях)
       duration: 200, // продолжительность (в миллисекундах)
@@ -16,12 +17,24 @@ export default {
 
   // bomb
   w2: {
-    type: 'explosive',
-    constructor: 'Bomb',
+    type: 'physical',
     time: 300,
-    shotOutcomeId: 'w2e', // id конструктора для детонации бомбы
-    size: 8, // соотношение сторон 1:1
+    next: 'w3',
+    size: 8,
     fireRate: 0.1, // кулдаун (0 - отсутствует)
+    damping: {
+      linear: 1, // сопротивление при движении
+      angular: 30.0, // сопротивление вращению (при повороте)
+    },
+    fixture: {
+      density: 200, // плотность (0+)
+      friction: 0.5, // трение (0 - 1)
+      restitution: 0.1, // отскок при столкновении (0 - 1)
+    },
+  },
+
+  w3: {
+    type: 'aoe',
     damage: 70, // урон в эпицентре
     radius: 50, // радиус взрыва
     impulseMagnitude: 2000000, // сила импульса
@@ -31,3 +44,5 @@ export default {
     },
   },
 };
+
+export { weaponList, weaponConfig };

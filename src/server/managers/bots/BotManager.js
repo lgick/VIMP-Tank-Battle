@@ -21,8 +21,6 @@ class BotManager {
    */
   constructor(parts, userManager, game, panel, stat) {
     this._models = parts.models;
-    this._weapons = parts.weapons;
-
     this._userManager = userManager;
 
     this._game = game;
