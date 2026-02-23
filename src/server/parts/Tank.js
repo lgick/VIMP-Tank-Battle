@@ -1,7 +1,6 @@
 import BaseModel from './BaseModel.js';
-import { BoxShape, Vec2, Rot } from 'planck';
+import { BoxShape, Vec2 } from 'planck';
 import { lerp, degToRad, clamp } from '../../lib/math.js';
-import { roundTo2Decimals, roundTo4Decimals } from '../../lib/formatters.js';
 
 const FORWARD = new Vec2(1, 0);
 const RIGHT = new Vec2(0, 1);
@@ -113,48 +112,6 @@ class Tank extends BaseModel {
     body.setAngle(degToRad(angle));
   }
 
-  // получение позиции выстрела
-  _getMuzzlePosition() {
-    const body = this._body;
-    const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    const muzzleLocalOffsetX = this._width * 0.55;
-    const muzzleLocalOffsetY = 0;
-    const relPos = Rot.mulVec2(
-      new Rot(totalAngle),
-      new Vec2(muzzleLocalOffsetX, muzzleLocalOffsetY),
-    );
-
-    return Vec2.add(body.getPosition(), relPos);
-  }
-
-  // получение направления выстрела
-  _getFireDirection() {
-    const body = this._body;
-    const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    const directionVec = Rot.mulVec2(new Rot(totalAngle), FORWARD);
-
-    directionVec.normalize();
-
-    return directionVec;
-  }
-
-  // получение коэффициента скорости
-  _getSpeedRatio(currentForwardSpeed) {
-    let speedRatio = 0;
-
-    if (currentForwardSpeed > 0) {
-      speedRatio = clamp(currentForwardSpeed / this._maxForwardSpeed, 0, 1);
-    } else if (currentForwardSpeed < 0) {
-      speedRatio = clamp(
-        Math.abs(currentForwardSpeed / this._maxReverseSpeed),
-        0,
-        1,
-      );
-    }
-
-    return roundTo4Decimals(speedRatio);
-  }
-
   // обновление данных танка
   updateData(dt) {
     const keys = this.getKeysForProcessing();
@@ -217,20 +174,20 @@ class Tank extends BaseModel {
     // если огонь
     if (fire) {
       this._shotData = {
-        bodyPosition: body.getPosition(),
-        startPoint: this._getMuzzlePosition(),
-        direction: this._getFireDirection(),
+        position: body.getPosition(),
+        angle: body.getAngle() + body.gunRotation,
+        tankWidth: this._width,
       };
     }
 
+    // если игрок "давит на газ" - плавное увеличение до 1.0
     if (forward || back) {
-      // игрок "давит на газ" - плавное увеличение до 1.0
       this._engineThrottle = Math.min(
         1.0,
         this._engineThrottle + this._THROTTLE_INCREASE_RATE * dt,
       );
+      // иначе, игрок "отпустил газ" - плавное уменьшение до 0.0
     } else {
-      // игрок "отпустил газ" - плавное уменьшение до 0.0
       this._engineThrottle = Math.max(
         0.0,
         this._engineThrottle - this._THROTTLE_DECREASE_RATE * dt,
@@ -269,9 +226,7 @@ class Tank extends BaseModel {
 
     // если газ отпущен, применение активного торможения
     if (forceMagnitude === 0 && !forward && !back) {
-      const brakingForce =
-        -currentForwardSpeed * this._brakingFactor * this._mass;
-      forceMagnitude = brakingForce;
+      forceMagnitude = -currentForwardSpeed * this._brakingFactor * this._mass;
     }
 
     if (forceMagnitude !== 0) {
@@ -280,7 +235,17 @@ class Tank extends BaseModel {
     }
 
     // расчёт нагрузки на двигатель (_engineLoad) для звука
-    const speedRatio = this._getSpeedRatio(currentForwardSpeed);
+    let speedRatio = 0;
+
+    if (currentForwardSpeed > 0) {
+      speedRatio = clamp(currentForwardSpeed / this._maxForwardSpeed, 0, 1);
+    } else if (currentForwardSpeed < 0) {
+      speedRatio = clamp(
+        Math.abs(currentForwardSpeed / this._maxReverseSpeed),
+        0,
+        1,
+      );
+    }
 
     // нагрузка = намерение игрока + бонус за "напряжение"
     // напряжение - это разница между тем, как сильно игрок жмет газ,
@@ -362,20 +327,20 @@ class Tank extends BaseModel {
     return data;
   }
 
-  // возвращение состояния танка
+  // возвращает состояние танка
   getData() {
     const body = this._body;
     const pos = body.getPosition();
     const vel = body.getLinearVelocity();
 
     return [
-      roundTo2Decimals(pos.x),
-      roundTo2Decimals(pos.y),
-      roundTo2Decimals(body.getAngle()),
-      roundTo2Decimals(body.gunRotation),
-      roundTo2Decimals(vel.x),
-      roundTo2Decimals(vel.y),
-      roundTo2Decimals(this._engineLoad),
+      pos.x,
+      pos.y,
+      body.getAngle(),
+      body.gunRotation,
+      vel.x,
+      vel.y,
+      this._engineLoad,
     ];
   }
 }

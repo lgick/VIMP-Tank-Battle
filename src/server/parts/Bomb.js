@@ -1,5 +1,4 @@
 import { BoxShape, Vec2, AABB } from 'planck';
-import { roundTo1Decimal, roundTo2Decimals } from '../../lib/formatters.js';
 
 class Bomb {
   constructor(data) {
@@ -88,13 +87,7 @@ class Bomb {
     }
 
     // данные для визуализации взрыва на клиенте
-    const explosionData = [
-      roundTo1Decimal(bombPosition.x),
-      roundTo1Decimal(bombPosition.y),
-      radius,
-    ];
-
-    return explosionData;
+    return [bombPosition.x, bombPosition.y, radius];
   }
 
   getBody() {
@@ -102,16 +95,11 @@ class Bomb {
   }
 
   getData() {
-    const pos = this._body.getPosition();
+    const body = this._body;
+    const pos = body.getPosition();
     const { size, time } = this._weaponData;
 
-    return [
-      roundTo2Decimals(pos.x),
-      roundTo2Decimals(pos.y),
-      roundTo2Decimals(this._body.getAngle()),
-      size,
-      time,
-    ];
+    return [pos.x, pos.y, body.getAngle(), size, time];
   }
 
   update() {}

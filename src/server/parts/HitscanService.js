@@ -1,95 +1,110 @@
 import { Vec2 } from 'planck';
-import { roundTo1Decimal, roundTo2Decimals } from '../../lib/formatters.js';
+import { randomRange } from '../../lib/formatters.js';
 
 class HitscanService {
   constructor(data) {
-    // Убрана проверка "if (hitscanService) return..."
-    // Теперь Factory будет всегда создавать новый экземпляр при перезапуске игры,
-    // что гарантирует использование актуального data.world.
-
     this._world = data.world;
     this._weapons = data.weapons;
     this._game = data.game;
+
+    this._pStart = new Vec2(); // начало луча
+    this._pEnd = new Vec2(); // конец луча (макс. дальность)
+    this._hitPoint = new Vec2(); // точка попадания (результат)
+    this._impulseVec = new Vec2(); // вектор импульса для физики
   }
 
-  // обработка hitscan-выстрела
-  processShot(params) {
-    const {
-      gameId, // id стреляющего
-      weaponName, // имя оружия
-      startPoint, // точка начала
-      direction, // вектор направления
-      bodyPosition,
-    } = params;
-
+  // обрабатывает hitscan-выстрел
+  processShot(gameId, weaponName, shotData) {
+    const { position, angle, tankWidth } = shotData;
     const weaponConfig = this._weapons[weaponName];
+    const spread = weaponConfig.spread || 0;
     const range = weaponConfig.range || 1000;
     const impulseMagnitude = weaponConfig.impulseMagnitude || 0;
 
-    // конечная точка луча
-    const endPointRay = Vec2.add(startPoint, direction.mul(range));
+    // расчет угла с учетом разброса
+    let finalAngle = angle;
 
-    let closestHitFixture = null;
-    let hitPoint = null;
+    if (spread > 0) {
+      finalAngle += randomRange(-spread, spread);
+    }
+
+    // тригонометрия (1 раз за выстрел)
+    const cos = Math.cos(finalAngle);
+    const sin = Math.sin(finalAngle);
+
+    // вычисление точек старта и конца
+    // (дуло находится немного впереди центра танка)
+    const muzzleOffset = tankWidth * 0.55;
+
+    // start = center + offset * dir
+    this._pStart.x = position.x + cos * muzzleOffset;
+    this._pStart.y = position.y + sin * muzzleOffset;
+
+    // end = start + range * dir
+    this._pEnd.x = this._pStart.x + cos * range;
+    this._pEnd.y = this._pStart.y + sin * range;
+
+    let closestFixture = null;
     let closestFraction = 1.0;
 
     this._world.rayCast(
-      startPoint,
-      endPointRay,
+      this._pStart,
+      this._pEnd,
       (fixture, point, _normal, fraction) => {
-        // Игнорируем сенсоры (зоны подбора и т.д.)
         if (fixture.isSensor()) {
-          return -1.0;
+          return -1;
         }
 
-        closestHitFixture = fixture;
-        hitPoint = point.clone();
-        closestFraction = fraction;
+        // если дальше уже найденного, то игнор
+        if (fraction > closestFraction) {
+          return -1;
+        }
 
+        // новое ближайшее препятствие
+        closestFraction = fraction;
+        closestFixture = fixture;
+        this._hitPoint.set(point.x, point.y);
+
+        // обрезка луча до новой точки
         return fraction;
       },
     );
 
-    let actualImpactPoint = null;
-    // fraction < 1.0 означает, что луч во что-то уперся раньше конца
-    const wasHit = closestHitFixture !== null && closestFraction < 1.0;
+    const wasHit = closestFixture !== null; // попадание
+    let visEndX, visEndY; // визуальный конец трассера
 
     if (wasHit) {
-      actualImpactPoint = hitPoint;
-      const hitBody = closestHitFixture.getBody();
-      const hitUserData = hitBody.getUserData();
+      visEndX = this._hitPoint.x;
+      visEndY = this._hitPoint.y;
 
-      // применение импульса к динамическим телам
+      const hitBody = closestFixture.getBody();
+
+      // физический импульс (отталкивание)
       if (impulseMagnitude > 0 && hitBody.isDynamic()) {
-        const impulseVector = direction.mul(impulseMagnitude);
-        hitBody.applyLinearImpulse(impulseVector, hitPoint, true);
+        this._impulseVec.set(cos * impulseMagnitude, sin * impulseMagnitude);
+        hitBody.applyLinearImpulse(this._impulseVec, this._hitPoint, true);
       }
 
-      // нанесение урона (делегируется в Game)
-      if (hitUserData && hitUserData.type === 'player') {
-        this._game.applyDamage(hitUserData.gameId, gameId, weaponName);
+      const userData = hitBody.getUserData();
+
+      if (userData && userData.type === 'player') {
+        this._game.applyDamage(userData.gameId, gameId, weaponName);
       }
+      // иначе, если промах, трассер летит на максимальную дальность
+    } else {
+      visEndX = this._pEnd.x;
+      visEndY = this._pEnd.y;
     }
 
-    const endPoint = actualImpactPoint
-      ? {
-          x: roundTo1Decimal(actualImpactPoint.x),
-          y: roundTo1Decimal(actualImpactPoint.y),
-        }
-      : {
-          x: roundTo1Decimal(endPointRay.x),
-          y: roundTo1Decimal(endPointRay.y),
-        };
-
-    // возвращаем данные для отрисовки трассера
+    // данные для отрисовки трассера (ArrayBuffer)
     return [
-      roundTo2Decimals(startPoint.x),
-      roundTo2Decimals(startPoint.y),
-      endPoint.x,
-      endPoint.y,
-      roundTo2Decimals(bodyPosition.x),
-      roundTo2Decimals(bodyPosition.y),
-      wasHit,
+      this._pStart.x,
+      this._pStart.y,
+      visEndX,
+      visEndY,
+      position.x,
+      position.y,
+      wasHit ? 1 : 0,
     ];
   }
 }

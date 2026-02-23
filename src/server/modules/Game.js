@@ -2,7 +2,7 @@ import planck, { Vec2 } from 'planck';
 import Factory from '../../lib/factory.js';
 import constructors from '../parts/index.js';
 import WeaponManager from '../managers/WeaponManager.js';
-import { degToRad, roundTo2Decimals } from '../../lib/math.js';
+import { degToRad } from '../../lib/math.js';
 
 // Singleton Game
 
@@ -175,7 +175,7 @@ class Game {
     if (player) {
       const vec2Pos = player.getPosition();
 
-      return [roundTo2Decimals(vec2Pos.x), roundTo2Decimals(vec2Pos.y)];
+      return [vec2Pos.x, vec2Pos.y];
     }
 
     return [0, 0];
@@ -235,13 +235,18 @@ class Game {
           const consumption = weaponConfig.consumption || 1;
 
           // проверка наличия патронов
-          if (!panel.hasResources(gameId, weaponName, consumption)) {
-            return;
-          }
+          if (panel.hasResources(gameId, weaponName, consumption)) {
+            const fireResult = this._weaponManager.fire(
+              gameId,
+              player.teamId,
+              shotData,
+            );
 
-          // списание патронов
-          panel.updateUser(gameId, weaponName, consumption, 'decrement');
-          this._weaponManager.fire(gameId, player.teamId, shotData);
+            // если был огонь, списание патронов
+            if (fireResult) {
+              panel.updateUser(gameId, weaponName, consumption, 'decrement');
+            }
+          }
         }
       }
 
