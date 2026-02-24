@@ -16,11 +16,16 @@ export default class WeaponManager {
     this._idGenerator = new BinaryGenId(ID_FORMATS.UINT16);
     this._playersState = new Map();
 
-    // хранилище летящих снарядов
-    this._activeProjectiles = [];
+    // хранилище физических снарядов
+    this._physicals = [];
+    this._physicalBodyToIndex = new Map();
 
     // уничтоженные в текущем кадре физические объекты
     this._destroyedThisTick = [];
+
+    // очередь на детонацию
+    this._detonationQueue = [];
+    this._isDetonating = false;
 
     // эффекты (хитсканы, взрывы, выстрелы)
     this._effects = [];
@@ -63,6 +68,11 @@ export default class WeaponManager {
   // переключает оружие игрока вперед (direction = 1) или назад (direction = -1)
   switchWeapon(gameId, direction) {
     const state = this._playersState.get(gameId);
+
+    if (!state) {
+      return null;
+    }
+
     let index = state.activeIndex + direction;
 
     if (index < 0) {
@@ -85,20 +95,25 @@ export default class WeaponManager {
     // итерации по массиву с конца в начало,
     // чтобы при удалении элемента (splice или swap-pop)
     // индексы оставшихся необработанных элементов не сдвигались
-    for (let i = this._activeProjectiles.length - 1; i >= 0; i -= 1) {
-      const proj = this._activeProjectiles[i];
+    for (let i = this._physicals.length - 1; i >= 0; i -= 1) {
+      const proj = this._physicals[i];
 
-      // если время жизни вышло, детонация
+      // если время жизни вышло
       if (this._currentTime >= proj.detonationTime) {
-        this._detonateProjectile(proj);
-        this._removeProjectileAtIndex(i);
+        this._queueDetonation(proj, i);
       }
     }
   }
 
   // обрабатывает выстрел
   fire(gameId, shotData) {
-    const { ammo, nextFireTime, activeIndex } = this._playersState.get(gameId);
+    const state = this._playersState.get(gameId);
+
+    if (!state) {
+      return null;
+    }
+
+    const { ammo, nextFireTime, activeIndex } = state;
     const weaponName = weaponList[activeIndex];
     const config = weaponConfig[weaponName];
 
@@ -124,13 +139,20 @@ export default class WeaponManager {
     return { weaponName, count: ammo[weaponName] };
   }
 
-  // удаляет элемент из массива за O(1) (паттерн swap and pop)
-  _removeProjectileAtIndex(index) {
-    const last = this._activeProjectiles.pop();
+  // удаляет физический объект
+  _removePhysicalAtIndex(index) {
+    const lastIndex = this._physicals.length - 1;
+    const last = this._physicals[lastIndex];
 
-    // если удаляемый элемент не был последним, последний элемент на его место
-    if (index < this._activeProjectiles.length) {
-      this._activeProjectiles[index] = last;
+    const removed = this._physicals[index];
+
+    this._physicalBodyToIndex.delete(removed.body);
+
+    this._physicals.pop();
+
+    if (index < lastIndex) {
+      this._physicals[index] = last;
+      this._physicalBodyToIndex.set(last.body, index);
     }
   }
 
@@ -165,6 +187,7 @@ export default class WeaponManager {
   // обрабатывает физический снаряд
   _processPhysical(gameId, shotData, config, weaponName) {
     const shotId = this._idGenerator.next();
+    const index = this._physicals.length;
     const body = this._physicalSystem.spawn(
       // тело в движке planck.js
       shotData,
@@ -172,23 +195,26 @@ export default class WeaponManager {
       gameId,
       weaponName,
     );
-    const lifeTimeSeconds = config.time / 1000;
 
     // сохранение пули в активный массив,
     // чтобы update мог следить за ее временем жизни
-    this._activeProjectiles.push({
+    this._physicals.push({
       shotId,
       modelId: weaponName,
       body,
       size: config.size || 0,
-      detonationTime: this._currentTime + lifeTimeSeconds,
       shooterId: gameId,
       nextWeapon: config.next,
+      detonationTime: config.time
+        ? this._currentTime + config.time / 1000
+        : Infinity,
     });
+
+    this._physicalBodyToIndex.set(body, index);
   }
 
   // взрывает физический снаряд
-  _detonateProjectile(proj) {
+  _detonatePhysical(proj) {
     const pos = proj.body.getPosition();
     const nextConfig = weaponConfig[proj.nextWeapon];
 
@@ -217,36 +243,68 @@ export default class WeaponManager {
       });
 
       // поиск объектов в радиусе поражения
-      const targets = this._aoeSystem.process(pos, nextConfig);
+      const [players, projectiles] = this._aoeSystem.process(pos, nextConfig);
 
-      for (const target of targets) {
-        // урон падает линейно: чем дальше от эпицентра, тем меньше урон
-        const damageMultiplier = 1 - target.distance / radius;
-        const finalDamage = Math.max(1, Math.round(damage * damageMultiplier));
+      // урон игрокам
+      for (const player of players) {
+        const finalDamage = Math.max(1, Math.round(damage * player.falloff));
 
         this._game.applyDamage(
-          target.id,
+          player.id,
           proj.shooterId,
           proj.nextWeapon,
           finalDamage,
         );
       }
+
+      // детонация снарядов (цепная реакция)
+      for (const shot of projectiles) {
+        const shotConfig = weaponConfig[shot.weaponName];
+
+        // если разрешено взрываться при контакте
+        if (shotConfig.detonateOnImpact) {
+          this.explodePhysicalByBody(shot.body);
+        }
+      }
     }
   }
 
-  // взрыв пули при столкновении
-  // вызывается из Game.js (_processContactEvents) после шага физики
-  explodeProjectileByBody(body) {
-    for (let i = 0; i < this._activeProjectiles.length; i += 1) {
-      const proj = this._activeProjectiles[i];
+  // ставит в очередь на детонацию и запускает цикл
+  _queueDetonation(proj, index) {
+    // удаление снаряда из активных
+    this._removePhysicalAtIndex(index);
 
-      if (proj.body === body) {
-        this._detonateProjectile(proj);
-        this._removeProjectileAtIndex(i);
+    // постановка в очередь
+    this._detonationQueue.push(proj);
 
-        break;
-      }
+    // если цикл взрывов уже идет, выход
+    if (this._isDetonating) {
+      return;
     }
+
+    // если цикла нет, запуск
+    this._isDetonating = true;
+
+    while (this._detonationQueue.length > 0) {
+      const currentProj = this._detonationQueue.pop();
+
+      this._detonatePhysical(currentProj);
+    }
+
+    this._isDetonating = false;
+  }
+
+  // инициирует взрыв физического снаряда при физическом контакте
+  explodePhysicalByBody(body) {
+    const index = this._physicalBodyToIndex.get(body);
+
+    if (index === undefined) {
+      return;
+    }
+
+    const proj = this._physicals[index];
+
+    this._queueDetonation(proj, index);
   }
 
   // возвращает структурированные данные для запаковки в бинарный формат
@@ -254,8 +312,8 @@ export default class WeaponManager {
     const activePhysicals = [];
 
     // сбор актуальных данных по всем летящим снарядам (каждый тик)
-    for (let i = 0; i < this._activeProjectiles.length; i += 1) {
-      const proj = this._activeProjectiles[i];
+    for (let i = 0; i < this._physicals.length; i += 1) {
+      const proj = this._physicals[i];
       const pos = proj.body.getPosition();
 
       activePhysicals.push({
@@ -265,7 +323,6 @@ export default class WeaponManager {
         posY: pos.y,
         angle: proj.body.getAngle(),
         size: proj.size,
-        time: Math.max(0, proj.detonationTime - this._currentTime),
       });
     }
 
@@ -287,11 +344,12 @@ export default class WeaponManager {
     this._destroyedThisTick = [];
     this._effects = [];
 
-    for (const proj of this._activeProjectiles) {
+    for (const proj of this._physicals) {
       this._physicalSystem.despawn(proj.body);
     }
 
-    this._activeProjectiles = [];
+    this._physicals = [];
+    this._physicalBodyToIndex.clear();
     this._currentTime = 0;
     this._idGenerator.reset();
   }

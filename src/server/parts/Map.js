@@ -175,7 +175,7 @@ class Map {
       );
 
       body.setUserData({
-        type: 'map_object',
+        type: 'map_dynamic',
       });
 
       this._dynamicBodies.push([`d${i}`, body]);

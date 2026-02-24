@@ -421,7 +421,7 @@ class BotController {
           const userData = hitBody.getUserData();
 
           // если это динамический объект карты
-          if (userData && userData.type === 'map_object') {
+          if (userData && userData.type === 'map_dynamic') {
             dynamicObstacleInPath = true;
             return -1; // игнорирование, продолжение луча
           }

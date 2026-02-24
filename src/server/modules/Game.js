@@ -211,7 +211,9 @@ class Game {
             weaponChangeStatus,
           );
 
-          panel.setActiveWeapon(gameId, newWeapon);
+          if (newWeapon) {
+            panel.setActiveWeapon(gameId, newWeapon);
+          }
         }
 
         // получение данных (выстрелы)
@@ -332,7 +334,7 @@ class Game {
       const playerData = playerFixture.getBody().getUserData();
       const shotData = shotFixture.getBody().getUserData();
 
-      // TODO тут вызывается внеплановая детонация explodeProjectileByBody
+      // TODO тут вызывается внеплановая детонация explodePhysicalByBody
 
       this.applyDamage(playerData.gameId, shotData.gameId, shotData.weaponName);
     }

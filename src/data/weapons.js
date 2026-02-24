@@ -22,6 +22,8 @@ const weaponConfig = {
     next: 'w3',
     size: 8,
     fireRate: 0.1, // кулдаун (0 - отсутствует)
+    detonateOnImpact: true, // детонация при физическом воздействии
+    impulseMagnitude: 0, // импульс для скорости (бомба на месте спавна)
     damping: {
       linear: 1, // сопротивление при движении
       angular: 30.0, // сопротивление вращению (при повороте)
