@@ -5,13 +5,13 @@ import PhysicalSystem from './systems/PhysicalSystem.js';
 import AoESystem from './systems/AoESystem.js';
 
 export default class WeaponManager {
-  constructor(game, world, parts) {
+  constructor(game, world) {
     this._game = game;
     this._world = world;
 
-    this._hitscanSystem = new HitscanSystem(world, parts);
-    this._physicalSystem = new PhysicalSystem(world, parts);
-    this._aoeSystem = new AoESystem(world, parts);
+    this._physicalSystem = new PhysicalSystem(world);
+    this._aoeSystem = new AoESystem(world);
+    this._hitscanSystem = new HitscanSystem(world);
 
     this._idGenerator = new BinaryGenId(ID_FORMATS.UINT16);
     this._playersState = new Map();

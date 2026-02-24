@@ -27,6 +27,7 @@ const weaponConfig = {
       angular: 30.0, // сопротивление вращению (при повороте)
     },
     fixture: {
+      shape: 'box', // форма (box, circle)
       density: 200, // плотность (0+)
       friction: 0.5, // трение (0 - 1)
       restitution: 0.1, // отскок при столкновении (0 - 1)

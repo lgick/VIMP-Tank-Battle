@@ -72,8 +72,8 @@ class Game {
     // конструктор карт
     this._map = this._Factory(parts.mapConstructor, this._world);
 
-    // инициализация менеджера оружия
-    this._weaponManager = new WeaponManager(this, this._world, parts);
+    // менеджер оружия
+    this._weaponManager = new WeaponManager(this, this._world);
 
     // список сущностей для очистки
     this._entitiesToClear = [
