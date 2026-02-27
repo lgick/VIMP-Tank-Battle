@@ -25,7 +25,7 @@ export default class WeaponManager {
 
     // очередь на детонацию
     this._detonationQueue = [];
-    this._isDetonating = false;
+    this._detonationLocked = false;
 
     // эффекты (хитсканы, взрывы, выстрелы)
     this._effects = [];
@@ -92,6 +92,8 @@ export default class WeaponManager {
   update(dt) {
     this._currentTime += dt;
 
+    this._detonationLocked = true;
+
     // итерации по массиву с конца в начало,
     // чтобы при удалении элемента (splice или swap-pop)
     // индексы оставшихся необработанных элементов не сдвигались
@@ -100,9 +102,13 @@ export default class WeaponManager {
 
       // если время жизни вышло
       if (this._currentTime >= proj.detonationTime) {
-        this._queueDetonation(proj, i);
+        this._removePhysicalAtIndex(i);
+        this._detonationQueue.push(proj);
       }
     }
+
+    this._detonationLocked = false;
+    this._resolveDetonations();
   }
 
   // обрабатывает выстрел
@@ -269,29 +275,20 @@ export default class WeaponManager {
     }
   }
 
-  // ставит в очередь на детонацию и запускает цикл
-  _queueDetonation(proj, index) {
-    // удаление снаряда из активных
-    this._removePhysicalAtIndex(index);
-
-    // постановка в очередь
-    this._detonationQueue.push(proj);
-
-    // если цикл взрывов уже идет, выход
-    if (this._isDetonating) {
+  // запускает цикл детонаций
+  _resolveDetonations() {
+    // если есть блокировка детонаций
+    if (this._detonationLocked) {
       return;
     }
 
-    // если цикла нет, запуск
-    this._isDetonating = true;
+    this._detonationLocked = true;
 
     while (this._detonationQueue.length > 0) {
-      const currentProj = this._detonationQueue.pop();
-
-      this._detonatePhysical(currentProj);
+      this._detonatePhysical(this._detonationQueue.pop());
     }
 
-    this._isDetonating = false;
+    this._detonationLocked = false;
   }
 
   // инициирует взрыв физического снаряда при физическом контакте
@@ -304,7 +301,9 @@ export default class WeaponManager {
 
     const proj = this._physicals[index];
 
-    this._queueDetonation(proj, index);
+    this._removePhysicalAtIndex(index);
+    this._detonationQueue.push(proj);
+    this._resolveDetonations();
   }
 
   // возвращает структурированные данные для запаковки в бинарный формат
