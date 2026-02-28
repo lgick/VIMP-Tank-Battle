@@ -3,6 +3,14 @@ import { AABB, Vec2 } from 'planck';
 export default class AoESystem {
   constructor(world) {
     this._world = world;
+
+    // предаллокация всех векторов и AABB
+    this._lower = new Vec2(0, 0);
+    this._upper = new Vec2(0, 0);
+    this._aabb = new AABB(this._lower, this._upper);
+
+    // вектор для импульса
+    this._impulse = new Vec2(0, 0);
   }
 
   // находит цели в радиусе взрыва, применяет физический импульс
@@ -10,11 +18,12 @@ export default class AoESystem {
   process(pos, config) {
     const { radius, impulseMagnitude } = config;
 
-    // квадратная зона поиска (AABB) вокруг эпицентра взрыва
-    const aabb = new AABB(
-      new Vec2(pos.x - radius, pos.y - radius),
-      new Vec2(pos.x + radius, pos.y + radius),
-    );
+    // квадрат радиуса
+    const radiusSq = radius * radius;
+
+    // границы AABB
+    this._aabb.lowerBound.set(pos.x - radius, pos.y - radius);
+    this._aabb.upperBound.set(pos.x + radius, pos.y + radius);
 
     const players = [];
     const projectiles = [];
@@ -23,17 +32,18 @@ export default class AoESystem {
     const processedBodies = new Set();
 
     // поиск всех фикстур внутри AABB
-    this._world.queryAABB(aabb, fixture => {
+    this._world.queryAABB(this._aabb, fixture => {
       const body = fixture.getBody();
-      const userData = body.getUserData();
 
-      // игнорирование, если нет userData и статики (стены)
-      if (!userData || !body.isDynamic()) {
+      // если цель статична (стены) или уже обработана ранее
+      if (!body.isDynamic() || processedBodies.has(body)) {
         return true;
       }
 
-      // если эта цель уже обработана в этом взрыве
-      if (processedBodies.has(body)) {
+      const userData = body.getUserData();
+
+      // если нет userData
+      if (!userData) {
         return true;
       }
 
@@ -42,46 +52,44 @@ export default class AoESystem {
       // реальная дистанция (AABB - это квадрат, а взрыв - круг)
       const dx = targetPos.x - pos.x;
       const dy = targetPos.y - pos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      const distSq = dx * dx + dy * dy;
 
-      // если цель действительно находится в радиусе кругового взрыва
-      if (distance <= radius) {
-        processedBodies.add(body);
+      // если цель не находится в радиусе кругового взрыва
+      if (distSq > radiusSq) {
+        return true;
+      }
 
-        const falloff = 1 - distance / radius; // чем дальше, тем слабее
+      processedBodies.add(body);
 
-        // применение физического импульса (взрывная волна расталкивает цели)
-        if (impulseMagnitude && distance > 0) {
-          const actualImpulse = impulseMagnitude * falloff;
+      const distance = Math.sqrt(distSq);
+      const falloff = 1 - distance / radius; // чем дальше, тем слабее
 
-          // нормализация вектора направления от эпицентра к танку
-          const directionX = dx / distance;
-          const directionY = dy / distance;
+      // применение физического импульса (взрывная волна расталкивает цели)
+      if (impulseMagnitude && distance > 0) {
+        const actualImpulse = impulseMagnitude * falloff;
+        const scale = actualImpulse / distance;
 
-          const impulseVector = new Vec2(
-            directionX * actualImpulse,
-            directionY * actualImpulse,
-          );
+        // нормализация вектора направления от эпицентра к танку
+        this._impulse.set(dx * scale, dy * scale);
 
-          // толчок цели в центр его массы
-          body.applyLinearImpulse(impulseVector, body.getWorldCenter(), true);
-        }
+        // толчок цели в центр его массы
+        body.applyLinearImpulse(this._impulse, body.getWorldCenter(), true);
+      }
 
-        // сохранение данных для дальнейших действий
-        switch (userData.type) {
-          case 'player':
-            players.push({
-              gameId: userData.gameId,
-              falloff,
-            });
-            break;
-          case 'shot':
-            projectiles.push({
-              body,
-              weaponName: userData.weaponName,
-            });
-            break;
-        }
+      // сохранение данных для дальнейших действий
+      switch (userData.type) {
+        case 'player':
+          players.push({
+            id: userData.gameId,
+            falloff,
+          });
+          break;
+        case 'shot':
+          projectiles.push({
+            body,
+            weaponName: userData.weaponName,
+          });
+          break;
       }
 
       return true;
