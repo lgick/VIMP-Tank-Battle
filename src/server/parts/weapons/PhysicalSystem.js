@@ -1,13 +1,16 @@
 import { Vec2, BoxShape, Circle } from 'planck';
 
-const ZERO = new Vec2(0, 0);
-
 export default class PhysicalSystem {
   constructor(world) {
     this._world = world;
 
     // пул свободных физических тел для снарядов
     this._pool = [];
+
+    // предаллоцированные векторы
+    this._zero = new Vec2(0, 0);
+    this._position = new Vec2(0, 0);
+    this._impulse = new Vec2(0, 0);
   }
 
   // создает или достает из пула физическое тело снаряда
@@ -44,41 +47,48 @@ export default class PhysicalSystem {
       });
     }
 
-    // вычисление точки спавна
-    // (чтобы пуля не появилась внутри стреляющего танка)
-    // смещаем на половину ширины танка + радиус тела
-    const offset = shotData.tankWidth / 2 + config.size;
-    const spawnX = shotData.position.x + Math.cos(shotData.angle) * offset;
-    const spawnY = shotData.position.y + Math.sin(shotData.angle) * offset;
+    // сброс состояния
+    body.setLinearVelocity(this._zero);
+    body.setAngularVelocity(0);
 
-    body.setPosition(new Vec2(spawnX, spawnY));
-    body.setAngle(shotData.angle);
-
-    // настройка сопротивления среды
+    const fixtureConfig = config.fixture || {};
     const damping = config.damping || {};
-
-    body.setLinearDamping(damping.linear || 0);
-    body.setAngularDamping(damping.angular || 0);
-
-    const fixture = config.fixture;
     let shape;
+    let offset;
+    const cos = Math.cos(shotData.angle);
+    const sin = Math.sin(shotData.angle);
 
-    switch (fixture.shape) {
+    switch (fixtureConfig.shape) {
       case 'box':
         shape = new BoxShape(config.size / 2, config.size / 2);
+        offset = shotData.tankWidth / 2 + config.size / 2;
         break;
       case 'circle':
       default:
         // круг используется по умолчанию
         shape = new Circle(config.size);
+        offset = shotData.tankWidth / 2 + config.size;
         break;
     }
 
+    // вычисление точки спавна
+    // (чтобы пуля не появилась внутри стреляющего танка)
+    // смещаем на половину ширины танка + радиус тела
+    const spawnX = shotData.position.x + cos * offset;
+    const spawnY = shotData.position.y + sin * offset;
+
+    this._position.set(spawnX, spawnY);
+    body.setPosition(this._position);
+    body.setAngle(shotData.angle);
+
+    body.setLinearDamping(damping.linear ?? 0);
+    body.setAngularDamping(damping.angular ?? 0);
+
     // создание новой формы пули
     body.createFixture(shape, {
-      density: fixture.density || 1,
-      friction: fixture.friction || 0.2,
-      restitution: fixture.restitution || 0.1,
+      density: fixtureConfig.density ?? 1,
+      friction: fixtureConfig.friction ?? 0.2,
+      restitution: fixtureConfig.restitution ?? 0.1,
     });
 
     // привязка метаданных для обработки коллизий в Game.js
@@ -90,12 +100,13 @@ export default class PhysicalSystem {
     });
 
     if (config.impulseMagnitude) {
-      // применение импульса (выстрел)
-      // вектор направления умножается на силу из конфига
-      const dir = new Vec2(Math.cos(shotData.angle), Math.sin(shotData.angle));
-      const impulse = dir.mul(config.impulseMagnitude);
+      // предаллоцированный вектор для применения силы
+      this._impulse.set(
+        cos * config.impulseMagnitude,
+        sin * config.impulseMagnitude,
+      );
 
-      body.applyLinearImpulse(impulse, body.getWorldCenter(), true);
+      body.applyLinearImpulse(this._impulse, body.getWorldCenter(), true);
     }
 
     return body;
@@ -105,10 +116,6 @@ export default class PhysicalSystem {
   despawn(body) {
     // деактивация (исключение тела из расчетов физики)
     body.setActive(false);
-
-    // сброс скоростей от предыдущих полетов
-    body.setLinearVelocity(ZERO);
-    body.setAngularVelocity(0);
 
     // возвращение в пул для переиспользования
     this._pool.push(body);
