@@ -129,7 +129,6 @@ class Game {
       }),
     );
 
-    // TODO ammo
     this._weaponManager.registerPlayer(gameId);
     this._playerConditions.set(gameId, 10);
   }
@@ -242,6 +241,7 @@ class Game {
     }
   }
 
+  // TODO userManager cameraShake, getWeaponConfig
   //  применение урона игроку
   applyDamage(targetGameId, shooterGameId, weaponName, damageValue) {
     // если игрок не существует или уже уничтожен, ничего не делаем

@@ -1,5 +1,10 @@
 const weaponList = ['w1', 'w2'];
 
+const ammo = {
+  w1: 200,
+  w2: 100,
+};
+
 const weaponConfig = {
   // bullet
   w1: {
@@ -48,4 +53,4 @@ const weaponConfig = {
   },
 };
 
-export { weaponList, weaponConfig };
+export { weaponList, ammo, weaponConfig };

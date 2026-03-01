@@ -1,4 +1,4 @@
-import { weaponList, weaponConfig } from '../config/weapons.js';
+import { weaponList, ammo, weaponConfig } from '../config/weapons.js';
 import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
 import HitscanSystem from './systems/HitscanSystem.js';
 import PhysicalSystem from './systems/PhysicalSystem.js';
@@ -45,7 +45,7 @@ export default class WeaponManager {
   }
 
   // регистрирует нового игрока (при новом раунде)
-  registerPlayer(gameId, ammo = {}) {
+  registerPlayer(gameId) {
     const state = {
       activeIndex: 0, // индекс текущего выбранного оружия из weaponList
       ammo: {}, // текущий боезапас
@@ -134,8 +134,6 @@ export default class WeaponManager {
     // списание патронов
     ammo[weaponName] -= 1;
 
-    // TODO уточнить параметры
-    // TODO это вызывать в методах оружия?
     if (config.type === 'hitscan') {
       this._processHitscan(gameId, shotData, config, weaponName);
     } else if (config.type === 'physical') {
@@ -195,15 +193,13 @@ export default class WeaponManager {
     const shotId = this._idGenerator.next();
     const index = this._physicals.length;
     const body = this._physicalSystem.spawn(
-      // тело в движке planck.js
       shotData,
       config,
       gameId,
       weaponName,
     );
 
-    // сохранение пули в активный массив,
-    // чтобы update мог следить за ее временем жизни
+    // сохранение пули
     this._physicals.push({
       shotId,
       modelId: weaponName,
