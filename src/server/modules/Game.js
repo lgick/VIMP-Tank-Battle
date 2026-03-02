@@ -39,8 +39,8 @@ class Game {
 
     this._playerKeys = { keys, oneShotMask };
 
-    // хранилище состояния танков: gameId -> condition (10, 9, 8, .., 0)
-    this._playerConditions = new Map();
+    // хранилище здоровья танков: gameId -> health
+    this._playerHealth = new Map();
 
     // интервал фиксированного шага физики (в секундах, например 1 / 120)
     this._timeStep = timeStep;
@@ -130,7 +130,8 @@ class Game {
     );
 
     this._weaponManager.registerPlayer(gameId);
-    this._playerConditions.set(gameId, 10);
+    this._playerHealth.set(gameId, 100);
+    this._services.panel.updateUser(gameId, 'health', 100, 'set');
   }
 
   // удаляет игрока
@@ -141,7 +142,7 @@ class Game {
       this._world.destroyBody(player.getBody());
       this._playersData.delete(gameId);
       this._weaponManager.unregisterPlayer(gameId);
-      this._playerConditions.delete(gameId);
+      this._playerHealth.delete(gameId);
     }
   }
 
@@ -276,18 +277,14 @@ class Game {
     const finalDamage =
       typeof damageValue === 'number' ? damageValue : weaponConfig.damage || 0;
 
-    const currentHealth = this._services.panel.getCurrentValue(
-      targetGameId,
-      'health',
-    );
-    const newHealth = Math.max(0, currentHealth - finalDamage);
-    const newCondition = Math.ceil(newHealth / 10);
+    const health = this._playerHealth.get(targetGameId);
+    const newHealth = Math.max(0, health - finalDamage);
 
     this._services.panel.updateUser(targetGameId, 'health', newHealth, 'set');
-    this._playerConditions.set(targetGameId, newCondition);
+    this._playerHealth.set(targetGameId, newHealth);
 
     // обработка уничтожения
-    if (newCondition === 0) {
+    if (newHealth === 0) {
       player.reset();
 
       // TODO
@@ -376,7 +373,7 @@ class Game {
     this._world.clearForces(); // сброс сил
     this._accumulator = 0;
     this._contactEvents = [];
-    this._playerConditions.clear();
+    this._playerHealth.clear();
     this._weaponManager.clear();
 
     for (const player of this._playersData.values()) {
