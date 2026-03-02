@@ -340,7 +340,7 @@ class Tank extends BaseModel {
       body.gunRotation,
       vel.x,
       vel.y,
-      this._engineLoad,
+      this._engineLoad, // TODO сделать как Uint8
     ];
   }
 }

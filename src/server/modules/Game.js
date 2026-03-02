@@ -266,6 +266,7 @@ class Game {
     const weaponConfig = this._weaponManager.getWeaponConfig(weaponName);
 
     // если эффект тряски есть
+    // TODO передавать id Uint8
     if (weaponConfig.cameraShake) {
       this._userManager.activateCameraShake(
         targetGameId,
