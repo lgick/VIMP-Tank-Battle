@@ -45,6 +45,7 @@ export default class WeaponManager {
   }
 
   // регистрирует нового игрока (при новом раунде)
+  // TODO передавать ammo
   registerPlayer(gameId) {
     const state = {
       activeIndex: 0, // индекс текущего выбранного оружия из weaponList
