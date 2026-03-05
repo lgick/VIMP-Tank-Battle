@@ -1,17 +1,15 @@
 import maps from '../data/maps/index.js';
 import models from '../data/models.js';
-import weapons from '../data/weapons.js';
 
 export default {
   isDevMode: false, // флаг режима разработки
 
   maxPlayers: 30,
 
+  // TODO это изменится
   parts: {
     models,
-    weapons,
     mapConstructor: 'Map', // название конструктора карт
-    hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan
     friendlyFire: false, // огонь по своей команде
   },
 

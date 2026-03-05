@@ -1,464 +1,352 @@
+import { weaponList, ammo, weaponConfig } from '../config/weapons.js';
 import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
-import { randomRange } from '../../lib/math.js';
+import HitscanSystem from './systems/HitscanSystem.js';
+import PhysicalSystem from './systems/PhysicalSystem.js';
+import AoESystem from './systems/AoESystem.js';
 
 export default class WeaponManager {
-  constructor(game, factory, world, weaponsConfig, friendlyFire) {
+  constructor(game, world) {
     this._game = game;
-    this._Factory = factory;
     this._world = world;
-    this._weapons = weaponsConfig;
-    this._friendlyFire = friendlyFire;
 
-    this._weaponList = Object.keys(this._weapons);
+    this._physicalSystem = new PhysicalSystem(world);
+    this._aoeSystem = new AoESystem(world);
+    this._hitscanSystem = new HitscanSystem(world);
 
-    // основное хранилище: gameID -> weaponName
-    this._playerWeapons = new Map();
+    this._idGenerator = new BinaryGenId(ID_FORMATS.UINT16);
+    this._playersState = new Map();
 
-    // хранилище кулдаунов: gameID -> { [weaponName]: number }
-    this._playerCooldowns = new Map();
+    // хранилище физических снарядов
+    this._physicals = [];
+    this._physicalBodyToIndex = new Map();
 
-    this._shotIdGen = new BinaryGenId(ID_FORMATS.UINT16);
-    this._shotsData = new Map(); // хранилище активных физических пуль
+    // уничтоженные в текущем кадре физические объекты
+    this._destroyedThisTick = [];
 
-    this._hitscanService = null; // будет создан, если передан конструктор
+    // очередь на детонацию
+    this._detonationQueue = [];
+    this._detonationLocked = false;
 
-    // инициализация кольцевого буфера
-    this._timeStep = 0;
-    this._maxShotTimeInSteps = 1;
-    this._currentStepTick = 0;
-    this._shotsAtTime = [];
+    // эффекты (хитсканы, взрывы, выстрелы)
+    this._effects = [];
 
-    // буферы
-    this._newShotsData = {}; // новые выстрелы за тик
-    this._activeWeaponKeys = new Set(); // набор оружия
-    this._lastExpiredShotsData = {}; // пули, пропавшие сами или удаленные
-    this._lastWeaponEffects = {}; // взрывы
-
-    this._initContainers();
+    // абсолютное время симуляции сервера (в секундах)
+    this._currentTime = 0;
   }
 
-  // инициализация зависимостей
-  init(parts, timeStep) {
-    this._timeStep = timeStep;
-
-    // инит сервиса хитскана
-    const hitscanWeapons = Object.fromEntries(
-      Object.entries(this._weapons).filter(
-        ([, weaponData]) => weaponData.type === 'hitscan',
-      ),
-    );
-
-    this._hitscanService = this._Factory(parts.hitscanService, {
-      world: this._world,
-      weapons: hitscanWeapons,
-      game: this._game,
-    });
-
-    // инит списка эффектов для полного удаления
-    this._weaponEffectList = [
-      ...new Set(
-        Object.values(this._weapons)
-          .filter(weapon => weapon.shotOutcomeId)
-          .map(weapon => weapon.shotOutcomeId),
-      ),
-    ];
-
-    // инит буфера времени
-    this._setupTimeBuffer(timeStep);
+  // возвращает список всех сущностей
+  getAllEntities() {
+    return Object.keys(weaponConfig);
   }
 
-  // настройка кольцевого буфера
-  _setupTimeBuffer(timeStep) {
-    let maxLifetimeMs = 0;
-    // поиск максимального времени жизни снаряда
-    for (const name in this._weapons) {
-      if (this._weapons[name].type !== 'hitscan') {
-        const time = this._weapons[name].time || 0;
-
-        if (time > maxLifetimeMs) {
-          maxLifetimeMs = time;
-        }
-      }
-    }
-
-    const maxLifetimeWithBufferSeconds = (maxLifetimeMs / 1000.0) * 1.5;
-
-    this._maxShotTimeInSteps = Math.ceil(
-      maxLifetimeWithBufferSeconds / timeStep,
-    );
-
-    if (this._maxShotTimeInSteps < 1) {
-      this._maxShotTimeInSteps = 1;
-    }
-
-    this._currentStepTick = 0;
-    this._shotsAtTime = new Array(this._maxShotTimeInSteps)
-      .fill(null)
-      .map(() => []);
-  }
-
-  // инициализация структуры данных
-  _initContainers() {
-    this._newShotsData = {};
-
-    for (const name in this._weapons) {
-      if (this._weapons[name].type === 'hitscan') {
-        this._newShotsData[name] = [];
-      } else {
-        this._newShotsData[name] = {};
-      }
-    }
-  }
-
-  // регистрирует игрока с начальным оружием
-  registerPlayer(gameId, defaultWeapon) {
-    if (!this._weapons[defaultWeapon]) {
-      defaultWeapon = this._weaponList[0];
-    }
-
-    this._playerWeapons.set(gameId, defaultWeapon);
-
-    // инициализация объекта кулдаунов для нового игрока
-    // записи для всех видов оружия (0 - готово к стрельбе)
-    const cooldowns = {};
-
-    for (const key of this._weaponList) {
-      cooldowns[key] = 0;
-    }
-
-    this._playerCooldowns.set(gameId, cooldowns);
-  }
-
-  // удаляет данные игрока
-  unregisterPlayer(gameId) {
-    this._playerWeapons.delete(gameId);
-    this._playerCooldowns.delete(gameId);
-  }
-
-  // возвращает текущее оружие игрока и его параметры
-  getWeapon(gameId) {
-    const weaponName = this._playerWeapons.get(gameId);
-    const weaponConfig = this.getWeaponConfig(weaponName);
-
-    return [weaponName, weaponConfig];
-  }
-
-  // возвращает параметры оружия
+  // возвращает данные по оружию
   getWeaponConfig(weaponName) {
-    return this._weapons[weaponName];
+    return weaponConfig[weaponName];
   }
 
-  // меняет оружие на следующее/предыдущее
-  switchWeapon(gameId, direction) {
-    const currentWeapon = this._playerWeapons.get(gameId);
-
-    if (!currentWeapon) {
-      return;
-    }
-
-    let index = this._weaponList.indexOf(currentWeapon);
-
-    if (index === -1) {
-      index = 0;
-    }
-
-    index += direction;
-
-    if (index < 0) {
-      index = this._weaponList.length - 1;
-    } else if (index >= this._weaponList.length) {
-      index = 0;
-    }
-
-    const newWeapon = this._weaponList[index];
-
-    this._playerWeapons.set(gameId, newWeapon);
-
-    return newWeapon;
-  }
-
-  //  обработка выстрела
-  fire(gameId, teamId, shotData) {
-    const weaponName = this._playerWeapons.get(gameId);
-
-    if (!weaponName || !shotData) {
-      return;
-    }
-
-    const weaponConfig = this._weapons[weaponName];
-    const cooldowns = this._playerCooldowns.get(gameId);
-
-    // проверка кулдауна (fire rate)
-    if (cooldowns && cooldowns[weaponName] > 0) {
-      return;
-    }
-
-    // установка кулдауна
-    // если fireRate нет или 0, то кулдаун 0 (стреляет каждый тик)
-    if (cooldowns) {
-      cooldowns[weaponName] = weaponConfig.fireRate || 0;
-    }
-
-    // применение разброса (spread)
-    const direction = shotData.direction.clone();
-    const spread = weaponConfig.spread || 0;
-
-    if (spread > 0) {
-      // генерация случайного угола от -spread/2 до +spread/2
-      const angleOffset = randomRange(-spread, spread);
-
-      // поворот вектора:
-      // x' = x cos a - y sin a
-      // y' = x sin a + y cos a
-      const cosA = Math.cos(angleOffset);
-      const sinA = Math.sin(angleOffset);
-
-      const newX = direction.x * cosA - direction.y * sinA;
-      const newY = direction.x * sinA + direction.y * cosA;
-
-      direction.set(newX, newY);
-    }
-
-    const finalShotData = {
-      ...shotData,
-      direction,
+  // регистрирует нового игрока (при новом раунде)
+  // TODO передавать ammo
+  registerPlayer(gameId) {
+    const state = {
+      activeIndex: 0, // индекс текущего выбранного оружия из weaponList
+      ammo: {}, // текущий боезапас
+      nextFireTime: {}, // метки абсолютного времени для стрельбы (кулдаун)
     };
 
-    if (weaponConfig.type === 'hitscan') {
-      const shot = this._hitscanService.processShot({
-        ...finalShotData,
-        gameId,
-        weaponName,
-      });
-
-      this._newShotsData[weaponName].push(shot);
-    } else if (weaponConfig.type === 'explosive') {
-      const shot = this._createProjectile(
-        gameId,
-        teamId,
-        weaponName,
-        weaponConfig,
-        finalShotData,
-      );
-
-      this._newShotsData[weaponName][shot.shotId] = shot.getData();
+    for (const weaponName of weaponList) {
+      state.nextFireTime[weaponName] = 0;
+      state.ammo[weaponName] = ammo[weaponName] ?? 0;
     }
 
-    this._activeWeaponKeys.add(weaponName);
+    this._playersState.set(gameId, state);
   }
 
-  // создание снаряда
-  _createProjectile(gameId, teamId, weaponName, weaponConfig, shotData) {
-    // расчет времени жизни в шагах физики (тиках)
-    const lifetimeMs = weaponConfig.time; // время жизни в мс из конфига
-    const lifetimeSeconds = lifetimeMs / 1000.0;
+  // удаляет игрока
+  unregisterPlayer(gameId) {
+    this._playersState.delete(gameId);
+  }
 
-    // перевод секунд в количество обновлений (steps)
-    let lifetimeInSteps = Math.ceil(lifetimeSeconds / this._timeStep);
+  // переключает оружие игрока вперед (direction = 1) или назад (direction = -1)
+  switchWeapon(gameId, direction) {
+    const state = this._playersState.get(gameId);
 
-    // снаряд живет минимум 1 такт
-    if (lifetimeInSteps < 1) {
-      lifetimeInSteps = 1;
+    if (!state) {
+      return null;
     }
 
-    // ограничение времени жизни кольцевого буфера
-    // (защита от переполнения массива времени)
-    if (lifetimeInSteps >= this._maxShotTimeInSteps) {
-      lifetimeInSteps = this._maxShotTimeInSteps - 1;
+    let index = state.activeIndex + direction;
 
-      if (lifetimeInSteps < 0) {
-        lifetimeInSteps = 0;
+    if (index < 0) {
+      index = weaponList.length - 1;
+    }
+
+    if (index >= weaponList.length) {
+      index = 0;
+    }
+
+    state.activeIndex = index;
+
+    return weaponList[index];
+  }
+
+  // обновляет менеджера (вызывается каждый шаг физики)
+  update(dt) {
+    this._currentTime += dt;
+
+    this._detonationLocked = true;
+
+    // итерации по массиву с конца в начало,
+    // чтобы при удалении элемента (splice или swap-pop)
+    // индексы оставшихся необработанных элементов не сдвигались
+    for (let i = this._physicals.length - 1; i >= 0; i -= 1) {
+      const proj = this._physicals[i];
+
+      // если время жизни вышло
+      if (this._currentTime >= proj.detonationTime) {
+        this._removePhysicalAtIndex(i);
+        this._detonationQueue.push(proj);
       }
     }
 
-    const shotId = this._shotIdGen.next();
+    this._detonationLocked = false;
+    this._resolveDetonations();
+  }
 
-    // определение такта (тика), на котором снаряд должен исчезнуть
-    const removalTick =
-      (this._currentStepTick + lifetimeInSteps) % this._maxShotTimeInSteps;
+  // обрабатывает выстрел
+  fire(gameId, shotData) {
+    const state = this._playersState.get(gameId);
 
-    // создание экземпляра снаряда
-    const shot = this._Factory(weaponConfig.constructor, {
-      weaponData: weaponConfig,
-      position: shotData.bodyPosition,
-      world: this._world,
-      userData: {
-        type: weaponConfig.type,
-        weaponName,
-        shotId,
-        gameId,
-        teamId,
-      },
+    if (!state) {
+      return null;
+    }
+
+    const { ammo, nextFireTime, activeIndex } = state;
+    const weaponName = weaponList[activeIndex];
+    const config = weaponConfig[weaponName];
+
+    // если время для выстрела ещё не пришло (кулдаун) или патронов нет
+    if (this._currentTime < nextFireTime[weaponName] || ammo[weaponName] < 1) {
+      return null;
+    }
+
+    // таймер для следующего выстрела
+    nextFireTime[weaponName] = this._currentTime + config.fireRate;
+
+    // списание патронов
+    ammo[weaponName] -= 1;
+
+    if (config.type === 'hitscan') {
+      this._processHitscan(gameId, shotData, config, weaponName);
+    } else if (config.type === 'physical') {
+      this._processPhysical(gameId, shotData, config, weaponName);
+    }
+
+    return { weaponName, count: ammo[weaponName] };
+  }
+
+  // удаляет физический объект
+  _removePhysicalAtIndex(index) {
+    const lastIndex = this._physicals.length - 1;
+    const last = this._physicals[lastIndex];
+
+    const removed = this._physicals[index];
+
+    this._physicalBodyToIndex.delete(removed.body);
+
+    this._physicals.pop();
+
+    if (index < lastIndex) {
+      this._physicals[index] = last;
+      this._physicalBodyToIndex.set(last.body, index);
+    }
+  }
+
+  // обрабатывает лучевое оружие
+  _processHitscan(gameId, shotData, config, weaponName) {
+    const result = this._hitscanSystem.fire(shotData, config, gameId);
+
+    // добавление эффекта хитскана
+    this._effects.push({
+      weapon: weaponName,
+      startX: shotData.position.x,
+      startY: shotData.position.y,
+      endX: result.hit
+        ? result.point.x
+        : shotData.position.x + Math.cos(shotData.angle) * config.range,
+      endY: result.hit
+        ? result.point.y
+        : shotData.position.y + Math.sin(shotData.angle) * config.range,
     });
 
-    // привязка метаданных к объекту
-    shot.shotId = shotId;
-    shot.weaponName = weaponName;
-
-    // сохранение в структуры данных
-    this._shotsData.set(shotId, shot);
-    this._shotsAtTime[removalTick].push(shotId);
-
-    return shot;
-  }
-
-  // обновление каждый тик игры
-  update(dt) {
-    // обработка исчезновения пуль по таймеру
-    this._processShotsExpiredByTime();
-
-    // обновление кулдаунов оружия
-    for (const cooldowns of this._playerCooldowns.values()) {
-      for (const weaponKey in cooldowns) {
-        if (cooldowns[weaponKey] > 0) {
-          cooldowns[weaponKey] -= dt;
-
-          if (cooldowns[weaponKey] < 0) {
-            cooldowns[weaponKey] = 0;
-          }
-        }
-      }
+    // если луч во что-то попал
+    if (result.hit && result.targetId !== null) {
+      this._game.applyDamage(
+        result.targetId,
+        gameId,
+        weaponName,
+        config.damage,
+      );
     }
   }
 
-  // проверка таймеров снарядов
-  _processShotsExpiredByTime() {
-    const shotsInCurrentTick = this._shotsAtTime[this._currentStepTick];
+  // обрабатывает физический снаряд
+  _processPhysical(gameId, shotData, config, weaponName) {
+    const shotId = this._idGenerator.next();
+    const index = this._physicals.length;
+    const body = this._physicalSystem.spawn(
+      shotData,
+      config,
+      gameId,
+      weaponName,
+    );
 
-    for (let i = 0; i < shotsInCurrentTick.length; i += 1) {
-      const shotId = shotsInCurrentTick[i];
-      const shot = this._shotsData.get(shotId);
+    // сохранение пули
+    this._physicals.push({
+      shotId,
+      modelId: weaponName,
+      body,
+      size: config.size || 0,
+      shooterId: gameId,
+      nextWeapon: config.next,
+      detonationTime: config.time
+        ? this._currentTime + config.time / 1000
+        : Infinity,
+    });
 
-      // если пуля есть (не уничтожена о стену/игрока ранее)
-      if (shot) {
-        const weaponName = shot.weaponName;
-        const weapon = this._weapons[weaponName];
-
-        // взрыв по таймеру
-        if (weapon.shotOutcomeId) {
-          const explosionData = shot.detonate(
-            this._world,
-            this._game,
-            this._friendlyFire,
-          );
-
-          this._registerEffect(weapon.shotOutcomeId, explosionData);
-        }
-
-        // физическое удаление
-        this._world.destroyBody(shot.getBody());
-        this._shotsData.delete(shotId);
-        this._shotIdGen.release(shotId);
-
-        // запись об удалении
-        this._mergeShotOutcomeData({
-          [weaponName]: { [shotId]: null },
-        });
-      }
-    }
-
-    // очистка слота и переход
-    shotsInCurrentTick.length = 0;
-    this._currentStepTick =
-      (this._currentStepTick + 1) % this._maxShotTimeInSteps;
+    this._physicalBodyToIndex.set(body, index);
   }
 
-  // удаление, когда пуля попадает в игрока (физическая коллизия)
-  onShotContactDestruction(userData) {
-    if (!userData || !userData.shotId) {
+  // взрывает физический снаряд
+  _detonatePhysical(proj) {
+    const pos = proj.body.getPosition();
+    const nextConfig = weaponConfig[proj.nextWeapon];
+
+    this._physicalSystem.despawn(proj.body); // удаление из физического мира
+    this._idGenerator.release(proj.shotId); // освобождение id
+
+    // запись в список уничтоженных для отправки
+    this._destroyedThisTick.push({
+      modelId: proj.modelId,
+      shotId: proj.shotId,
+    });
+
+    if (!nextConfig) {
       return;
     }
 
-    this._shotsData.delete(userData.shotId);
-    this._shotIdGen.release(userData.shotId);
+    const { type, radius, damage } = nextConfig;
 
-    this._mergeShotOutcomeData({
-      [userData.weaponName]: { [userData.shotId]: null },
-    });
-  }
+    // если эффект взрыва
+    if (type === 'aoe') {
+      this._effects.push({
+        weapon: proj.nextWeapon,
+        posX: pos.x,
+        posY: pos.y,
+        radius,
+      });
 
-  // добавление эффектов (взрывов)
-  _registerEffect(outcomeId, data) {
-    this._lastWeaponEffects[outcomeId] =
-      this._lastWeaponEffects[outcomeId] || [];
-    this._lastWeaponEffects[outcomeId].push(data);
-  }
+      // поиск объектов в радиусе поражения
+      const [players, projectiles] = this._aoeSystem.process(pos, nextConfig);
 
-  _mergeShotOutcomeData(newData) {
-    for (const weaponName in newData) {
-      this._lastExpiredShotsData[weaponName] =
-        this._lastExpiredShotsData[weaponName] || {};
-      Object.assign(
-        this._lastExpiredShotsData[weaponName],
-        newData[weaponName],
-      );
-    }
-  }
+      // урон игрокам
+      for (const player of players) {
+        const finalDamage = Math.max(1, Math.round(damage * player.falloff));
 
-  // сбор данных для отправки по сети
-  getEvents() {
-    const events = {};
-    let hasEvents = false;
+        this._game.applyDamage(
+          player.id,
+          proj.shooterId,
+          proj.nextWeapon,
+          finalDamage,
+        );
+      }
 
-    // новые выстрелы
-    for (const key of this._activeWeaponKeys) {
-      events[key] = this._newShotsData[key];
-      hasEvents = true;
+      // детонация снарядов (цепная реакция)
+      for (const shot of projectiles) {
+        const shotConfig = weaponConfig[shot.weaponName];
 
-      // сброс
-      if (Array.isArray(events[key])) {
-        this._newShotsData[key] = [];
-      } else {
-        this._newShotsData[key] = {};
+        // если разрешено взрываться при контакте
+        if (shotConfig.detonateOnImpact) {
+          this.explodePhysicalByBody(shot.body);
+        }
       }
     }
-
-    this._activeWeaponKeys.clear();
-
-    // удаления / тайм-ауты
-    if (Object.keys(this._lastExpiredShotsData).length > 0) {
-      Object.assign(events, this._lastExpiredShotsData);
-      this._lastExpiredShotsData = {};
-      hasEvents = true;
-    }
-
-    // эффекты
-    if (Object.keys(this._lastWeaponEffects).length > 0) {
-      Object.assign(events, this._lastWeaponEffects);
-      this._lastWeaponEffects = {};
-      hasEvents = true;
-    }
-
-    return hasEvents ? events : null;
   }
 
-  // полная очистка
+  // запускает цикл детонаций
+  _resolveDetonations() {
+    // если есть блокировка детонаций
+    if (this._detonationLocked) {
+      return;
+    }
+
+    this._detonationLocked = true;
+
+    while (this._detonationQueue.length > 0) {
+      this._detonatePhysical(this._detonationQueue.pop());
+    }
+
+    this._detonationLocked = false;
+  }
+
+  // инициирует взрыв физического снаряда при физическом контакте
+  explodePhysicalByBody(body) {
+    const index = this._physicalBodyToIndex.get(body);
+
+    if (index === undefined) {
+      return;
+    }
+
+    const proj = this._physicals[index];
+
+    this._removePhysicalAtIndex(index);
+    this._detonationQueue.push(proj);
+    this._resolveDetonations();
+  }
+
+  // возвращает структурированные данные для запаковки в бинарный формат
+  consumeData() {
+    const activePhysicals = [];
+
+    // сбор актуальных данных по всем летящим снарядам (каждый тик)
+    for (let i = 0; i < this._physicals.length; i += 1) {
+      const proj = this._physicals[i];
+      const pos = proj.body.getPosition();
+
+      activePhysicals.push({
+        modelId: proj.modelId,
+        shotId: proj.shotId,
+        posX: pos.x,
+        posY: pos.y,
+        angle: proj.body.getAngle(),
+        size: proj.size,
+      });
+    }
+
+    const result = {
+      physical: activePhysicals, // активные физические объекты
+      destroyed: this._destroyedThisTick, // уничтоженные в текущем кадре
+      effects: this._effects, // эффекты (взрывы, лучи)
+    };
+
+    this._destroyedThisTick = [];
+    this._effects = [];
+
+    return result;
+  }
+
+  // полная очистка менеджера при завершении раунда или смене карты
   clear() {
-    // удаление активных пуль
-    for (const shot of this._shotsData.values()) {
-      if (shot.getBody()) {
-        this._world.destroyBody(shot.getBody());
-      }
+    this._playersState.clear();
+    this._destroyedThisTick = [];
+    this._effects = [];
+
+    for (const proj of this._physicals) {
+      this._physicalSystem.despawn(proj.body);
     }
 
-    this._shotsData.clear();
-    this._shotIdGen.reset();
-    this._playerWeapons.clear();
-
-    // очистка буферов
-    for (let i = 0; i < this._maxShotTimeInSteps; i += 1) {
-      this._shotsAtTime[i].length = 0;
-    }
-
-    this._currentStepTick = 0;
-    this._lastExpiredShotsData = {};
-    this._lastWeaponEffects = {};
-    this._activeWeaponKeys.clear();
-    this._initContainers();
-  }
-
-  // возвращает список названий эффектов оружия
-  getWeaponEffectList() {
-    return this._weaponEffectList;
+    this._physicals = [];
+    this._physicalBodyToIndex.clear();
+    this._currentTime = 0;
+    this._idGenerator.reset();
   }
 }

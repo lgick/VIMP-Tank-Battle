@@ -21,8 +21,6 @@ class BotManager {
    */
   constructor(parts, userManager, game, panel, stat) {
     this._models = parts.models;
-    this._weapons = parts.weapons;
-
     this._userManager = userManager;
 
     this._game = game;
@@ -95,6 +93,7 @@ class BotManager {
    * @returns {boolean}
    */
   hasResources(gameId, weaponName, value) {
+    // TODO метод удалён
     return this._panel.hasResources(gameId, weaponName, value);
   }
 

@@ -2,7 +2,7 @@ import planck, { Vec2 } from 'planck';
 import Factory from '../../lib/factory.js';
 import constructors from '../parts/index.js';
 import WeaponManager from '../managers/WeaponManager.js';
-import { degToRad, roundTo2Decimals } from '../../lib/math.js';
+import { degToRad } from '../../lib/math.js';
 
 // Singleton Game
 
@@ -21,7 +21,6 @@ class Game {
 
     this._userManager = userManager;
     this._models = parts.models;
-    this._weapons = parts.weapons;
 
     const keys = {};
     let oneShotMask = 0;
@@ -40,8 +39,8 @@ class Game {
 
     this._playerKeys = { keys, oneShotMask };
 
-    // хранилище состояния танков: gameId -> condition (10, 9, 8, .., 0)
-    this._playerConditions = new Map();
+    // хранилище здоровья танков: gameId -> health
+    this._playerHealth = new Map();
 
     // интервал фиксированного шага физики (в секундах, например 1 / 120)
     this._timeStep = timeStep;
@@ -56,9 +55,6 @@ class Game {
 
     // список контактов для обработки после шага физики
     this._contactEvents = [];
-
-    // очередь тел на удаление
-    this._bodiesToDestroy = new Set();
 
     this._world = new planck.World({
       gravity: { x: 0, y: 0 },
@@ -76,22 +72,13 @@ class Game {
     // конструктор карт
     this._map = this._Factory(parts.mapConstructor, this._world);
 
-    // инициализация менеджера оружия
-    this._weaponManager = new WeaponManager(
-      this,
-      this._Factory,
-      this._world,
-      this._weapons,
-      this._friendlyFire,
-    );
-
-    this._weaponManager.init(parts, this._timeStep);
+    // менеджер оружия
+    this._weaponManager = new WeaponManager(this, this._world);
 
     // список сущностей для очистки
     this._entitiesToClear = [
       ...Object.keys(this._models),
-      ...Object.keys(this._weapons),
-      ...this._weaponManager.getWeaponEffectList(),
+      ...this._weaponManager.getAllEntities(),
     ];
 
     // данные игроков
@@ -142,8 +129,9 @@ class Game {
       }),
     );
 
-    this._weaponManager.registerPlayer(gameId, modelData.currentWeapon);
-    this._playerConditions.set(gameId, 10);
+    this._weaponManager.registerPlayer(gameId);
+    this._playerHealth.set(gameId, 100);
+    this._services.panel.updateUser(gameId, 'health', 100, 'set');
   }
 
   // удаляет игрока
@@ -154,7 +142,7 @@ class Game {
       this._world.destroyBody(player.getBody());
       this._playersData.delete(gameId);
       this._weaponManager.unregisterPlayer(gameId);
-      this._playerConditions.delete(gameId);
+      this._playerHealth.delete(gameId);
     }
   }
 
@@ -175,7 +163,7 @@ class Game {
     if (player) {
       const vec2Pos = player.getPosition();
 
-      return [roundTo2Decimals(vec2Pos.x), roundTo2Decimals(vec2Pos.y)];
+      return [vec2Pos.x, vec2Pos.y];
     }
 
     return [0, 0];
@@ -223,25 +211,21 @@ class Game {
             weaponChangeStatus,
           );
 
-          panel.setActiveWeapon(gameId, newWeapon);
+          if (newWeapon) {
+            panel.setActiveWeapon(gameId, newWeapon);
+          }
         }
 
         // получение данных (выстрелы)
         const shotData = player.consumeShotData();
 
         if (shotData) {
-          const [weaponName, weaponConfig] =
-            this._weaponManager.getWeapon(gameId);
-          const consumption = weaponConfig.consumption || 1;
+          const fireResult = this._weaponManager.fire(gameId, shotData);
 
-          // проверка наличия патронов
-          if (!panel.hasResources(gameId, weaponName, consumption)) {
-            return;
+          // если был огонь, списание патронов
+          if (fireResult) {
+            panel.updateUser(gameId, fireResult.weaponName, fireResult.count);
           }
-
-          // списание патронов
-          panel.updateUser(gameId, weaponName, consumption, 'decrement');
-          this._weaponManager.fire(gameId, player.teamId, shotData);
         }
       }
 
@@ -253,12 +237,12 @@ class Game {
       );
 
       this._processContactEvents(); // обработка коллизий
-      this._destroyQueuedBodies(); // удаление тел
 
       this._accumulator -= this._timeStep;
     }
   }
 
+  // TODO userManager cameraShake, getWeaponConfig
   //  применение урона игроку
   applyDamage(targetGameId, shooterGameId, weaponName, damageValue) {
     // если игрок не существует или уже уничтожен, ничего не делаем
@@ -282,6 +266,7 @@ class Game {
     const weaponConfig = this._weaponManager.getWeaponConfig(weaponName);
 
     // если эффект тряски есть
+    // TODO передавать id Uint8
     if (weaponConfig.cameraShake) {
       this._userManager.activateCameraShake(
         targetGameId,
@@ -293,18 +278,14 @@ class Game {
     const finalDamage =
       typeof damageValue === 'number' ? damageValue : weaponConfig.damage || 0;
 
-    const currentHealth = this._services.panel.getCurrentValue(
-      targetGameId,
-      'health',
-    );
-    const newHealth = Math.max(0, currentHealth - finalDamage);
-    const newCondition = Math.ceil(newHealth / 10);
+    const health = this._playerHealth.get(targetGameId);
+    const newHealth = Math.max(0, health - finalDamage);
 
     this._services.panel.updateUser(targetGameId, 'health', newHealth, 'set');
-    this._playerConditions.set(targetGameId, newCondition);
+    this._playerHealth.set(targetGameId, newHealth);
 
     // обработка уничтожения
-    if (newCondition === 0) {
+    if (newHealth === 0) {
       player.reset();
 
       // TODO
@@ -314,6 +295,7 @@ class Game {
   }
 
   // обрабатывает события контактов, накопленные за шаг физики
+  // TODO добавить обработку коллизий
   _processContactEvents() {
     for (const contact of this._contactEvents) {
       const fixtureA = contact.fixtureA;
@@ -350,43 +332,13 @@ class Game {
       const playerData = playerFixture.getBody().getUserData();
       const shotData = shotFixture.getBody().getUserData();
 
-      if (shotData.type === 'explosive') {
-        continue;
-      }
-
-      // если тело снаряда уже в очереди на удаление, пропускаем
-      if (this._bodiesToDestroy.has(shotFixture.getBody())) {
-        continue;
-      }
+      // TODO тут вызывается внеплановая детонация explodePhysicalByBody
 
       this.applyDamage(playerData.gameId, shotData.gameId, shotData.weaponName);
-
-      // помечаем снаряд на удаление, а не удаляем сразу
-      this._bodiesToDestroy.add(shotFixture.getBody());
     }
 
     // очищаем массив для следующего шага
     this._contactEvents = [];
-  }
-
-  // уничтожает тела, находящиеся в очереди на удаление
-  _destroyQueuedBodies() {
-    if (this._bodiesToDestroy.size === 0) {
-      return;
-    }
-
-    for (const body of this._bodiesToDestroy) {
-      const userData = body.getUserData();
-
-      // если это был снаряд, нужно обновить данные для клиентов
-      if (userData && userData.type === 'shot') {
-        this._weaponManager.onShotContactDestruction(userData);
-      }
-
-      this._world.destroyBody(body);
-    }
-
-    this._bodiesToDestroy.clear();
   }
 
   // возвращает события (выстрелы, взрывы, удаление пуль)
@@ -422,8 +374,7 @@ class Game {
     this._world.clearForces(); // сброс сил
     this._accumulator = 0;
     this._contactEvents = [];
-    this._bodiesToDestroy.clear();
-    this._playerConditions.clear();
+    this._playerHealth.clear();
     this._weaponManager.clear();
 
     for (const player of this._playersData.values()) {
