@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import { v1 as uuidv1 } from 'uuid';
+import BinaryGenId, { ID_FORMATS } from '../../lib/BinaryGenId.js';
 import security from '../../lib/security.js';
 import waiting from '../../lib/waiting.js';
 import { validateAuth } from '../../lib/validators.js';
@@ -26,8 +26,10 @@ const vimp = new VIMP(config.get('game'), socketManager);
 const auth = config.get('auth');
 const cConf = config.get('client');
 
-const sessions = {}; // { '0ff81720-e2b2-11e3-9614-018be5de670e': ws }
-const ips = {}; // { '127.0.0.1': '0ff81720-e2b2-11e3-9614-018be5de670e' }
+const sessions = new Map(); // { gameId: ws }
+const ips = {}; // { '127.0.0.1': gameId }
+
+const gameIdGen = new BinaryGenId(ID_FORMATS.UINT8);
 
 export default server => {
   const wss = new WebSocketServer({ server });
@@ -50,10 +52,12 @@ export default server => {
         return;
       }
 
-      console.log(`[${new Date().toISOString()}] User connected: ${address}`);
+      const gameId = gameIdGen.next();
+      const date = new Date().toISOString();
+
+      console.log(`[${date}] User connected: ${address} (GameID: ${gameId})`);
 
       const socketMethods = [];
-      let gameId;
 
       ws.socket = {
         // отправляет данные
@@ -80,8 +84,6 @@ export default server => {
         },
       };
 
-      const id = (ws.socket.id = uuidv1());
-
       ws.socket.socketMethods = [
         false, // CONFIG_READY
         false, // AUTH_RESPONSE
@@ -94,31 +96,31 @@ export default server => {
         false, // PONG
       ];
 
-      socketManager.addUser(id, ws.socket);
+      socketManager.addUser(gameId, ws.socket);
 
-      sessions[id] = ws;
+      sessions.set(gameId, ws);
 
       ws.socket.socketMethods[PC_CONFIG_READY] = true;
-      socketManager.sendConfig(id, cConf);
+      socketManager.sendConfig(gameId, cConf);
 
       // 0: config ready
       socketMethods[PC_CONFIG_READY] = err => {
         if (!err) {
-          const oldId = ips[address];
+          const oldGameId = ips[address];
 
-          if (oneConnection && oldId) {
-            socketManager.close(oldId, 4002, 'anotherDevice');
+          if (oneConnection && oldGameId) {
+            socketManager.close(oldGameId, 4002, 'anotherDevice');
           }
 
-          ips[address] = id;
+          ips[address] = gameId;
 
-          waiting.check(id, empty => {
+          waiting.check(gameId, empty => {
             if (empty) {
               ws.socket.socketMethods[PC_AUTH_RESPONSE] = true;
-              socketManager.sendAuthData(id, auth);
+              socketManager.sendAuthData(gameId, auth);
             } else {
-              waiting.add(id, arr => {
-                socketManager.sendTechInform(id, 'fullServer', arr);
+              waiting.add(gameId, arr => {
+                socketManager.sendTechInform(gameId, 'fullServer', arr);
               });
             }
           });
@@ -136,14 +138,16 @@ export default server => {
             ws.socket.socketMethods[PC_AUTH_RESPONSE] = false;
             ws.socket.socketMethods[PC_MODULES_READY] = true;
 
-            vimp.createUser(data, id, createdId => {
-              gameId = createdId;
-            });
+            const result = vimp.createUser(data, gameId);
 
-            socketManager.sendTechInform(id, 'loading');
+            if (!result) {
+              return;
+            }
+
+            socketManager.sendTechInform(gameId, 'loading');
           }
 
-          socketManager.sendAuthResult(id, err);
+          socketManager.sendAuthResult(gameId, err);
         }
       };
 
@@ -205,35 +209,36 @@ export default server => {
 
       // обработчик закрытия
       ws.on('close', (code, _reason) => {
+        const date = new Date().toISOString();
+
         console.log(
-          `[${new Date().toISOString()}] User disconnected: ${address}`,
+          `[${date}] User disconnected: ${address} (GameID: ${gameId})`,
         );
 
         if (code !== 4002) {
           delete ips[address];
         }
 
-        socketManager.removeUser(id, ws.socket);
-        delete sessions[id];
+        socketManager.removeUser(gameId, ws.socket);
+        sessions.delete(gameId);
+        vimp.removeUser(gameId);
+        gameIdGen.release(gameId);
+        waiting.remove(gameId);
 
-        if (gameId) {
-          vimp.removeUser(gameId);
-        }
+        waiting.getNext(nextGameId => {
+          const session = sessions.get(nextGameId);
 
-        waiting.remove(id);
-
-        waiting.getNext(nextId => {
-          if (nextId && sessions[nextId]) {
-            sessions[nextId].socket.socketMethods[PC_AUTH_RESPONSE] = true;
-            socketManager.sendAuthData(nextId, auth);
-            socketManager.sendTechInform(nextId);
+          if (session) {
+            session.socket.socketMethods[PC_AUTH_RESPONSE] = true;
+            socketManager.sendAuthData(nextGameId, auth);
+            socketManager.sendTechInform(nextGameId);
           }
         });
 
         waiting.createNotifyObject(notifyObject => {
-          for (const id in notifyObject) {
-            if (Object.hasOwn(notifyObject, id) && sessions[id]) {
-              socketManager.sendTechInform(id, 'fullServer', notifyObject[id]);
+          for (const [nGameId, data] of notifyObject) {
+            if (sessions.has(nGameId)) {
+              socketManager.sendTechInform(nGameId, 'fullServer', data);
             }
           }
         });

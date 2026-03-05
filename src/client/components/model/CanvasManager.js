@@ -1,5 +1,6 @@
 import Publisher from '../../../lib/Publisher.js';
 import { lerp, clamp } from '../../../lib/math.js';
+import { roundTo2Decimals } from '../../../lib/formatters.js';
 
 // Singleton CanvasManagerModel
 
@@ -66,7 +67,7 @@ export default class CanvasManagerModel {
         const [w, h] = (canvasData.baseScale || '1:1')
           .split(':')
           .map(value => Number(value));
-        const baseScale = Number((w / h).toFixed(2));
+        const baseScale = roundTo2Decimals(w / h);
 
         this._data[canvasName] = {
           ...canvasData,
@@ -120,8 +121,8 @@ export default class CanvasManagerModel {
             height = screenHeight;
           }
 
-          width = +width.toFixed();
-          height = +height.toFixed();
+          width = Math.round(width);
+          height = Math.round(height);
 
           this._data[canvasName].currentScale =
             (width / this._designWidth) * baseScale;

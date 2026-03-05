@@ -353,5 +353,7 @@ export default {
     'Connection terminated due to high network latency.',
 
     'Connection terminated due to missed network pings.',
+
+    'Connection terminated: unable to join the game.',
   ],
 };

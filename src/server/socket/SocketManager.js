@@ -5,6 +5,7 @@ const TECH_CODES = {
   kickIdle: [3],
   kickForMaxLatency: [4],
   kickForMissedPings: [5],
+  failedToJoinGame: [6],
 };
 
 const GAME_CODES = {
@@ -52,35 +53,35 @@ export default class SocketManager {
 
   /**
    * Регистрация пользователя в менеджере.
-   * @param {string} socketId - ID соединения.
+   * @param {number} gameId - ID игрока в игре.
    * @param {Object} socket - Объект WebSocket с методами send и close.
    */
-  addUser(socketId, socket) {
-    this._senders.set(socketId, socket.send.bind(socket));
-    this._closers.set(socketId, socket.close.bind(socket));
+  addUser(gameId, socket) {
+    this._senders.set(gameId, socket.send.bind(socket));
+    this._closers.set(gameId, socket.close.bind(socket));
   }
 
   /**
    * Удаление пользователя из менеджера.
-   * @param {string} socketId - ID соединения.
+   * @param {number} gameId - ID игрока в игре.
    */
-  removeUser(socketId) {
-    this._senders.delete(socketId);
-    this._closers.delete(socketId);
+  removeUser(gameId) {
+    this._senders.delete(gameId);
+    this._closers.delete(gameId);
   }
 
   /**
    * Логирование ошибки отправки сообщения.
    * @private
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {number} port
    * @param {*} data
    */
-  _logSendError(socketId, port, data) {
+  _logSendError(gameId, port, data) {
     console.warn(`
       [SocketManager Error]:
         Attempted to send data to a non-existent or already closed socket.
-        - Socket ID: ${socketId}
+        - Socket ID: ${gameId}
         - Port: ${port}
         - Data (sample): ${JSON.stringify(data)?.substring(0, 300)}
       `);
@@ -89,15 +90,15 @@ export default class SocketManager {
   /**
    * Логирование ошибки закрытия соединения.
    * @private
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {number} code
    * @param {*} data
    */
-  _logCloseError(socketId, code, data) {
+  _logCloseError(gameId, code, data) {
     console.warn(`
       [SocketManager Error]:
         Attempted to close a non-existent or already closed socket.
-        - Socket ID: ${socketId}
+        - Socket ID: ${gameId}
         - Close Code: ${code}
         - Data (sample): ${JSON.stringify(data)?.substring(0, 300)}
       `);
@@ -106,138 +107,138 @@ export default class SocketManager {
   /**
    * Отправка данных на клиент с проверкой наличия соединения.
    * @private
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {number} port
    * @param {*} data
    */
-  _send(socketId, port, data) {
-    const sender = this._senders.get(socketId);
+  _send(gameId, port, data) {
+    const sender = this._senders.get(gameId);
 
     if (sender) {
       sender(port, data);
     } else {
-      this._logSendError(socketId, port, data);
+      this._logSendError(gameId, port, data);
     }
   }
 
   /**
    * Закрытие WebSocket-соединения с клиента с проверкой.
    * @private
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {number} code
    * @param {*} data
    */
-  _close(socketId, code, data) {
-    const closer = this._closers.get(socketId);
+  _close(gameId, code, data) {
+    const closer = this._closers.get(gameId);
 
     if (closer) {
       closer(code, data);
     } else {
-      this._logCloseError(socketId, code, data);
+      this._logCloseError(gameId, code, data);
     }
   }
 
   /**
    * Закрытие соединения с отправкой технического сообщения.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {number} code - Код закрытия.
    * @param {string} [key] - Ключ технического события (TECH_CODES).
    * @param {Array|undefined} [arr] - Дополнительные параметры.
    */
-  close(socketId, code, key, arr) {
+  close(gameId, code, key, arr) {
     if (key) {
       const data = Array.isArray(arr)
         ? [...TECH_CODES[key], arr]
         : TECH_CODES[key];
 
-      this._close(socketId, code, data);
+      this._close(gameId, code, data);
     } else {
-      this._close(socketId, code);
+      this._close(gameId, code);
     }
   }
 
   /**
    * Отправка конфигурационных данных.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {*} config
    */
-  sendConfig(socketId, config) {
-    this._send(socketId, this._PORT_CONFIG, config);
+  sendConfig(gameId, config) {
+    this._send(gameId, this._PORT_CONFIG, config);
   }
 
   /**
    * Отправка данных для авторизации.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {*} authData
    */
-  sendAuthData(socketId, authData) {
-    this._send(socketId, this._PORT_AUTH_DATA, authData);
+  sendAuthData(gameId, authData) {
+    this._send(gameId, this._PORT_AUTH_DATA, authData);
   }
 
   /**
    * Отправка данных о результате авторизации.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {*} data
    */
-  sendAuthResult(socketId, data) {
-    this._send(socketId, this._PORT_AUTH_RESULT, data);
+  sendAuthResult(gameId, data) {
+    this._send(gameId, this._PORT_AUTH_RESULT, data);
   }
 
   /**
    * Отправка ping для измерения RTT.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {number} pingIdCounter
    */
-  sendPing(socketId, pingIdCounter) {
-    this._send(socketId, this._PORT_PING, pingIdCounter);
+  sendPing(gameId, pingIdCounter) {
+    this._send(gameId, this._PORT_PING, pingIdCounter);
   }
 
   /**
    * Отправка команды очистки данных.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {Array|string} [setIdList]
    */
-  sendClear(socketId, setIdList) {
+  sendClear(gameId, setIdList) {
     if (setIdList) {
-      this._send(socketId, this._PORT_CLEAR, setIdList);
+      this._send(gameId, this._PORT_CLEAR, setIdList);
     } else {
-      this._send(socketId, this._PORT_CLEAR);
+      this._send(gameId, this._PORT_CLEAR);
     }
   }
 
   /**
    * Отправка технического сообщения.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {string} [key] - Ключ технического события (TECH_CODES).
    * @param {Array|undefined} [arr] - Дополнительные параметры.
    */
-  sendTechInform(socketId, key, arr) {
+  sendTechInform(gameId, key, arr) {
     if (key) {
       const data = Array.isArray(arr)
         ? [...TECH_CODES[key], arr]
         : TECH_CODES[key];
 
-      this._send(socketId, this._PORT_TECH_INFORM_DATA, data);
+      this._send(gameId, this._PORT_TECH_INFORM_DATA, data);
     } else {
-      this._send(socketId, this._PORT_TECH_INFORM_DATA);
+      this._send(gameId, this._PORT_TECH_INFORM_DATA);
     }
   }
 
   /**
    * Отправка данных карты.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {*} mapData
    */
-  sendMap(socketId, mapData) {
-    this._send(socketId, this._PORT_MAP_DATA, mapData);
+  sendMap(gameId, mapData) {
+    this._send(gameId, this._PORT_MAP_DATA, mapData);
   }
 
   /**
    * Отправка первого кадра игры.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendFirstEvents(socketId) {
-    this._send(socketId, this._PORT_FIRST_EVENTS, [
+  sendFirstEvents(gameId) {
+    this._send(gameId, this._PORT_FIRST_EVENTS, [
       this._panel.getEmptyPanel(), // panel
       this._stat.getFull(), // stat
       0, // chat
@@ -248,10 +249,10 @@ export default class SocketManager {
 
   /**
    * Отправка первого голосования (выбор команды).
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendFirstVote(socketId) {
-    this._send(socketId, this._PORT_EVENTS, [
+  sendFirstVote(gameId) {
+    this._send(gameId, this._PORT_EVENTS, [
       0, // panel
       0, // stat
       0, // chat
@@ -261,29 +262,28 @@ export default class SocketManager {
 
   /**
    * Отправка игровых данных.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {*} data
    */
-  sendSnapshot(socketId, data) {
-    this._send(socketId, this._PORT_SNAPSHOT, data);
+  sendSnapshot(gameId, data) {
+    this._send(gameId, this._PORT_SNAPSHOT, data);
   }
 
   /**
    * Отправка данных модулей.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {*} data
    */
-  sendEvents(socketId, data) {
-    this._send(socketId, this._PORT_EVENTS, data);
+  sendEvents(gameId, data) {
+    this._send(gameId, this._PORT_EVENTS, data);
   }
 
   /**
    * Отправка базовых данных игрока.
-   * @param {string} socketId
    * @param {number} gameId - ID игрока в игре.
    */
-  sendPlayerDefaultEvents(socketId, gameId) {
-    this._send(socketId, this._PORT_EVENTS, [
+  sendPlayerDefaultEvents(gameId) {
+    this._send(gameId, this._PORT_EVENTS, [
       this._panel.getFullPanel(gameId), // panel
       0, // stat
       0, // chat
@@ -294,10 +294,10 @@ export default class SocketManager {
 
   /**
    * Отправка базовых данных наблюдателя.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendSpectatorDefaultEvents(socketId) {
-    this._send(socketId, this._PORT_EVENTS, [
+  sendSpectatorDefaultEvents(gameId) {
+    this._send(gameId, this._PORT_EVENTS, [
       this._panel.getEmptyPanel(), // panel
       0, // stat
       0, // chat
@@ -308,19 +308,19 @@ export default class SocketManager {
 
   /**
    * Отправка информации о начале раунда.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendRoundStart(socketId) {
-    this._send(socketId, this._PORT_SOUND, 'roundStart');
-    this._send(socketId, this._PORT_GAME_INFORM_DATA, GAME_CODES['roundStart']);
+  sendRoundStart(gameId) {
+    this._send(gameId, this._PORT_SOUND, 'roundStart');
+    this._send(gameId, this._PORT_GAME_INFORM_DATA, GAME_CODES['roundStart']);
   }
 
   /**
    * Отправка информации об окончании раунда.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {string|number} [winnerTeam] - Победившая команда.
    */
-  sendRoundEnd(socketId, winnerTeam) {
+  sendRoundEnd(gameId, winnerTeam) {
     let informData;
 
     if (winnerTeam) {
@@ -329,32 +329,32 @@ export default class SocketManager {
       informData = GAME_CODES['gameOver'];
     }
 
-    this._send(socketId, this._PORT_GAME_INFORM_DATA, informData);
+    this._send(gameId, this._PORT_GAME_INFORM_DATA, informData);
   }
 
   /**
    * Отправка звука победы.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendVictory(socketId) {
-    this._send(socketId, this._PORT_SOUND, 'victory');
+  sendVictory(gameId) {
+    this._send(gameId, this._PORT_SOUND, 'victory');
   }
 
   /**
    * Отправка звука поражения.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendDefeat(socketId) {
-    this._send(socketId, this._PORT_SOUND, 'defeat');
+  sendDefeat(gameId) {
+    this._send(gameId, this._PORT_SOUND, 'defeat');
   }
 
   /**
    * Отправка команды смены имени.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    * @param {string} name
    */
-  sendName(socketId, name) {
-    this._send(socketId, this._PORT_MISC, {
+  sendName(gameId, name) {
+    this._send(gameId, this._PORT_MISC, {
       key: 'localstorageNameReplace',
       value: name,
     });
@@ -362,17 +362,17 @@ export default class SocketManager {
 
   /**
    * Отправка звука поражения цели.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendFragSound(socketId) {
-    this._send(socketId, this._PORT_SOUND, 'frag');
+  sendFragSound(gameId) {
+    this._send(gameId, this._PORT_SOUND, 'frag');
   }
 
   /**
    * Отправка звук уничтожения.
-   * @param {string} socketId
+   * @param {number} gameId - ID игрока в игре.
    */
-  sendGameOverSound(socketId) {
-    this._send(socketId, this._PORT_SOUND, 'gameOver');
+  sendGameOverSound(gameId) {
+    this._send(gameId, this._PORT_SOUND, 'gameOver');
   }
 }

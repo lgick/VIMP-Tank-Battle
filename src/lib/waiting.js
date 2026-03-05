@@ -46,9 +46,9 @@ const getNext = cb => {
 // создает объект для оповещения ожидающих
 const createNotifyObject = cb => {
   const notifyObject = waitingList.reduce((acc, playerId, index) => {
-    acc[playerId] = [maxPlayers, index + 1];
+    acc.set(playerId, [maxPlayers, index + 1]);
     return acc;
-  }, {});
+  }, new Map());
 
   process.nextTick(() => cb(notifyObject));
 };

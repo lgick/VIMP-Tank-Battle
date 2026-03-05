@@ -1,7 +1,6 @@
 import BaseModel from './BaseModel.js';
-import { BoxShape, Vec2, Rot } from 'planck';
-import { lerp, degToRad, clamp, randomRange } from '../../lib/math.js';
-import { roundTo2Decimals } from '../../lib/formatters.js';
+import { BoxShape, Vec2 } from 'planck';
+import { lerp, degToRad, clamp } from '../../lib/math.js';
 
 const FORWARD = new Vec2(1, 0);
 const RIGHT = new Vec2(0, 1);
@@ -31,6 +30,7 @@ class Tank extends BaseModel {
   constructor(data) {
     super(data);
 
+    this._body = data.body;
     this._modelData = data.modelData;
 
     this._width = this._modelData.size * 4;
@@ -53,17 +53,10 @@ class Tank extends BaseModel {
     this._gunCenterSpeed = this._modelData.gunCenterSpeed;
 
     this._shotData = null;
+    this._weaponChangeStatus = 0;
 
     this._engineThrottle = 0; // намерение игрока (0.0 до 1.0)
     this._engineLoad = 0; // нагрузка на двигатель для звука
-
-    this._body = data.world.createBody({
-      type: 'dynamic',
-      position: new Vec2(data.position[0], data.position[1]),
-      angle: degToRad(data.angle),
-      angularDamping: this._modelData.damping.angular,
-      linearDamping: this._modelData.damping.linear,
-    });
 
     this._body.gunRotation = 0;
     this._centeringGun = false;
@@ -84,68 +77,42 @@ class Tank extends BaseModel {
 
     // базовый фактор инерцией
     this._effectiveTurnTorque = this._baseTurnTorqueFactor * this._inertia;
-
-    // состояние танка:
-    // 3 - норма,
-    // 2 - незначительные повреждения,
-    // 1 - значительные повреждения,
-    // 0 - танк уничтожен
-    this._condition = 3;
-
-    this.takeDamage(0);
   }
 
-  // проверяет, жив ли танк
-  isAlive() {
-    return this._condition > 0;
+  // остановка танка при уничтожении/респауне, сброс нажатых клавиш
+  reset() {
+    this._body.setLinearVelocity(ZERO);
+    this._body.setAngularVelocity(0);
+    this._body.gunRotation = 0;
+
+    // сброс физики управления
+    this._engineThrottle = 0;
+    this._engineLoad = 0;
+    this._centeringGun = false;
+
+    this.resetKeys();
   }
 
-  // применяет урон к танку и обновляет его состояние.
-  takeDamage(amount = 0) {
-    // если танк уже уничтожен, урон не считать
-    if (this._condition === 0) {
-      return false;
-    }
+  // меняет данные игрока (координаты, команду)
+  changePlayerData(data) {
+    const [x, y, angle] = data.respawnData;
+    const body = this._body;
 
-    const currentHealth = this.getHealth();
-    const newHealth = Math.max(0, currentHealth - amount);
+    this.reset();
 
-    this.setHealth(newHealth);
+    this.teamId = data.teamId;
 
-    if (newHealth <= 0) {
-      this._condition = 0; // танк уничтожен
+    body.setUserData({
+      type: 'player',
+      gameId: this.gameId,
+      teamId: this.teamId,
+    });
 
-      // остановка танка при уничтожении,
-      // сброс нажатых клавиш
-      this._body.setLinearVelocity(ZERO);
-      this._body.setAngularVelocity(0);
-      this.resetKeys();
-
-      return true;
-    }
-
-    // значительные повреждения
-    if (newHealth < 35) {
-      this._condition = 1;
-      // незначительные повреждения
-    } else if (newHealth < 70) {
-      this._condition = 2;
-      // норма
-    } else {
-      this._condition = 3;
-    }
-
-    return false;
+    body.setPosition(new Vec2(x, y));
+    body.setAngle(degToRad(angle));
   }
 
-  // получение боковой скорости
-  getLateralVelocity(body) {
-    // вектор вправо отн. танка
-    const currentRightNormal = body.getWorldVector(RIGHT);
-    // проекция скорости на правый вектор
-    return Vec2.dot(currentRightNormal, body.getLinearVelocity());
-  }
-
+  // обновление данных танка
   updateData(dt) {
     const keys = this.getKeysForProcessing();
 
@@ -162,10 +129,6 @@ class Tank extends BaseModel {
 
     const body = this._body;
 
-    this._shotData = null; // сброс данных стрельбы
-
-    this.updateRemainingCooldowns(dt);
-
     // сначала обновляем поворот башни (если нажаты клавиши)
     // это гарантирует, что gunRotation актуален перед расчетом выстрела
     if (gCenter) {
@@ -179,8 +142,8 @@ class Tank extends BaseModel {
         Math.min(1, this._gunCenterSpeed * dt),
       );
 
+      // если почти в центре
       if (Math.abs(body.gunRotation) < 0.01) {
-        // Если почти в центре
         body.gunRotation = 0;
         this._centeringGun = false;
       }
@@ -210,24 +173,21 @@ class Tank extends BaseModel {
 
     // если огонь
     if (fire) {
-      if (this.tryConsumeAmmoAndShoot()) {
-        // если проверка на кулдаун/патроны пройдена
-        this._shotData = {
-          bodyPosition: body.getPosition(),
-          startPoint: this.getMuzzlePosition(this.currentWeapon),
-          direction: this.getFireDirection(this.currentWeapon),
-        };
-      }
+      this._shotData = {
+        position: body.getPosition(),
+        angle: body.getAngle() + body.gunRotation,
+        tankWidth: this._width,
+      };
     }
 
+    // если игрок "давит на газ" - плавное увеличение до 1.0
     if (forward || back) {
-      // игрок "давит на газ" - плавное увеличение до 1.0
       this._engineThrottle = Math.min(
         1.0,
         this._engineThrottle + this._THROTTLE_INCREASE_RATE * dt,
       );
+      // иначе, игрок "отпустил газ" - плавное уменьшение до 0.0
     } else {
-      // игрок "отпустил газ" - плавное уменьшение до 0.0
       this._engineThrottle = Math.max(
         0.0,
         this._engineThrottle - this._THROTTLE_DECREASE_RATE * dt,
@@ -239,11 +199,15 @@ class Tank extends BaseModel {
     const currentForwardSpeed = Vec2.dot(currentVelocity, forwardVec);
 
     // сила против бокового скольжения
-    const lateralVel = this.getLateralVelocity(body);
+    const lateralVel = Vec2.dot(
+      body.getWorldVector(RIGHT),
+      body.getLinearVelocity(),
+    );
     const sidewaysForceMagnitude = -lateralVel * this._lateralGrip * this._mass;
     const sidewaysForceVec = body.getWorldVector(
       new Vec2(0, sidewaysForceMagnitude),
     );
+
     body.applyForceToCenter(sidewaysForceVec, true);
 
     // применение физической силы на основе _engineThrottle
@@ -262,9 +226,7 @@ class Tank extends BaseModel {
 
     // если газ отпущен, применение активного торможения
     if (forceMagnitude === 0 && !forward && !back) {
-      const brakingForce =
-        -currentForwardSpeed * this._brakingFactor * this._mass;
-      forceMagnitude = brakingForce;
+      forceMagnitude = -currentForwardSpeed * this._brakingFactor * this._mass;
     }
 
     if (forceMagnitude !== 0) {
@@ -272,8 +234,18 @@ class Tank extends BaseModel {
       body.applyForceToCenter(appliedForce, true);
     }
 
-    // рассчёт нагрузки на двигатель (_engineLoad) для звука
-    const speedRatio = this._getSpeedRatio(currentForwardSpeed);
+    // расчёт нагрузки на двигатель (_engineLoad) для звука
+    let speedRatio = 0;
+
+    if (currentForwardSpeed > 0) {
+      speedRatio = clamp(currentForwardSpeed / this._maxForwardSpeed, 0, 1);
+    } else if (currentForwardSpeed < 0) {
+      speedRatio = clamp(
+        Math.abs(currentForwardSpeed / this._maxReverseSpeed),
+        0,
+        1,
+      );
+    }
 
     // нагрузка = намерение игрока + бонус за "напряжение"
     // напряжение - это разница между тем, как сильно игрок жмет газ,
@@ -319,130 +291,56 @@ class Tank extends BaseModel {
 
     // смена оружия
     if (nextWeapon) {
-      this.turnUserWeapon();
+      this._weaponChangeStatus = 1;
     }
 
     if (prevWeapon) {
-      this.turnUserWeapon(true);
+      this._weaponChangeStatus = -1;
     }
   }
 
-  getMuzzlePosition() {
-    const body = this.getBody();
-    const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    const muzzleLocalOffsetX = this._width * 0.55;
-    const muzzleLocalOffsetY = 0;
-    const relPos = Rot.mulVec2(
-      new Rot(totalAngle),
-      new Vec2(muzzleLocalOffsetX, muzzleLocalOffsetY),
-    );
-
-    return Vec2.add(body.getPosition(), relPos);
-  }
-
-  getFireDirection(weaponName) {
-    const body = this.getBody();
-    const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    let directionVec = Rot.mulVec2(new Rot(totalAngle), FORWARD);
-    const weaponConfig = this.weapons[weaponName];
-
-    if (weaponConfig && weaponConfig.spread > 0) {
-      const spreadVal = randomRange(-weaponConfig.spread, weaponConfig.spread);
-      directionVec = Rot.mulVec2(new Rot(spreadVal), directionVec);
-    }
-
-    directionVec.normalize();
-
-    return directionVec;
-  }
-
+  // получение тела танка
   getBody() {
     return this._body;
   }
 
+  // получение позиции танка
   getPosition() {
-    const body = this.getBody();
-    const position = body.getPosition();
-
-    return [+position.x.toFixed(2), +position.y.toFixed(2)];
+    return this._body.getPosition();
   }
 
-  // меняет данные игрока (координаты, команду)
-  changePlayerData(data) {
-    const respawnData = data.respawnData;
-    const x = respawnData[0];
-    const y = respawnData[1];
-    const angle = degToRad(respawnData[2]);
-    const body = this._body;
+  // возвращает и сбрасывает данные о смене оружия
+  consumeWeaponChangeStatus() {
+    const status = this._weaponChangeStatus;
 
-    this.teamId = data.teamId;
-    this._body.setUserData({
-      type: 'player',
-      gameId: this.gameId,
-      teamId: this.teamId,
-    });
+    this._weaponChangeStatus = 0;
 
-    // остановка танка
-    body.setLinearVelocity(ZERO);
-    body.setAngularVelocity(0);
-    body.setPosition(new Vec2(x, y));
-    body.setAngle(angle);
-    this._body.gunRotation = 0;
-
-    // сброс физики управления
-    this._engineThrottle = 0;
-    this._engineLoad = 0;
-    this._centeringGun = false;
-
-    // сброс нажатых клавиш
-    this.resetKeys();
-  }
-
-  _getSpeedRatio(currentForwardSpeed) {
-    let speedRatio = 0;
-
-    if (currentForwardSpeed > 0) {
-      speedRatio = clamp(currentForwardSpeed / this._maxForwardSpeed, 0, 1);
-    } else if (currentForwardSpeed < 0) {
-      speedRatio = clamp(
-        Math.abs(currentForwardSpeed / this._maxReverseSpeed),
-        0,
-        1,
-      );
-    }
-
-    return +speedRatio.toFixed(4);
+    return status;
   }
 
   // возвращает и сбрасывает данные о выстреле
-  getShotData() {
+  consumeShotData() {
     const data = this._shotData;
-
-    if (!data) {
-      return null;
-    }
 
     this._shotData = null;
 
     return data;
   }
 
-  // возвращение состояния танка
+  // возвращает состояние танка
   getData() {
-    const pos = this._body.getPosition();
-    const vel = this._body.getLinearVelocity();
+    const body = this._body;
+    const pos = body.getPosition();
+    const vel = body.getLinearVelocity();
 
     return [
-      roundTo2Decimals(pos.x),
-      roundTo2Decimals(pos.y),
-      roundTo2Decimals(this._body.getAngle()),
-      roundTo2Decimals(this._body.gunRotation),
-      roundTo2Decimals(vel.x),
-      roundTo2Decimals(vel.y),
-      roundTo2Decimals(this._engineLoad),
-      this._condition,
-      this._modelData.size,
-      this.teamId,
+      pos.x,
+      pos.y,
+      body.getAngle(),
+      body.gunRotation,
+      vel.x,
+      vel.y,
+      this._engineLoad, // TODO сделать как Uint8
     ];
   }
 }
