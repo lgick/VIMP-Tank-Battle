@@ -1,39 +1,3 @@
-const arr = [
-  [
-    // remove player: [modelId, gameId]
-    // [Uint8, Uint8],
-    [2, 1],
-
-    // player: [modelId, gameId, posX, posY, angle, gunAngle, velX, velY, engineState, health, size, teamId]
-    // [Uint8, Uint8, Float32, Float32, Float32, Float32, Float32, Float32, Uint8, Uint8, Uint8, Uint8]
-    [2, 2, 318.87, 276.57, -0.64, 0, 12.35, -9.18, 0, 90, 2, 1],
-
-    // remove physical weapon: [modelId, shotId]
-    // [Uint8, Uint16],
-    [3, 1],
-
-    // physical weapon: [modelId, shotId, posX, posY, angle, size]
-    // [Uint8, Uint16, Float32, Float32, Float32, Uint8],
-    [3, 4, 7.27, 587.58, 0, 8, 300],
-
-    // hitscan weapon effect: [modelId, startX, startY, endX, endY, hit]
-    // [Uint8, Float32, Float32, Float32, Float32, Uint8],
-    [4, 9105.22, 796.3, 1107.71, 799.94, 0],
-
-    // aoe weapon effect: [modelId, posX, posY, radius]
-    // [Uint8, Float32, Float32, Uint8],
-    [5, 590.33, 100.94, 50],
-
-    // map dynamic: [modelId, dynamicId, posX, posY, angle]
-    // [Uint8, Uint8, Float32, Float32, Float32],
-    [1, 7, 624.24, 456.82, -1.09],
-  ],
-
-  // camera: [posX, posY, cameraShake, cameraReset]
-  // [Float32, Float32, Uint8, Uint8],
-  [40, 55, 0, 0],
-];
-
 function encodeGameState(data) {
   const entities = data[0];
   const camera = data[1];
