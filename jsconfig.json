@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "checkJs": true,
+    "allowJs": true,
+    "lib": ["ESNext", "DOM"],
+    "baseUrl": "./",
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "suppressImplicitAnyIndexErrors": true,
+    "suggestionActions": false
+  },
+  "exclude": [
+    "node_modules",
+    ".git",
+    ".certs"
+  ],
+  "include": [
+    "src/**/*",
+    "server/**/*"
+  ]
+}
