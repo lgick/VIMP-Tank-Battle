@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "checkJs": false,
+    "allowJs": true,
+    "lib": ["ESNext", "DOM"],
+    "baseUrl": "./",
+    "noEmit": true
+  },
+  "exclude": [
+    "node_modules",
+    ".git",
+    ".certs"
+  ]
+}
