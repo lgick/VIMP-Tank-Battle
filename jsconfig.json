@@ -12,15 +12,9 @@
     "noImplicitAny": false,
     "noImplicitThis": false,
     "suppressImplicitAnyIndexErrors": true,
+
     "suggestionActions": false
   },
-  "exclude": [
-    "node_modules",
-    ".git",
-    ".certs"
-  ],
-  "include": [
-    "src/**/*",
-    "server/**/*"
-  ]
+  "exclude": ["node_modules", ".git", ".certs"],
+  "include": ["src/**/*"]
 }
