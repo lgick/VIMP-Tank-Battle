@@ -12,7 +12,7 @@ export default {
     weapons,
     mapConstructor: 'Map', // название конструктора карт
     hitscanService: 'HitscanService', // сервис вычисления стрельбы hitscan
-    friendlyFire: false, // огонь по своей команде
+    friendlyFire: true, // огонь по своей команде
   },
 
   maps, // карты игры
