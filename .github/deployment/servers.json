@@ -7,6 +7,6 @@
     "map": "garden",
     "round_time": 120000,
     "map_time": 600000,
-    "friendly_fire": true
+    "friendly_fire": false
   }
 ]
