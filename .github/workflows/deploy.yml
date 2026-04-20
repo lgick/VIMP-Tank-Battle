@@ -55,9 +55,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
       - id: set-matrix
+        env:
+          # Конфигурации из GitHub Repository Variables
+          SERVERS_JSON: ${{ vars.SERVERS_MATRIX }}
         run: |
-          # servers.json в строку для матрицы GitHub
-          JSON=$(jq -c . .github/deployment/servers.json)
+          # Формат JSON в одну строку
+          JSON=$(echo "$SERVERS_JSON" | jq -c .)
           echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
 
   # ====================================================
@@ -83,7 +86,6 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
-          # Переменные из servers.json
           VIMP_DOMAIN: ${{ matrix.domain }}
           VIMP_PORT: ${{ matrix.port }}
           VIMP_PLAYERS: ${{ matrix.players }}

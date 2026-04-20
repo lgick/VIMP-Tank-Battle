@@ -104,7 +104,8 @@ echo "🔄 Перезагрузка Nginx..."
 if sudo nginx -t; then
   sudo systemctl reload nginx
   echo "✅ ГОТОВО! Сервер $DOMAIN успешно удалён."
-  echo "👉 Не забудьте удалить его из servers.json в репозитории!"
+  echo "👉 Не забудьте удалить его конфигурацию из переменной SERVERS_MATRIX"
+  echo "   в настройках репозитория GitHub (Settings -> Secrets and variables)!"
 else
   echo "❌ Ошибка: некорректная конфигурация Nginx."
   sudo nginx -t

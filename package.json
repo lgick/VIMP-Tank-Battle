@@ -2,8 +2,8 @@
   "name": "vimp",
   "version": "2.0",
   "author": "lgick",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
+  "private": false,
   "description": "game",
   "homepage": "https://github.com/lgick/VIMP-Tank-Battle#readme",
   "bugs": {
