@@ -402,7 +402,7 @@ server {
   # object-src 'none'; # Запрет на <object>, <embed>, <applet>
   # script-src 'self' 'unsafe-eval' 'unsafe-inline'; # JS со своего домена
   # style-src 'self' 'unsafe-inline'; # CSS со своего домена и инлайн
-  # connect-src 'self' wss://vimp.lgick.space; # Разрешение WebSocket к своему домену
+  # connect-src 'self' wss://__DOMAIN__; # Разрешение WebSocket к своему домену
   # img-src 'self' data: blob:; # Разрешение картинкок с data: и blob:
   # font-src 'self'; # Шрифты только со своего домена
   # worker-src 'self' blob:; # Разрешение на web workers и blob URL

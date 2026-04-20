@@ -9,7 +9,7 @@ IFS=$'\n\t'
 
 # --- Глобальные переменные (инициализация для set -u) ---
 TEMPLATE="/etc/nginx/vimp-game.template"
-DEFAULT_EMAIL="mail@vimp.lgick.space"
+DEFAULT_EMAIL="admin@example.com"
 PROJECTS_ROOT="$HOME/vimp_projects"
 DOMAIN=""
 PORT=""
@@ -86,7 +86,7 @@ escape_sed() { printf '%s\n' "$1" | sed 's/[&/\]/\\&/g'; }
 # --- Функции ввода ---
 read_domain() {
   while true; do
-    read -r -p "🌐 Домен (например, ru1.vimp.space): " DOMAIN
+    read -r -p "🌐 Домен (например, ru1.example.com): " DOMAIN
     DOMAIN="${DOMAIN// /}" # Удаление пробелов
     [[ -z "$DOMAIN" ]] && warn "Домен не может быть пустым" && continue
     break
@@ -203,7 +203,8 @@ echo "   URL:  https://$DOMAIN"
 echo "   Порт: 127.0.0.1:$PORT"
 echo ""
 echo "⚠️  ВАЖНО:"
-echo "1. Добавьте этот сервер в .github/deployment/servers.json"
+echo "1. Добавьте этот сервер в переменную SERVERS_MATRIX в настройках GitHub"
+echo "   (Settings -> Secrets and variables -> Variables)."
 echo "   Убедитесь, что 'port' в JSON равен $PORT!"
-echo "2. Сделайте commit и push, чтобы запустить деплой."
+echo "2. Перезапустите Action вручную или сделайте push, чтобы запустить деплой."
 echo "=================================================="
