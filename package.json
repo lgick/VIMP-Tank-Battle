@@ -19,6 +19,9 @@
     "dev": "NODE_ENV=development nodemon src/server/main.js -w src/server -w src/lib -w src/config -w src/data",
     "start": "NODE_ENV=production node --env-file .env src/server/main.js",
     "deploy": "npm run build && pm2 reload vimp-lgick-space",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "build": "npm run audio:process && vite build",
     "audio:process": "node scripts/process-audio.js"
   },
@@ -33,12 +36,15 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.37.0",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-no-consecutive-caps": "^1.2.0",
     "globals": "^16.2.0",
+    "happy-dom": "^20.10.6",
     "nodemon": "^3.1.10",
     "vite": "^7.1.11",
-    "vite-plugin-pug": "^0.4.1"
+    "vite-plugin-pug": "^0.4.1",
+    "vitest": "^4.1.9"
   }
 }
