@@ -119,10 +119,25 @@ Port IDs live in `src/config/wsports.js`. Key server→client ports: `0` config,
 - `let`/`const` only (`no-var`)
 - Curly braces required for all blocks
 - Files/dirs prefixed with `_` **игнорируются ESLint и Claude**: не читать, не редактировать, не предлагать изменения — если только разработчик явно не укажет иное в переписке
-- **Тесты**: Vitest. Файлы лежат в `tests/` (не в `src/`), зеркалят структуру: `tests/lib/`, `tests/server/`, `tests/client/`. Конфиг — `vitest.config.js` (два проекта: `node` для server/lib/config, `client` в окружении happy-dom). Синглтоны изолируют через `vi.resetModules()` + динамический `import`. Тесты прогоняются в CI (`.github/workflows/test.yml`) на каждый push/PR
+- **Тесты**: Vitest. Подробности и паттерны — в разделе [Testing](#testing)
 - **Импорты**: при редактировании файла приводить к порядку: Node.js built-ins → npm пакеты → внутренние модули проекта → относительные пути
 - **Качество кода**: чистота и читаемость важнее краткости. Хардкорные решения и хаки недопустимы. При спорных архитектурных решениях или выборе паттерна — уточнять у разработчика
 - Новые сущности (entity) выполнять в едином стиле с существующими; при отсутствии шаблона — придерживаться сложившегося стиля кодовой базы
+
+## Testing
+
+- **Стек**: Vitest + happy-dom (клиент) + `@vitest/coverage-v8`. Конфиг `vitest.config.js` — два проекта: `node` (`tests/server`, `tests/lib`, `tests/config`, окружение node) и `client` (`tests/client`, окружение happy-dom).
+- **Запуск**: `npm test` (одиночный прогон), `npm run test:watch`, `npm run test:coverage`. CI: `.github/workflows/test.yml` гоняет `eslint` + тесты на каждый push/PR.
+- **Расположение**: тесты в `tests/`, зеркалят структуру `src/` (не рядом с кодом). Файлы тестов имеют override в `eslint.config.js` (глобалы Vitest).
+- **Покрыто** (~340 тестов): вся логика `lib/`; серверные модули с логикой (Stat, Vote, RTTManager, SnapshotManager, Panel, Chat, TimerManager, Pathfinder, SpatialManager, NavigationSystem, HitscanService, BaseModel, Bomb, Map, Tank, BotManager, SocketManager, Game, изолированные методы VIMP); клиентские модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager) + InputListener, SoundManager.
+- **Не покрыто** (низкий ROI для unit-тестов): `BotController`, DOM-`view/`, Pixi-`parts/`+`effects/`, провайдеры (`BakingProvider`/`DependencyProvider`), тонкие `controller/`-обёртки.
+- **Паттерны** (соблюдать при добавлении тестов):
+  - **Синглтоны** (Game, Vote, Stat, Map, Panel, TimerManager, HitscanService, SnapshotManager, клиентские `*Model`, InputListener) изолируют через `vi.resetModules()` в `beforeEach` + динамический `await import(...)`.
+  - **`planck` под Vitest работает** (Vec2/Rot/World/BoxShape реальные, импорт не требует моков). НО синхронный бесконечный цикл в тестируемом коде вешает весь прогон — при зависании искать infinite loop в коде, а не в конфиге Vitest.
+  - **Физические части** (Tank, Bomb, Map, Game) тестируются с моками `world`/`body`/`panel`; реальная физика не симулируется. Для проверки геометрии `BoxShape` мокается через `vi.mock('planck', async io => ({ ...(await io()), BoxShape: ... }))`.
+  - **Тяжёлые синглтоны с громоздким конструктором** (VIMP) тестируются вызовом методов через прототип: `Class.prototype.method.call(fakeThis, ...)` — без создания экземпляра.
+  - Имя метода-мока, совпадающее с API planck (`queryAABB`), задавать вычисляемым/строковым ключом — иначе ESLint `no-consecutive-caps`.
+- **Зафиксированные тестами поведенческие особенности** (не блокеры, но учитывать при доработках): `CanvasManager.resize` при `fixSize` отдаёт `height` строкой; `waiting.getNext` возвращает `undefined` (не `null`) при пустой очереди; `sanitizeMessage` вырезает дефис и возвращает `undefined` для не-строк; `validateAuth` непоследователен (ранний `return` для missing/non-string vs накопление ошибок валидаторов).
 
 ## Local Development
 
