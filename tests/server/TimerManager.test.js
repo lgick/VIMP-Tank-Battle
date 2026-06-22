@@ -150,6 +150,69 @@ describe('TimerManager: отложенные действия', () => {
   });
 });
 
+describe('TimerManager: игровой цикл', () => {
+  it('_startGameLoop планирует первый тик через timeStep', () => {
+    const tm = new TimerManager(timers, callbacks);
+    tm._startGameLoop();
+
+    expect(callbacks.onShotTick).not.toHaveBeenCalled(); // ещё не сработал
+    vi.advanceTimersByTime(timers.timeStep);
+    expect(callbacks.onShotTick).toHaveBeenCalledTimes(1);
+
+    tm._stopGameLoop();
+  });
+
+  it('_loopTick самоперепланируется и вызывает onShotTick каждый кадр', () => {
+    const tm = new TimerManager(timers, callbacks);
+    tm._startGameLoop();
+
+    vi.advanceTimersByTime(timers.timeStep * 5);
+    expect(callbacks.onShotTick.mock.calls.length).toBeGreaterThanOrEqual(5);
+
+    tm._stopGameLoop();
+  });
+
+  it('onShotTick получает dt в секундах', () => {
+    const tm = new TimerManager(timers, callbacks);
+    tm._startGameLoop();
+
+    vi.advanceTimersByTime(timers.timeStep);
+    const dt = callbacks.onShotTick.mock.calls[0][0];
+    expect(typeof dt).toBe('number');
+    expect(dt).toBeGreaterThanOrEqual(0);
+
+    tm._stopGameLoop();
+  });
+
+  it('_stopGameLoop останавливает цикл', () => {
+    const tm = new TimerManager(timers, callbacks);
+    tm._startGameLoop();
+
+    vi.advanceTimersByTime(timers.timeStep);
+    const callsAfterFirst = callbacks.onShotTick.mock.calls.length;
+
+    tm._stopGameLoop();
+    vi.advanceTimersByTime(timers.timeStep * 10);
+
+    // после остановки новых тиков нет
+    expect(callbacks.onShotTick.mock.calls.length).toBe(callsAfterFirst);
+  });
+
+  it('startGameTimers запускает игровой цикл, таймеры карты и раунда', () => {
+    const tm = new TimerManager(timers, callbacks);
+    tm.startGameTimers();
+
+    expect(tm._hasTimer('gameLoop')).toBe(true);
+    expect(tm._hasTimer('map')).toBe(true);
+    expect(tm._hasTimer('round')).toBe(true);
+
+    tm.stopGameTimers();
+    expect(tm._hasTimer('gameLoop')).toBe(false);
+    expect(tm._hasTimer('map')).toBe(false);
+    expect(tm._hasTimer('round')).toBe(false);
+  });
+});
+
 describe('TimerManager: периодические проверки', () => {
   it('startIdleCheckTimer вызывает onIdleCheck немедленно и затем периодически', () => {
     const tm = new TimerManager(timers, callbacks);
