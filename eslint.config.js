@@ -85,6 +85,31 @@ export default [
     },
   },
 
+  // конфигурация для тестов (Vitest)
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+        // глобалы Vitest (globals: true в vitest.config.js)
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
   // общие правила для всего проекта
   // (применяются ко всем JS файлам, если не переопределены выше)
   {
