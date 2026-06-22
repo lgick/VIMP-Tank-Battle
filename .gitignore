@@ -1,6 +1,7 @@
 .DS_Store
 _*
 node_modules/
+coverage/
 .TRASH
 public/sounds/
 dist
