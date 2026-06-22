@@ -56,7 +56,14 @@ class Pathfinder {
         const neighbor = edge.node;
         const tentative = gScore.get(current) + edge.weight;
 
-        if (tentative < (gScore.get(neighbor) || Infinity)) {
+        // важно: gScore стартового узла равен 0, поэтому нельзя писать
+        // `gScore.get(neighbor) || Infinity` — 0 ложно и узел повторно
+        // открывается, создавая цикл в cameFrom и зависание reconstructPath
+        const neighborScore = gScore.has(neighbor)
+          ? gScore.get(neighbor)
+          : Infinity;
+
+        if (tentative < neighborScore) {
           // лучший путь к этому соседу
           cameFrom.set(neighbor, current);
           gScore.set(neighbor, tentative);
