@@ -167,6 +167,177 @@ describe('Tank: прицеливание', () => {
   });
 });
 
+// --- updateData: полный набор клавиш и физическое тело ---
+
+// биты клавиш; one-shot: fire/nextWeapon/prevWeapon
+const fullKeys = {
+  forward: 1,
+  back: 2,
+  left: 4,
+  right: 8,
+  gunCenter: 16,
+  gunLeft: 32,
+  gunRight: 64,
+  fire: 128,
+  nextWeapon: 256,
+  prevWeapon: 512,
+};
+const oneShotMask = 128 | 256 | 512;
+
+// тело с методами, нужными для физики updateData
+const makePhysicsBody = () => ({
+  ...makeBody(),
+  // при нулевом угле мировой вектор совпадает с локальным
+  getWorldVector: v => Vec2(v.x, v.y),
+  applyForceToCenter: vi.fn(),
+  applyTorque: vi.fn(),
+});
+
+// панель с боезапасом для обоих орудий
+const makeAmmoPanel = () => {
+  const state = { g1: { health: 100, w1: 10, w2: 10 } };
+  return {
+    setActiveWeapon: vi.fn(),
+    getCurrentValue: (id, p) => state[id]?.[p],
+    hasResources: (id, p, v) => (state[id]?.[p] ?? 0) >= v,
+    updateUser(id, p, value, op) {
+      state[id] = state[id] || {};
+      const cur = state[id][p] ?? 0;
+      state[id][p] =
+        op === 'set' ? value : op === 'decrement' ? cur - value : cur + value;
+    },
+  };
+};
+
+const makeMovingTank = (body = makePhysicsBody(), panel = makeAmmoPanel()) =>
+  new Tank({
+    model: 'm1',
+    name: 'Alice',
+    gameId: 'g1',
+    teamId: 1,
+    currentWeapon: 'w1',
+    weapons: {
+      w1: { type: 'hitscan', fireRate: 0.1, spread: 0 },
+      w2: { type: 'explosive', fireRate: 0.1, spread: 0 },
+    },
+    playerKeys: { keys: fullKeys, oneShotMask },
+    services: { panel },
+    modelData,
+    world: { createBody: () => body },
+    position: [0, 0],
+    angle: 0,
+  });
+
+describe('Tank.updateData: поворот башни', () => {
+  it('gunLeft уводит башню в минус', () => {
+    const tank = makeMovingTank();
+    tank.updateKeys({ name: 'gunLeft', action: 'down' });
+    tank.updateData(0.5); // rotationAmount = gunRotationSpeed(1) * 0.5
+    expect(tank.getBody().gunRotation).toBeCloseTo(-0.5);
+  });
+
+  it('gunRight уводит башню в плюс с зажимом по maxGunAngle', () => {
+    const tank = makeMovingTank();
+    tank.updateKeys({ name: 'gunRight', action: 'down' });
+    tank.updateData(2); // 0 + 2 > maxGunAngle(1) → зажим в 1
+    expect(tank.getBody().gunRotation).toBeCloseTo(1);
+  });
+
+  it('gunCenter возвращает башню к нулю', () => {
+    const body = makePhysicsBody();
+    const tank = makeMovingTank(body);
+    body.gunRotation = 0.5;
+
+    tank.updateKeys({ name: 'gunCenter', action: 'down' });
+    tank.updateData(0.5);
+
+    // центрирование интерполирует к 0, оставаясь между 0 и исходным значением
+    expect(body.gunRotation).toBeGreaterThan(0);
+    expect(body.gunRotation).toBeLessThan(0.5);
+  });
+});
+
+describe('Tank.updateData: стрельба', () => {
+  it('fire собирает _shotData и списывает боезапас', () => {
+    const panel = makeAmmoPanel();
+    const tank = makeMovingTank(makePhysicsBody(), panel);
+
+    tank.updateKeys({ name: 'fire', action: 'down' });
+    tank.updateData(0.016);
+
+    const shot = tank.getShotData();
+    expect(shot).not.toBeNull();
+    expect(shot).toHaveProperty('startPoint');
+    expect(shot).toHaveProperty('direction');
+    expect(panel.getCurrentValue('g1', 'w1')).toBe(9); // списан 1 патрон
+  });
+
+  it('fire без боезапаса не формирует выстрел', () => {
+    const panel = makeAmmoPanel();
+    panel.updateUser('g1', 'w1', 0, 'set'); // обнуляем патроны
+    const tank = makeMovingTank(makePhysicsBody(), panel);
+
+    tank.updateKeys({ name: 'fire', action: 'down' });
+    tank.updateData(0.016);
+
+    expect(tank.getShotData()).toBeNull();
+  });
+
+  it('повторный выстрел заблокирован кулдауном', () => {
+    const tank = makeMovingTank();
+
+    tank.updateKeys({ name: 'fire', action: 'down' });
+    tank.updateData(0.016);
+    expect(tank.getShotData()).not.toBeNull();
+
+    // fire — one-shot, нужно нажать снова; но fireRate ещё не истёк
+    tank.updateKeys({ name: 'fire', action: 'down' });
+    tank.updateData(0.016);
+    expect(tank.getShotData()).toBeNull();
+  });
+});
+
+describe('Tank.updateData: движение и смена оружия', () => {
+  it('forward разгоняет дроссель двигателя', () => {
+    const tank = makeMovingTank();
+    tank.updateKeys({ name: 'forward', action: 'down' });
+    tank.updateData(0.1);
+    expect(tank._engineThrottle).toBeGreaterThan(0);
+  });
+
+  it('отпускание газа сбрасывает дроссель к нулю', () => {
+    const tank = makeMovingTank();
+    tank.updateKeys({ name: 'forward', action: 'down' });
+    tank.updateData(0.1);
+    tank.updateKeys({ name: 'forward', action: 'up' });
+    tank.updateData(1); // достаточно для полного сброса
+    expect(tank._engineThrottle).toBe(0);
+  });
+
+  it('left применяет крутящий момент', () => {
+    const body = makePhysicsBody();
+    const tank = makeMovingTank(body);
+    tank.updateKeys({ name: 'left', action: 'down' });
+    tank.updateData(0.1);
+    expect(body.applyTorque).toHaveBeenCalled();
+  });
+
+  it('nextWeapon переключает на следующее орудие', () => {
+    const tank = makeMovingTank();
+    expect(tank.currentWeapon).toBe('w1');
+    tank.updateKeys({ name: 'nextWeapon', action: 'down' });
+    tank.updateData(0.016);
+    expect(tank.currentWeapon).toBe('w2');
+  });
+
+  it('prevWeapon циклически переключает назад', () => {
+    const tank = makeMovingTank();
+    tank.updateKeys({ name: 'prevWeapon', action: 'down' });
+    tank.updateData(0.016);
+    expect(tank.currentWeapon).toBe('w2'); // w1 -> назад -> w2 (цикл)
+  });
+});
+
 describe('Tank: данные и респаун', () => {
   it('getData возвращает состояние с condition, size и teamId', () => {
     const tank = makeTank();

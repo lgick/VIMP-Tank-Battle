@@ -82,3 +82,119 @@ describe('SoundManager.processAudibility', () => {
     expect(ctx._cleanupUnplayedOneShots).toHaveBeenCalled();
   });
 });
+
+// Методы реестра звуков тестируем через прототип с минимальным `this`,
+// чтобы не поднимать Howler (конструктор грузит аудио).
+const P = SoundManager.prototype;
+
+const makeRegistryCtx = (sounds = new Map()) => ({
+  _sounds: sounds,
+  _registeredSounds: new Map(),
+  _activeInstances: new Map(),
+  _listenerX: 0,
+  _listenerY: 0,
+  _internalStop: vi.fn(),
+  getSoundConfig: P.getSoundConfig,
+  setListenerPosition: P.setListenerPosition,
+  registerSound: P.registerSound,
+  unregisterSound: P.unregisterSound,
+  updateSoundData: P.updateSoundData,
+});
+
+describe('SoundManager.getSoundConfig', () => {
+  it('возвращает конфигурацию загруженного звука', () => {
+    const ctx = makeRegistryCtx(
+      new Map([['shot', { sound: {}, config: { priority: 80 } }]]),
+    );
+    expect(ctx.getSoundConfig('shot')).toEqual({ priority: 80 });
+  });
+
+  it('возвращает undefined для неизвестного звука', () => {
+    const ctx = makeRegistryCtx();
+    expect(ctx.getSoundConfig('nope')).toBeUndefined();
+  });
+});
+
+describe('SoundManager.setListenerPosition', () => {
+  it('сохраняет координаты слушателя', () => {
+    const ctx = makeRegistryCtx();
+    ctx.setListenerPosition(15, -7);
+    expect(ctx._listenerX).toBe(15);
+    expect(ctx._listenerY).toBe(-7);
+  });
+});
+
+describe('SoundManager.registerSound', () => {
+  it('регистрирует звук и возвращает уникальный symbol-id', () => {
+    const ctx = makeRegistryCtx(
+      new Map([
+        ['engine', { sound: { _h: 1 }, config: { priority: 50, loop: true } }],
+      ]),
+    );
+
+    const id = ctx.registerSound('engine', { position: { x: 1, y: 2 } });
+
+    expect(typeof id).toBe('symbol');
+    const reg = ctx._registeredSounds.get(id);
+    expect(reg.priority).toBe(50); // из config
+    expect(reg.position).toEqual({ x: 1, y: 2 }); // из data
+    expect(reg.sound).toBe(ctx._sounds.get('engine').sound);
+    expect(reg.activeSoundId).toBeNull();
+  });
+
+  it('возвращает null и предупреждает для несуществующего звука', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ctx = makeRegistryCtx();
+
+    expect(ctx.registerSound('ghost', { position: { x: 0, y: 0 } })).toBeNull();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
+describe('SoundManager.unregisterSound', () => {
+  it('удаляет звук из реестра', () => {
+    const ctx = makeRegistryCtx(
+      new Map([['s', { sound: {}, config: { priority: 50 } }]]),
+    );
+    const id = ctx.registerSound('s', { position: { x: 0, y: 0 } });
+
+    ctx.unregisterSound(id);
+
+    expect(ctx._registeredSounds.has(id)).toBe(false);
+    expect(ctx._internalStop).not.toHaveBeenCalled(); // не играл
+  });
+
+  it('останавливает играющий звук перед снятием с регистрации', () => {
+    const ctx = makeRegistryCtx(
+      new Map([['s', { sound: {}, config: { priority: 50 } }]]),
+    );
+    const id = ctx.registerSound('s', { position: { x: 0, y: 0 } });
+    ctx._registeredSounds.get(id).activeSoundId = 42;
+
+    ctx.unregisterSound(id);
+
+    expect(ctx._internalStop).toHaveBeenCalledWith(42);
+    expect(ctx._registeredSounds.has(id)).toBe(false);
+  });
+});
+
+describe('SoundManager.updateSoundData', () => {
+  it('мёржит новые параметры в зарегистрированный звук', () => {
+    const ctx = makeRegistryCtx(
+      new Map([['s', { sound: {}, config: { priority: 50 } }]]),
+    );
+    const id = ctx.registerSound('s', { position: { x: 0, y: 0 }, volume: 1 });
+
+    ctx.updateSoundData(id, { position: { x: 9, y: 9 }, volume: 0.3 });
+
+    const reg = ctx._registeredSounds.get(id);
+    expect(reg.position).toEqual({ x: 9, y: 9 });
+    expect(reg.volume).toBe(0.3);
+  });
+
+  it('игнорирует неизвестный id без ошибки', () => {
+    const ctx = makeRegistryCtx();
+    expect(() => ctx.updateSoundData(Symbol('x'), { volume: 1 })).not.toThrow();
+  });
+});

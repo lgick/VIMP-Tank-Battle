@@ -116,6 +116,62 @@ describe('SocketManager: игровые сообщения', () => {
   });
 });
 
+describe('SocketManager: простые отправители', () => {
+  it('sendAuthData / sendAuthResult', () => {
+    sm.sendAuthData('s1', { fields: 1 });
+    expect(socket.send).toHaveBeenCalledWith(1, { fields: 1 });
+
+    sm.sendAuthResult('s1', null);
+    expect(socket.send).toHaveBeenCalledWith(2, null);
+  });
+
+  it('sendMap / sendShot', () => {
+    sm.sendMap('s1', { map: 1 });
+    expect(socket.send).toHaveBeenCalledWith(3, { map: 1 });
+
+    sm.sendShot('s1', [1, 2]);
+    expect(socket.send).toHaveBeenCalledWith(5, [1, 2]);
+  });
+
+  it('sendFirstVote шлёт запрос выбора команды', () => {
+    sm.sendFirstVote('s1');
+    expect(socket.send).toHaveBeenCalledWith(5, [
+      {},
+      0,
+      0,
+      0,
+      0,
+      { name: 'teamChange' },
+    ]);
+  });
+
+  it('sendPlayerDefaultShot включает полную панель и keySet 1', () => {
+    sm.injectServices(null, { getFullPanel: () => ['p'] }, null);
+    sm.sendPlayerDefaultShot('s1', 'g1');
+    expect(socket.send).toHaveBeenCalledWith(5, [{}, 0, ['p'], 0, 0, 0, 1]);
+  });
+
+  it('sendSpectatorDefaultShot включает пустую панель и keySet 0', () => {
+    sm.injectServices(null, { getEmptyPanel: () => ['e'] }, null);
+    sm.sendSpectatorDefaultShot('s1');
+    expect(socket.send).toHaveBeenCalledWith(5, [{}, 0, ['e'], 0, 0, 0, 0]);
+  });
+
+  it('звуковые отправители уходят на порт SOUND_DATA', () => {
+    sm.sendVictory('s1');
+    expect(socket.send).toHaveBeenCalledWith(6, 'victory');
+
+    sm.sendDefeat('s1');
+    expect(socket.send).toHaveBeenCalledWith(6, 'defeat');
+
+    sm.sendFragSound('s1');
+    expect(socket.send).toHaveBeenCalledWith(6, 'frag');
+
+    sm.sendGameOverSound('s1');
+    expect(socket.send).toHaveBeenCalledWith(6, 'gameOver');
+  });
+});
+
 describe('SocketManager: жизненный цикл соединений', () => {
   it('removeUser отключает отправку и логирует попытку', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
