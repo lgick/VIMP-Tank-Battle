@@ -162,13 +162,13 @@ describe('Интеграция: убийство → конец раунда (п
 describe('Интеграция: смена карты одиночным голосом', () => {
   it('parseVote mapChange пересоздаёт мир на новой карте', async () => {
     const gameId = await connectPlayer(vimp, { socketId: 's1' });
-    const current = vimp._currentMap;
+    const current = vimp._roundManager.currentMap;
     const other = vimp._mapList.find(m => m !== current);
     socket.clear();
 
     vimp.parseVote(gameId, ['mapChange', other]);
 
-    expect(vimp._currentMap).toBe(other);
+    expect(vimp._roundManager.currentMap).toBe(other);
     expect(socket.framesOf('sendClear').length).toBeGreaterThan(0);
     expect(socket.framesOf('sendMap').length).toBeGreaterThan(0);
   });
