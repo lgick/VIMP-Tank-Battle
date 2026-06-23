@@ -1,7 +1,20 @@
 # План оптимизации VIMP Tank Battle (сервер + сеть + клиент) — детальная версия
 
-> Статус: **утверждён, не реализован**. Документ — исполнительная спецификация рефакторинга.
+> Статус: **в работе**. Документ — исполнительная спецификация рефакторинга.
 > Каждая фаза — самостоятельный мёржабельный инкремент с зелёными тестами.
+>
+> **Прогресс:** ✅ Фаза 0, ✅ Фаза 1, ✅ Фаза 2 (2a VoteCoordinator, 2b RoundManager,
+> 2c CommandProcessor) — реализованы и закоммичены (613 тестов зелёные, eslint чист).
+> Следующее: Фаза 3 (разделение сетевых каналов). Track B (Rapier) — не начат.
+>
+> Отклонения от плана по ходу реализации:
+> - **Единое числовое пространство id** для людей и ботов (вместо префикса `'_'` у ботов) —
+>   снимает противоречие с `Uint8`-упаковкой Фазы 4 заранее.
+> - `ParticipantManager` владеет только записями участников, размерами команд, списком активных,
+>   генерацией id/имён; кросс-модульная регистрация (`Stat/Panel/Chat/Vote/RTTManager`) осталась
+>   в вызывающих (`VIMP.createUser/removeUser`, `BotManager.createBots/_removeBotById`).
+> - `_changeName` и `reportKill` переехали в `RoundManager` (VIMP держит тонкий прокси `reportKill`,
+>   который дёргает `Game`).
 
 ## Контекст
 
@@ -12,9 +25,11 @@ lifecycle, команды, раунды, голосования, чат-кома
 `BotManager` напрямую читает приватные поля VIMP (`_users`, `_teams`, `_teamSizes`,
 `_spectatorTeam`, `_maxPlayers`, `checkName`). И боты, и игроки одинаково создают `Tank` в
 `Game._playersData` и идут через `Tank.updateKeys/updateData/getData`; различие — источник ввода
-(WebSocket vs AI) и наличие сокета. Весь обмен идёт одним JSON-кадром на порту `5`:
-`[gameSnapshot, coords, panel, stat, chat, vote, keySet]` — горячие игровые данные смешаны с
-редкой мета-информацией и шлются каждый тик.
+(WebSocket vs AI) и наличие сокета. Per-tick кадр порта `5` (через `SocketManager.sendShot`) —
+**6 элементов** `[gameSnapshot, coords, panel, stat, chat, vote]`: горячие игровые данные смешаны
+с редкой мета-информацией и шлются каждый тик. `keySet` (7-й элемент) передаётся **только** в
+default-shot кадрах при смене статуса (`sendPlayerDefaultShot`/`sendSpectatorDefaultShot`/
+`sendFirstShot`), а не каждый тик.
 
 Цель: разгрузить VIMP, ввести единый источник истины для участников (игроки+боты), отделить
 snapshot от меты, перевести snapshot в бинарный формат (мета — JSON), подготовить клиент к
@@ -36,8 +51,9 @@ snapshot от меты, перевести snapshot в бинарный форм
 - Текущие порты (`src/config/wsports.js`): server `0..12` (свободны `9 MISC`, `12 CONSOLE`),
   client `0..8`.
 - Снапшот **одинаков для всех** (нет per-user culling); per-user только `coords`/panel/chat/vote.
-  Подтверждено `VIMP._onShotTick:137-225` (общий `gameSnapshot`, `getUserData` меняет лишь камеру и
-  персональные мета-данные).
+  См. `VIMP._onShotTick` (общий `gameSnapshot` собирается раз/тик; внутренняя `getUserData` меняет
+  лишь камеру и персональные мета-данные). Состояние карты/раунда теперь в `RoundManager`
+  (`currentMapData`, `removedPlayersList` — через геттеры).
 - `getWorldState()` (`Game.js:631`) строит свежий контейнер; `_cachedPlayersData[gameId]` каждый
   тик переприсваивается новым массивом (`Game.js:370`). Реального aliasing-бага нет — чтение для
   бинаря неразрушающее.
@@ -75,7 +91,9 @@ VIMP (фасад/wiring + делегирование тика)
 
 ---
 
-## Фаза 0 — Проверка изоляции данных snapshot (малая)
+## Фаза 0 — Проверка изоляции данных snapshot (малая) ✅ ВЫПОЛНЕНО
+> Реализовано: регресс-тесты в `tests/server/SnapshotManager.test.js` (aliasing не обнаружен,
+> код не менялся). Коммит `881194e`.
 Подтвердить, что бинаризация (Фаза 4) читает данные неразрушающе и что мутации в
 `SnapshotManager.processTick()` не портят кэш Game (анализ показал — не портят).
 - **Действия:** добавить регресс-тест, фиксирующий, что после `processTick()` повторный
@@ -86,7 +104,10 @@ VIMP (фасад/wiring + делегирование тика)
 
 ---
 
-## Фаза 1 — Единая модель участника (игроки + боты)
+## Фаза 1 — Единая модель участника (игроки + боты) ✅ ВЫПОЛНЕНО
+> Реализовано: `src/server/player/{Participant,HumanParticipant,BotParticipant,ParticipantManager}.js`;
+> миграция VIMP/BotManager/BotController; единое числовое пространство id. Тесты
+> `ParticipantManager.test.js` + обновлённые. Коммит `b320b5e`.
 
 ### Новые файлы
 `src/server/player/Participant.js`, `HumanParticipant.js`, `BotParticipant.js`,
@@ -127,13 +148,18 @@ pendingShake/lastActionTime` встречаются только у людей (
 `BotManager.createBots:154` и тем, что `_setSpectatorFromActivePlayer`/`_replaceWatchedPlayer`/
 `_removeFromActivePlayers` итерируют только `this._users`).
 
+> **Реализовано:** классы содержат поля выше + геттеры `isBot`/`isNetworked`. Полиморфные
+> `getInput()`/`send()` пока **не реализованы** — ввод по-прежнему идёт через `Game.updateKeys`
+> (WebSocket-ввод людей в `VIMP.updateKeys`, AI-ввод ботов в `BotController`), а отправка — через
+> `SocketManager` по `socketId`. Это задел под будущую полную унификацию ботов и игроков.
+
 ### ParticipantManager API
 ```js
 class ParticipantManager {
   constructor(teams, spectatorTeam, maxPlayers)  // teams: { team1:1, ... }
   // реестр
   createHuman(params, socketId): gameId          // числовой id
-  createBot({ team, model }): gameId             // id с префиксом '_'
+  createBot({ team, model }): gameId             // числовой id (единый пул с людьми)
   remove(gameId): void
   get(gameId): Participant | undefined
   getAll(): Participant[]
@@ -154,7 +180,7 @@ class ParticipantManager {
 }
 ```
 Внутри: `_participants: Map<gameId, Participant>`, `_teamSizes: { team: Set }`,
-`_activePlayersList: string[]`, генераторы id (числовой / `'_'+n`).
+`_activePlayersList: string[]`, единый числовой генератор id (наименьший свободный).
 
 ### Маппинг текущего кода → ParticipantManager
 | Сейчас | Переезжает |
@@ -189,7 +215,10 @@ class ParticipantManager {
 
 ---
 
-## Фаза 2 — Декомпозиция VIMP
+## Фаза 2 — Декомпозиция VIMP ✅ ВЫПОЛНЕНО
+> Реализовано тремя инкрементами: 2a `VoteCoordinator` (`1a03fe2`), 2b `RoundManager` (`0a147a0`),
+> 2c `CommandProcessor` (`95a6002`). VIMP сведён с 1391 → ~530 строк (фасад). Файлы в
+> `src/server/core/`. Тесты `VoteCoordinator/RoundManager/CommandProcessor.test.js`.
 
 ### Новые файлы
 `src/server/core/RoundManager.js`, `CommandProcessor.js`, `VoteCoordinator.js`.
@@ -231,7 +260,9 @@ VOTE_DATA: 16,
 (существующие `0..12` не трогаем; `SHOT_DATA: 5` остаётся каналом snapshot).
 
 ### Изменение кадра snapshot (порт 5)
-Было: `[gameSnapshot, coords, panel, stat, chat, vote, keySet]`.
+Было (per-tick, `sendShot`): `[gameSnapshot, coords, panel, stat, chat, vote]` (6 элементов;
+`keySet` — 7-й — есть только в default-shot кадрах `sendPlayerDefaultShot`/
+`sendSpectatorDefaultShot`/`sendFirstShot`, шлются при смене статуса).
 Стало: `[gameSnapshot, camera, serverTime, seq]`, где
 - `camera` = `[x, y, forceReset?, shake?]` (per-user, как текущий `coords`);
 - `serverTime` = `Date.now()` (или монотонные мс) — фундамент интерполяции;
@@ -394,4 +425,5 @@ w2e → 5 (эффект взрыва), c1 → 1 (карта/динамика)
 - Track B: отдельно валидировать ощущение управления против planck.
 
 ## Порядок выполнения
-Фаза 0 → 1 → 2 → 3 → 4 → 5. Track B — после Фазы 2, параллельно 3–4, до Фазы 5.
+~~Фаза 0~~ → ~~1~~ → ~~2~~ → **3** → 4 → 5. Track B — после Фазы 2 (можно начинать),
+параллельно 3–4, до Фазы 5.

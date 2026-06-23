@@ -32,17 +32,19 @@ const TARGET_SCAN_INTERVAL = 1.5; // интервал поиска новой ц
  */
 class BotController {
   /**
-   * @param {VIMP} vimp
+   * @param {BotManager} botManager - навигация и LOS
    * @param {Game} game
    * @param {Panel} panel
    * @param {SpatialManager} spatialManager
-   * @param {object} botData
+   * @param {BotParticipant} botData - запись участника-бота
+   * @param {ParticipantManager} participants - реестр участников (поиск целей)
    */
-  constructor(vimp, game, panel, spatialManager, botData) {
-    this._vimp = vimp;
+  constructor(botManager, game, panel, spatialManager, botData, participants) {
+    this._botManager = botManager;
     this._game = game;
     this._panel = panel;
     this._botData = botData;
+    this._participants = participants;
     this._world = this._game._world;
 
     this._target = null;
@@ -196,7 +198,7 @@ class BotController {
 
       if (targetPos) {
         this._lastKnownPosition = new Vec2(targetPos[0], targetPos[1]);
-        const isVisible = this._vimp._bots.hasLineOfSight(
+        const isVisible = this._botManager.hasLineOfSight(
           new Vec2(this._myPosition[0], this._myPosition[1]),
           this._lastKnownPosition,
         );
@@ -224,12 +226,12 @@ class BotController {
    * @private
    */
   setNewPatrolTarget() {
-    const randomNode = this._vimp._bots.getRandomNavNode();
+    const randomNode = this._botManager.getRandomNavNode();
 
     if (randomNode && this._myPosition) {
       this._patrolTarget = randomNode;
       const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
-      this._path = this._vimp._bots.findPath(myPosVec, this._patrolTarget);
+      this._path = this._botManager.findPath(myPosVec, this._patrolTarget);
       this._pathIndex = 0;
     }
   }
@@ -349,8 +351,7 @@ class BotController {
         distanceSq < MAX_FIRING_DISTANCE * MAX_FIRING_DISTANCE * 1.5
       ) {
         minDistanceSq = distanceSq;
-        closestEnemy =
-          this._vimp._users[gameId] || this._vimp._bots.getBotById(gameId);
+        closestEnemy = this._participants.get(gameId);
       }
     }
 
@@ -533,7 +534,7 @@ class BotController {
     const myPosition = this._myBody.getPosition();
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
 
-    if (!this._vimp._bots.hasLineOfSight(myPosition, targetPosition)) {
+    if (!this._botManager.hasLineOfSight(myPosition, targetPosition)) {
       return;
     }
 

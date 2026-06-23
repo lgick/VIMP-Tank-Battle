@@ -7,24 +7,23 @@ const SPATIAL_CELL_SIZE = 600;
 
 /**
  * @class BotManager
- * @description Управляет жизненным циклом ботов в игре:
- * создание, удаление и хранение их данных.
+ * @description Управляет контроллерами и навигацией ботов.
+ * Данные участников-ботов хранятся в ParticipantManager (единый реестр).
  */
 class BotManager {
   /**
-   * @param {VIMP} vimp - Экземпляр основного класса игры VIMP.
+   * @param {ParticipantManager} participants - Единый реестр участников.
    * @param {Game} game - Экземпляр игрового движка (физика).
    * @param {Panel} panel - Экземпляр менеджера панели игрока.
    * @param {Stat} stat - Экземпляр менеджера статистики.
    */
-  constructor(vimp, game, panel, stat) {
-    this._vimp = vimp;
+  constructor(participants, game, panel, stat) {
+    this._participants = participants;
     this._game = game;
     this._panel = panel;
     this._stat = stat;
 
     this._model = 'm1'; // модель танка для ботов
-    this._bots = new Map();
     this._respawns = null; // данные респаунов
 
     this._botControllers = new Map();
@@ -86,22 +85,6 @@ class BotManager {
   }
 
   /**
-   * @description Генерирует уникальный идентификатор для бота.
-   * @returns {string} Уникальный gameId для бота.
-   * @private
-   */
-  _getGameId() {
-    const prefix = '_';
-    let counter = 0;
-
-    while (this._bots.has(`${prefix}${counter}`)) {
-      counter += 1;
-    }
-
-    return `${prefix}${counter}`;
-  }
-
-  /**
    * @description Создаёт заданное количество ботов.
    * @param {number} count - Количество ботов для создания.
    * @param {string|null} teamName - Имя команды.
@@ -113,17 +96,12 @@ class BotManager {
       return 0;
     }
 
-    const playableTeams = Object.keys(this._vimp._teams).filter(
-      t => t !== this._vimp._spectatorTeam,
-    );
+    const playableTeams = this._participants.getPlayableTeams();
 
     let createdCount = 0;
 
     for (let i = 0; i < count; i += 1) {
-      const totalPlayers =
-        Object.keys(this._vimp._users).length + this._bots.size;
-
-      if (this._vimp._maxPlayers && totalPlayers >= this._vimp._maxPlayers) {
+      if (this._participants.isFull) {
         break; // достигнут глобальный лимит игроков
       }
 
@@ -131,55 +109,49 @@ class BotManager {
 
       if (!targetTeam) {
         // логика равномерного распределения
-        targetTeam = playableTeams.sort((a, b) => {
-          const sizeA = this._vimp._teamSizes[a]?.size || 0;
-          const sizeB = this._vimp._teamSizes[b]?.size || 0;
-          return sizeA - sizeB;
-        })[0];
+        targetTeam = playableTeams.sort(
+          (a, b) =>
+            this._participants.getTeamSize(a) - this._participants.getTeamSize(b),
+        )[0];
       }
 
       if (
         !targetTeam ||
         !this._respawns[targetTeam] ||
-        this._vimp._teamSizes[targetTeam].size >=
+        this._participants.getTeamSize(targetTeam) >=
           this._respawns[targetTeam].length
       ) {
         // нет свободных мест в команде, или команда не найдена
         continue;
       }
 
-      const gameId = this._getGameId();
-      const name = this._vimp.checkName(`Bot${gameId}`);
-      const teamId = this._vimp._teams[targetTeam];
-      const botData = {
-        name,
-        gameId,
+      // запись участника-бота в едином реестре
+      const gameId = this._participants.createBot({
         team: targetTeam,
-        teamId,
         model: this._model,
-        isBot: true,
-      };
+      });
+      const participant = this._participants.get(gameId);
 
       // контроллер для бота
       const controller = new BotController(
-        this._vimp,
+        this,
         this._game,
         this._panel,
         this._spatialManager,
-        botData,
+        participant,
+        this._participants,
       );
 
+      participant.controller = controller;
       this._botControllers.set(gameId, controller);
-      this._bots.set(gameId, botData);
 
       // регистрация бота в системах игры
-      this._stat.addUser(gameId, teamId, {
-        name,
+      this._stat.addUser(gameId, participant.teamId, {
+        name: participant.name,
         status: 'dead',
         latency: 'BOT',
       });
       this._panel.addUser(gameId);
-      this._vimp._teamSizes[targetTeam].add(gameId);
 
       createdCount += 1;
     }
@@ -194,12 +166,10 @@ class BotManager {
    */
   removeBots(teamName = null) {
     const botsToRemove = teamName
-      ? [...this._bots.keys()].filter(
-          gameId => this._bots.get(gameId).team === teamName,
-        )
-      : [...this._bots.keys()];
+      ? this._participants.getBots().filter(bot => bot.team === teamName)
+      : this._participants.getBots();
 
-    botsToRemove.forEach(gameId => this._removeBotById(gameId));
+    botsToRemove.forEach(bot => this._removeBotById(bot.gameId));
   }
 
   /**
@@ -228,9 +198,9 @@ class BotManager {
    * @private
    */
   _removeBotById(gameId) {
-    const botData = this._bots.get(gameId);
+    const participant = this._participants.get(gameId);
 
-    if (!botData) {
+    if (!participant || !participant.isBot) {
       return;
     }
 
@@ -242,11 +212,12 @@ class BotManager {
     }
 
     // удаление бота из систем игры
-    this._stat.removeUser(gameId, botData.teamId);
+    this._stat.removeUser(gameId, participant.teamId);
     this._panel.removeUser(gameId);
-    this._vimp._teamSizes[botData.team].delete(gameId);
     this._game.removePlayer(gameId);
-    this._bots.delete(gameId);
+
+    // удаление из реестра (команда + список активных)
+    this._participants.remove(gameId);
   }
 
   /**
@@ -256,9 +227,9 @@ class BotManager {
    * @returns {boolean} - true, если бот был удален, иначе false.
    */
   removeOneBotForPlayer(teamName) {
-    for (const botData of this._bots.values()) {
-      if (botData.team === teamName) {
-        this._removeBotById(botData.gameId);
+    for (const bot of this._participants.getBots()) {
+      if (bot.team === teamName) {
+        this._removeBotById(bot.gameId);
         return true;
       }
     }
@@ -267,21 +238,23 @@ class BotManager {
   }
 
   /**
-   * @description Возвращает botData по gameId
+   * @description Возвращает участника-бота по gameId.
    * @param {string} gameId
-   * @returns {object | undefined} - botData или undefined,
-   * если нет такого gameId
+   * @returns {BotParticipant | undefined} - бот или undefined,
+   * если нет такого бота
    */
   getBotById(gameId) {
-    return this._bots.get(gameId);
+    const participant = this._participants.get(gameId);
+
+    return participant && participant.isBot ? participant : undefined;
   }
 
   /**
-   * @description Возвращает итератор для перебора всех ботов.
-   * @returns {Iterator<object>}
+   * @description Возвращает массив всех ботов.
+   * @returns {BotParticipant[]}
    */
   getBots() {
-    return this._bots.values();
+    return this._participants.getBots();
   }
 
   /**
@@ -289,7 +262,7 @@ class BotManager {
    * @returns {number} Количество ботов.
    */
   getBotCount() {
-    return this._bots.size;
+    return this._participants.getBots().length;
   }
 
   /**
@@ -298,7 +271,8 @@ class BotManager {
    * @returns {number} Количество ботов в команде.
    */
   getBotCountForTeam(teamName) {
-    return [...this._bots.values()].filter(bot => bot.team === teamName).length;
+    return this._participants.getBots().filter(bot => bot.team === teamName)
+      .length;
   }
 
   /**
@@ -309,10 +283,8 @@ class BotManager {
   getBotCountsPerTeam() {
     const counts = {};
 
-    for (const botData of this._bots.values()) {
-      const team = botData.team;
-
-      counts[team] = (counts[team] || 0) + 1;
+    for (const bot of this._participants.getBots()) {
+      counts[bot.team] = (counts[bot.team] || 0) + 1;
     }
 
     return counts;
