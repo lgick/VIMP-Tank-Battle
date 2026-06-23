@@ -50,7 +50,11 @@ In production, the server runs plain HTTP behind Nginx (which handles HTTPS). `.
 
 The game server is Node.js + Express + `ws` WebSockets + ViteExpress.
 
-**`VIMP` (singleton)** in `src/server/modules/VIMP.js` is the central game controller. It owns all modules and orchestrates the entire game lifecycle:
+**`VIMP` (singleton)** in `src/server/modules/VIMP.js` is a **facade** (~530 строк): wiring + делегирование тика + жизненный цикл соединения (`createUser`/`removeUser`/`updateKeys`/`pushMessage`/`parseVote`/`sendMap`/`mapReady`/`firstShotReady`/`updateRTT`/`reportKill`/`triggerCameraShake`) + мост колбэков `TimerManager`/`RTTManager`. Бизнес-логика вынесена в отдельные менеджеры. VIMP владеет модулями:
+- `ParticipantManager` (`src/server/player/`) — **единый источник истины об участниках** (игроки + боты): реестр, размеры команд, список активных, генерация id (единое числовое пространство), проверка имён, наблюдение. Участники — классы `Participant`/`HumanParticipant`/`BotParticipant`. Различение бот/человек — через геттеры `isBot`/`isNetworked`, не по формату id.
+- `RoundManager` (`src/server/core/`) — раунды, команды, карты: `createMap`/`startRound`/`initiateNewRound`/`changeTeam`/`changeMap`/`changeName`/`checkTeamWipe`/`reportKill`/`setActive`/`setSpectator`. Владеет состоянием раунда/карты (`currentMap`, `currentMapData`, `scaledMapData`, `isRoundEnding`, `removedPlayersList`).
+- `CommandProcessor` (`src/server/core/`) — парсинг чат-команд (`/name`, `/nr`, `/timeleft`, `/mapname`, `/bot`); `pushMessage` делегирует сюда.
+- `VoteCoordinator` (`src/server/core/`) — создание/кулдаун/сброс голосований (`canCreateVote`/`createVote`/`reset`).
 - `Game` — physics world (Planck.js/Box2D), players, weapons, map
 - `Panel` — per-player HUD data
 - `Stat` — scoreboard (body rows + head totals, with configurable sort)
@@ -67,7 +71,7 @@ The game server is Node.js + Express + `ws` WebSockets + ViteExpress.
 
 **User lifecycle**: connect → auth → `createUser` (spectator) → `sendMap` → `mapReady` → `firstShotReady` (ready for game loop) → `removeUser` on disconnect.
 
-**Bots** функционально идентичны реальным игрокам, но с ограниченным набором действий. Вся логика — в `src/server/modules/bots/`. Цель на будущее: объединить ботов и реальных игроков в единую абстракцию.
+**Bots** функционально идентичны реальным игрокам, но с ограниченным набором действий. Данные участника-бота живут в `ParticipantManager` (общий реестр), `BotManager` отвечает только за `BotController`/`NavigationSystem`/`SpatialManager` и навигацию. `BotController` берёт данные через `ParticipantManager`/`BotManager`, **не читает приватные поля VIMP**. Боты и игроки делят единое числовое пространство id. Полная унификация ботов и игроков в одну абстракцию — цель на будущее.
 
 ### Client (`src/client/`)
 
@@ -97,6 +101,8 @@ Publisher-паттерн внутри MVC-тройки:
 - **`src/config/`** — shared config consumed by both server (Node.js) and client (Vite bundler): `game.js`, `client.js`, `auth.js`, `server.js`, `sounds.js`, `wsports.js`.
 - **`src/lib/`** — utilities: `Publisher` (observer), `AbstractTimer`, `factory`, `math`, `formatters`, `sanitizers`, `validators`, `security`.
 - **`src/data/`** — static game data: `maps/` (tiled map definitions with respawns + physics bodies), `models.js`, `weapons.js`.
+- **`src/server/player/`** — единый реестр участников: `Participant`/`HumanParticipant`/`BotParticipant`, `ParticipantManager`.
+- **`src/server/core/`** — менеджеры, выделенные из VIMP: `RoundManager`, `CommandProcessor`, `VoteCoordinator`.
 
 ### WebSocket Protocol
 
@@ -130,7 +136,7 @@ Port IDs live in `src/config/wsports.js`. Key server→client ports: `0` config,
 - **Стек**: Vitest + happy-dom (клиент) + `@vitest/coverage-v8`. Конфиг `vitest.config.js` — два проекта: `node` (`tests/server`, `tests/lib`, `tests/config`, окружение node) и `client` (`tests/client`, окружение happy-dom). Интеграционные тесты лежат в `tests/server/integration/` и гоняются в node-проекте.
 - **Запуск**: `npm test` (одиночный прогон), `npm run test:watch`, `npm run test:coverage`. CI: `.github/workflows/test.yml` гоняет `eslint` + тесты на каждый push/PR.
 - **Расположение**: тесты в `tests/`, зеркалят структуру `src/` (не рядом с кодом). Файлы тестов имеют override в `eslint.config.js` (глобалы Vitest).
-- **Покрыто** (~578 тестов): вся логика `lib/` (включая `security`); серверные модули с логикой (Stat, Vote, RTTManager, SnapshotManager, Panel, Chat, TimerManager, Pathfinder, SpatialManager, NavigationSystem, HitscanService, BaseModel, Bomb, Map, Tank, BotManager, BotController, SocketManager, Game, VIMP); клиентские модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager) + InputListener, SoundManager; клиентские контроллеры и view (все 8 — DOM через happy-dom); **интеграционный слой** (`tests/server/integration/`): полный жизненный цикл VIMP с реальными модулями + протокольный слой `socket/index.js`.
+- **Покрыто** (~613 тестов): вся логика `lib/` (включая `security`); серверные модули с логикой (Stat, Vote, RTTManager, SnapshotManager, Panel, Chat, TimerManager, Pathfinder, SpatialManager, NavigationSystem, HitscanService, BaseModel, Bomb, Map, Tank, BotManager, BotController, SocketManager, Game, VIMP); реестр участников (`ParticipantManager`) и менеджеры из `core/` (`VoteCoordinator`, `RoundManager`, `CommandProcessor`); клиентские модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager) + InputListener, SoundManager; клиентские контроллеры и view (все 8 — DOM через happy-dom); **интеграционный слой** (`tests/server/integration/`): полный жизненный цикл VIMP с реальными модулями + протокольный слой `socket/index.js`.
 - **Не покрыто** (низкий ROI для unit-тестов): Pixi-`parts/`+`effects/`, провайдеры (`BakingProvider`/`DependencyProvider`).
 - **Паттерны** (соблюдать при добавлении тестов):
   - **Синглтоны** (Game, Vote, Stat, Map, Panel, TimerManager, HitscanService, SnapshotManager, клиентские `*Model`, InputListener) изолируют через `vi.resetModules()` в `beforeEach` + динамический `await import(...)`.
@@ -186,5 +192,5 @@ Port IDs live in `src/config/wsports.js`. Key server→client ports: `0` config,
 
 - **Снапшоты в бинарном формате**: сейчас все данные (включая игровые кадры порт `5`) отправляются в JSON. Нужно отделить snapshot-данные и передавать их в бинарном формате для снижения нагрузки на сеть.
 - **Клиент-серверная синхронизация**: при рассинхроне коррекции нет. Нужна реализация client-side prediction / reconciliation (описана в `_TODO/KEYS UPDATE.md`). Реализовывать только после того, как базовая игра полностью готова.
-- **Унификация ботов и игроков**: боты функционально идентичны игрокам, но реализованы отдельно. Цель — единая абстракция для ботов и реальных игроков.
+- **Унификация ботов и игроков**: частично сделано — общий реестр `ParticipantManager` с единым числовым пространством id и классами `Human/BotParticipant`. Остаётся полностью объединить поведение (ввод от WebSocket vs AI) в одну абстракцию.
 - **Debug-режим**: инструментов отладки нет, может потребоваться реализация.
