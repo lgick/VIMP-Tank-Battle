@@ -108,7 +108,7 @@ Publisher-паттерн внутри MVC-тройки:
 
 All messages: `[portId, payload]` serialized as JSON.
 
-Port IDs live in `src/config/wsports.js`. Key server→client ports: `0` config, `1` auth data, `3` map, `4` first shot, `5` shot (game frame), `6` sound, `7` game inform, `8` tech inform, `10` ping, `11` clear. Key client→server ports: `0` config ready, `1` auth, `2` map ready, `3` first shot ready, `4` keys, `5` chat, `6` vote, `7` pong.
+Port IDs live in `src/config/wsports.js` (источник истины). Server→client ports: `0` config, `1` auth data, `2` auth result, `3` map, `4` first shot, `5` shot (game frame), `6` sound, `7` game inform, `8` tech inform, `9` MISC (свободен), `10` ping, `11` clear, `12` console (свободен). Client→server ports: `0` config ready, `1` auth, `2` modules ready, `3` map ready, `4` first shot ready, `5` keys, `6` chat, `7` vote, `8` pong.
 
 **Текущее состояние**: все данные, включая снапшоты (порт `5`), передаются в JSON. При рассинхроне клиента и сервера коррекции нет — клиент просто отображает пришедшие данные.
 
