@@ -3,7 +3,7 @@ import { Vec2 } from 'planck';
 import BotController from '../../src/server/modules/bots/BotController.js';
 
 // BotController — НЕ синглтон, физику сам не создаёт (берёт game._world).
-// Мокаем game/vimp/panel/spatialManager; planck (Vec2/Rot) реальный.
+// Мокаем game/botManager/participants/panel/spatialManager; planck реальный.
 
 // тело-заглушка: единичные мировые векторы при нулевом угле
 const makeBody = () => ({
@@ -23,26 +23,30 @@ const makeGame = (overrides = {}) => ({
   ...overrides,
 });
 
-const makeVimp = (overrides = {}) => ({
-  _users: {},
-  _bots: {
-    hasLineOfSight: vi.fn(() => true),
-    getRandomNavNode: vi.fn(() => new Vec2(50, 50)),
-    findPath: vi.fn(() => [new Vec2(10, 10)]),
-    getBotById: vi.fn(),
-  },
+// BotManager: навигация и проверка прямой видимости
+const makeBotManager = (overrides = {}) => ({
+  hasLineOfSight: vi.fn(() => true),
+  getRandomNavNode: vi.fn(() => new Vec2(50, 50)),
+  findPath: vi.fn(() => [new Vec2(10, 10)]),
   ...overrides,
 });
 
+// ParticipantManager: поиск участников по gameId
+const makeParticipants = (usersMap = {}) => {
+  const map = new Map(Object.entries(usersMap));
+  return { get: id => map.get(id) };
+};
+
 const botData = { gameId: 'bot1', teamId: 1 };
 
-const makeBot = ({ game, vimp, panel, spatial } = {}) => {
+const makeBot = ({ game, botManager, participants, panel, spatial } = {}) => {
   const g = game || makeGame();
-  const v = vimp || makeVimp();
+  const bmgr = botManager || makeBotManager();
+  const pm = participants || makeParticipants();
   const p = panel || { hasResources: vi.fn(() => true) };
   const s = spatial || { queryNearby: vi.fn(() => []) };
-  const bot = new BotController(v, g, p, s, botData);
-  return { bot, game: g, vimp: v, panel: p, spatial: s };
+  const bot = new BotController(bmgr, g, p, s, botData, pm);
+  return { bot, game: g, botManager: bmgr, participants: pm, panel: p, spatial: s };
 };
 
 describe('BotController._setKeyState', () => {
@@ -148,17 +152,15 @@ describe('BotController.findClosestEnemy', () => {
         { gameId: 'enemyNear', teamId: 2, x: 100, y: 0 },
       ]),
     };
-    const vimp = makeVimp({
-      _users: {
-        enemyNear: { gameId: 'enemyNear' },
-        enemyFar: { gameId: 'enemyFar' },
-      },
+    const participants = makeParticipants({
+      enemyNear: { gameId: 'enemyNear' },
+      enemyFar: { gameId: 'enemyFar' },
     });
-    const { bot } = makeBot({ vimp, spatial });
+    const { bot } = makeBot({ participants, spatial });
     bot._myPosition = [0, 0];
 
     const enemy = bot.findClosestEnemy();
-    expect(enemy).toBe(vimp._users.enemyNear);
+    expect(enemy).toBe(participants.get('enemyNear'));
   });
 
   it('игнорирует врагов за пределами дальности', () => {
@@ -173,16 +175,15 @@ describe('BotController.findClosestEnemy', () => {
     expect(bot.findClosestEnemy()).toBeNull();
   });
 
-  it('использует getBotById, если враг не среди _users', () => {
+  it('находит врага в едином реестре участников (включая ботов)', () => {
     const enemyBot = { gameId: 'enemyBot' };
     const spatial = {
       queryNearby: vi.fn(() => [
         { gameId: 'enemyBot', teamId: 2, x: 50, y: 0 },
       ]),
     };
-    const vimp = makeVimp();
-    vimp._bots.getBotById = vi.fn(() => enemyBot);
-    const { bot } = makeBot({ vimp, spatial });
+    const participants = makeParticipants({ enemyBot });
+    const { bot } = makeBot({ participants, spatial });
     bot._myPosition = [0, 0];
 
     expect(bot.findClosestEnemy()).toBe(enemyBot);
@@ -204,9 +205,8 @@ describe('BotController.makeDecision', () => {
 
   it('видимый враг → ATTACKING', () => {
     const game = makeGame({ getPosition: vi.fn(() => [100, 0]) });
-    const vimp = makeVimp();
-    vimp._bots.hasLineOfSight = vi.fn(() => true);
-    const { bot } = makeBot({ game, vimp });
+    const botManager = makeBotManager({ hasLineOfSight: vi.fn(() => true) });
+    const { bot } = makeBot({ game, botManager });
     bot._myPosition = [0, 0];
     bot._targetScanTimer = 0;
     bot.findClosestEnemy = vi.fn(() => ({ gameId: 'e1' }));
@@ -218,9 +218,8 @@ describe('BotController.makeDecision', () => {
 
   it('невидимый враг → NAVIGATING', () => {
     const game = makeGame({ getPosition: vi.fn(() => [100, 0]) });
-    const vimp = makeVimp();
-    vimp._bots.hasLineOfSight = vi.fn(() => false);
-    const { bot } = makeBot({ game, vimp });
+    const botManager = makeBotManager({ hasLineOfSight: vi.fn(() => false) });
+    const { bot } = makeBot({ game, botManager });
     bot._myPosition = [0, 0];
     bot._targetScanTimer = 0;
     bot.findClosestEnemy = vi.fn(() => ({ gameId: 'e1' }));
@@ -368,10 +367,11 @@ describe('BotController.setNewPatrolTarget', () => {
   it('строит путь к случайной нав-точке', () => {
     const node = new Vec2(50, 50);
     const path = [new Vec2(10, 10)];
-    const vimp = makeVimp();
-    vimp._bots.getRandomNavNode = vi.fn(() => node);
-    vimp._bots.findPath = vi.fn(() => path);
-    const { bot } = makeBot({ vimp });
+    const botManager = makeBotManager({
+      getRandomNavNode: vi.fn(() => node),
+      findPath: vi.fn(() => path),
+    });
+    const { bot } = makeBot({ botManager });
     bot._myPosition = [0, 0];
 
     bot.setNewPatrolTarget();
@@ -379,19 +379,18 @@ describe('BotController.setNewPatrolTarget', () => {
     expect(bot._patrolTarget).toBe(node);
     expect(bot._path).toBe(path);
     expect(bot._pathIndex).toBe(0);
-    expect(vimp._bots.findPath).toHaveBeenCalled();
+    expect(botManager.findPath).toHaveBeenCalled();
   });
 
   it('ничего не делает без нав-точки', () => {
-    const vimp = makeVimp();
-    vimp._bots.getRandomNavNode = vi.fn(() => null);
-    const { bot } = makeBot({ vimp });
+    const botManager = makeBotManager({ getRandomNavNode: vi.fn(() => null) });
+    const { bot } = makeBot({ botManager });
     bot._myPosition = [0, 0];
 
     bot.setNewPatrolTarget();
 
     expect(bot._patrolTarget).toBeNull();
-    expect(vimp._bots.findPath).not.toHaveBeenCalled();
+    expect(botManager.findPath).not.toHaveBeenCalled();
   });
 });
 

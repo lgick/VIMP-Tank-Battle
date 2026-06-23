@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import ParticipantManager from '../../src/server/player/ParticipantManager.js';
 
 // BotController создаёт физику — мокаем его заглушкой
 vi.mock('../../src/server/modules/bots/BotController.js', () => ({
@@ -10,16 +11,13 @@ vi.mock('../../src/server/modules/bots/BotController.js', () => ({
 
 let BotManager;
 
-// фейковый VIMP с минимально необходимым состоянием
-const makeVimp = (overrides = {}) => ({
-  _teams: { team1: 1, team2: 2, spectators: 3 },
-  _spectatorTeam: 'spectators',
-  _users: {},
-  _maxPlayers: 30,
-  _teamSizes: { team1: new Set(), team2: new Set() },
-  checkName: name => name,
-  ...overrides,
-});
+// реальный реестр участников — единый источник истины для ботов
+const makeParticipants = (maxPlayers = 30) =>
+  new ParticipantManager(
+    { team1: 1, team2: 2, spectators: 3 },
+    'spectators',
+    maxPlayers,
+  );
 
 const makeDeps = () => ({
   game: { removePlayer: vi.fn() },
@@ -43,17 +41,17 @@ beforeEach(async () => {
 
 describe('BotManager.createBots', () => {
   it('возвращает 0 без данных карты (нет респаунов)', () => {
-    const vimp = makeVimp();
+    const pm = makeParticipants();
     const { game, panel, stat } = makeDeps();
-    const bm = new BotManager(vimp, game, panel, stat);
+    const bm = new BotManager(pm, game, panel, stat);
 
     expect(bm.createBots(2)).toBe(0);
   });
 
   it('создаёт ботов в указанной команде и регистрирует их', () => {
-    const vimp = makeVimp();
+    const pm = makeParticipants();
     const { game, panel, stat } = makeDeps();
-    const bm = new BotManager(vimp, game, panel, stat);
+    const bm = new BotManager(pm, game, panel, stat);
     bm.createMap(mapData());
 
     const created = bm.createBots(2, 'team1');
@@ -63,23 +61,23 @@ describe('BotManager.createBots', () => {
     expect(bm.getBotCountForTeam('team1')).toBe(2);
     expect(stat.addUser).toHaveBeenCalledTimes(2);
     expect(panel.addUser).toHaveBeenCalledTimes(2);
-    expect(vimp._teamSizes.team1.size).toBe(2);
+    expect(pm.getTeamSize('team1')).toBe(2);
   });
 
   it('не превышает вместимость респаунов команды', () => {
-    const vimp = makeVimp();
+    const pm = makeParticipants();
     const { game, panel, stat } = makeDeps();
-    const bm = new BotManager(vimp, game, panel, stat);
+    const bm = new BotManager(pm, game, panel, stat);
     bm.createMap(mapData(2)); // только 2 слота
 
     expect(bm.createBots(5, 'team1')).toBe(2);
   });
 
   it('распределяет ботов в наименьшую команду без указания team', () => {
-    const vimp = makeVimp();
-    vimp._teamSizes.team1.add('player'); // team1 уже занятее
+    const pm = makeParticipants();
+    pm.addToTeam('player', 'team1'); // team1 уже занятее
     const { game, panel, stat } = makeDeps();
-    const bm = new BotManager(vimp, game, panel, stat);
+    const bm = new BotManager(pm, game, panel, stat);
     bm.createMap(mapData());
 
     bm.createBots(1); // без команды → в team2
@@ -88,33 +86,33 @@ describe('BotManager.createBots', () => {
   });
 
   it('соблюдает глобальный лимит игроков', () => {
-    const vimp = makeVimp({ _maxPlayers: 1 });
+    const pm = makeParticipants(1);
     const { game, panel, stat } = makeDeps();
-    const bm = new BotManager(vimp, game, panel, stat);
+    const bm = new BotManager(pm, game, panel, stat);
     bm.createMap(mapData());
 
     expect(bm.createBots(5, 'team1')).toBe(1);
   });
 
-  it('генерирует уникальные gameId с префиксом _', () => {
-    const vimp = makeVimp();
+  it('генерирует числовые gameId из общего пула', () => {
+    const pm = makeParticipants();
     const { game, panel, stat } = makeDeps();
-    const bm = new BotManager(vimp, game, panel, stat);
+    const bm = new BotManager(pm, game, panel, stat);
     bm.createMap(mapData());
 
     bm.createBots(2, 'team1');
-    const ids = [...bm.getBots()].map(b => b.gameId).sort();
-    expect(ids).toEqual(['_0', '_1']);
+    const ids = bm.getBots().map(b => b.gameId).sort();
+    expect(ids).toEqual(['0', '1']);
   });
 });
 
 describe('BotManager.removeBots', () => {
-  let bm, vimp, deps;
+  let bm, pm, deps;
 
   beforeEach(() => {
-    vimp = makeVimp();
+    pm = makeParticipants();
     deps = makeDeps();
-    bm = new BotManager(vimp, deps.game, deps.panel, deps.stat);
+    bm = new BotManager(pm, deps.game, deps.panel, deps.stat);
     bm.createMap(mapData());
     bm.createBots(2, 'team1');
     bm.createBots(1, 'team2');
@@ -147,9 +145,9 @@ describe('BotManager.removeBots', () => {
 
 describe('BotManager: подсчёты', () => {
   it('getBotCountsPerTeam считает ботов по командам', () => {
-    const vimp = makeVimp();
+    const pm = makeParticipants();
     const deps = makeDeps();
-    const bm = new BotManager(vimp, deps.game, deps.panel, deps.stat);
+    const bm = new BotManager(pm, deps.game, deps.panel, deps.stat);
     bm.createMap(mapData());
     bm.createBots(2, 'team1');
     bm.createBots(1, 'team2');
@@ -157,13 +155,13 @@ describe('BotManager: подсчёты', () => {
     expect(bm.getBotCountsPerTeam()).toEqual({ team1: 2, team2: 1 });
   });
 
-  it('getBotById возвращает данные бота', () => {
-    const vimp = makeVimp();
+  it('getBotById возвращает участника-бота', () => {
+    const pm = makeParticipants();
     const deps = makeDeps();
-    const bm = new BotManager(vimp, deps.game, deps.panel, deps.stat);
+    const bm = new BotManager(pm, deps.game, deps.panel, deps.stat);
     bm.createMap(mapData());
     bm.createBots(1, 'team1');
 
-    expect(bm.getBotById('_0')).toMatchObject({ team: 'team1', isBot: true });
+    expect(bm.getBotById('0')).toMatchObject({ team: 'team1', isBot: true });
   });
 });

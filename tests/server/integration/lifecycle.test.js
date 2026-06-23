@@ -30,8 +30,8 @@ describe('Интеграция: онбординг игрока', () => {
   it('проходит весь цикл connect→map→firstShot и становится ready', async () => {
     const gameId = await connectPlayer(vimp, { socketId: 's1' });
 
-    expect(vimp._users[gameId]).toBeDefined();
-    expect(vimp._users[gameId].isReady).toBe(true);
+    expect(vimp._participants.get(gameId)).toBeDefined();
+    expect(vimp._participants.get(gameId).isReady).toBe(true);
 
     // ушли ключевые кадры онбординга
     expect(socket.framesOf('sendMap').length).toBeGreaterThan(0);
@@ -62,8 +62,8 @@ describe('Интеграция: выбор команды и спавн', () => 
 
     joinTeam(vimp, gameId, 'team1');
 
-    expect(vimp._activePlayersList).toContain(gameId);
-    expect(vimp._users[gameId].isWatching).toBe(false);
+    expect(vimp._participants.getActiveList()).toContain(gameId);
+    expect(vimp._participants.get(gameId).isWatching).toBe(false);
     expect(vimp._game._playersData[gameId]).toBeDefined();
   });
 
@@ -181,13 +181,13 @@ describe('Интеграция: idle-кик и дисконнект', () => {
     socket.clear();
 
     // делаем игрока «бездействующим» дольше порога
-    vimp._users[gameId].lastActionTime = Date.now() - 200000;
+    vimp._participants.get(gameId).lastActionTime = Date.now() - 200000;
     vimp._kickIdleUsers();
 
     expect(
       socket.framesOf('close').some(f => f.args[1] === 'kickIdle'),
     ).toBe(true);
-    expect(vimp._users[gameId]).toBeUndefined();
+    expect(vimp._participants.get(gameId)).toBeUndefined();
   });
 
   it('removeUser полностью удаляет игрока из игры', async () => {
@@ -196,9 +196,9 @@ describe('Интеграция: idle-кик и дисконнект', () => {
 
     vimp.removeUser(gameId);
 
-    expect(vimp._users[gameId]).toBeUndefined();
+    expect(vimp._participants.get(gameId)).toBeUndefined();
     expect(vimp._game._playersData[gameId]).toBeUndefined();
-    expect(vimp._activePlayersList).not.toContain(gameId);
+    expect(vimp._participants.getActiveList()).not.toContain(gameId);
   });
 });
 

@@ -32,9 +32,17 @@ const attackingBot = (currentWeapon, target) => {
     getPosition: vi.fn(() => [target[0], target[1]]),
     isAlive: vi.fn(() => true),
   };
-  const vimp = { _users: {}, _bots: { hasLineOfSight: vi.fn(() => true) } };
+  const botManager = { hasLineOfSight: vi.fn(() => true) };
+  const participants = { get: () => undefined };
   const panel = { hasResources: vi.fn(() => true) };
-  const bot = new BotController(vimp, game, panel, { queryNearby: () => [] }, botData);
+  const bot = new BotController(
+    botManager,
+    game,
+    panel,
+    { queryNearby: () => [] },
+    botData,
+    participants,
+  );
   bot.state = 'ATTACKING';
   bot._target = { gameId: 'e1' };
   bot._myBody = makeBody();

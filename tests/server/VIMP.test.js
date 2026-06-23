@@ -3,13 +3,6 @@ import VIMP from '../../src/server/modules/VIMP.js';
 
 // VIMP — огромный синглтон с тяжёлым конструктором. Тестируем
 // изолированные методы через прототип, подставляя минимальный `this`.
-const withMethods = ctx => {
-  ctx.checkName = VIMP.prototype.checkName;
-  ctx._getNextActivePlayerForUser =
-    VIMP.prototype._getNextActivePlayerForUser;
-  ctx.triggerCameraShake = VIMP.prototype.triggerCameraShake;
-  return ctx;
-};
 
 // привязывает указанные методы прототипа к фейковому контексту
 const bind = (ctx, ...names) => {
@@ -19,82 +12,80 @@ const bind = (ctx, ...names) => {
   return ctx;
 };
 
-describe('VIMP.checkName: уникализация имён', () => {
-  it('уникальное имя не меняется', () => {
-    const ctx = withMethods({ _users: { u1: { name: 'Alice' } } });
-    expect(ctx.checkName('Bob')).toBe('Bob');
-  });
+// фейковый ParticipantManager: единый источник истины для участников.
+// usersMap — { gameId: participant }, activeList — gameId[].
+const fakeParticipants = (usersMap = {}, activeList = []) => {
+  const map = new Map(Object.entries(usersMap));
 
-  it('при коллизии добавляет #1', () => {
-    const ctx = withMethods({ _users: { u1: { name: 'Bob' } } });
-    expect(ctx.checkName('Bob')).toBe('Bob#1');
-  });
-
-  it('при цепочке коллизий увеличивает номер', () => {
-    const ctx = withMethods({
-      _users: { u1: { name: 'Bob' }, u2: { name: 'Bob#1' } },
-    });
-    expect(ctx.checkName('Bob')).toBe('Bob#2');
-  });
-});
+  return {
+    get: id => map.get(id),
+    getAll: () => [...map.values()],
+    getHumans: () => [...map.values()].filter(p => !p.isBot),
+    getActiveList: () => activeList,
+    replaceWatched: vi.fn(),
+  };
+};
 
 describe('VIMP._getNextActivePlayerForUser: циклический выбор', () => {
-  const ctx = () =>
-    withMethods({
-      _users: { me: { watchedGameId: 'p2' } },
-      _activePlayersList: ['p1', 'p2', 'p3'],
-    });
+  const ctx = (watchedGameId, activeList) =>
+    bind(
+      {
+        _participants: fakeParticipants({ me: { watchedGameId } }, activeList),
+      },
+      '_getNextActivePlayerForUser',
+    );
 
   it('вперёд берёт следующего', () => {
-    expect(ctx()._getNextActivePlayerForUser('me', false)).toBe('p3');
+    expect(
+      ctx('p2', ['p1', 'p2', 'p3'])._getNextActivePlayerForUser('me', false),
+    ).toBe('p3');
   });
 
   it('назад берёт предыдущего', () => {
-    expect(ctx()._getNextActivePlayerForUser('me', true)).toBe('p1');
+    expect(
+      ctx('p2', ['p1', 'p2', 'p3'])._getNextActivePlayerForUser('me', true),
+    ).toBe('p1');
   });
 
   it('вперёд с последнего зацикливается на первого', () => {
-    const c = withMethods({
-      _users: { me: { watchedGameId: 'p3' } },
-      _activePlayersList: ['p1', 'p2', 'p3'],
-    });
-    expect(c._getNextActivePlayerForUser('me', false)).toBe('p1');
+    expect(
+      ctx('p3', ['p1', 'p2', 'p3'])._getNextActivePlayerForUser('me', false),
+    ).toBe('p1');
   });
 
   it('назад с первого зацикливается на последнего', () => {
-    const c = withMethods({
-      _users: { me: { watchedGameId: 'p1' } },
-      _activePlayersList: ['p1', 'p2', 'p3'],
-    });
-    expect(c._getNextActivePlayerForUser('me', true)).toBe('p3');
+    expect(
+      ctx('p1', ['p1', 'p2', 'p3'])._getNextActivePlayerForUser('me', true),
+    ).toBe('p3');
   });
 
   it('без наблюдаемого игрока возвращает первого', () => {
-    const c = withMethods({
-      _users: { me: { watchedGameId: 'unknown' } },
-      _activePlayersList: ['p1', 'p2'],
-    });
-    expect(c._getNextActivePlayerForUser('me', false)).toBe('p1');
+    expect(
+      ctx('unknown', ['p1', 'p2'])._getNextActivePlayerForUser('me', false),
+    ).toBe('p1');
   });
 
   it('пустой список даёт null', () => {
-    const c = withMethods({
-      _users: { me: { watchedGameId: 'x' } },
-      _activePlayersList: [],
-    });
-    expect(c._getNextActivePlayerForUser('me', false)).toBeNull();
+    expect(ctx('x', [])._getNextActivePlayerForUser('me', false)).toBeNull();
   });
 });
 
 describe('VIMP.triggerCameraShake', () => {
   it('сохраняет параметры тряски в пользователе', () => {
-    const ctx = withMethods({ _users: { u1: {} } });
+    const user = {};
+    const ctx = bind(
+      { _participants: fakeParticipants({ u1: user }) },
+      'triggerCameraShake',
+    );
     ctx.triggerCameraShake('u1', { intensity: 20, duration: 200 });
-    expect(ctx._users.u1.pendingShake).toBe('20:200');
+    expect(user.pendingShake).toBe('20:200');
   });
 
   it('неизвестный игрок игнорируется без ошибки', () => {
-    const ctx = withMethods({ _users: {} });
+    const ctx = bind(
+      { _participants: fakeParticipants({}) },
+      'triggerCameraShake',
+    );
     expect(() =>
       ctx.triggerCameraShake('ghost', { intensity: 1, duration: 1 }),
     ).not.toThrow();
@@ -107,7 +98,7 @@ describe('VIMP: кики по RTT', () => {
     const sm = { close: vi.fn() };
     const ctx = bind(
       {
-        _users: { u1: { name: 'A', socketId: 's1' } },
+        _participants: fakeParticipants({ u1: { name: 'A', socketId: 's1' } }),
         _socketManager: sm,
         removeUser: vi.fn(),
       },
@@ -124,7 +115,11 @@ describe('VIMP: кики по RTT', () => {
   it('_kickForMissedPings игнорирует неизвестного игрока', () => {
     const sm = { close: vi.fn() };
     const ctx = bind(
-      { _users: {}, _socketManager: sm, removeUser: vi.fn() },
+      {
+        _participants: fakeParticipants({}),
+        _socketManager: sm,
+        removeUser: vi.fn(),
+      },
       '_kickForMissedPings',
     );
 
@@ -135,78 +130,23 @@ describe('VIMP: кики по RTT', () => {
   });
 });
 
-describe('VIMP: списки активных игроков', () => {
-  it('_resetTeamSizes создаёт пустые Set по командам', () => {
-    const ctx = bind({ _teams: { red: 1, blue: 2, spec: 3 } }, '_resetTeamSizes');
-    ctx._resetTeamSizes();
-
-    expect(ctx._teamSizes.red).toBeInstanceOf(Set);
-    expect(ctx._teamSizes.red.size).toBe(0);
-    expect(Object.keys(ctx._teamSizes)).toEqual(['red', 'blue', 'spec']);
-  });
-
-  it('_addToActivePlayers добавляет без дублей', () => {
-    const ctx = bind({ _activePlayersList: ['a'] }, '_addToActivePlayers');
-    ctx._addToActivePlayers('b');
-    ctx._addToActivePlayers('a'); // дубль игнорируется
-    expect(ctx._activePlayersList).toEqual(['a', 'b']);
-  });
-
-  it('_removeFromActivePlayers удаляет и переназначает наблюдателей', () => {
-    const ctx = bind(
-      {
-        _activePlayersList: ['a', 'b'],
-        _users: { watcher: { watchedGameId: 'a' } },
-      },
-      '_removeFromActivePlayers',
-    );
-
-    ctx._removeFromActivePlayers('a');
-
-    expect(ctx._activePlayersList).toEqual(['b']);
-    expect(ctx._users.watcher.watchedGameId).toBe('b'); // переназначен
-  });
-
-  it('_replaceWatchedPlayer переводит наблюдателей на убийцу', () => {
-    const ctx = bind(
-      {
-        _activePlayersList: ['killer'],
-        _users: { w1: { watchedGameId: 'victim' }, w2: { watchedGameId: 'x' } },
-      },
-      '_replaceWatchedPlayer',
-    );
-
-    ctx._replaceWatchedPlayer('victim', 'killer');
-
-    expect(ctx._users.w1.watchedGameId).toBe('killer');
-    expect(ctx._users.w2.watchedGameId).toBe('x'); // не наблюдал — без изменений
-  });
-
-  it('_replaceWatchedPlayer ничего не делает, если убийцы нет в активных', () => {
-    const ctx = bind(
-      {
-        _activePlayersList: [],
-        _users: { w1: { watchedGameId: 'victim' } },
-      },
-      '_replaceWatchedPlayer',
-    );
-
-    ctx._replaceWatchedPlayer('victim', 'killer');
-
-    expect(ctx._users.w1.watchedGameId).toBe('victim');
-  });
-});
-
 describe('VIMP.reportKill', () => {
-  const makeCtx = () =>
-    bind(
+  const makeCtx = () => {
+    const users = {
+      v: { gameId: 'v', teamId: 1, socketId: 'sv', isNetworked: true },
+      k: { gameId: 'k', teamId: 2, socketId: 'sk', isNetworked: true, name: 'K' },
+      ally: {
+        gameId: 'ally',
+        teamId: 1,
+        socketId: 'sa',
+        isNetworked: true,
+        name: 'Ally',
+      },
+    };
+
+    return bind(
       {
-        _users: {
-          v: { teamId: 1, socketId: 'sv', isBot: false },
-          k: { teamId: 2, socketId: 'sk', isBot: false, name: 'K' },
-          ally: { teamId: 1, socketId: 'sa', isBot: false, name: 'Ally' },
-        },
-        _bots: { getBotById: () => undefined },
+        _participants: fakeParticipants(users),
         _stat: { updateUser: vi.fn() },
         _panel: { invalidate: vi.fn() },
         _socketManager: {
@@ -215,11 +155,11 @@ describe('VIMP.reportKill', () => {
           sendFragSound: vi.fn(),
         },
         _chat: { pushSystem: vi.fn() },
-        _replaceWatchedPlayer: vi.fn(),
         _checkTeamWipe: vi.fn(),
       },
       'reportKill',
     );
+  };
 
   it('игнорирует неизвестную жертву', () => {
     const ctx = makeCtx();
@@ -231,7 +171,7 @@ describe('VIMP.reportKill', () => {
     const ctx = makeCtx();
     ctx.reportKill('v', 'k');
 
-    expect(ctx._users.v.isWatching).toBe(true);
+    expect(ctx._participants.get('v').isWatching).toBe(true);
     expect(ctx._stat.updateUser).toHaveBeenCalledWith('v', 1, {
       deaths: 1,
       status: 'dead',
@@ -245,7 +185,7 @@ describe('VIMP.reportKill', () => {
 
     expect(ctx._stat.updateUser).toHaveBeenCalledWith('k', 2, { score: 1 });
     expect(ctx._socketManager.sendFragSound).toHaveBeenCalledWith('sk');
-    expect(ctx._replaceWatchedPlayer).toHaveBeenCalledWith('v', 'k');
+    expect(ctx._participants.replaceWatched).toHaveBeenCalledWith('v', 'k');
     expect(ctx._checkTeamWipe).toHaveBeenCalledWith(1, 2);
   });
 
@@ -276,17 +216,18 @@ describe('VIMP.reportKill', () => {
 });
 
 describe('VIMP._checkTeamWipe', () => {
-  const makeCtx = (overrides = {}) =>
-    bind(
+  const makeCtx = (overrides = {}) => {
+    const users = {
+      a: { gameId: 'a', teamId: 1, socketId: 'sa' },
+      b: { gameId: 'b', teamId: 2, socketId: 'sb' },
+    };
+
+    return bind(
       {
         _isRoundEnding: false,
         _spectatorId: 3,
-        _users: {
-          a: { teamId: 1, socketId: 'sa' },
-          b: { teamId: 2, socketId: 'sb' },
-        },
+        _participants: fakeParticipants(users),
         _game: { isAlive: () => false },
-        _bots: { getBots: () => [] },
         _stat: { updateHead: vi.fn() },
         _teams: { red: 1, blue: 2 },
         _socketManager: {
@@ -302,6 +243,7 @@ describe('VIMP._checkTeamWipe', () => {
       },
       '_checkTeamWipe',
     );
+  };
 
   it('завершает раунд при уничтожении команды и рассылает исход', () => {
     const ctx = makeCtx();
@@ -338,9 +280,10 @@ describe('VIMP._checkTeamWipe', () => {
 
 describe('VIMP.updateKeys', () => {
   it('наблюдатель листает игроков вперёд', () => {
+    const user = { isWatching: true, watchedGameId: 'x' };
     const ctx = bind(
       {
-        _users: { u: { isWatching: true, watchedGameId: 'x' } },
+        _participants: fakeParticipants({ u: user }),
         _spectatorKeys: { nextPlayer: 'n', prevPlayer: 'p' },
         _getNextActivePlayerForUser: vi.fn(() => 'next'),
         _game: { updateKeys: vi.fn() },
@@ -350,15 +293,15 @@ describe('VIMP.updateKeys', () => {
 
     ctx.updateKeys('u', 'down:n');
 
-    expect(ctx._users.u.watchedGameId).toBe('next');
-    expect(ctx._users.u.forceCameraReset).toBe(true);
+    expect(user.watchedGameId).toBe('next');
+    expect(user.forceCameraReset).toBe(true);
     expect(ctx._game.updateKeys).not.toHaveBeenCalled();
   });
 
   it('активный игрок передаёт клавиши в игру', () => {
     const ctx = bind(
       {
-        _users: { u: { isWatching: false } },
+        _participants: fakeParticipants({ u: { isWatching: false } }),
         _spectatorKeys: { nextPlayer: 'n', prevPlayer: 'p' },
         _game: { updateKeys: vi.fn() },
       },
@@ -378,7 +321,9 @@ describe('VIMP.pushMessage', () => {
   const makeCtx = () =>
     bind(
       {
-        _users: { u: { isReady: true, name: 'A', teamId: 1 } },
+        _participants: fakeParticipants({
+          u: { isReady: true, name: 'A', teamId: 1 },
+        }),
         _parseCommand: vi.fn(),
         _chat: { push: vi.fn() },
       },
@@ -399,17 +344,17 @@ describe('VIMP.pushMessage', () => {
 
   it('неготовый пользователь игнорируется', () => {
     const ctx = makeCtx();
-    ctx._users.u.isReady = false;
+    ctx._participants.get('u').isReady = false;
     ctx.pushMessage('u', 'hello');
     expect(ctx._chat.push).not.toHaveBeenCalled();
   });
 });
 
 describe('VIMP.parseVote', () => {
-  const makeCtx = (overrides = {}) =>
+  const makeCtx = (users = { u: { isReady: true } }) =>
     bind(
       {
-        _users: { u: { isReady: true } },
+        _participants: fakeParticipants(users),
         _teams: { red: 1, blue: 2 },
         _mapList: ['m1', 'm2', 'm3'],
         _currentMap: 'm2',
@@ -418,7 +363,6 @@ describe('VIMP.parseVote', () => {
         _changeTeam: vi.fn(),
         _changeMap: vi.fn(),
         _createMap: vi.fn(),
-        ...overrides,
       },
       'parseVote',
     );
@@ -449,9 +393,7 @@ describe('VIMP.parseVote', () => {
   });
 
   it('mapChange при нескольких игроках запускает голосование', () => {
-    const ctx = makeCtx({
-      _users: { u: { isReady: true }, u2: { isReady: true } },
-    });
+    const ctx = makeCtx({ u: { isReady: true }, u2: { isReady: true } });
     ctx.parseVote('u', ['mapChange', 'm3']);
     expect(ctx._changeMap).toHaveBeenCalledWith('u', 'm3');
   });
@@ -465,7 +407,7 @@ describe('VIMP.parseVote', () => {
 
   it('неготовый пользователь игнорируется', () => {
     const ctx = makeCtx();
-    ctx._users.u.isReady = false;
+    ctx._participants.get('u').isReady = false;
     ctx.parseVote('u', 'teams');
     expect(ctx._vote.pushByUser).not.toHaveBeenCalled();
   });
@@ -528,7 +470,7 @@ describe('VIMP.updateRTT', () => {
     const ctx = bind(
       {
         _RTTManager: { handlePong: vi.fn(() => 42) },
-        _users: { u: { teamId: 1 } },
+        _participants: fakeParticipants({ u: { teamId: 1 } }),
         _stat: { updateUser: vi.fn() },
       },
       'updateRTT',
@@ -543,7 +485,7 @@ describe('VIMP.updateRTT', () => {
     const ctx = bind(
       {
         _RTTManager: { handlePong: vi.fn(() => null) },
-        _users: { u: { teamId: 1 } },
+        _participants: fakeParticipants({ u: { teamId: 1 } }),
         _stat: { updateUser: vi.fn() },
       },
       'updateRTT',
