@@ -2,23 +2,28 @@ import { describe, it, expect } from 'vitest';
 import { sanitizeMessage } from '../../src/lib/sanitizers.js';
 
 describe('sanitizeMessage', () => {
-  it('удаляет запрещённые символы', () => {
-    expect(sanitizeMessage('a<b>c')).toBe('abc');
-    expect(sanitizeMessage('hello & "world"')).toBe('hello  world');
-    expect(sanitizeMessage('a;b|c%d')).toBe('abcd');
+  it('удаляет управляющие символы (ломают однострочный чат)', () => {
+    expect(sanitizeMessage('a\nb\tc')).toBe('abc');
+    expect(sanitizeMessage('text\x00\x07end')).toBe('textend');
+    expect(sanitizeMessage('line\r\nbreak')).toBe('linebreak');
   });
 
   it('оставляет обычный текст без изменений', () => {
     expect(sanitizeMessage('normal text 123')).toBe('normal text 123');
   });
 
-  it('вырезает дефис (зафиксировано текущее поведение)', () => {
-    // Внимание: текущее правило удаляет дефис, ломая слова вроде "кто-то".
-    expect(sanitizeMessage('кто-то')).toBe('ктото');
+  it('пропускает пунктуацию и угловые скобки (XSS закрыт на выводе)', () => {
+    expect(sanitizeMessage('кто-то')).toBe('кто-то');
+    expect(sanitizeMessage('2 < 5 > 1')).toBe('2 < 5 > 1');
+    expect(sanitizeMessage(`hello & "world" (test); C++ 50%`)).toBe(
+      `hello & "world" (test); C++ 50%`,
+    );
   });
 
-  it('возвращает undefined для не-строки (текущее поведение)', () => {
-    expect(sanitizeMessage(123)).toBeUndefined();
-    expect(sanitizeMessage(null)).toBeUndefined();
+  it('возвращает пустую строку для не-строки', () => {
+    expect(sanitizeMessage(123)).toBe('');
+    expect(sanitizeMessage(null)).toBe('');
+    expect(sanitizeMessage(undefined)).toBe('');
+    expect(sanitizeMessage({})).toBe('');
   });
 });
