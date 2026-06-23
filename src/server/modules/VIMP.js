@@ -8,6 +8,7 @@ import TimerManager from './TimerManager.js';
 import SnapshotManager from './SnapshotManager.js';
 import Bots from './bots/index.js';
 import ParticipantManager from '../player/ParticipantManager.js';
+import VoteCoordinator from '../core/VoteCoordinator.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
 import { isValidName } from '../../lib/validators.js';
 
@@ -100,6 +101,12 @@ class VIMP {
       onSendPing: () => this._sendPing(),
     });
 
+    this._voteCoordinator = new VoteCoordinator({
+      vote: this._vote,
+      chat: this._chat,
+      timerManager: this._timerManager,
+    });
+
     // внедрение зависимостей
     this._socketManager.injectServices(this._game, this._panel, this._stat);
     this._game.injectServices({ vimp: this, panel: this._panel });
@@ -134,7 +141,7 @@ class VIMP {
 
   // запускает голосование за смену карты
   _onMapTimeEnd() {
-    this._resetVote();
+    this._voteCoordinator.reset();
     this._changeMap();
   }
 
@@ -328,7 +335,7 @@ class VIMP {
 
     this._panel.reset();
     this._stat.reset();
-    this._resetVote();
+    this._voteCoordinator.reset();
 
     this._snapshotManager.reset();
 
@@ -938,7 +945,7 @@ class VIMP {
   _changeMap(gameId, mapName) {
     const voteCategory = 'mapChange';
 
-    if (!this._canCreateVote(voteCategory, gameId)) {
+    if (!this._voteCoordinator.canCreateVote(voteCategory, gameId)) {
       return;
     }
 
@@ -953,7 +960,7 @@ class VIMP {
         .filter(id => id !== gameId);
       const payload = { name: voteName, params: [userName, mapName] };
 
-      this._createVote({
+      this._voteCoordinator.createVote({
         voteName,
         voteCategory,
         payload,
@@ -981,7 +988,7 @@ class VIMP {
 
       const payload = { name: voteName, values: mapList };
 
-      this._createVote({
+      this._voteCoordinator.createVote({
         voteName,
         voteCategory,
         payload,
@@ -1150,7 +1157,7 @@ class VIMP {
     let voteName;
     let voteArgs;
 
-    if (!this._canCreateVote(voteCategory, gameId)) {
+    if (!this._voteCoordinator.canCreateVote(voteCategory, gameId)) {
       return;
     }
 
@@ -1178,7 +1185,7 @@ class VIMP {
       .map(u => u.gameId)
       .filter(id => id !== gameId);
 
-    this._createVote({
+    this._voteCoordinator.createVote({
       voteName,
       voteCategory,
       payload,
@@ -1193,67 +1200,6 @@ class VIMP {
       userList,
       gameId,
     });
-  }
-
-  // проверяет возможность создать голосование
-  _canCreateVote(voteCategory, gameId) {
-    // если голосование в данной категории заблокировано
-    // или уже было создано в vote
-    if (
-      this._timerManager.isVoteBlocked(voteCategory) ||
-      this._vote.hasVoteCategory(voteCategory)
-    ) {
-      if (gameId) {
-        this._chat.pushSystemByUser(gameId, 'VOTE_UNAVAILABLE');
-      }
-
-      return false;
-    }
-
-    return true;
-  }
-
-  // создаёт опрос
-  _createVote(data) {
-    const { voteName, voteCategory, payload, resultFunc, userList, gameId } =
-      data;
-
-    // если голосование инициировано пользователем
-    if (gameId) {
-      this._chat.pushSystemByUser(gameId, 'VOTE_CREATED');
-    }
-
-    const onStart = () => {
-      if (gameId) {
-        this._chat.pushSystemByUser(gameId, 'VOTE_STARTED');
-        this._vote.addInVote(voteName, 'Yes');
-      }
-
-      // таймер на сбор результатов
-      this._timerManager.startVoteTimer(voteName, () => {
-        // таймер временной блокировки повторного голосования
-        this._timerManager.startVoteBlockTimer(voteCategory, () => {});
-
-        const result = this._vote.getResult(voteName);
-
-        resultFunc(result);
-      });
-    };
-
-    this._vote.createVote({
-      name: voteName,
-      category: voteCategory,
-      payload,
-      userList,
-      onStartCallback: onStart,
-    });
-  }
-
-  // сбрасывает активные и запланированные опросы и таймеры по ним
-  _resetVote() {
-    this._timerManager.stopAllVoteTimers();
-    this._timerManager.stopAllBlockedVoteTimers();
-    this._vote.reset();
   }
 
   // обновляет значение round trip time

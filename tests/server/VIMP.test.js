@@ -413,36 +413,6 @@ describe('VIMP.parseVote', () => {
   });
 });
 
-describe('VIMP._canCreateVote', () => {
-  it('запрещает при заблокированной категории', () => {
-    const ctx = bind(
-      {
-        _timerManager: { isVoteBlocked: () => true },
-        _vote: { hasVoteCategory: () => false },
-        _chat: { pushSystemByUser: vi.fn() },
-      },
-      '_canCreateVote',
-    );
-
-    expect(ctx._canCreateVote('mapChange', 'u')).toBe(false);
-    expect(ctx._chat.pushSystemByUser).toHaveBeenCalledWith('u', 'VOTE_UNAVAILABLE');
-  });
-
-  it('разрешает, когда категория свободна', () => {
-    const ctx = bind(
-      {
-        _timerManager: { isVoteBlocked: () => false },
-        _vote: { hasVoteCategory: () => false },
-        _chat: { pushSystemByUser: vi.fn() },
-      },
-      '_canCreateVote',
-    );
-
-    expect(ctx._canCreateVote('mapChange', 'u')).toBe(true);
-    expect(ctx._chat.pushSystemByUser).not.toHaveBeenCalled();
-  });
-});
-
 describe('VIMP._getMapList: пагинация', () => {
   it('возвращает весь список, если он не длиннее лимита', () => {
     const ctx = bind(
@@ -494,26 +464,5 @@ describe('VIMP.updateRTT', () => {
     ctx.updateRTT('u', 'ping1');
 
     expect(ctx._stat.updateUser).not.toHaveBeenCalled();
-  });
-});
-
-describe('VIMP._resetVote', () => {
-  it('останавливает таймеры голосований и сбрасывает vote', () => {
-    const ctx = bind(
-      {
-        _timerManager: {
-          stopAllVoteTimers: vi.fn(),
-          stopAllBlockedVoteTimers: vi.fn(),
-        },
-        _vote: { reset: vi.fn() },
-      },
-      '_resetVote',
-    );
-
-    ctx._resetVote();
-
-    expect(ctx._timerManager.stopAllVoteTimers).toHaveBeenCalled();
-    expect(ctx._timerManager.stopAllBlockedVoteTimers).toHaveBeenCalled();
-    expect(ctx._vote.reset).toHaveBeenCalled();
   });
 });
