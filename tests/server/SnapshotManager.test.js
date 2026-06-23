@@ -128,3 +128,75 @@ describe('SnapshotManager: регрессия мутации worldState', () => 
     expect(world.shots).toEqual(['existing', 'new']);
   });
 });
+
+// Фаза 0: подтверждаем, что бинаризация снапшота (будущая Фаза 4) читает
+// данные неразрушающе. Реальный Game.getWorldState() отдаёт свежий контейнер
+// со ссылками на кеш-массивы _cachedPlayersData; ключи событий (w1/w2e) не
+// пересекаются с ключами моделей (m1), поэтому мёрж в processTick не мутирует кеш.
+describe('SnapshotManager: изоляция данных snapshot (Фаза 0)', () => {
+  // фейк, повторяющий контракт Game: свежий state-контейнер на каждый вызов,
+  // но playerData — ссылки на стабильные кеш-массивы (как _cachedPlayersData)
+  const makeRealisticGame = () => ({
+    cache: {
+      0: [10, 20, 0, 0, 0, 0, 0, 3, 8, 1],
+      1: [30, 40, 0, 0, 0, 0, 0, 3, 8, 2],
+    },
+    _pendingEvents: null,
+    getEvents() {
+      const e = this._pendingEvents;
+      this._pendingEvents = null;
+      return e;
+    },
+    getWorldState() {
+      const state = {};
+
+      for (const id in this.cache) {
+        if (Object.hasOwn(this.cache, id)) {
+          state.m1 = state.m1 || {};
+          state.m1[id] = this.cache[id];
+        }
+      }
+
+      return state;
+    },
+  });
+
+  it('после processTick повторный getWorldState отдаёт неповреждённые данные', () => {
+    const game = makeRealisticGame();
+    const sm = new SnapshotManager(game, 1);
+
+    game._pendingEvents = { w1: [{ x: 1 }], w2e: [{ x: 2 }] };
+
+    const snap = sm.processTick();
+
+    expect(snap.m1[0]).toEqual([10, 20, 0, 0, 0, 0, 0, 3, 8, 1]);
+    expect(snap.w1).toEqual([{ x: 1 }]);
+    expect(snap.w2e).toEqual([{ x: 2 }]);
+
+    // повторное чтение (как сделает бинаризатор) — данные те же, кеш не тронут
+    const ws = game.getWorldState();
+
+    expect(ws.m1[0]).toEqual([10, 20, 0, 0, 0, 0, 0, 3, 8, 1]);
+    expect(ws.m1[0]).toBe(game.cache[0]); // тот же кеш-массив, не мутирован
+    expect(ws.m1).not.toBe(snap.m1); // контейнер свежий каждый вызов
+  });
+
+  it('события не протекают в состояние мира и не дублируются на следующем тике', () => {
+    const game = makeRealisticGame();
+    const sm = new SnapshotManager(game, 1);
+
+    game._pendingEvents = { w1: [{ x: 1 }], w2e: [{ x: 2 }] };
+    sm.processTick();
+
+    // состояние мира не содержит ключей событий
+    const ws = game.getWorldState();
+    expect(ws.w1).toBeUndefined();
+    expect(ws.w2e).toBeUndefined();
+
+    // следующий тик без событий — буфер очищен, дублей нет
+    const snap2 = sm.processTick();
+    expect(snap2.w1).toBeUndefined();
+    expect(snap2.w2e).toBeUndefined();
+    expect(snap2.m1[0]).toEqual([10, 20, 0, 0, 0, 0, 0, 3, 8, 1]);
+  });
+});
