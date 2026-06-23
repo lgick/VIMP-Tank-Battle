@@ -176,7 +176,7 @@ describe('VIMP.pushMessage', () => {
         _participants: fakeParticipants({
           u: { isReady: true, name: 'A', teamId: 1 },
         }),
-        _parseCommand: vi.fn(),
+        _commandProcessor: { parseCommand: vi.fn() },
         _chat: { push: vi.fn() },
       },
       'pushMessage',
@@ -191,7 +191,10 @@ describe('VIMP.pushMessage', () => {
   it('сообщение-команда уходит в парсер', () => {
     const ctx = makeCtx();
     ctx.pushMessage('u', '/bots 3');
-    expect(ctx._parseCommand).toHaveBeenCalledWith('u', '/bots 3');
+    expect(ctx._commandProcessor.parseCommand).toHaveBeenCalledWith(
+      'u',
+      '/bots 3',
+    );
   });
 
   it('неготовый пользователь игнорируется', () => {
