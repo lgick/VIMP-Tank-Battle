@@ -178,6 +178,7 @@ describe('VIMP.pushMessage', () => {
         }),
         _commandProcessor: { parseCommand: vi.fn() },
         _chat: { push: vi.fn() },
+        _chatMaxLength: 60,
       },
       'pushMessage',
     );
@@ -186,6 +187,21 @@ describe('VIMP.pushMessage', () => {
     const ctx = makeCtx();
     ctx.pushMessage('u', 'hello world');
     expect(ctx._chat.push).toHaveBeenCalledWith('hello world', 'A', 1);
+  });
+
+  it('сообщение длиннее лимита обрезается на сервере', () => {
+    const ctx = makeCtx();
+    ctx.pushMessage('u', 'x'.repeat(200));
+    expect(ctx._chat.push).toHaveBeenCalledWith('x'.repeat(60), 'A', 1);
+  });
+
+  it('длинная команда тоже обрезается до лимита', () => {
+    const ctx = makeCtx();
+    ctx.pushMessage('u', '/' + 'a'.repeat(200));
+    expect(ctx._commandProcessor.parseCommand).toHaveBeenCalledWith(
+      'u',
+      '/' + 'a'.repeat(59),
+    );
   });
 
   it('сообщение-команда уходит в парсер', () => {

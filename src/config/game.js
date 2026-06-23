@@ -7,6 +7,10 @@ export default {
 
   maxPlayers: 30,
 
+  // максимальная длина сообщения чата (авторитетно на сервере).
+  // должно совпадать с maxlength у input#cmd в client/views/includes/chat.pug
+  chatMaxLength: 60,
+
   parts: {
     models,
     weapons,

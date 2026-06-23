@@ -30,6 +30,7 @@ class VIMP {
     this._mapList = Object.keys(data.maps); // список карт массивом (для parseVote)
     this._spectatorKeys = data.spectatorKeys; // клавиши наблюдателя
     this._maxPlayers = data.maxPlayers; // максимальное количество игроков
+    this._chatMaxLength = data.chatMaxLength; // лимит длины сообщения чата
 
     this._idleTimeoutForPlayer = data.idleKickTimeout?.player || null;
     this._idleTimeoutForSpectator = data.idleKickTimeout?.spectator || null;
@@ -455,6 +456,11 @@ class VIMP {
     user.lastActionTime = Date.now();
 
     message = sanitizeMessage(message);
+
+    // серверное ограничение длины: клиентский maxlength можно обойти
+    if (message.length > this._chatMaxLength) {
+      message = message.slice(0, this._chatMaxLength);
+    }
 
     if (message) {
       if (message.charAt(0) === '/') {
