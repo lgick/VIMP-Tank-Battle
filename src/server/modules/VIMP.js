@@ -129,6 +129,9 @@ class VIMP {
       isDevMode: this._isDevMode,
     });
 
+    // инкрементный номер snapshot-кадра (фундамент интерполяции)
+    this._seq = 0;
+
     // внедрение зависимостей
     this._socketManager.injectServices(this._game, this._panel, this._stat);
     this._game.injectServices({ vimp: this, panel: this._panel });
@@ -200,11 +203,14 @@ class VIMP {
       gameSnapshot[model][user.gameId] = null;
     }
 
-    const getUserData = gameId => {
-      const user = this._participants.get(gameId);
-      let coords, chatUser, voteUser;
-      const panel = panelUpdates[gameId] || 0;
-      const activeList = this._participants.getActiveList();
+    const serverTime = Date.now();
+    this._seq = (this._seq + 1) >>> 0;
+    const seq = this._seq;
+    const activeList = this._participants.getActiveList();
+
+    // вычисляет камеру наблюдения для пользователя
+    const getCamera = user => {
+      let camera;
 
       if (user.isWatching === true) {
         // если есть играющие пользователи
@@ -214,46 +220,63 @@ class VIMP {
             user.watchedGameId = activeList[0];
           }
 
-          coords = this._game.getPosition(user.watchedGameId);
+          camera = this._game.getPosition(user.watchedGameId);
         } else {
-          coords = [0, 0];
+          camera = [0, 0];
         }
       } else {
-        coords = this._game.getPosition(gameId);
+        camera = this._game.getPosition(user.gameId);
       }
 
       if (user.forceCameraReset === true) {
-        coords[2] = true;
+        camera[2] = true;
         user.forceCameraReset = false;
       }
 
       // передача данных для тряски (строка 'intensity:duration')
       if (user.pendingShake) {
-        coords[3] = user.pendingShake;
+        camera[3] = user.pendingShake;
         user.pendingShake = null;
       }
 
-      // если общих сообщений нет
-      if (!chat) {
-        chatUser = this._chat.shiftByUser(gameId) || 0;
-      } else {
-        chatUser = chat;
-      }
-
-      // если общих данных для голосования нет
-      if (!vote) {
-        voteUser = this._vote.shiftByUser(gameId) || 0;
-      } else {
-        voteUser = vote;
-      }
-
-      return [gameSnapshot, coords, panel, stat, chatUser, voteUser];
+      return camera;
     };
 
-    // отправка данных
-    userList.forEach(user =>
-      this._socketManager.sendShot(user.socketId, getUserData(user.gameId)),
-    );
+    // отправка данных по каналам (мета — только при наличии изменений)
+    userList.forEach(user => {
+      const gameId = user.gameId;
+      const socketId = user.socketId;
+
+      const camera = getCamera(user);
+      this._socketManager.sendShot(socketId, [
+        gameSnapshot,
+        camera,
+        serverTime,
+        seq,
+      ]);
+
+      // панель (персонально)
+      if (panelUpdates[gameId]) {
+        this._socketManager.sendPanel(socketId, panelUpdates[gameId]);
+      }
+
+      // статистика (общая для всех)
+      if (stat) {
+        this._socketManager.sendStat(socketId, stat);
+      }
+
+      // чат: общий или персональный
+      const chatUser = chat || this._chat.shiftByUser(gameId);
+      if (chatUser) {
+        this._socketManager.sendChat(socketId, chatUser);
+      }
+
+      // голосование: общее или персональное
+      const voteUser = vote || this._vote.shiftByUser(gameId);
+      if (voteUser) {
+        this._socketManager.sendVote(socketId, voteUser);
+      }
+    });
   }
 
   // проверяет игроков на бездействие и кикает, если превышен порог

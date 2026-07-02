@@ -108,7 +108,9 @@ Publisher-паттерн внутри MVC-тройки:
 
 All messages: `[portId, payload]` serialized as JSON.
 
-Port IDs live in `src/config/wsports.js` (источник истины). Server→client ports: `0` config, `1` auth data, `2` auth result, `3` map, `4` first shot, `5` shot (game frame), `6` sound, `7` game inform, `8` tech inform, `9` MISC (свободен), `10` ping, `11` clear, `12` console (свободен). Client→server ports: `0` config ready, `1` auth, `2` modules ready, `3` map ready, `4` first shot ready, `5` keys, `6` chat, `7` vote, `8` pong.
+Port IDs live in `src/config/wsports.js` (источник истины). Server→client ports: `0` config, `1` auth data, `2` auth result, `3` map, `4` first shot, `5` shot (game frame), `6` sound, `7` game inform, `8` tech inform, `9` MISC (свободен), `10` ping, `11` clear, `12` console (свободен), `13` panel, `14` stat, `15` chat, `16` vote, `17` keyset. Client→server ports: `0` config ready, `1` auth, `2` modules ready, `3` map ready, `4` first shot ready, `5` keys, `6` chat, `7` vote, `8` pong.
+
+**Разделение каналов (Фаза 3)**: горячий snapshot отделён от редкой меты. Кадр порта `5` — `[gameSnapshot, camera, serverTime, seq]` (broadcast snapshot + per-user камера; `serverTime`/`seq` — фундамент будущей интерполяции, клиент их пока сохраняет, но не использует). Мета шлётся своими каналами **только при изменении**: panel (`13`, per-user), stat (`14`, broadcast), chat (`15`), vote (`16`); keySet (смена режима спектатор↔игрок) — порт `17`, точечно при смене статуса. Кадровые методы `SocketManager` (`sendFirstShot`/`sendPlayerDefaultShot`/`sendSpectatorDefaultShot`/`sendFirstVote`) распадаются на отправки по этим каналам.
 
 **Текущее состояние**: все данные, включая снапшоты (порт `5`), передаются в JSON. При рассинхроне клиента и сервера коррекции нет — клиент просто отображает пришедшие данные.
 

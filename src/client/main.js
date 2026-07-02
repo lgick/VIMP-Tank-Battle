@@ -49,6 +49,11 @@ const PS_MISC = wsports.server.MISC;
 const PS_PING = wsports.server.PING;
 const PS_CLEAR = wsports.server.CLEAR;
 const PS_CONSOLE = wsports.server.CONSOLE;
+const PS_PANEL_DATA = wsports.server.PANEL_DATA;
+const PS_STAT_DATA = wsports.server.STAT_DATA;
+const PS_CHAT_DATA = wsports.server.CHAT_DATA;
+const PS_VOTE_DATA = wsports.server.VOTE_DATA;
+const PS_KEYSET_DATA = wsports.server.KEYSET_DATA;
 
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = wsports.client.CONFIG_READY;
@@ -88,6 +93,10 @@ let gameSets = {}; // наборы конструкторов (id: [наборы
 let entitiesOnCanvas = {}; // сущности, отображаемые на полотнах
 let currentMapSetId; // текущий id набора конструкторов для карт
 const socketMethods = []; // методы для обработки сокет-данных
+
+// метки времени последнего снапшота (фундамент интерполяции, Фаза 5)
+let lastServerTime = 0;
+let lastSeq = 0;
 
 // SOCKET МЕТОДЫ
 
@@ -285,6 +294,31 @@ socketMethods[PS_FIRST_SHOT_DATA] = data => {
 // shot data
 socketMethods[PS_SHOT_DATA] = shotData;
 
+// panel data
+socketMethods[PS_PANEL_DATA] = data => {
+  modules.panel.update(data);
+};
+
+// stat data
+socketMethods[PS_STAT_DATA] = data => {
+  modules.stat.update(data);
+};
+
+// chat data
+socketMethods[PS_CHAT_DATA] = data => {
+  modules.chat.add(data);
+};
+
+// vote data
+socketMethods[PS_VOTE_DATA] = data => {
+  modules.vote.open(data);
+};
+
+// keyset data (смена режима спектатор/игрок)
+socketMethods[PS_KEYSET_DATA] = keySet => {
+  modules.controls.changeKeySet(keySet);
+};
+
 // sound data
 socketMethods[PS_SOUND_DATA] = sample => {
   soundManager.playSystemSound(sample);
@@ -372,7 +406,7 @@ socketMethods[PS_CONSOLE] = data => {
 // ФУНКЦИИ
 
 function shotData(data) {
-  const [game, crds, panel, stat, chat, vote, keySet] = data;
+  const [game, camera, serverTime, seq] = data;
 
   // данные игры
   Object.entries(game).forEach(([p, instances]) => {
@@ -383,39 +417,18 @@ function shotData(data) {
     });
   });
 
-  // координаты
-  if (crds !== 0) {
-    soundManager.setListenerPosition(crds[0], crds[1]);
-    modules.canvasManager.updateCoords(crds);
+  // камера
+  if (camera !== 0) {
+    soundManager.setListenerPosition(camera[0], camera[1]);
+    modules.canvasManager.updateCoords(camera);
   }
 
   soundManager.processAudibility();
   soundManager.updateActiveSounds();
 
-  // панель
-  if (panel !== 0) {
-    modules.panel.update(panel);
-  }
-
-  // статистика
-  if (stat !== 0) {
-    modules.stat.update(stat);
-  }
-
-  // чат
-  if (chat !== 0) {
-    modules.chat.add(chat);
-  }
-
-  // голосование
-  if (vote !== 0) {
-    modules.vote.open(vote);
-  }
-
-  // набор клавиш
-  if (typeof keySet === 'number') {
-    modules.controls.changeKeySet(keySet);
-  }
+  // метки времени снапшота (фундамент интерполяции, пока не используются)
+  lastServerTime = serverTime;
+  lastSeq = seq;
 }
 
 // создает пользователя
