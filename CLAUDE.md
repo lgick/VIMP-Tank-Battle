@@ -75,7 +75,9 @@ The game server is Node.js + Express + `ws` WebSockets + ViteExpress.
 
 ### Client (`src/client/`)
 
-Entry point: `src/client/main.js`. It opens a WebSocket and dispatches to `socketMethods[portId]`.
+Entry point: `src/client/main.js`. It opens a WebSocket and dispatches JSON messages to `socketMethods[portId]`; binary snapshot frames (port `5`) go to the interpolation buffer.
+
+**Snapshot-интерполяция** (`src/client/SnapshotInterpolator.js`): кадры порта `5` не применяются немедленно, а буферизуются; рендер-цикл на `Ticker.shared` (`renderTick` в `main.js`) каждый rAF вызывает `sample()` — мир рендерится в прошлом (`renderTime = serverNow − delay`, серверное время оценивается EMA-оффсетом). Пересечённые `renderTime` кадры выдаются целиком **ровно один раз** (события `w1`/`w2e`, создания/удаления, reset/shake камеры), а позиции танков (`m1`), динамики карты (`c1`/`c2`) и камеры интерполируются (`lerp`/`lerpAngle` из `src/lib/math.js`) между соседними кадрами; классификация ключей — по `kind` из `SNAPSHOT_KEYS`. Настройки — `interpolation` в `src/config/client.js` (`delay: 100`); частота отправки снапшотов — `networkSendRate: 4` (30 пакетов/сек). Экстраполяции нет (hold на последнем кадре); буфер сбрасывается при смене карты и `clear`. Первый кадр (порт `4`) применяется немедленно, минуя буфер.
 
 **MVC triplets** in `src/client/components/`: each game feature (Auth, CanvasManager, Controls, Game, Chat, Panel, Stat, Vote) has a `model/`, `view/`, and `controller/` file.
 
@@ -90,7 +92,7 @@ Publisher-паттерн внутри MVC-тройки:
 - `vimp` — основной игровой canvas (все игровые сущности)
 - `radar` — упрощённый вид `vimp` (мини-карта); данные с сервера могут поступать в оба canvas
 
-**Rendering parts** in `src/client/parts/`: entity classes (`Tank`, `Map`, `Bomb`, `Tracks`, etc.) rendered on PixiJS `Application` instances. `LocalTank` and `RemoteTank` extend `BaseTank`. Effects (explosions, smoke, tracers) are in `parts/effects/`. При создании новой `part` смотреть на существующие как образец — фиксированного контракта нет.
+**Rendering parts** in `src/client/parts/`: entity classes (`Tank`, `Map`, `Bomb`, `Tracks`, etc.) rendered on PixiJS `Application` instances. Танк один — `parts/Tank.js` (разделение на Local/Remote появится с prediction, Фаза 5b). Effects (explosions, smoke, tracers) are in `parts/effects/` и анимируются на `Ticker.shared`. При создании новой `part` смотреть на существующие как образец — фиксированного контракта нет.
 
 **Texture baking** (`src/client/providers/BakingProvider.js`): procedural textures are generated once at startup using `bakers/` and cached. `DependencyProvider` injects renderer/soundManager into entities. При создании нового baker-а ориентироваться на существующие файлы в `bakers/` — фиксированного интерфейса нет.
 
@@ -112,7 +114,7 @@ Port IDs live in `src/config/wsports.js` (источник истины). Server
 
 **Разделение каналов (Фаза 3)**: горячий snapshot отделён от редкой меты. Кадр порта `5` несёт `[gameSnapshot, camera, serverTime, seq]` (broadcast snapshot + per-user камера; `serverTime`/`seq` — фундамент будущей интерполяции, клиент их пока сохраняет, но не использует). Мета шлётся своими каналами **только при изменении**: panel (`13`, per-user), stat (`14`, broadcast), chat (`15`), vote (`16`); keySet (смена режима спектатор↔игрок) — порт `17`, точечно при смене статуса. Кадровые методы `SocketManager` (`sendFirstShot`/`sendPlayerDefaultShot`/`sendSpectatorDefaultShot`/`sendFirstVote`) распадаются на отправки по этим каналам.
 
-**Бинарный snapshot (Фаза 4)**: кадр порта `5` передаётся бинарно (`DataView`, big-endian; ручной block-layout без библиотек). Кодек — `src/lib/snapshotCodec.js` (`SnapshotPacker.packBody` один раз/тик + `packFrame` per-user на сервере, `unpackFrame` на клиенте); реестр ключей снапшота и версия формата — `src/config/opcodes.js`. Раскладка: `port(Uint8)`, `version(Uint8)`, `seq(Uint32)`, `serverTime(Float64)`, camera-блок (флаги + x/y + shake-строка), затем блоки сущностей (`m1`/`w1`/`w2`/`w2e`/`c1`/`c2`). Клиент различает форматы по типу `e.data` (string → JSON-диспетчер, `ArrayBuffer` → `unpackFrame`); несовпадение версии — кадр отбрасывается. Первый кадр (`FIRST_SHOT_DATA`, порт `4`, одноразовый) и `PING` остаются JSON. При рассинхроне клиента и сервера коррекции нет — клиент просто отображает пришедшие данные.
+**Бинарный snapshot (Фаза 4) и интерполяция (Фаза 5a)**: кадр порта `5` передаётся бинарно (`DataView`, big-endian; ручной block-layout без библиотек). Кодек — `src/lib/snapshotCodec.js` (`SnapshotPacker.packBody` один раз/тик + `packFrame` per-user на сервере, `unpackFrame` на клиенте); реестр ключей снапшота и версия формата — `src/config/opcodes.js`. Раскладка: `port(Uint8)`, `version(Uint8)`, `seq(Uint32)`, `serverTime(Float64)`, camera-блок (флаги + x/y + shake-строка), затем блоки сущностей (`m1`/`w1`/`w2`/`w2e`/`c1`/`c2`). Клиент различает форматы по типу `e.data` (string → JSON-диспетчер, `ArrayBuffer` → `unpackFrame` → буфер `SnapshotInterpolator`); несовпадение версии — кадр отбрасывается. Первый кадр (`FIRST_SHOT_DATA`, порт `4`, одноразовый) и `PING` остаются JSON. Снапшоты шлются с частотой `networkSendRate: 4` (30 пакетов/сек); плавность обеспечивает клиентская интерполяция (см. секцию Client). Prediction/reconciliation своего танка пока нет (Фаза 5b).
 
 ## Client UI Components (z-index stacking)
 
@@ -139,7 +141,7 @@ Port IDs live in `src/config/wsports.js` (источник истины). Server
 - **Стек**: Vitest + happy-dom (клиент) + `@vitest/coverage-v8`. Конфиг `vitest.config.js` — два проекта: `node` (`tests/server`, `tests/lib`, `tests/config`, окружение node) и `client` (`tests/client`, окружение happy-dom). Интеграционные тесты лежат в `tests/server/integration/` и гоняются в node-проекте.
 - **Запуск**: `npm test` (одиночный прогон), `npm run test:watch`, `npm run test:coverage`. CI: `.github/workflows/test.yml` гоняет `eslint` + тесты на каждый push/PR.
 - **Расположение**: тесты в `tests/`, зеркалят структуру `src/` (не рядом с кодом). Файлы тестов имеют override в `eslint.config.js` (глобалы Vitest).
-- **Покрыто** (~639 тестов): вся логика `lib/` (включая `security` и round-trip `snapshotCodec`); серверные модули с логикой (Stat, Vote, RTTManager, SnapshotManager, Panel, Chat, TimerManager, Pathfinder, SpatialManager, NavigationSystem, HitscanService, BaseModel, Bomb, Map, Tank, BotManager, BotController, SocketManager, Game, VIMP); реестр участников (`ParticipantManager`) и менеджеры из `core/` (`VoteCoordinator`, `RoundManager`, `CommandProcessor`); клиентские модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager) + InputListener, SoundManager; клиентские контроллеры и view (все 8 — DOM через happy-dom); **интеграционный слой** (`tests/server/integration/`): полный жизненный цикл VIMP с реальными модулями + протокольный слой `socket/index.js`.
+- **Покрыто** (~656 тестов): вся логика `lib/` (включая `security` и round-trip `snapshotCodec`); `SnapshotInterpolator` (клиент); серверные модули с логикой (Stat, Vote, RTTManager, SnapshotManager, Panel, Chat, TimerManager, Pathfinder, SpatialManager, NavigationSystem, HitscanService, BaseModel, Bomb, Map, Tank, BotManager, BotController, SocketManager, Game, VIMP); реестр участников (`ParticipantManager`) и менеджеры из `core/` (`VoteCoordinator`, `RoundManager`, `CommandProcessor`); клиентские модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager) + InputListener, SoundManager; клиентские контроллеры и view (все 8 — DOM через happy-dom); **интеграционный слой** (`tests/server/integration/`): полный жизненный цикл VIMP с реальными модулями + протокольный слой `socket/index.js`.
 - **Не покрыто** (низкий ROI для unit-тестов): Pixi-`parts/`+`effects/`, провайдеры (`BakingProvider`/`DependencyProvider`).
 - **Паттерны** (соблюдать при добавлении тестов):
   - **Синглтоны** (Game, Vote, Stat, Map, Panel, TimerManager, HitscanService, SnapshotManager, клиентские `*Model`, InputListener) изолируют через `vi.resetModules()` в `beforeEach` + динамический `await import(...)`.
@@ -194,6 +196,6 @@ Port IDs live in `src/config/wsports.js` (источник истины). Server
 
 ## Known Issues / Future Tasks
 
-- **Клиент-серверная синхронизация**: при рассинхроне коррекции нет. Нужна реализация client-side prediction / reconciliation (описана в `_TODO/KEYS UPDATE.md`). Реализовывать только после того, как базовая игра полностью готова.
+- **Client-side prediction (Фаза 5b)**: интерполяция чужих сущностей реализована (`SnapshotInterpolator`), но свой танк управляется с задержкой `delay + RTT` — нужна локальная симуляция движения с input-seq в `KEYS_DATA`, эхом последнего обработанного ввода в бинарном кадре и reconciliation. Отдельный будущий инкремент — вместе с клиентским визуальным спавном снарядов (5c).
 - **Унификация ботов и игроков**: частично сделано — общий реестр `ParticipantManager` с единым числовым пространством id и классами `Human/BotParticipant`. Остаётся полностью объединить поведение (ввод от WebSocket vs AI) в одну абстракцию.
 - **Debug-режим**: инструментов отладки нет, может потребоваться реализация.

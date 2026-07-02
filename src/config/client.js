@@ -126,6 +126,13 @@ export default {
 
   initIdList: ['vimp', 'radar', 'panel', 'chat'],
 
+  // ***** interpolation ***** //
+  // snapshot-интерполяция: мир рендерится в прошлом (serverNow − delay)
+  interpolation: {
+    delay: 100, // мс; ~3 кадра при 30 пакетах/сек
+    maxFrameAge: 1000, // мс; страховочная очистка старых кадров буфера
+  },
+
   // ***** modules ***** //
   modules: {
     canvasManager: {

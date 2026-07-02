@@ -1,5 +1,5 @@
 import './style.css';
-import { Application } from 'pixi.js';
+import { Application, Ticker } from 'pixi.js';
 import InputListener from './InputListener.js';
 import AuthModel from './components/model/Auth.js';
 import AuthView from './components/view/Auth.js';
@@ -31,6 +31,7 @@ import { sanitizeMessage } from '../lib/sanitizers.js';
 import { unpackFrame } from '../lib/snapshotCodec.js';
 import { validateAuth } from '../lib/validators.js';
 import SoundManager from './SoundManager.js';
+import SnapshotInterpolator from './SnapshotInterpolator.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
 import wsports from '../config/wsports.js';
@@ -95,9 +96,8 @@ let entitiesOnCanvas = {}; // сущности, отображаемые на п
 let currentMapSetId; // текущий id набора конструкторов для карт
 const socketMethods = []; // методы для обработки сокет-данных
 
-// метки времени последнего снапшота (фундамент интерполяции, Фаза 5)
-let lastServerTime = 0;
-let lastSeq = 0;
+// буфер snapshot-интерполяции (создаётся при получении конфига)
+let interpolator = null;
 
 // SOCKET МЕТОДЫ
 
@@ -105,6 +105,8 @@ let lastSeq = 0;
 socketMethods[PS_CONFIG_DATA] = async data => {
   gameSets = data.parts.gameSets;
   entitiesOnCanvas = data.parts.entitiesOnCanvas;
+
+  interpolator = new SnapshotInterpolator(data.interpolation);
 
   // инициализация сущностей игры
   for (const entity of Object.keys(entitiesOnCanvas)) {
@@ -228,6 +230,8 @@ socketMethods[PS_AUTH_RESULT] = async err => {
 socketMethods[PS_MAP_DATA] = data => {
   const { scale, layers, map, step, setId, spriteSheet, physicsStatic } = data;
 
+  interpolator.reset();
+
   // удаление данных карт
   const removeMap = setId => {
     const nameArr = gameSets[setId] || [];
@@ -284,11 +288,12 @@ socketMethods[PS_MAP_DATA] = data => {
   sending(PC_MAP_READY);
 };
 
-// первый shot сразу после загрузки карты (JSON; порт 5 идёт бинарным путём)
+// первый shot сразу после загрузки карты (JSON; порт 5 идёт бинарным путём);
+// применяется немедленно (создание сущностей), в буфер интерполяции не пушится
 socketMethods[PS_FIRST_SHOT_DATA] = data => {
-  const [game, camera, serverTime, seq] = data;
+  const [game, camera] = data;
 
-  applyShot(game, camera, serverTime, seq);
+  applyShot(game, camera);
 
   // подтверждение получения первого шота
   sending(PC_FIRST_SHOT_READY);
@@ -395,6 +400,7 @@ socketMethods[PS_CLEAR] = function (setIdList) {
     }
   }
 
+  interpolator.reset();
   soundManager.reset();
 };
 
@@ -405,8 +411,8 @@ socketMethods[PS_CONSOLE] = data => {
 
 // ФУНКЦИИ
 
-function applyShot(game, camera, serverTime, seq) {
-  // данные игры
+// применяет игровые данные к сущностям
+function applyGameData(game) {
   Object.entries(game).forEach(([p, instances]) => {
     const nameArr = gameSets[p];
 
@@ -414,19 +420,37 @@ function applyShot(game, camera, serverTime, seq) {
       CTRL[entitiesOnCanvas[name]].parse(name, instances);
     });
   });
+}
 
-  // камера
-  if (camera !== 0) {
+// применяет данные камеры (позиция слушателя звука + полотно)
+function applyCamera(camera) {
+  if (camera && camera !== 0) {
     soundManager.setListenerPosition(camera[0], camera[1]);
     modules.canvasManager.updateCoords(camera);
   }
+}
+
+// применяет кадр целиком (первый кадр и дискретные кадры интерполяции)
+function applyShot(game, camera) {
+  applyGameData(game);
+  applyCamera(camera);
+}
+
+// рендер-тик: проигрывает пересечённые кадры (события, создания/удаления)
+// и применяет интерполированные позиции/камеру
+function renderTick() {
+  const { frames, game, camera } = interpolator.sample(performance.now());
+
+  frames.forEach(frame => applyShot(frame.game, frame.camera));
+
+  if (game) {
+    applyGameData(game);
+  }
+
+  applyCamera(camera);
 
   soundManager.processAudibility();
   soundManager.updateActiveSounds();
-
-  // метки времени снапшота (фундамент интерполяции, пока не используются)
-  lastServerTime = serverTime;
-  lastSeq = seq;
 }
 
 // создает пользователя
@@ -557,6 +581,12 @@ function runModules(data) {
   controlsModel.publisher.on('socket', data => sending(PC_KEYS_DATA, data));
   chatModel.publisher.on('socket', data => sending(PC_CHAT_DATA, data));
   voteModel.publisher.on('socket', data => sending(PC_VOTE_DATA, data));
+
+  //==========================================//
+  // Рендер-цикл интерполяции
+  //==========================================//
+
+  Ticker.shared.add(renderTick);
 }
 
 // создает экземпляр игры
@@ -613,12 +643,17 @@ ws.onclose = e => {
 };
 
 ws.onmessage = e => {
-  // бинарный кадр (snapshot, порт SHOT_DATA)
+  // бинарный кадр (snapshot, порт SHOT_DATA) — в буфер интерполяции
   if (e.data instanceof ArrayBuffer) {
     const frame = unpackFrame(e.data);
 
     if (frame && frame.port === PS_SHOT_DATA) {
-      applyShot(frame.snapshot, frame.camera, frame.serverTime, frame.seq);
+      interpolator.push(
+        frame.snapshot,
+        frame.camera,
+        frame.serverTime,
+        performance.now(),
+      );
     }
 
     return;

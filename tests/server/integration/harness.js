@@ -23,6 +23,9 @@ export const loadConfig = async () => {
   config.set('server:oneConnection', false);
   config.set('game:isDevMode', true);
 
+  // кадр на каждом тике: тесты двигают цикл tick(vimp, 1) и ждут снапшот
+  config.set('game:timers:networkSendRate', 1);
+
   return config;
 };
 
