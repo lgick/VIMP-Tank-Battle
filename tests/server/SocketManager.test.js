@@ -22,7 +22,11 @@ const ports = {
   KEYSET_DATA: 17,
 };
 
-const makeSocket = () => ({ send: vi.fn(), close: vi.fn() });
+const makeSocket = () => ({
+  send: vi.fn(),
+  sendBinary: vi.fn(),
+  close: vi.fn(),
+});
 
 let sm;
 let socket;
@@ -132,12 +136,17 @@ describe('SocketManager: простые отправители', () => {
     expect(socket.send).toHaveBeenCalledWith(2, null);
   });
 
-  it('sendMap / sendShot', () => {
+  it('sendMap уходит на порт MAP_DATA', () => {
     sm.sendMap('s1', { map: 1 });
     expect(socket.send).toHaveBeenCalledWith(3, { map: 1 });
+  });
 
-    sm.sendShot('s1', [1, 2]);
-    expect(socket.send).toHaveBeenCalledWith(5, [1, 2]);
+  it('sendShot передаёт бинарный кадр через sendBinary как есть', () => {
+    const frame = new ArrayBuffer(8);
+
+    sm.sendShot('s1', frame);
+    expect(socket.sendBinary).toHaveBeenCalledWith(frame);
+    expect(socket.send).not.toHaveBeenCalled();
   });
 
   it('sendFirstVote шлёт запрос выбора команды на VOTE_DATA', () => {
@@ -205,6 +214,13 @@ describe('SocketManager: жизненный цикл соединений', () =
   it('отправка несуществующему сокету не падает', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(() => sm.sendConfig('ghost', {})).not.toThrow();
+    warn.mockRestore();
+  });
+
+  it('бинарная отправка несуществующему сокету не падает', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() => sm.sendShot('ghost', new ArrayBuffer(4))).not.toThrow();
+    expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
 });

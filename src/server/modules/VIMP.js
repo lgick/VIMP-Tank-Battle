@@ -1,3 +1,4 @@
+import wsports from '../../config/wsports.js';
 import Panel from './Panel.js';
 import Stat from './Stat.js';
 import Chat from './chat/index.js';
@@ -12,6 +13,7 @@ import VoteCoordinator from '../core/VoteCoordinator.js';
 import RoundManager from '../core/RoundManager.js';
 import CommandProcessor from '../core/CommandProcessor.js';
 import { sanitizeMessage } from '../../lib/sanitizers.js';
+import { SnapshotPacker } from '../../lib/snapshotCodec.js';
 
 // Singleton VIMP
 
@@ -132,6 +134,9 @@ class VIMP {
     // инкрементный номер snapshot-кадра (фундамент интерполяции)
     this._seq = 0;
 
+    // бинарная упаковка snapshot-кадров (порт SHOT_DATA)
+    this._snapshotPacker = new SnapshotPacker(wsports.server.SHOT_DATA);
+
     // внедрение зависимостей
     this._socketManager.injectServices(this._game, this._panel, this._stat);
     this._game.injectServices({ vimp: this, panel: this._panel });
@@ -208,6 +213,9 @@ class VIMP {
     const seq = this._seq;
     const activeList = this._participants.getActiveList();
 
+    // broadcast-часть кадра пакуется один раз за тик
+    this._snapshotPacker.packBody(gameSnapshot);
+
     // вычисляет камеру наблюдения для пользователя
     const getCamera = user => {
       let camera;
@@ -248,12 +256,10 @@ class VIMP {
       const socketId = user.socketId;
 
       const camera = getCamera(user);
-      this._socketManager.sendShot(socketId, [
-        gameSnapshot,
-        camera,
-        serverTime,
-        seq,
-      ]);
+      this._socketManager.sendShot(
+        socketId,
+        this._snapshotPacker.packFrame(camera, serverTime, seq),
+      );
 
       // панель (персонально)
       if (panelUpdates[gameId]) {

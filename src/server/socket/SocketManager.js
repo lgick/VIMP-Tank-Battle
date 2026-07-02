@@ -39,6 +39,7 @@ export default class SocketManager {
     this._stat = null;
 
     this._senders = new Map();
+    this._binarySenders = new Map();
     this._closers = new Map();
   }
 
@@ -61,6 +62,7 @@ export default class SocketManager {
    */
   addUser(socketId, socket) {
     this._senders.set(socketId, socket.send.bind(socket));
+    this._binarySenders.set(socketId, socket.sendBinary.bind(socket));
     this._closers.set(socketId, socket.close.bind(socket));
   }
 
@@ -70,6 +72,7 @@ export default class SocketManager {
    */
   removeUser(socketId) {
     this._senders.delete(socketId);
+    this._binarySenders.delete(socketId);
     this._closers.delete(socketId);
   }
 
@@ -121,6 +124,22 @@ export default class SocketManager {
       sender(port, data);
     } else {
       this._logSendError(socketId, port, data);
+    }
+  }
+
+  /**
+   * Отправка бинарного кадра на клиент с проверкой наличия соединения.
+   * @private
+   * @param {string} socketId
+   * @param {ArrayBuffer} buffer - Кадр (порт — первый байт буфера).
+   */
+  _sendBinary(socketId, buffer) {
+    const sender = this._binarySenders.get(socketId);
+
+    if (sender) {
+      sender(buffer);
+    } else {
+      this._logSendError(socketId, 'binary', `<${buffer.byteLength} bytes>`);
     }
   }
 
@@ -263,12 +282,12 @@ export default class SocketManager {
   }
 
   /**
-   * Отправка игровых данных (snapshot-кадр).
+   * Отправка игровых данных (бинарный snapshot-кадр).
    * @param {string} socketId
-   * @param {*} shotData - [gameSnapshot, camera, serverTime, seq]
+   * @param {ArrayBuffer} frameBuffer - Кадр из SnapshotPacker.packFrame.
    */
-  sendShot(socketId, shotData) {
-    this._send(socketId, this._PORT_SHOT_DATA, shotData);
+  sendShot(socketId, frameBuffer) {
+    this._sendBinary(socketId, frameBuffer);
   }
 
   /**

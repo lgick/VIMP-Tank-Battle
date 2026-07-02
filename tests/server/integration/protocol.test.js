@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { unpackFrame } from '../../../src/lib/snapshotCodec.js';
 import { loadConfig, nextTick } from './harness.js';
 
 // Интеграция протокольного слоя: реальный src/server/socket/index.js + реальный
@@ -57,7 +58,15 @@ const setup = async () => {
   const ws = {
     readyState: 1,
     OPEN: 1,
-    send: data => sent.push(JSON.parse(data)),
+    send: data => {
+      // бинарный snapshot-кадр (порт 5) декодируется реальным кодеком
+      if (typeof data === 'string') {
+        sent.push(JSON.parse(data));
+      } else {
+        const frame = unpackFrame(data);
+        sent.push([frame.port, frame]);
+      }
+    },
     close: vi.fn(),
     terminate: vi.fn(),
     on: (event, cb) => {

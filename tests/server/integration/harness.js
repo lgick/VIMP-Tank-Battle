@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { unpackFrame } from '../../../src/lib/snapshotCodec.js';
 
 // Общий каркас интеграционных тестов VIMP.
 //
@@ -86,12 +87,20 @@ export class FakeSocketManager {
     return this.frames.filter(f => f.method === method);
   }
 
-  // последний sendShot для конкретного сокета (payload-массив)
+  // последний sendShot для конкретного сокета; бинарный кадр декодируется
+  // реальным кодеком в прежнюю форму [snapshot, camera, serverTime, seq]
   lastShot(socketId) {
     const shots = this.frames.filter(
       f => f.method === 'sendShot' && f.socketId === socketId,
     );
-    return shots.length ? shots[shots.length - 1].args[0] : null;
+
+    if (!shots.length) {
+      return null;
+    }
+
+    const frame = unpackFrame(shots[shots.length - 1].args[0]);
+
+    return [frame.snapshot, frame.camera, frame.serverTime, frame.seq];
   }
 
   clear() {

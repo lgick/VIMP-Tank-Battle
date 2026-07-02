@@ -63,6 +63,13 @@ export default server => {
           }
         },
 
+        // отправляет бинарный кадр (порт — первый байт буфера)
+        sendBinary: buffer => {
+          if (ws.readyState === ws.OPEN) {
+            ws.send(buffer);
+          }
+        },
+
         // распаковывает данные
         unpack: pack => {
           try {

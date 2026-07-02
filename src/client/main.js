@@ -28,6 +28,7 @@ import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
 import { formatMessage } from '../lib/formatters.js';
 import { sanitizeMessage } from '../lib/sanitizers.js';
+import { unpackFrame } from '../lib/snapshotCodec.js';
 import { validateAuth } from '../lib/validators.js';
 import SoundManager from './SoundManager.js';
 import BakingProvider from './providers/BakingProvider.js';
@@ -283,16 +284,15 @@ socketMethods[PS_MAP_DATA] = data => {
   sending(PC_MAP_READY);
 };
 
-// первый shot сразу после загрузки карты
+// первый shot сразу после загрузки карты (JSON; порт 5 идёт бинарным путём)
 socketMethods[PS_FIRST_SHOT_DATA] = data => {
-  shotData(data);
+  const [game, camera, serverTime, seq] = data;
+
+  applyShot(game, camera, serverTime, seq);
 
   // подтверждение получения первого шота
   sending(PC_FIRST_SHOT_READY);
 };
-
-// shot data
-socketMethods[PS_SHOT_DATA] = shotData;
 
 // panel data
 socketMethods[PS_PANEL_DATA] = data => {
@@ -405,9 +405,7 @@ socketMethods[PS_CONSOLE] = data => {
 
 // ФУНКЦИИ
 
-function shotData(data) {
-  const [game, camera, serverTime, seq] = data;
-
+function applyShot(game, camera, serverTime, seq) {
   // данные игры
   Object.entries(game).forEach(([p, instances]) => {
     const nameArr = gameSets[p];
@@ -615,6 +613,18 @@ ws.onclose = e => {
 };
 
 ws.onmessage = e => {
+  // бинарный кадр (snapshot, порт SHOT_DATA)
+  if (e.data instanceof ArrayBuffer) {
+    const frame = unpackFrame(e.data);
+
+    if (frame && frame.port === PS_SHOT_DATA) {
+      applyShot(frame.snapshot, frame.camera, frame.serverTime, frame.seq);
+    }
+
+    return;
+  }
+
+  // JSON-сообщение
   const msg = unpacking(e.data);
 
   socketMethods[msg[0]](msg[1]);
