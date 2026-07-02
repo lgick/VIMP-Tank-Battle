@@ -28,12 +28,18 @@ export default class SocketManager {
     this._PORT_PING = ports.PING;
     this._PORT_CLEAR = ports.CLEAR;
     this._PORT_CONSOLE = ports.CONSOLE;
+    this._PORT_PANEL_DATA = ports.PANEL_DATA;
+    this._PORT_STAT_DATA = ports.STAT_DATA;
+    this._PORT_CHAT_DATA = ports.CHAT_DATA;
+    this._PORT_VOTE_DATA = ports.VOTE_DATA;
+    this._PORT_KEYSET_DATA = ports.KEYSET_DATA;
 
     this._game = null;
     this._panel = null;
     this._stat = null;
 
     this._senders = new Map();
+    this._binarySenders = new Map();
     this._closers = new Map();
   }
 
@@ -56,6 +62,7 @@ export default class SocketManager {
    */
   addUser(socketId, socket) {
     this._senders.set(socketId, socket.send.bind(socket));
+    this._binarySenders.set(socketId, socket.sendBinary.bind(socket));
     this._closers.set(socketId, socket.close.bind(socket));
   }
 
@@ -65,6 +72,7 @@ export default class SocketManager {
    */
   removeUser(socketId) {
     this._senders.delete(socketId);
+    this._binarySenders.delete(socketId);
     this._closers.delete(socketId);
   }
 
@@ -116,6 +124,22 @@ export default class SocketManager {
       sender(port, data);
     } else {
       this._logSendError(socketId, port, data);
+    }
+  }
+
+  /**
+   * Отправка бинарного кадра на клиент с проверкой наличия соединения.
+   * @private
+   * @param {string} socketId
+   * @param {ArrayBuffer} buffer - Кадр (порт — первый байт буфера).
+   */
+  _sendBinary(socketId, buffer) {
+    const sender = this._binarySenders.get(socketId);
+
+    if (sender) {
+      sender(buffer);
+    } else {
+      this._logSendError(socketId, 'binary', `<${buffer.byteLength} bytes>`);
     }
   }
 
@@ -232,19 +256,21 @@ export default class SocketManager {
   }
 
   /**
-   * Отправка первого кадра игры.
+   * Отправка первого кадра игры. Snapshot идёт на FIRST_SHOT_DATA,
+   * полная статистика, панель и набор клавиш — своими каналами.
    * @param {string} socketId
    */
   sendFirstShot(socketId) {
+    // camera = 0 (координат на первом кадре нет); seq = 0 (одноразовый кадр)
     this._send(socketId, this._PORT_FIRST_SHOT_DATA, [
-      this._game.getPlayersData(), // game
-      0, // coords
-      this._panel.getEmptyPanel(), // panel
-      this._stat.getFull(), // stat
-      0, // chat
-      0,
-      0, // keySet: 0 (наблюдатель)
+      this._game.getPlayersData(), // gameSnapshot
+      0, // camera
+      Date.now(), // serverTime
+      0, // seq
     ]);
+    this.sendStat(socketId, this._stat.getFull());
+    this.sendPanel(socketId, this._panel.getEmptyPanel());
+    this.sendKeySet(socketId, 0); // наблюдатель
   }
 
   /**
@@ -252,56 +278,80 @@ export default class SocketManager {
    * @param {string} socketId
    */
   sendFirstVote(socketId) {
-    this._send(socketId, this._PORT_SHOT_DATA, [
-      {}, // game
-      0, // coords
-      0, // panel
-      0, // stat
-      0, // chat
-      { name: 'teamChange' }, // vote: выбор команды
-    ]);
+    this.sendVote(socketId, { name: 'teamChange' });
   }
 
   /**
-   * Отправка игровых данных.
+   * Отправка игровых данных (бинарный snapshot-кадр).
    * @param {string} socketId
-   * @param {*} shotData
+   * @param {ArrayBuffer} frameBuffer - Кадр из SnapshotPacker.packFrame.
    */
-  sendShot(socketId, shotData) {
-    this._send(socketId, this._PORT_SHOT_DATA, shotData);
+  sendShot(socketId, frameBuffer) {
+    this._sendBinary(socketId, frameBuffer);
   }
 
   /**
-   * Отправка базовых данных игрока.
+   * Отправка данных панели.
+   * @param {string} socketId
+   * @param {*} data
+   */
+  sendPanel(socketId, data) {
+    this._send(socketId, this._PORT_PANEL_DATA, data);
+  }
+
+  /**
+   * Отправка данных статистики.
+   * @param {string} socketId
+   * @param {*} data
+   */
+  sendStat(socketId, data) {
+    this._send(socketId, this._PORT_STAT_DATA, data);
+  }
+
+  /**
+   * Отправка сообщения чата.
+   * @param {string} socketId
+   * @param {*} data
+   */
+  sendChat(socketId, data) {
+    this._send(socketId, this._PORT_CHAT_DATA, data);
+  }
+
+  /**
+   * Отправка данных голосования.
+   * @param {string} socketId
+   * @param {*} data
+   */
+  sendVote(socketId, data) {
+    this._send(socketId, this._PORT_VOTE_DATA, data);
+  }
+
+  /**
+   * Отправка набора клавиш (смена режима спектатор/игрок).
+   * @param {string} socketId
+   * @param {number} keySet - 0 (наблюдатель) | 1 (игрок)
+   */
+  sendKeySet(socketId, keySet) {
+    this._send(socketId, this._PORT_KEYSET_DATA, keySet);
+  }
+
+  /**
+   * Отправка базовых данных игрока (полная панель + набор клавиш игрока).
    * @param {string} socketId
    * @param {string} gameId - ID игрока в игре.
    */
   sendPlayerDefaultShot(socketId, gameId) {
-    this._send(socketId, this._PORT_SHOT_DATA, [
-      {}, // game
-      0, // coords
-      this._panel.getFullPanel(gameId), // panel
-      0, // stat
-      0, // chat
-      0, // vote
-      1, // keySet
-    ]);
+    this.sendPanel(socketId, this._panel.getFullPanel(gameId));
+    this.sendKeySet(socketId, 1);
   }
 
   /**
-   * Отправка базовых данных наблюдателя.
+   * Отправка базовых данных наблюдателя (пустая панель + набор клавиш наблюдателя).
    * @param {string} socketId
    */
   sendSpectatorDefaultShot(socketId) {
-    this._send(socketId, this._PORT_SHOT_DATA, [
-      {}, // game
-      0, // coords
-      this._panel.getEmptyPanel(), // panel
-      0, // stat
-      0, // chat
-      0, // vote
-      0, // keySet
-    ]);
+    this.sendPanel(socketId, this._panel.getEmptyPanel());
+    this.sendKeySet(socketId, 0);
   }
 
   /**

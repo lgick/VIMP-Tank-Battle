@@ -1,5 +1,5 @@
 import './style.css';
-import { Application } from 'pixi.js';
+import { Application, Ticker } from 'pixi.js';
 import InputListener from './InputListener.js';
 import AuthModel from './components/model/Auth.js';
 import AuthView from './components/view/Auth.js';
@@ -28,8 +28,10 @@ import VoteCtrl from './components/controller/Vote.js';
 import Factory from '../lib/factory.js';
 import { formatMessage } from '../lib/formatters.js';
 import { sanitizeMessage } from '../lib/sanitizers.js';
+import { unpackFrame } from '../lib/snapshotCodec.js';
 import { validateAuth } from '../lib/validators.js';
 import SoundManager from './SoundManager.js';
+import SnapshotInterpolator from './SnapshotInterpolator.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
 import wsports from '../config/wsports.js';
@@ -49,6 +51,11 @@ const PS_MISC = wsports.server.MISC;
 const PS_PING = wsports.server.PING;
 const PS_CLEAR = wsports.server.CLEAR;
 const PS_CONSOLE = wsports.server.CONSOLE;
+const PS_PANEL_DATA = wsports.server.PANEL_DATA;
+const PS_STAT_DATA = wsports.server.STAT_DATA;
+const PS_CHAT_DATA = wsports.server.CHAT_DATA;
+const PS_VOTE_DATA = wsports.server.VOTE_DATA;
+const PS_KEYSET_DATA = wsports.server.KEYSET_DATA;
 
 // PC (client ports): порты получения данных от клиента
 const PC_CONFIG_READY = wsports.client.CONFIG_READY;
@@ -89,12 +96,17 @@ let entitiesOnCanvas = {}; // сущности, отображаемые на п
 let currentMapSetId; // текущий id набора конструкторов для карт
 const socketMethods = []; // методы для обработки сокет-данных
 
+// буфер snapshot-интерполяции (создаётся при получении конфига)
+let interpolator = null;
+
 // SOCKET МЕТОДЫ
 
 // config data
 socketMethods[PS_CONFIG_DATA] = async data => {
   gameSets = data.parts.gameSets;
   entitiesOnCanvas = data.parts.entitiesOnCanvas;
+
+  interpolator = new SnapshotInterpolator(data.interpolation);
 
   // инициализация сущностей игры
   for (const entity of Object.keys(entitiesOnCanvas)) {
@@ -218,6 +230,8 @@ socketMethods[PS_AUTH_RESULT] = async err => {
 socketMethods[PS_MAP_DATA] = data => {
   const { scale, layers, map, step, setId, spriteSheet, physicsStatic } = data;
 
+  interpolator.reset();
+
   // удаление данных карт
   const removeMap = setId => {
     const nameArr = gameSets[setId] || [];
@@ -274,16 +288,41 @@ socketMethods[PS_MAP_DATA] = data => {
   sending(PC_MAP_READY);
 };
 
-// первый shot сразу после загрузки карты
+// первый shot сразу после загрузки карты (JSON; порт 5 идёт бинарным путём);
+// применяется немедленно (создание сущностей), в буфер интерполяции не пушится
 socketMethods[PS_FIRST_SHOT_DATA] = data => {
-  shotData(data);
+  const [game, camera] = data;
+
+  applyShot(game, camera);
 
   // подтверждение получения первого шота
   sending(PC_FIRST_SHOT_READY);
 };
 
-// shot data
-socketMethods[PS_SHOT_DATA] = shotData;
+// panel data
+socketMethods[PS_PANEL_DATA] = data => {
+  modules.panel.update(data);
+};
+
+// stat data
+socketMethods[PS_STAT_DATA] = data => {
+  modules.stat.update(data);
+};
+
+// chat data
+socketMethods[PS_CHAT_DATA] = data => {
+  modules.chat.add(data);
+};
+
+// vote data
+socketMethods[PS_VOTE_DATA] = data => {
+  modules.vote.open(data);
+};
+
+// keyset data (смена режима спектатор/игрок)
+socketMethods[PS_KEYSET_DATA] = keySet => {
+  modules.controls.changeKeySet(keySet);
+};
 
 // sound data
 socketMethods[PS_SOUND_DATA] = sample => {
@@ -361,6 +400,7 @@ socketMethods[PS_CLEAR] = function (setIdList) {
     }
   }
 
+  interpolator.reset();
   soundManager.reset();
 };
 
@@ -371,10 +411,8 @@ socketMethods[PS_CONSOLE] = data => {
 
 // ФУНКЦИИ
 
-function shotData(data) {
-  const [game, crds, panel, stat, chat, vote, keySet] = data;
-
-  // данные игры
+// применяет игровые данные к сущностям
+function applyGameData(game) {
   Object.entries(game).forEach(([p, instances]) => {
     const nameArr = gameSets[p];
 
@@ -382,40 +420,37 @@ function shotData(data) {
       CTRL[entitiesOnCanvas[name]].parse(name, instances);
     });
   });
+}
 
-  // координаты
-  if (crds !== 0) {
-    soundManager.setListenerPosition(crds[0], crds[1]);
-    modules.canvasManager.updateCoords(crds);
+// применяет данные камеры (позиция слушателя звука + полотно)
+function applyCamera(camera) {
+  if (camera && camera !== 0) {
+    soundManager.setListenerPosition(camera[0], camera[1]);
+    modules.canvasManager.updateCoords(camera);
   }
+}
+
+// применяет кадр целиком (первый кадр и дискретные кадры интерполяции)
+function applyShot(game, camera) {
+  applyGameData(game);
+  applyCamera(camera);
+}
+
+// рендер-тик: проигрывает пересечённые кадры (события, создания/удаления)
+// и применяет интерполированные позиции/камеру
+function renderTick() {
+  const { frames, game, camera } = interpolator.sample(performance.now());
+
+  frames.forEach(frame => applyShot(frame.game, frame.camera));
+
+  if (game) {
+    applyGameData(game);
+  }
+
+  applyCamera(camera);
 
   soundManager.processAudibility();
   soundManager.updateActiveSounds();
-
-  // панель
-  if (panel !== 0) {
-    modules.panel.update(panel);
-  }
-
-  // статистика
-  if (stat !== 0) {
-    modules.stat.update(stat);
-  }
-
-  // чат
-  if (chat !== 0) {
-    modules.chat.add(chat);
-  }
-
-  // голосование
-  if (vote !== 0) {
-    modules.vote.open(vote);
-  }
-
-  // набор клавиш
-  if (typeof keySet === 'number') {
-    modules.controls.changeKeySet(keySet);
-  }
 }
 
 // создает пользователя
@@ -546,6 +581,12 @@ function runModules(data) {
   controlsModel.publisher.on('socket', data => sending(PC_KEYS_DATA, data));
   chatModel.publisher.on('socket', data => sending(PC_CHAT_DATA, data));
   voteModel.publisher.on('socket', data => sending(PC_VOTE_DATA, data));
+
+  //==========================================//
+  // Рендер-цикл интерполяции
+  //==========================================//
+
+  Ticker.shared.add(renderTick);
 }
 
 // создает экземпляр игры
@@ -602,6 +643,23 @@ ws.onclose = e => {
 };
 
 ws.onmessage = e => {
+  // бинарный кадр (snapshot, порт SHOT_DATA) — в буфер интерполяции
+  if (e.data instanceof ArrayBuffer) {
+    const frame = unpackFrame(e.data);
+
+    if (frame && frame.port === PS_SHOT_DATA) {
+      interpolator.push(
+        frame.snapshot,
+        frame.camera,
+        frame.serverTime,
+        performance.now(),
+      );
+    }
+
+    return;
+  }
+
+  // JSON-сообщение
   const msg = unpacking(e.data);
 
   socketMethods[msg[0]](msg[1]);

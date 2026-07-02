@@ -14,6 +14,11 @@ export default {
     PING: 10,
     CLEAR: 11,
     CONSOLE: 12,
+    PANEL_DATA: 13,
+    STAT_DATA: 14,
+    CHAT_DATA: 15,
+    VOTE_DATA: 16,
+    KEYSET_DATA: 17,
   },
   // порты получения данных от клиента
   client: {

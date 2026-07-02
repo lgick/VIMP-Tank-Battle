@@ -4,8 +4,10 @@
 > Каждая фаза — самостоятельный мёржабельный инкремент с зелёными тестами.
 >
 > **Прогресс:** ✅ Фаза 0, ✅ Фаза 1, ✅ Фаза 2 (2a VoteCoordinator, 2b RoundManager,
-> 2c CommandProcessor) — реализованы и закоммичены (613 тестов зелёные, eslint чист).
-> Следующее: Фаза 3 (разделение сетевых каналов). Track B (Rapier) — не начат.
+> 2c CommandProcessor), ✅ Фаза 3 (разделение сетевых каналов), ✅ Фаза 4 (бинарный snapshot),
+> ✅ Фаза 5a (snapshot-интерполяция, `networkSendRate: 4`) — реализованы (656 тестов зелёные,
+> eslint чист). Следующее: Фаза 5b (prediction) и/или Track B (Rapier) — не начаты.
+> Оговорка «Фаза 5 только после полной готовности базовой игры» снята пользователем.
 >
 > Отклонения от плана по ходу реализации:
 > - **Единое числовое пространство id** для людей и ботов (вместо префикса `'_'` у ботов) —
@@ -248,7 +250,15 @@ class ParticipantManager {
 
 ---
 
-## Фаза 3 — Разделение сетевых каналов (ещё JSON)
+## Фаза 3 — Разделение сетевых каналов (ещё JSON) ✅ ВЫПОЛНЕНО
+> Реализовано: новые порты `13..17`; `SocketManager` обзавёлся `sendPanel/sendStat/sendChat/
+> sendVote/sendKeySet`, а `sendFirstShot/sendPlayerDefaultShot/sendSpectatorDefaultShot/
+> sendFirstVote` распались на отправки по каналам; `VIMP._onShotTick` шлёт snapshot-кадр
+> `[gameSnapshot, camera, serverTime, seq]` + мету по каналам только при изменении; клиент
+> (`main.js`) получил обработчики новых портов и сокращённый `shotData`. Решения: `serverTime`/`seq`
+> добавлены сразу (клиент сохраняет в `lastServerTime`/`lastSeq`, пока не использует); `keySet` — на
+> отдельном порту `KEYSET_DATA: 17`. Тесты обновлены (`SocketManager.test.js`,
+> `integration/{lifecycle,protocol}.test.js`, `harness.js`). 616 тестов зелёные, eslint чист.
 
 ### Новые серверные порты (`src/config/wsports.js`, server)
 ```
@@ -256,6 +266,7 @@ PANEL_DATA: 13,
 STAT_DATA: 14,
 CHAT_DATA: 15,
 VOTE_DATA: 16,
+KEYSET_DATA: 17,
 ```
 (существующие `0..12` не трогаем; `SHOT_DATA: 5` остаётся каналом snapshot).
 
@@ -275,8 +286,8 @@ VOTE_DATA: 16,
   наличии изменений (а не каждый тик): из `_onShotTick` дергать
   `panel.processUpdates()`/`chat.shift*`/`vote.shift*`/`stat.getLast()` и слать на свои порты лишь
   при непустом результате.
-- `keySet` (смена клавиатурного режима спектатор/игрок) вынести на свой канал/`MISC` или в момент
-  смены статуса (а не в каждом кадре).
+- `keySet` (смена клавиатурного режима спектатор/игрок) вынесен на отдельный порт `KEYSET_DATA: 17`,
+  шлётся точечно при смене статуса (а не в каждом кадре).
 
 ### Клиент (`src/client/main.js`)
 - Добавить обработчики `socketMethods[PS_PANEL_DATA] = d => modules.panel.update(d)` и аналогично
@@ -294,7 +305,25 @@ VOTE_DATA: 16,
 
 ---
 
-## Фаза 4 — Бинарный snapshot (мета остаётся JSON)
+## Фаза 4 — Бинарный snapshot (мета остаётся JSON) ✅ ВЫПОЛНЕНО
+> Реализовано: кадр порта `5` — бинарный (`DataView` block-layout, big-endian, без библиотек).
+> Кодек — **единый разделяемый модуль** `src/lib/snapshotCodec.js`: `SnapshotPacker`
+> (`packBody` один раз/тик в предвыделенный буфер 64K + `packFrame` per-user: заголовок
+> port/version/seq/serverTime/camera + копия тела) и `unpackFrame` (клиент; восстанавливает
+> точные JSON-формы — float скруглены сервером до 2 знаков, декодер восстанавливает их повторным
+> скруглением Float32). Реестр ключей — `src/config/opcodes.js`: `SNAPSHOT_KEYS`
+> (`m1/w1/w2/w2e/c1/c2` → id + kind, kind задаёт раскладку блока) + `SNAPSHOT_FORMAT_VERSION`
+> (несовпадение — кадр отбрасывается). Транспорт: `ws.socket.sendBinary` в `socket/index.js`,
+> `SocketManager._binarySenders`/`_sendBinary`, `sendShot(socketId, frameBuffer)`. Клиент:
+> `ws.onmessage` ветвится по типу `e.data` (`ArrayBuffer` → `unpackFrame` → `applyShot`).
+> Отклонения от плана ниже: кодек единый в `src/lib` (не раздельные packer/декодер); реестр
+> строковых ключей снапшота вместо «modelId»; **`PING` и `FIRST_SHOT_DATA` остались JSON**
+> (одноразовый/крошечный трафик, бинаризация не окупается); `docs/arraybuffer.md` не существует —
+> раскладка зафиксирована в комментариях кодека; отдельный `opcodes.js` с делением каналов
+> binary/json не понадобился (форматы различаются типом WebSocket-сообщения). Тесты: round-trip
+> `tests/lib/snapshotCodec.test.js` (21), обновлены `SocketManager.test.js` и
+> `integration/{harness,protocol}` (lastShot/фейковый ws декодируют кадры реальным кодеком).
+> 639 тестов зелёные, eslint чист.
 
 ### OpCodes (`src/config/opcodes.js`)
 Деление каналов на бинарные и JSON (поверх существующих числовых портов):
@@ -375,16 +404,39 @@ w2e → 5 (эффект взрыва), c1 → 1 (карта/динамика)
 ---
 
 ## Фаза 5 — Client-side prediction + interpolation (после Фазы 4)
-Делать только когда базовая игра и каналы стабильны (помечено в CLAUDE.md).
-- **Свой танк:** prediction + reconciliation. Добавить input sequence в `KEYS_DATA` (порт 5
-  клиента); локальная симуляция движения в `requestAnimationFrame`; коррекция к серверной позиции
-  при расхождении (server authoritative).
-- **Чужие танки:** snapshot interpolation. Буфер 3–4 снапшотов с `serverTime` (из Фазы 3),
-  `renderTime = serverTime - bufferTime` (~100–150 мс), `lerp` по `x/y/rotation`.
-- **Снаряды:** визуальный client-side spawn; физика/урон — сервер.
-- **Файлы:** клиент `parts/LocalTank`/`RemoteTank`, `components/*/Game`, `Controls`;
-  сервер — приём input-seq в keys.
-- Зависит от меток времени/seq (Фаза 3) и бинарь-канала (Фаза 4).
+Разбита на три самостоятельных инкремента: 5a интерполяция, 5b prediction, 5c снаряды.
+
+### Фаза 5a — Snapshot-интерполяция ✅ ВЫПОЛНЕНО
+> Реализовано: `src/client/SnapshotInterpolator.js` (чистый класс без Pixi/DOM) — буфер кадров
+> порта `5`; серверное время оценивается EMA-оффсетом (`serverTime − localNow`, коэффициент 0.1);
+> `renderTime = serverNow − delay` (конфиг `interpolation` в `src/config/client.js`, delay 100 мс).
+> `sample()` выдаёт: пересечённые кадры **целиком ровно один раз** (события `w1`/`w2e`,
+> создания/удаления, дискретные поля, reset/shake камеры) + интерполированную непрерывную часть
+> (танки `m1`: x/y/vx/vy/engineLoad — `lerp`, angle/gunRotation — `lerpAngle`,
+> condition/size/teamId — из кадра A; динамика карты `c1`/`c2`; камера x/y). Классификация ключей —
+> по `kind` из `SNAPSHOT_KEYS` (`opcodes.js`); бомбы (клиентский `Bomb.update()` пуст) и события
+> не интерполируются. Экстраполяции нет — hold на последнем кадре (без дублирования событий).
+> `main.js`: бинарные кадры → `interpolator.push(...)`; рендер-цикл `renderTick` на
+> `Ticker.shared` (регистрируется в `runModules`); `applyShot` разбит на
+> `applyGameData`/`applyCamera`; `lastServerTime`/`lastSeq` удалены; reset буфера при
+> `MAP_DATA`/`CLEAR`; первый кадр (порт 4) применяется немедленно, минуя буфер.
+> `networkSendRate: 1 → 4` (30 пакетов/сек). Интеграционный harness фиксирует
+> `game:timers:networkSendRate = 1` (тесты двигают цикл `tick(vimp, 1)` и ждут кадр).
+> Тесты: `tests/client/SnapshotInterpolator.test.js` (17). 656 тестов зелёные, eslint чист.
+> Решения пользователя: объём — только интерполяция (свой танк тоже интерполируется, задержка
+> ввода ~delay+RTT остаётся до 5b); `_TODO/KEYS UPDATE.md` не используется (дизайн с нуля).
+
+### Фаза 5b — Prediction + reconciliation (свой танк)
+- Добавить input sequence в `KEYS_DATA` (порт 5 клиента); эхо последнего обработанного ввода —
+  в бинарном кадре (версия формата → 2); передача клиенту его gameId.
+- Локальная симуляция движения (реплика `Tank.updateData` без Box2D-коллизий) в рендер-цикле;
+  reconciliation: replay неподтверждённых вводов от серверной позиции; сброс предсказания при
+  `camera[2]` (reset) и смене keySet.
+- **Файлы:** клиент `parts/` (разделение Local/Remote танка), `Controls`, `SnapshotInterpolator`
+  (исключение своего танка из интерполяции); сервер — приём input-seq, ack в кадре.
+
+### Фаза 5c — Снаряды
+- Визуальный client-side spawn снарядов/эффектов своего танка; физика/урон — сервер.
 
 ---
 
@@ -425,5 +477,6 @@ w2e → 5 (эффект взрыва), c1 → 1 (карта/динамика)
 - Track B: отдельно валидировать ощущение управления против planck.
 
 ## Порядок выполнения
-~~Фаза 0~~ → ~~1~~ → ~~2~~ → **3** → 4 → 5. Track B — после Фазы 2 (можно начинать),
-параллельно 3–4, до Фазы 5.
+~~Фаза 0~~ → ~~1~~ → ~~2~~ → ~~3~~ → ~~4~~ → ~~5a~~ → **5b** → 5c. Track B — можно начинать,
+желательно до Фазы 5b (prediction реплицирует физику движения — после миграции на Rapier
+реплику пришлось бы переделывать).

@@ -119,8 +119,10 @@ describe('Интеграция: чат и команды', () => {
     vimp.pushMessage(gameId, 'привет всем');
     tick(vimp, 1);
 
-    const shot = socket.lastShot('s1');
-    expect(shot[4]).not.toBe(0); // chatUser не пустой
+    // сообщение ушло отдельным каналом чата
+    const chatFrames = socket.framesOf('sendChat').filter(f => f.socketId === 's1');
+    expect(chatFrames.length).toBeGreaterThan(0);
+    expect(chatFrames[0].args[0]).toBeTruthy();
   });
 
   it('команда /mapname отвечает системным сообщением игроку', async () => {
@@ -131,8 +133,9 @@ describe('Интеграция: чат и команды', () => {
     vimp.pushMessage(gameId, '/mapname');
     tick(vimp, 1);
 
-    const shot = socket.lastShot('s1');
-    expect(shot[4]).not.toBe(0);
+    const chatFrames = socket.framesOf('sendChat').filter(f => f.socketId === 's1');
+    expect(chatFrames.length).toBeGreaterThan(0);
+    expect(chatFrames[0].args[0]).toBeTruthy();
   });
 });
 

@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { unpackFrame } from '../../../src/lib/snapshotCodec.js';
 
 // Общий каркас интеграционных тестов VIMP.
 //
@@ -22,6 +23,9 @@ export const loadConfig = async () => {
   config.set('server:oneConnection', false);
   config.set('game:isDevMode', true);
 
+  // кадр на каждом тике: тесты двигают цикл tick(vimp, 1) и ждут снапшот
+  config.set('game:timers:networkSendRate', 1);
+
   return config;
 };
 
@@ -37,6 +41,11 @@ const SENDER_METHODS = [
   'sendFirstShot',
   'sendFirstVote',
   'sendShot',
+  'sendPanel',
+  'sendStat',
+  'sendChat',
+  'sendVote',
+  'sendKeySet',
   'sendPlayerDefaultShot',
   'sendSpectatorDefaultShot',
   'sendRoundStart',
@@ -81,12 +90,20 @@ export class FakeSocketManager {
     return this.frames.filter(f => f.method === method);
   }
 
-  // последний sendShot для конкретного сокета (payload-массив)
+  // последний sendShot для конкретного сокета; бинарный кадр декодируется
+  // реальным кодеком в прежнюю форму [snapshot, camera, serverTime, seq]
   lastShot(socketId) {
     const shots = this.frames.filter(
       f => f.method === 'sendShot' && f.socketId === socketId,
     );
-    return shots.length ? shots[shots.length - 1].args[0] : null;
+
+    if (!shots.length) {
+      return null;
+    }
+
+    const frame = unpackFrame(shots[shots.length - 1].args[0]);
+
+    return [frame.snapshot, frame.camera, frame.serverTime, frame.seq];
   }
 
   clear() {

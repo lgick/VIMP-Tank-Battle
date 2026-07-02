@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { unpackFrame } from '../../../src/lib/snapshotCodec.js';
 import { loadConfig, nextTick } from './harness.js';
 
 // Интеграция протокольного слоя: реальный src/server/socket/index.js + реальный
@@ -23,6 +24,11 @@ const PS = {
   MAP_DATA: 3,
   FIRST_SHOT_DATA: 4,
   SHOT_DATA: 5,
+  PANEL_DATA: 13,
+  STAT_DATA: 14,
+  CHAT_DATA: 15,
+  VOTE_DATA: 16,
+  KEYSET_DATA: 17,
 };
 
 // поднимает socket-слой с фейковым ws и одним подключением
@@ -52,7 +58,15 @@ const setup = async () => {
   const ws = {
     readyState: 1,
     OPEN: 1,
-    send: data => sent.push(JSON.parse(data)),
+    send: data => {
+      // бинарный snapshot-кадр (порт 5) декодируется реальным кодеком
+      if (typeof data === 'string') {
+        sent.push(JSON.parse(data));
+      } else {
+        const frame = unpackFrame(data);
+        sent.push([frame.port, frame]);
+      }
+    },
     close: vi.fn(),
     terminate: vi.fn(),
     on: (event, cb) => {
@@ -168,8 +182,8 @@ describe('Протокол: полная цепочка до игры', () => {
     expect(h.portsOf(PS.FIRST_SHOT_DATA).length).toBe(1);
 
     h.send(PC.FIRST_SHOT_READY);
-    // firstShotReady шлёт первый игровой кадр (sendFirstVote → SHOT_DATA)
-    expect(h.portsOf(PS.SHOT_DATA).length).toBeGreaterThan(0);
+    // firstShotReady шлёт выбор команды отдельным каналом (sendFirstVote → VOTE_DATA)
+    expect(h.portsOf(PS.VOTE_DATA).length).toBeGreaterThan(0);
 
     // теперь выбор команды через VOTE_DATA не падает (игрок спавнится)
     expect(() => h.send(PC.VOTE_DATA, ['teamChange', 'team1'])).not.toThrow();
