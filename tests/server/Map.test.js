@@ -1,49 +1,33 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-// мокаем planck: Vec2 реальный, BoxShape — записывающая заглушка,
-// чтобы проверять половинные размеры созданных прямоугольников
-vi.mock('planck', async importActual => {
-  const actual = await importActual();
-  return {
-    ...actual,
-    BoxShape: class {
-      constructor(halfWidth, halfHeight) {
-        this.halfWidth = halfWidth;
-        this.halfHeight = halfHeight;
-      }
-    },
-  };
-});
+import RAPIER from '../../src/server/physics/rapier.js';
 
 let Map;
 
-// фейковый мир, регистрирующий созданные тела
+// фейковый мир, регистрирующий созданные тела;
+// дескрипторы тел/коллайдеров — реальные (RAPIER.RigidBodyDesc/ColliderDesc)
 const makeWorld = () => {
   const created = [];
   return {
     created,
-    createBody(opts) {
+    createRigidBody(desc) {
       const body = {
-        opts,
-        fixtures: [],
+        desc,
+        colliders: [],
         userData: null,
-        createFixture(shape, density) {
-          this.fixtures.push({ shape, density });
+        translation() {
+          return desc.translation;
         },
-        setUserData(d) {
-          this.userData = d;
-        },
-        getPosition() {
-          return opts.position;
-        },
-        getAngle() {
-          return opts.angle || 0;
+        rotation() {
+          return desc.rotation;
         },
       };
       created.push(body);
       return body;
     },
-    destroyBody: vi.fn(),
+    createCollider(colliderDesc, body) {
+      body.colliders.push(colliderDesc);
+    },
+    removeRigidBody: vi.fn(),
   };
 };
 
@@ -59,12 +43,12 @@ const mapData = (rows, opts = {}) => ({
 // удобный доступ к статическим телам (по центру и половинным размерам)
 const staticBodies = world =>
   world.created
-    .filter(b => b.opts.type === 'static')
+    .filter(b => b.desc.status === RAPIER.RigidBodyType.Fixed)
     .map(b => ({
-      x: b.opts.position.x,
-      y: b.opts.position.y,
-      hw: b.fixtures[0].shape.halfWidth,
-      hh: b.fixtures[0].shape.halfHeight,
+      x: b.desc.translation.x,
+      y: b.desc.translation.y,
+      hw: b.colliders[0].shape.halfExtents.x,
+      hh: b.colliders[0].shape.halfExtents.y,
     }));
 
 beforeEach(async () => {
@@ -148,7 +132,9 @@ describe('Map.createDynamic', () => {
       }),
     );
 
-    const dyn = world.created.filter(b => b.opts.type === 'dynamic');
+    const dyn = world.created.filter(
+      b => b.desc.status === RAPIER.RigidBodyType.Dynamic,
+    );
     expect(dyn).toHaveLength(1);
     expect(dyn[0].userData).toEqual({ type: 'map_object' });
   });
@@ -159,7 +145,13 @@ describe('Map.createDynamic', () => {
     map.createMap(
       mapData([[0]], {
         physicsDynamic: [
-          { angle: 0, position: [1.234, 5.678], width: 20, height: 10, density: 1 },
+          {
+            angle: 0,
+            position: [1.234, 5.678],
+            width: 20,
+            height: 10,
+            density: 1,
+          },
         ],
       }),
     );
@@ -175,8 +167,8 @@ describe('Map.destroyMap', () => {
     const map = new Map(world);
 
     map.createMap(mapData([[1]])); // 1 статическое тело
-    map.createMap(mapData([[1]])); // пересоздание → destroyBody для старого
+    map.createMap(mapData([[1]])); // пересоздание → удаление старого
 
-    expect(world.destroyBody).toHaveBeenCalled();
+    expect(world.removeRigidBody).toHaveBeenCalled();
   });
 });

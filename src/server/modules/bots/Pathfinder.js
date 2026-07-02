@@ -1,4 +1,4 @@
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../../lib/vec2.js';
 
 /**
  * @class Pathfinder

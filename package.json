@@ -26,10 +26,10 @@
     "audio:process": "node scripts/process-audio.js"
   },
   "dependencies": {
+    "@dimforge/rapier2d-compat": "^0.19.3",
     "express": "^5.1.0",
     "howler": "^2.2.4",
     "pixi.js": "^8.14.0",
-    "planck": "^1.4.2",
     "uuid": "^13.0.0",
     "vite-express": "^0.21.1",
     "ws": "^8.18.3"

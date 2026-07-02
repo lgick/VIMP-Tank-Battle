@@ -1,50 +1,51 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../src/lib/vec2.js';
+import RAPIER from '../../src/server/physics/rapier.js';
 
 let HitscanService;
 
-// фикстура-помощник
-const makeFixture = ({ sensor = false, userData = null, dynamic = true } = {}) => {
-  const body = {
-    getUserData: () => userData,
-    isDynamic: () => dynamic,
-    applyLinearImpulse: vi.fn(),
-  };
-  return {
-    isSensor: () => sensor,
-    getBody: () => body,
-    _body: body,
-  };
-};
+// тело-помощник (Rapier RigidBody)
+const makeBody = ({ userData = null, dynamic = true } = {}) => ({
+  userData,
+  isDynamic: () => dynamic,
+  applyImpulseAtPoint: vi.fn(),
+});
 
-// мир, чей rayCast проигрывает заранее заданные пересечения
-const makeWorld = hits => ({
-  _returns: [],
-  rayCast(start, end, callback) {
-    for (const hit of hits) {
-      const point = Vec2(hit.point.x, hit.point.y);
-      const ret = callback(hit.fixture, point, Vec2(0, 1), hit.fraction);
-      this._returns.push(ret);
+// мир, чей castRay возвращает заранее заданное попадание
+// (Ray реальный — pointAt считается кодом сервиса)
+const makeWorld = hit => ({
+  lastCastArgs: null,
+  castRay(ray, maxToi, solid, filterFlags) {
+    this.lastCastArgs = { ray, maxToi, solid, filterFlags };
+
+    if (!hit) {
+      return null;
     }
+
+    return {
+      collider: { parent: () => hit.body },
+      timeOfImpact: hit.timeOfImpact,
+    };
   },
 });
 
 const baseParams = () => ({
   gameId: 'shooter',
   weaponName: 'w1',
-  startPoint: Vec2(0, 0),
-  direction: Vec2(1, 0),
+  startPoint: new Vec2(0, 0),
+  direction: new Vec2(1, 0),
   bodyPosition: { x: 0, y: 0 },
 });
 
 beforeEach(async () => {
   vi.resetModules();
-  HitscanService = (await import('../../src/server/parts/HitscanService.js')).default;
+  HitscanService = (await import('../../src/server/parts/HitscanService.js'))
+    .default;
 });
 
 describe('HitscanService.processShot', () => {
   it('без попаданий возвращает конечную точку луча и wasHit=false', () => {
-    const world = makeWorld([]); // rayCast никого не задел
+    const world = makeWorld(null); // castRay никого не задел
     const game = { applyDamage: vi.fn() };
     const weapons = { w1: { range: 100 } };
 
@@ -58,10 +59,9 @@ describe('HitscanService.processShot', () => {
   });
 
   it('попадание в игрока наносит урон', () => {
-    const fixture = makeFixture({
-      userData: { type: 'player', gameId: 'victim' },
-    });
-    const world = makeWorld([{ fixture, point: { x: 50, y: 0 }, fraction: 0.5 }]);
+    const body = makeBody({ userData: { type: 'player', gameId: 'victim' } });
+    // toi 0.5 при длине луча range=100 → точка попадания x=50
+    const world = makeWorld({ body, timeOfImpact: 0.5 });
     const game = { applyDamage: vi.fn() };
     const weapons = { w1: { range: 100 } };
 
@@ -74,41 +74,42 @@ describe('HitscanService.processShot', () => {
   });
 
   it('применяет импульс к динамическому телу', () => {
-    const fixture = makeFixture({ userData: { type: 'wall' }, dynamic: true });
-    const world = makeWorld([{ fixture, point: { x: 20, y: 0 }, fraction: 0.2 }]);
+    const body = makeBody({ userData: { type: 'wall' }, dynamic: true });
+    const world = makeWorld({ body, timeOfImpact: 0.2 });
     const game = { applyDamage: vi.fn() };
     const weapons = { w1: { range: 100, impulseMagnitude: 5 } };
 
     const hs = new HitscanService({ world, weapons, game });
     hs.processShot(baseParams());
 
-    expect(fixture._body.applyLinearImpulse).toHaveBeenCalled();
+    expect(body.applyImpulseAtPoint).toHaveBeenCalled();
     // не игрок → урон не наносится
     expect(game.applyDamage).not.toHaveBeenCalled();
   });
 
-  it('сенсорные фикстуры игнорируются (callback возвращает -1)', () => {
-    const sensor = makeFixture({ sensor: true });
-    const world = makeWorld([{ fixture: sensor, point: { x: 10, y: 0 }, fraction: 0.1 }]);
+  it('сенсоры исключаются флагом запроса EXCLUDE_SENSORS', () => {
+    const world = makeWorld(null);
     const game = { applyDamage: vi.fn() };
     const weapons = { w1: { range: 100 } };
 
     const hs = new HitscanService({ world, weapons, game });
-    const result = hs.processShot(baseParams());
+    hs.processShot(baseParams());
 
-    expect(world._returns[0]).toBe(-1.0); // луч продолжается сквозь сенсор
-    expect(result[6]).toBe(false); // попадания нет
+    expect(world.lastCastArgs.filterFlags).toBe(
+      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,
+    );
+    expect(world.lastCastArgs.maxToi).toBe(1.0); // длина задана вектором луча
   });
 
   it('не применяет импульс к статике', () => {
-    const fixture = makeFixture({ userData: { type: 'wall' }, dynamic: false });
-    const world = makeWorld([{ fixture, point: { x: 30, y: 0 }, fraction: 0.3 }]);
+    const body = makeBody({ userData: { type: 'wall' }, dynamic: false });
+    const world = makeWorld({ body, timeOfImpact: 0.3 });
     const game = { applyDamage: vi.fn() };
     const weapons = { w1: { range: 100, impulseMagnitude: 5 } };
 
     const hs = new HitscanService({ world, weapons, game });
     hs.processShot(baseParams());
 
-    expect(fixture._body.applyLinearImpulse).not.toHaveBeenCalled();
+    expect(body.applyImpulseAtPoint).not.toHaveBeenCalled();
   });
 });

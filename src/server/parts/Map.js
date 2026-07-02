@@ -1,6 +1,11 @@
-import { BoxShape, Vec2 } from 'planck';
 import { roundTo2Decimals } from '../../lib/formatters.js';
 import { degToRad } from '../../lib/math.js';
+import RAPIER from '../physics/rapier.js';
+
+// параметры поверхности по умолчанию (соответствуют дефолтам planck/Box2D,
+// с которыми сбалансировано ощущение управления)
+const DEFAULT_FRICTION = 0.2;
+const DEFAULT_RESTITUTION = 0;
 
 // Singleton Map
 
@@ -108,15 +113,18 @@ class Map {
           const posX = x * this._step + sizes[0] / 2;
           const posY = y * this._step + sizes[1] / 2;
 
-          // создаем статическое тело через world.createBody
-          const body = this._world.createBody({
-            type: 'static',
-            position: new Vec2(posX, posY),
-          });
+          // статическое тело стены
+          const body = this._world.createRigidBody(
+            RAPIER.RigidBodyDesc.fixed().setTranslation(posX, posY),
+          );
 
-          // добавляем fixture в виде прямоугольника.
-          // в конструкторе Box указываются половинные размеры.
-          body.createFixture(new BoxShape(sizes[0] / 2, sizes[1] / 2));
+          // коллайдер-прямоугольник (половинные размеры)
+          this._world.createCollider(
+            RAPIER.ColliderDesc.cuboid(sizes[0] / 2, sizes[1] / 2)
+              .setFriction(DEFAULT_FRICTION)
+              .setRestitution(DEFAULT_RESTITUTION),
+            body,
+          );
 
           this._staticBodies.push(body);
         }
@@ -132,26 +140,27 @@ class Map {
       const posX = data.position[0];
       const posY = data.position[1];
 
-      const body = this._world.createBody({
-        type: 'dynamic',
-        position: new Vec2(posX, posY),
-        angle,
-        linearDamping: data.linearDamping ?? 0,
-        angularDamping: data.angularDamping ?? 0.01,
-      });
-
-      body.createFixture(
-        new BoxShape(
-          data.width / 2,
-          data.height / 2,
-          new Vec2(data.width / 2, data.height / 2),
-        ),
-        data.density,
+      const body = this._world.createRigidBody(
+        RAPIER.RigidBodyDesc.dynamic()
+          .setTranslation(posX, posY)
+          .setRotation(angle)
+          .setLinearDamping(data.linearDamping ?? 0)
+          .setAngularDamping(data.angularDamping ?? 0.01),
       );
 
-      body.setUserData({
+      // коллайдер со смещённым центром (позиция тела — угол объекта)
+      this._world.createCollider(
+        RAPIER.ColliderDesc.cuboid(data.width / 2, data.height / 2)
+          .setTranslation(data.width / 2, data.height / 2)
+          .setDensity(data.density)
+          .setFriction(DEFAULT_FRICTION)
+          .setRestitution(DEFAULT_RESTITUTION),
+        body,
+      );
+
+      body.userData = {
         type: 'map_object',
-      });
+      };
 
       this._dynamicBodies.push([`d${i}`, body]);
     }
@@ -160,11 +169,11 @@ class Map {
   // удаляет все динамические элементы из мира
   destroyMap() {
     while (this._staticBodies.length) {
-      this._world.destroyBody(this._staticBodies.pop());
+      this._world.removeRigidBody(this._staticBodies.pop());
     }
 
     while (this._dynamicBodies.length) {
-      this._world.destroyBody(this._dynamicBodies.pop()[1]);
+      this._world.removeRigidBody(this._dynamicBodies.pop()[1]);
     }
   }
 
@@ -174,12 +183,12 @@ class Map {
 
     for (let i = 0, len = this._dynamicBodies.length; i < len; i += 1) {
       const [id, body] = this._dynamicBodies[i];
-      const pos = body.getPosition();
+      const pos = body.translation();
 
       data[id] = [
         roundTo2Decimals(pos.x),
         roundTo2Decimals(pos.y),
-        roundTo2Decimals(body.getAngle()),
+        roundTo2Decimals(body.rotation()),
       ];
     }
 

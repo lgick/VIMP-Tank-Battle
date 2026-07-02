@@ -1,7 +1,8 @@
 import BaseModel from './BaseModel.js';
-import { BoxShape, Vec2, Rot } from 'planck';
 import { lerp, degToRad, clamp, randomRange } from '../../lib/math.js';
 import { roundTo2Decimals } from '../../lib/formatters.js';
+import { Vec2, rotateVec } from '../../lib/vec2.js';
+import RAPIER from '../physics/rapier.js';
 
 const FORWARD = new Vec2(1, 0);
 const RIGHT = new Vec2(0, 1);
@@ -57,30 +58,37 @@ class Tank extends BaseModel {
     this._engineThrottle = 0; // намерение игрока (0.0 до 1.0)
     this._engineLoad = 0; // нагрузка на двигатель для звука
 
-    this._body = data.world.createBody({
-      type: 'dynamic',
-      position: new Vec2(data.position[0], data.position[1]),
-      angle: degToRad(data.angle),
-      angularDamping: this._modelData.damping.angular,
-      linearDamping: this._modelData.damping.linear,
-    });
+    this._body = data.world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(data.position[0], data.position[1])
+        .setRotation(degToRad(data.angle))
+        .setAngularDamping(this._modelData.damping.angular)
+        .setLinearDamping(this._modelData.damping.linear),
+    );
 
     this._body.gunRotation = 0;
     this._centeringGun = false;
 
-    this._body.createFixture(
-      new BoxShape(this._width / 2, this._height / 2),
-      this._modelData.fixture,
+    const fixture = this._modelData.fixture;
+
+    data.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(this._width / 2, this._height / 2)
+        .setDensity(fixture.density)
+        .setFriction(fixture.friction)
+        .setRestitution(fixture.restitution)
+        // события контактов (попадания снарядов) собирает Game
+        .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
+      this._body,
     );
 
-    this._body.setUserData({
+    this._body.userData = {
       type: 'player',
       gameId: this.gameId,
       teamId: this.teamId,
-    });
+    };
 
-    this._mass = this._body.getMass(); // масса тела
-    this._inertia = this._body.getInertia(); // момент инерции
+    this._mass = this._body.mass(); // масса тела
+    this._inertia = this._body.principalInertia(); // момент инерции
 
     // базовый фактор инерцией
     this._effectiveTurnTorque = this._baseTurnTorqueFactor * this._inertia;
@@ -117,8 +125,8 @@ class Tank extends BaseModel {
 
       // остановка танка при уничтожении,
       // сброс нажатых клавиш
-      this._body.setLinearVelocity(ZERO);
-      this._body.setAngularVelocity(0);
+      this._body.setLinvel(ZERO, true);
+      this._body.setAngvel(0, true);
       this.resetKeys();
 
       return true;
@@ -141,9 +149,9 @@ class Tank extends BaseModel {
   // получение боковой скорости
   getLateralVelocity(body) {
     // вектор вправо отн. танка
-    const currentRightNormal = body.getWorldVector(RIGHT);
+    const currentRightNormal = rotateVec(RIGHT, body.rotation());
     // проекция скорости на правый вектор
-    return Vec2.dot(currentRightNormal, body.getLinearVelocity());
+    return Vec2.dot(currentRightNormal, body.linvel());
   }
 
   updateData(dt) {
@@ -213,7 +221,7 @@ class Tank extends BaseModel {
       if (this.tryConsumeAmmoAndShoot()) {
         // если проверка на кулдаун/патроны пройдена
         this._shotData = {
-          bodyPosition: body.getPosition(),
+          bodyPosition: body.translation(),
           startPoint: this.getMuzzlePosition(this.currentWeapon),
           direction: this.getFireDirection(this.currentWeapon),
         };
@@ -234,17 +242,19 @@ class Tank extends BaseModel {
       );
     }
 
-    const currentVelocity = body.getLinearVelocity();
-    const forwardVec = body.getWorldVector(FORWARD);
+    const currentVelocity = body.linvel();
+    const forwardVec = rotateVec(FORWARD, body.rotation());
     const currentForwardSpeed = Vec2.dot(currentVelocity, forwardVec);
 
     // сила против бокового скольжения
+    // (planck применял силу на один шаг: эквивалент — импульс F·dt)
     const lateralVel = this.getLateralVelocity(body);
     const sidewaysForceMagnitude = -lateralVel * this._lateralGrip * this._mass;
-    const sidewaysForceVec = body.getWorldVector(
+    const sidewaysForceVec = rotateVec(
       new Vec2(0, sidewaysForceMagnitude),
+      body.rotation(),
     );
-    body.applyForceToCenter(sidewaysForceVec, true);
+    body.applyImpulse(sidewaysForceVec.mul(dt), true);
 
     // применение физической силы на основе _engineThrottle
     let forceMagnitude = 0;
@@ -268,8 +278,8 @@ class Tank extends BaseModel {
     }
 
     if (forceMagnitude !== 0) {
-      const appliedForce = forwardVec.mul(forceMagnitude);
-      body.applyForceToCenter(appliedForce, true);
+      const appliedImpulse = forwardVec.mul(forceMagnitude * dt);
+      body.applyImpulse(appliedImpulse, true);
     }
 
     // рассчёт нагрузки на двигатель (_engineLoad) для звука
@@ -314,7 +324,7 @@ class Tank extends BaseModel {
     }
 
     if (torque !== 0) {
-      body.applyTorque(torque, true);
+      body.applyTorqueImpulse(torque * dt, true);
     }
 
     // смена оружия
@@ -329,26 +339,26 @@ class Tank extends BaseModel {
 
   getMuzzlePosition() {
     const body = this.getBody();
-    const totalAngle = body.getAngle() + (body.gunRotation || 0);
+    const totalAngle = body.rotation() + (body.gunRotation || 0);
     const muzzleLocalOffsetX = this._width * 0.55;
     const muzzleLocalOffsetY = 0;
-    const relPos = Rot.mulVec2(
-      new Rot(totalAngle),
+    const relPos = rotateVec(
       new Vec2(muzzleLocalOffsetX, muzzleLocalOffsetY),
+      totalAngle,
     );
 
-    return Vec2.add(body.getPosition(), relPos);
+    return Vec2.add(body.translation(), relPos);
   }
 
   getFireDirection(weaponName) {
     const body = this.getBody();
-    const totalAngle = body.getAngle() + (body.gunRotation || 0);
-    let directionVec = Rot.mulVec2(new Rot(totalAngle), FORWARD);
+    const totalAngle = body.rotation() + (body.gunRotation || 0);
+    let directionVec = rotateVec(FORWARD, totalAngle);
     const weaponConfig = this.weapons[weaponName];
 
     if (weaponConfig && weaponConfig.spread > 0) {
       const spreadVal = randomRange(-weaponConfig.spread, weaponConfig.spread);
-      directionVec = Rot.mulVec2(new Rot(spreadVal), directionVec);
+      directionVec = rotateVec(directionVec, spreadVal);
     }
 
     directionVec.normalize();
@@ -362,7 +372,7 @@ class Tank extends BaseModel {
 
   getPosition() {
     const body = this.getBody();
-    const position = body.getPosition();
+    const position = body.translation();
 
     return [+position.x.toFixed(2), +position.y.toFixed(2)];
   }
@@ -376,17 +386,17 @@ class Tank extends BaseModel {
     const body = this._body;
 
     this.teamId = data.teamId;
-    this._body.setUserData({
+    this._body.userData = {
       type: 'player',
       gameId: this.gameId,
       teamId: this.teamId,
-    });
+    };
 
     // остановка танка
-    body.setLinearVelocity(ZERO);
-    body.setAngularVelocity(0);
-    body.setPosition(new Vec2(x, y));
-    body.setAngle(angle);
+    body.setLinvel(ZERO, true);
+    body.setAngvel(0, true);
+    body.setTranslation(new Vec2(x, y), true);
+    body.setRotation(angle, true);
     this._body.gunRotation = 0;
 
     // сброс физики управления
@@ -429,13 +439,13 @@ class Tank extends BaseModel {
 
   // возвращение состояния танка
   getData() {
-    const pos = this._body.getPosition();
-    const vel = this._body.getLinearVelocity();
+    const pos = this._body.translation();
+    const vel = this._body.linvel();
 
     return [
       roundTo2Decimals(pos.x),
       roundTo2Decimals(pos.y),
-      roundTo2Decimals(this._body.getAngle()),
+      roundTo2Decimals(this._body.rotation()),
       roundTo2Decimals(this._body.gunRotation),
       roundTo2Decimals(vel.x),
       roundTo2Decimals(vel.y),

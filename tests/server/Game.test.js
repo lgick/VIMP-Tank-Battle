@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../src/lib/vec2.js';
+import RAPIER from '../../src/server/physics/rapier.js';
 
-// Game — синглтон и тянет planck-мир; перезагружаем модуль для изоляции.
+// Game — синглтон и тянет Rapier-мир; перезагружаем модуль для изоляции.
 // Тестируем изолированную логику (урон, команды), внедряя фейковых
 // игроков напрямую в _playersData, не создавая реальные танки.
 let Game;
@@ -53,10 +54,10 @@ const fakePlayer = ({
   getData: vi.fn(() => [1, 2, 0, 0, 0, 0, 0, 3, 10, teamId]),
 });
 
-// фейковая фикстура: getBody().getUserData() возвращает заданные данные
-const makeFixture = userData => {
-  const body = { getUserData: () => userData };
-  return { getBody: () => body, _body: body };
+// фейковый коллайдер контакта: parent() возвращает тело с userData
+const makeCollider = userData => {
+  const body = { userData };
+  return { parent: () => body, _body: body };
 };
 
 const makeGame = () => {
@@ -224,40 +225,40 @@ describe('Game._processContactEvents', () => {
   });
 
   it('контакт игрок↔снаряд наносит урон и помечает снаряд на удаление', () => {
-    const playerFx = makeFixture({ type: 'player', gameId: 'victim' });
-    const shotFx = makeFixture({
+    const playerCol = makeCollider({ type: 'player', gameId: 'victim' });
+    const shotCol = makeCollider({
       type: 'shot',
       gameId: 'shooter',
       weaponName: 'w1',
     });
-    game._contactEvents = [{ fixtureA: playerFx, fixtureB: shotFx }];
+    game._contactEvents = [{ colliderA: playerCol, colliderB: shotCol }];
 
     game._processContactEvents();
 
     expect(game._playersData.victim.takeDamage).toHaveBeenCalled();
-    expect(game._bodiesToDestroy.has(shotFx._body)).toBe(true);
+    expect(game._bodiesToDestroy.has(shotCol._body)).toBe(true);
     expect(game._contactEvents).toEqual([]); // очищен
   });
 
   it('взрывной снаряд при контакте не удаляется и не бьёт', () => {
-    const playerFx = makeFixture({ type: 'player', gameId: 'victim' });
-    const shotFx = makeFixture({
+    const playerCol = makeCollider({ type: 'player', gameId: 'victim' });
+    const shotCol = makeCollider({
       type: 'shot',
       gameId: 'shooter',
       weaponName: 'w2', // explosive
     });
-    game._contactEvents = [{ fixtureA: playerFx, fixtureB: shotFx }];
+    game._contactEvents = [{ colliderA: playerCol, colliderB: shotCol }];
 
     game._processContactEvents();
 
     expect(game._playersData.victim.takeDamage).not.toHaveBeenCalled();
-    expect(game._bodiesToDestroy.has(shotFx._body)).toBe(false);
+    expect(game._bodiesToDestroy.has(shotCol._body)).toBe(false);
   });
 
   it('контакт двух игроков игнорируется', () => {
-    const a = makeFixture({ type: 'player', gameId: 'victim' });
-    const b = makeFixture({ type: 'player', gameId: 'shooter' });
-    game._contactEvents = [{ fixtureA: a, fixtureB: b }];
+    const a = makeCollider({ type: 'player', gameId: 'victim' });
+    const b = makeCollider({ type: 'player', gameId: 'shooter' });
+    game._contactEvents = [{ colliderA: a, colliderB: b }];
 
     game._processContactEvents();
 
@@ -265,9 +266,13 @@ describe('Game._processContactEvents', () => {
   });
 
   it('контакт без userData пропускается', () => {
-    const a = makeFixture(null);
-    const b = makeFixture({ type: 'shot', gameId: 'shooter', weaponName: 'w1' });
-    game._contactEvents = [{ fixtureA: a, fixtureB: b }];
+    const a = makeCollider(null);
+    const b = makeCollider({
+      type: 'shot',
+      gameId: 'shooter',
+      weaponName: 'w1',
+    });
+    game._contactEvents = [{ colliderA: a, colliderB: b }];
 
     expect(() => game._processContactEvents()).not.toThrow();
     expect(game._playersData.victim.takeDamage).not.toHaveBeenCalled();
@@ -343,8 +348,9 @@ describe('Game: очистка мира и снарядов', () => {
   it('removePlayersAndShots возвращает имена игроков, пуль и эффектов', () => {
     const game = makeGame();
     game._playersData = { shooter: fakePlayer({ teamId: 1 }) };
-    // реальный игрок должен иметь getBody для destroyBody
-    game._playersData.shooter.getBody = () => game._world.createBody();
+    // реальный игрок должен иметь getBody для removeRigidBody
+    const body = game._world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    game._playersData.shooter.getBody = () => body;
 
     const removed = game.removePlayersAndShots();
 

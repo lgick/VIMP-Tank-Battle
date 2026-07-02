@@ -1,46 +1,38 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../src/lib/vec2.js';
 import Bomb from '../../src/server/parts/Bomb.js';
 
-// фейковое физическое тело
+// фейковое физическое тело Rapier
 const makeBody = ({ position, userData = null, dynamic = true }) => ({
-  _pos: Vec2(position.x, position.y),
-  _userData: userData,
-  getPosition() {
+  _pos: new Vec2(position.x, position.y),
+  userData,
+  translation() {
     return this._pos;
-  },
-  getUserData() {
-    return this._userData;
-  },
-  setUserData(d) {
-    this._userData = d;
   },
   isDynamic() {
     return dynamic;
   },
-  getAngle() {
+  rotation() {
     return 0;
   },
-  createFixture: vi.fn(),
-  applyLinearImpulse: vi.fn(),
+  applyImpulseAtPoint: vi.fn(),
 });
 
-// фейковый мир: создаёт тело бомбы и проигрывает цели через queryAABB
+// фейковый мир: создаёт тело бомбы и проигрывает цели через AABB-запрос
 const makeWorld = targets => ({
   bombBody: null,
-  createBody(opts) {
+  createRigidBody(desc) {
     const body = makeBody({
-      position: opts.position,
-      dynamic: opts.type === 'dynamic',
+      position: desc.translation,
+      dynamic: false,
     });
     this.bombBody = body;
     return body;
   },
-  // строковый ключ: имя из API planck, его нельзя переименовать,
-  // а eslint-правило no-consecutive-caps не трогает строковые литералы
-  ['queryAABB'](_aabb, cb) {
+  createCollider: vi.fn(),
+  collidersWithAabbIntersectingAabb(_center, _halfExtents, cb) {
     for (const t of targets) {
-      cb({ getBody: () => t });
+      cb({ parent: () => t });
     }
   },
 });
@@ -53,7 +45,7 @@ const weaponData = {
   time: 300,
 };
 
-const makeBomb = (world, position = Vec2(0, 0)) =>
+const makeBomb = (world, position = new Vec2(0, 0)) =>
   new Bomb({
     weaponData,
     world,
@@ -138,7 +130,7 @@ describe('Bomb.detonate: импульс', () => {
     const game = { applyDamage: vi.fn() };
 
     makeBomb(world).detonate(world, game, false);
-    expect(enemy.applyLinearImpulse).toHaveBeenCalled();
+    expect(enemy.applyImpulseAtPoint).toHaveBeenCalled();
   });
 });
 
@@ -147,13 +139,13 @@ describe('Bomb: данные для клиента', () => {
     const world = makeWorld([]);
     const game = { applyDamage: vi.fn() };
 
-    const data = makeBomb(world, Vec2(3, 4)).detonate(world, game, false);
+    const data = makeBomb(world, new Vec2(3, 4)).detonate(world, game, false);
     expect(data).toEqual([3, 4, 50]);
   });
 
   it('getData возвращает позицию, угол, размер и время', () => {
     const world = makeWorld([]);
-    const bomb = makeBomb(world, Vec2(1.5, 2.5));
+    const bomb = makeBomb(world, new Vec2(1.5, 2.5));
 
     expect(bomb.getData()).toEqual([1.5, 2.5, 0, 8, 300]);
   });

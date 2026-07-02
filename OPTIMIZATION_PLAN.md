@@ -5,8 +5,8 @@
 >
 > **Прогресс:** ✅ Фаза 0, ✅ Фаза 1, ✅ Фаза 2 (2a VoteCoordinator, 2b RoundManager,
 > 2c CommandProcessor), ✅ Фаза 3 (разделение сетевых каналов), ✅ Фаза 4 (бинарный snapshot),
-> ✅ Фаза 5a (snapshot-интерполяция, `networkSendRate: 4`) — реализованы (656 тестов зелёные,
-> eslint чист). Следующее: Фаза 5b (prediction) и/или Track B (Rapier) — не начаты.
+> ✅ Фаза 5a (snapshot-интерполяция, `networkSendRate: 4`), ✅ Track B (миграция planck → Rapier)
+> — реализованы (670 тестов зелёные, eslint чист). Следующее: Фаза 5b (prediction).
 > Оговорка «Фаза 5 только после полной готовности базовой игры» снята пользователем.
 >
 > Отклонения от плана по ходу реализации:
@@ -440,17 +440,32 @@ w2e → 5 (эффект взрыва), c1 → 1 (карта/динамика)
 
 ---
 
-## Track B (крупный, изолированный) — миграция planck → Rapier
-Ортогонален сети; после Фазы 1–2, можно параллельно Фазам 3–4, обязательно до Фазы 5.
-- Заменить planck-мир/тела на Rapier (WASM) в `src/server/modules/Game.js` и
-  `src/server/parts/` (`Tank`, `Bomb`, `BaseModel`, `Map`, `HitscanService`).
-- Сохранить ощущение через гибридный подход: импульсы (разгон/инерция) + аркадные корректировки
-  (`clampMaxSpeed`, `applyLateralFriction`, `applyTorqueImpulse`), строгий порядок фаз тика и
-  `world.step()` в конце.
-- Учесть: WASM-инициализация асинхронна (повлияет на bootstrap сервера, `Game` конструктор);
-  пересмотреть тесты (сейчас опираются на реальный planck и моки `world`/`body`).
-- Риски: наибольший объём и регрессии в ощущении управления; отдельный трек, чтобы не блокировать
-  сетевые улучшения.
+## Track B (крупный, изолированный) — миграция planck → Rapier ✅ ВЫПОЛНЕНО
+> Реализовано: `@dimforge/rapier2d-compat` 0.19 (WASM инлайн, работает в Node без бандлера;
+> planck удалён из зависимостей). Ключевые решения:
+> - **Инициализация**: `src/server/physics/rapier.js` — top-level await `RAPIER.init()`,
+>   единственная точка импорта Rapier; конструктор Game остался синхронным, bootstrap не менялся.
+> - **Сила → импульс**: `applyForceToCenter(F)` (однократная сила Box2D-шага) заменена на
+>   эквивалентный `applyImpulse(F·dt)`; `applyTorque(τ)` → `applyTorqueImpulse(τ·dt)` — модель
+>   движения Tank сохранена численно (velocity-clamp, боковое сцепление, торможение не менялись).
+> - **Собственная математика**: `src/lib/vec2.js` (`Vec2` с planck-совместимым подмножеством API +
+>   `rotateVec` вместо `Rot.mulVec2`); боты (BotController/NavigationSystem/Pathfinder) больше не
+>   зависят от физдвижка — модуль переиспользуется клиентом в Фазе 5b.
+> - **Маппинг**: `RigidBodyDesc`/`ColliderDesc.cuboid` (+`setFriction(0.2)`/`setRestitution(0)` у
+>   тел карты — дефолты planck заданы явно); `translation()`/`rotation()`/`linvel()`; userData —
+>   свойство RigidBody; контакты — `EventQueue.drainCollisionEvents` после `world.step`
+>   (`ActiveEvents.COLLISION_EVENTS` на танках и снарядах); `world.rayCast` →
+>   `world.castRay(..., EXCLUDE_SENSORS[, predicate])` (HitscanService упростился — ближайший хит
+>   и фильтр сенсоров даёт сам Rapier; предикат ботов исключает `map_object` для тарана);
+>   `queryAABB` → `collidersWithAabbIntersectingAabb`; `gunRotation` остался кастомным полем тела.
+> - **Найденное отличие движков**: повторный `removeRigidBody` уже удалённого тела крэшит WASM
+>   (planck прощал) — `Game.clear()` теперь сначала даёт `Map.destroyMap()` удалить свои тела.
+> - Solver: дефолтные параметры Rapier (`numSolverIterations` 4); `lengthUnit` не менялся
+>   (размеры близки к СИ). Ручки тюнинга ощущения: damping в `models.js`,
+>   `world.numSolverIterations`, `world.lengthUnit`.
+> - Тесты: юнит-моки переведены на Rapier-имена; интеграционные — реальный Rapier (WASM в Vitest
+>   работает, повторный init при `resetModules` не тормозит); +`tests/lib/vec2.test.js` (14).
+> 670 тестов зелёные, eslint чист. Ручная проверка ощущения управления — за пользователем.
 
 ---
 
@@ -477,6 +492,4 @@ w2e → 5 (эффект взрыва), c1 → 1 (карта/динамика)
 - Track B: отдельно валидировать ощущение управления против planck.
 
 ## Порядок выполнения
-~~Фаза 0~~ → ~~1~~ → ~~2~~ → ~~3~~ → ~~4~~ → ~~5a~~ → **5b** → 5c. Track B — можно начинать,
-желательно до Фазы 5b (prediction реплицирует физику движения — после миграции на Rapier
-реплику пришлось бы переделывать).
+~~Фаза 0~~ → ~~1~~ → ~~2~~ → ~~3~~ → ~~4~~ → ~~5a~~ → ~~Track B~~ → **5b** → 5c.
