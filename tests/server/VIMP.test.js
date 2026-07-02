@@ -143,25 +143,28 @@ describe('VIMP.updateKeys', () => {
       'updateKeys',
     );
 
-    ctx.updateKeys('u', 'down:n');
+    ctx.updateKeys('u', '5:down:n');
 
     expect(user.watchedGameId).toBe('next');
     expect(user.forceCameraReset).toBe(true);
+    expect(user.lastInputSeq).toBe(5);
     expect(ctx._game.updateKeys).not.toHaveBeenCalled();
   });
 
-  it('активный игрок передаёт клавиши в игру', () => {
+  it('активный игрок передаёт клавиши в игру и обновляет lastInputSeq', () => {
+    const user = { isWatching: false };
     const ctx = bind(
       {
-        _participants: fakeParticipants({ u: { isWatching: false } }),
+        _participants: fakeParticipants({ u: user }),
         _spectatorKeys: { nextPlayer: 'n', prevPlayer: 'p' },
         _game: { updateKeys: vi.fn() },
       },
       'updateKeys',
     );
 
-    ctx.updateKeys('u', 'down:forward');
+    ctx.updateKeys('u', '42:down:forward');
 
+    expect(user.lastInputSeq).toBe(42);
     expect(ctx._game.updateKeys).toHaveBeenCalledWith('u', {
       action: 'down',
       name: 'forward',

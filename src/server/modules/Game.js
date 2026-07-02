@@ -250,6 +250,11 @@ class Game {
     return this._playersData[gameId].getPosition();
   }
 
+  // возвращает состояние танка для client-side prediction (или null)
+  getPredictionState(gameId) {
+    return this._playersData[gameId]?.getPredictionState() ?? null;
+  }
+
   // меняет данные игрока при переходе из одной команды в другую
   changePlayerData(gameId, data) {
     this._playersData[gameId].changePlayerData(data);

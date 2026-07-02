@@ -3,7 +3,8 @@
 
 // версия формата кадра: первый байт после порта;
 // увеличивать при любом изменении байтовой раскладки в snapshotCodec.js
-export const SNAPSHOT_FORMAT_VERSION = 1;
+// v2: per-user player-блок (gameId, inputSeq, состояние своего танка) — Фаза 5b
+export const SNAPSHOT_FORMAT_VERSION = 2;
 
 // реестр ключей снапшота: строковый ключ → числовой id + тип блока (kind);
 // kind определяет байтовую раскладку блока в src/lib/snapshotCodec.js;

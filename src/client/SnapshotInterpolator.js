@@ -135,6 +135,11 @@ export default class SnapshotInterpolator {
     };
   }
 
+  // текущая оценка (serverTime − localNow); null, если кадров ещё не было
+  get offset() {
+    return this._offsetEma;
+  }
+
   // сбрасывает буфер и оценку времени (смена карты, очистка полотна)
   reset() {
     this._frames = [];

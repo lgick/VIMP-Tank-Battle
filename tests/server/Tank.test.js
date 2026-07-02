@@ -64,6 +64,12 @@ const modelData = {
   gunCenterSpeed: 1,
   damping: { angular: 0.01, linear: 0.01 },
   fixture: { density: 200, friction: 0.5, restitution: 0.1 },
+  turnSpeedThreshold: 10,
+  baseTurnFactorRatio: 0.8,
+  reverseTurnMultiplier: 0.7,
+  throttleIncreaseRate: 2.0,
+  throttleDecreaseRate: 2.5,
+  strainFactor: 1.5,
 };
 
 const makeTank = (body = makeBody(), panel = makePanel()) =>

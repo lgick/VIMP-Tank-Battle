@@ -81,6 +81,38 @@ describe('Интеграция: выбор команды и спавн', () => 
   });
 });
 
+describe('Интеграция: player-блок предикшена (кадр v2)', () => {
+  it('кадр играющего содержит player с gameId и lastInputSeq', async () => {
+    const gameId = await connectPlayer(vimp, { socketId: 's1' });
+    joinTeam(vimp, gameId, 'team1');
+
+    pressKey(vimp, gameId, 'forward', 'down');
+    socket.clear();
+    tick(vimp, 1);
+
+    const frame = socket.lastFrame('s1');
+
+    expect(frame.player).not.toBeNull();
+    // gameId в реестре — строка, в бинарном блоке — Uint8
+    expect(frame.player.gameId).toBe(Number(gameId));
+    expect(frame.player.inputSeq).toBeGreaterThan(0);
+    expect(frame.player.state).toHaveLength(8);
+    // позиция в player-блоке совпадает с респаун-координатами танка
+    const [x, y] = vimp._game.getPosition(gameId);
+    expect(frame.player.state[0]).toBeCloseTo(x, 1);
+    expect(frame.player.state[1]).toBeCloseTo(y, 1);
+  });
+
+  it('кадр спектатора player-блока не содержит', async () => {
+    await connectPlayer(vimp, { socketId: 's1' });
+    socket.clear();
+
+    tick(vimp, 1);
+
+    expect(socket.lastFrame('s1').player).toBeNull();
+  });
+});
+
 describe('Интеграция: движение и стрельба (реальная физика)', () => {
   it('forward сдвигает танк', async () => {
     const gameId = await connectPlayer(vimp, { socketId: 's1' });
