@@ -1,4 +1,4 @@
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../../lib/vec2.js';
 import Pathfinder from './Pathfinder.js';
 
 // коэффициент шага сетки

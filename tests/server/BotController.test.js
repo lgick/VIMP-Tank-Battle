@@ -1,21 +1,20 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../src/lib/vec2.js';
 import BotController from '../../src/server/modules/bots/BotController.js';
 
 // BotController — НЕ синглтон, физику сам не создаёт (берёт game._world).
-// Мокаем game/botManager/participants/panel/spatialManager; planck реальный.
+// Мокаем game/botManager/participants/panel/spatialManager.
 
-// тело-заглушка: единичные мировые векторы при нулевом угле
+// тело-заглушка Rapier: при нулевом угле мировые векторы = локальные
 const makeBody = () => ({
-  getPosition: () => new Vec2(0, 0),
-  getWorldVector: v => v, // identity при угле 0
-  getLinearVelocity: () => new Vec2(0, 0),
-  getAngle: () => 0,
+  translation: () => new Vec2(0, 0),
+  linvel: () => new Vec2(0, 0),
+  rotation: () => 0,
   gunRotation: 0,
 });
 
 const makeGame = (overrides = {}) => ({
-  _world: { rayCast: vi.fn() },
+  _world: { castRay: vi.fn(() => null) },
   _playersData: {},
   updateKeys: vi.fn(),
   getPosition: vi.fn(),
@@ -432,14 +431,8 @@ describe('BotController.followPath', () => {
 });
 
 describe('BotController.avoidObstacles', () => {
-  // фикстура для rayCast: задаёт тело, userData и isSensor
-  const fixture = (userData, isSensor = false) => ({
-    getBody: () => ({ getUserData: () => userData }),
-    isSensor: () => isSensor,
-  });
-
   it('без препятствий возвращает желаемое направление', () => {
-    const { bot } = makeBot(); // rayCast ничего не делает
+    const { bot } = makeBot(); // castRay возвращает null
     const body = makeBody();
     const desired = new Vec2(1, 0);
 
@@ -448,7 +441,8 @@ describe('BotController.avoidObstacles', () => {
 
   it('статичное препятствие корректирует курс (нормализованный вектор)', () => {
     const game = makeGame();
-    game._world.rayCast = vi.fn((from, to, cb) => cb(fixture({ type: 'wall' })));
+    // любой луч попадает в статичное препятствие
+    game._world.castRay = vi.fn(() => ({ collider: {}, timeOfImpact: 0.5 }));
     const { bot } = makeBot({ game });
     const body = makeBody();
 
@@ -461,8 +455,15 @@ describe('BotController.avoidObstacles', () => {
 
   it('только динамическое препятствие (map_object) не меняет курс (таран)', () => {
     const game = makeGame();
-    game._world.rayCast = vi.fn((from, to, cb) =>
-      cb(fixture({ type: 'map_object' })),
+    // map_object исключается предикатом → луч «не попадает»
+    game._world.castRay = vi.fn(
+      (ray, maxToi, solid, flags, groups, exCollider, exBody, predicate) => {
+        const passed = predicate({
+          parent: () => ({ userData: { type: 'map_object' } }),
+        });
+
+        return passed ? { collider: {}, timeOfImpact: 0.5 } : null;
+      },
     );
     const { bot } = makeBot({ game });
     const body = makeBody();

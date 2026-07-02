@@ -55,7 +55,7 @@ The game server is Node.js + Express + `ws` WebSockets + ViteExpress.
 - `RoundManager` (`src/server/core/`) — раунды, команды, карты: `createMap`/`startRound`/`initiateNewRound`/`changeTeam`/`changeMap`/`changeName`/`checkTeamWipe`/`reportKill`/`setActive`/`setSpectator`. Владеет состоянием раунда/карты (`currentMap`, `currentMapData`, `scaledMapData`, `isRoundEnding`, `removedPlayersList`).
 - `CommandProcessor` (`src/server/core/`) — парсинг чат-команд (`/name`, `/nr`, `/timeleft`, `/mapname`, `/bot`); `pushMessage` делегирует сюда.
 - `VoteCoordinator` (`src/server/core/`) — создание/кулдаун/сброс голосований (`canCreateVote`/`createVote`/`reset`).
-- `Game` — physics world (Planck.js/Box2D), players, weapons, map
+- `Game` — physics world (Rapier 2D, WASM: `@dimforge/rapier2d-compat`), players, weapons, map. WASM инициализируется top-level await в `src/server/physics/rapier.js` — единственной точке импорта Rapier (конструкторы остаются синхронными)
 - `Panel` — per-player HUD data
 - `Stat` — scoreboard (body rows + head totals, with configurable sort)
 - `Chat` — messages (user + system templates)
@@ -101,7 +101,7 @@ Publisher-паттерн внутри MVC-тройки:
 ### Shared
 
 - **`src/config/`** — shared config consumed by both server (Node.js) and client (Vite bundler): `game.js`, `client.js`, `auth.js`, `server.js`, `sounds.js`, `wsports.js`, `opcodes.js` (реестр ключей бинарного снапшота + версия формата).
-- **`src/lib/`** — utilities: `Publisher` (observer), `AbstractTimer`, `factory`, `math`, `formatters`, `sanitizers`, `validators`, `security`, `snapshotCodec` (бинарный кодек snapshot-кадра: `SnapshotPacker` для сервера, `unpackFrame` для клиента).
+- **`src/lib/`** — utilities: `Publisher` (observer), `AbstractTimer`, `factory`, `math`, `formatters`, `sanitizers`, `validators`, `security`, `snapshotCodec` (бинарный кодек snapshot-кадра: `SnapshotPacker` для сервера, `unpackFrame` для клиента), `vec2` (2D-вектор `Vec2` + `rotateVec`; серверная физика/боты, в перспективе — клиентский prediction).
 - **`src/data/`** — static game data: `maps/` (tiled map definitions with respawns + physics bodies), `models.js`, `weapons.js`.
 - **`src/server/player/`** — единый реестр участников: `Participant`/`HumanParticipant`/`BotParticipant`, `ParticipantManager`.
 - **`src/server/core/`** — менеджеры, выделенные из VIMP: `RoundManager`, `CommandProcessor`, `VoteCoordinator`.
@@ -145,11 +145,11 @@ Port IDs live in `src/config/wsports.js` (источник истины). Server
 - **Не покрыто** (низкий ROI для unit-тестов): Pixi-`parts/`+`effects/`, провайдеры (`BakingProvider`/`DependencyProvider`).
 - **Паттерны** (соблюдать при добавлении тестов):
   - **Синглтоны** (Game, Vote, Stat, Map, Panel, TimerManager, HitscanService, SnapshotManager, клиентские `*Model`, InputListener) изолируют через `vi.resetModules()` в `beforeEach` + динамический `await import(...)`.
-  - **`planck` под Vitest работает** (Vec2/Rot/World/BoxShape реальные, импорт не требует моков). НО синхронный бесконечный цикл в тестируемом коде вешает весь прогон — при зависании искать infinite loop в коде, а не в конфиге Vitest.
-  - **Физические части** (Tank, Bomb, Map, Game) тестируются с моками `world`/`body`/`panel`; реальная физика не симулируется. Для проверки геометрии `BoxShape` мокается через `vi.mock('planck', async io => ({ ...(await io()), BoxShape: ... }))`.
+  - **Rapier под Vitest работает** (WASM инициализируется top-level await в `src/server/physics/rapier.js`; реальные `World`/`RigidBodyDesc`/`ColliderDesc` доступны и в node-тестах; `vi.resetModules()` переинициализирует WASM без заметного замедления). НО синхронный бесконечный цикл в тестируемом коде вешает весь прогон — при зависании искать infinite loop в коде, а не в конфиге Vitest.
+  - **Физические части** (Tank, Bomb, Map, Game) тестируются с моками `world`/`body`/`panel` (Rapier-имена: `createRigidBody`/`createCollider`/`translation`/`linvel`/`applyImpulse`/`castRay`/`collidersWithAabbIntersectingAabb`); реальная физика не симулируется. Дескрипторы — реальные (`RAPIER.RigidBodyDesc`/`ColliderDesc` из `physics/rapier.js`), геометрия проверяется по их полям (`desc.translation`, `collider.shape.halfExtents`).
   - **Тяжёлые синглтоны с громоздким конструктором** (VIMP) тестируются двумя способами: изолированные методы — через прототип `Class.prototype.method.call(fakeThis, ...)` (юнит); оркестрация — интеграционно (см. ниже).
   - **Интеграционные тесты** (`tests/server/integration/`): строят реальный VIMP со всеми реальными модулями + `FakeSocketManager` (пишет wire-кадры) через общий `harness.js`. Бинарные snapshot-кадры (`sendShot`) декодируются реальным `unpackFrame`: `lastShot` возвращает `[snapshot, camera, serverTime, seq]` — это даёт end-to-end покрытие бинарного пути. Критично: `vi.useFakeTimers()` ДО конструктора VIMP (тот стартует таймеры/игровой цикл); игровой цикл двигать прямыми `vimp._onShotTick(dt)`, а не `advanceTimers`; `process.nextTick`-колбэки (createUser, security.origin) ждать через `await nextTick()`. Протокольный слой (`socket/index.js`) тестируется через `vi.doMock('ws', ...)` + фейковый `ws`/`req` (origin `https://localhost:3000` проходит dev-allowlist). Детерминизм физики: ассертить факт/направление, а критичные исходы (kill) гнать через реальный `Game.applyDamage`.
-  - Имя метода-мока, совпадающее с API planck (`queryAABB`), задавать вычисляемым/строковым ключом — иначе ESLint `no-consecutive-caps`.
+  - Имя метода-мока с двумя заглавными подряд (например, из внешнего API) задавать вычисляемым/строковым ключом — иначе ESLint `no-consecutive-caps`.
 - **Зафиксированные тестами поведенческие особенности** (не блокеры, но учитывать при доработках): `CanvasManager.resize` при `fixSize` отдаёт `height` строкой; `waiting.getNext` возвращает `undefined` (не `null`) при пустой очереди; `sanitizeMessage` — не XSS-защита (экранирование на выводе: `textContent` для текста, `setAttribute` для имени); удаляет только управляющие символы и возвращает `''` для не-строк; `validateAuth` непоследователен (ранний `return` для missing/non-string vs накопление ошибок валидаторов).
 
 ## Local Development

@@ -1,5 +1,6 @@
-import { Vec2, Rot } from 'planck';
 import { randomRange } from '../../../lib/math.js';
+import { Vec2, rotateVec } from '../../../lib/vec2.js';
+import RAPIER from '../../physics/rapier.js';
 
 // константы для поведения бота
 const AI_UPDATE_INTERVAL = 0.1; // как часто бот принимает решения (в секундах)
@@ -375,7 +376,7 @@ class BotController {
       return;
     }
 
-    const myPosition = this._myBody.getPosition();
+    const myPosition = this._myBody.translation();
     let targetPosition;
 
     if (isStaticPoint) {
@@ -391,7 +392,7 @@ class BotController {
       const targetBody = this._game._playersData[target]?.getBody();
 
       if (targetBody) {
-        const targetVelocity = Vec2.clone(targetBody.getLinearVelocity());
+        const targetVelocity = Vec2.clone(targetBody.linvel());
         targetPosition.add(targetVelocity.mul(TARGET_PREDICTION_FACTOR));
       }
     }
@@ -414,7 +415,7 @@ class BotController {
     // возврат вызова надежного метода избегания препятствий
     const finalDirection = this.avoidObstacles(this._myBody, dirToTargetNorm);
 
-    const forwardVec = this._myBody.getWorldVector(new Vec2(1, 0));
+    const forwardVec = rotateVec(new Vec2(1, 0), this._myBody.rotation());
     const angleToTarget = Math.atan2(
       Vec2.cross(forwardVec, finalDirection),
       Vec2.dot(forwardVec, finalDirection),
@@ -442,46 +443,48 @@ class BotController {
   /**
    * @description Локальное избегание препятствий с помощью лучей (rayCast).
    * Игнорирует динамические объекты, чтобы таранить их.
-   * @param {planck.Body} myBody - Тело бота.
-   * @param {planck.Vec2} desiredDirection - Желаемое направление движения.
-   * @returns {planck.Vec2} - Скорректированное направление.
+   * @param {Object} myBody - Тело бота (Rapier RigidBody).
+   * @param {Vec2} desiredDirection - Желаемое направление движения.
+   * @returns {Vec2} - Скорректированное направление.
    */
   avoidObstacles(myBody, desiredDirection) {
-    const myPosition = myBody.getPosition();
+    const myPosition = myBody.translation();
     const rays = {
       center: desiredDirection,
-      left: Rot.mulVec2(new Rot(Math.PI / 6), desiredDirection),
-      right: Rot.mulVec2(new Rot(-Math.PI / 6), desiredDirection),
+      left: rotateVec(desiredDirection, Math.PI / 6),
+      right: rotateVec(desiredDirection, -Math.PI / 6),
     };
     const steerCorrection = new Vec2(0, 0);
     let obstaclesDetected = false;
     let dynamicObstacleInPath = false;
 
     for (const dir in rays) {
-      const endPoint = Vec2.add(
-        myPosition,
-        rays[dir].mul(OBSTACLE_AVOIDANCE_RAY_LENGTH),
-      );
-      let hit = false;
+      // мутация длины луча сохраняется: rays[dir] ниже используется
+      // уже умноженным (как в исходной реализации)
+      const rayVector = rays[dir].mul(OBSTACLE_AVOIDANCE_RAY_LENGTH);
+      const ray = new RAPIER.Ray(myPosition, rayVector);
 
-      this._world.rayCast(myPosition, endPoint, fixture => {
-        if (fixture.getBody() !== myBody && !fixture.isSensor()) {
-          const hitBody = fixture.getBody();
-          const userData = hitBody.getUserData();
+      // динамические объекты карты исключаются предикатом (бот их таранит),
+      // сенсоры и собственное тело — фильтрами
+      const hit = this._world.castRay(
+        ray,
+        1.0,
+        true,
+        RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,
+        undefined,
+        undefined,
+        myBody,
+        collider => {
+          const userData = collider.parent()?.userData;
 
-          // если это динамический объект карты
           if (userData && userData.type === 'map_object') {
             dynamicObstacleInPath = true;
-            return -1; // игнорирование, продолжение луча
+            return false; // игнорирование, луч продолжается
           }
 
-          hit = true;
-
-          return 0; // статичное препятствие, окончание луча
-        }
-
-        return -1;
-      });
+          return true;
+        },
+      );
 
       if (hit) {
         obstaclesDetected = true;
@@ -531,7 +534,7 @@ class BotController {
       return;
     }
 
-    const myPosition = this._myBody.getPosition();
+    const myPosition = this._myBody.translation();
     const targetPosition = new Vec2(targetPosArray[0], targetPosArray[1]);
 
     if (!this._botManager.hasLineOfSight(myPosition, targetPosition)) {
@@ -567,7 +570,7 @@ class BotController {
       Math.atan2(directionToTarget.y, directionToTarget.x) +
       randomRange(-AIM_INACCURACY / 2, AIM_INACCURACY / 2);
 
-    const currentGunAngle = this._myBody.getAngle() + this._myBody.gunRotation;
+    const currentGunAngle = this._myBody.rotation() + this._myBody.gunRotation;
     let angleDifference = targetAngle - currentGunAngle;
     angleDifference = Math.atan2(
       Math.sin(angleDifference),
@@ -631,8 +634,8 @@ class BotController {
       return;
     }
 
-    const currentGunAngle = this._myBody.getAngle() + this._myBody.gunRotation;
-    const bodyAngle = this._myBody.getAngle();
+    const currentGunAngle = this._myBody.rotation() + this._myBody.gunRotation;
+    const bodyAngle = this._myBody.rotation();
     let angleDifference = bodyAngle - currentGunAngle;
     angleDifference = Math.atan2(
       Math.sin(angleDifference),
@@ -665,7 +668,7 @@ class BotController {
     }
 
     const myPosVec = new Vec2(this._myPosition[0], this._myPosition[1]);
-    const rightVec = this._myBody.getWorldVector(new Vec2(0, 1));
+    const rightVec = rotateVec(new Vec2(0, 1), this._myBody.rotation());
     const strafeDirection = Math.random() > 0.5 ? 1 : -1;
     const strafeDistance = randomRange(100, 200);
 

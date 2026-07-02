@@ -1,34 +1,38 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../src/lib/vec2.js';
 import Tank from '../../src/server/parts/Tank.js';
 
-// мок физического тела (только методы, нужные для тестируемой логики)
+// мок физического тела Rapier (только методы, нужные для тестируемой логики)
 const makeBody = () => ({
   gunRotation: 0,
-  _pos: Vec2(0, 0),
+  _pos: new Vec2(0, 0),
   _angle: 0,
-  _vel: Vec2(0, 0),
-  createFixture: vi.fn(),
-  setUserData: vi.fn(),
-  getMass: () => 10,
-  getInertia: () => 5,
-  getPosition() {
+  _vel: new Vec2(0, 0),
+  mass: () => 10,
+  principalInertia: () => 5,
+  translation() {
     return this._pos;
   },
-  getAngle() {
+  rotation() {
     return this._angle;
   },
-  getLinearVelocity() {
+  linvel() {
     return this._vel;
   },
-  setLinearVelocity: vi.fn(),
-  setAngularVelocity: vi.fn(),
-  setPosition(p) {
+  setLinvel: vi.fn(),
+  setAngvel: vi.fn(),
+  setTranslation(p) {
     this._pos = p;
   },
-  setAngle(a) {
+  setRotation(a) {
     this._angle = a;
   },
+});
+
+// мок мира Rapier: отдаёт подготовленное тело, коллайдер не важен
+const makeWorld = body => ({
+  createRigidBody: () => body,
+  createCollider: vi.fn(),
 });
 
 // мок панели с состоянием здоровья
@@ -59,7 +63,7 @@ const modelData = {
   gunRotationSpeed: 1,
   gunCenterSpeed: 1,
   damping: { angular: 0.01, linear: 0.01 },
-  fixture: {},
+  fixture: { density: 200, friction: 0.5, restitution: 0.1 },
 };
 
 const makeTank = (body = makeBody(), panel = makePanel()) =>
@@ -73,7 +77,7 @@ const makeTank = (body = makeBody(), panel = makePanel()) =>
     playerKeys: { keys: { forward: 1, fire: 128 }, oneShotMask: 128 },
     services: { panel },
     modelData,
-    world: { createBody: () => body },
+    world: makeWorld(body),
     position: [0, 0],
     angle: 0,
   });
@@ -99,8 +103,8 @@ describe('Tank.takeDamage: автомат состояний', () => {
     const destroyed = tank.takeDamage(100);
     expect(destroyed).toBe(true);
     expect(tank.isAlive()).toBe(false);
-    expect(body.setLinearVelocity).toHaveBeenCalled();
-    expect(body.setAngularVelocity).toHaveBeenCalledWith(0);
+    expect(body.setLinvel).toHaveBeenCalled();
+    expect(body.setAngvel).toHaveBeenCalledWith(0, true);
   });
 
   it('повторный урон по уничтоженному танку не проходит', () => {
@@ -185,12 +189,12 @@ const fullKeys = {
 const oneShotMask = 128 | 256 | 512;
 
 // тело с методами, нужными для физики updateData
+// (мировые векторы Tank считает сам через rotation(): при нулевом угле
+// мировой вектор совпадает с локальным)
 const makePhysicsBody = () => ({
   ...makeBody(),
-  // при нулевом угле мировой вектор совпадает с локальным
-  getWorldVector: v => Vec2(v.x, v.y),
-  applyForceToCenter: vi.fn(),
-  applyTorque: vi.fn(),
+  applyImpulse: vi.fn(),
+  applyTorqueImpulse: vi.fn(),
 });
 
 // панель с боезапасом для обоих орудий
@@ -223,7 +227,7 @@ const makeMovingTank = (body = makePhysicsBody(), panel = makeAmmoPanel()) =>
     playerKeys: { keys: fullKeys, oneShotMask },
     services: { panel },
     modelData,
-    world: { createBody: () => body },
+    world: makeWorld(body),
     position: [0, 0],
     angle: 0,
   });
@@ -314,12 +318,12 @@ describe('Tank.updateData: движение и смена оружия', () => {
     expect(tank._engineThrottle).toBe(0);
   });
 
-  it('left применяет крутящий момент', () => {
+  it('left применяет импульс крутящего момента', () => {
     const body = makePhysicsBody();
     const tank = makeMovingTank(body);
     tank.updateKeys({ name: 'left', action: 'down' });
     tank.updateData(0.1);
-    expect(body.applyTorque).toHaveBeenCalled();
+    expect(body.applyTorqueImpulse).toHaveBeenCalled();
   });
 
   it('nextWeapon переключает на следующее орудие', () => {
@@ -350,7 +354,7 @@ describe('Tank: данные и респаун', () => {
 
   it('getPosition округляет до 2 знаков', () => {
     const body = makeBody();
-    body._pos = Vec2(1.2345, 6.789);
+    body._pos = new Vec2(1.2345, 6.789);
     const tank = makeTank(body);
 
     expect(tank.getPosition()).toEqual([1.23, 6.79]);
@@ -373,7 +377,7 @@ describe('Tank: данные и респаун', () => {
     expect(body._pos.x).toBe(100);
     expect(body._pos.y).toBe(200);
     expect(tank.teamId).toBe(2);
-    expect(body.setLinearVelocity).toHaveBeenCalled();
+    expect(body.setLinvel).toHaveBeenCalled();
     expect(body.gunRotation).toBe(0);
   });
 });

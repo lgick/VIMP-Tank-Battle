@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../src/lib/vec2.js';
 
 // Прицеливание использует randomRange для разброса. Обнуляем его, чтобы
 // угол был детерминированным (иначе бот может «промахнуться» и не выстрелить).
@@ -14,10 +14,9 @@ const { default: BotController } = await import(
 );
 
 const makeBody = () => ({
-  getPosition: () => new Vec2(0, 0),
-  getWorldVector: v => v,
-  getLinearVelocity: () => new Vec2(0, 0),
-  getAngle: () => 0,
+  translation: () => new Vec2(0, 0),
+  linvel: () => new Vec2(0, 0),
+  rotation: () => 0,
   gunRotation: 0,
 });
 
@@ -26,7 +25,7 @@ const botData = { gameId: 'bot1', teamId: 1 };
 // бот в состоянии ATTACKING с целью и телом
 const attackingBot = (currentWeapon, target) => {
   const game = {
-    _world: { rayCast: vi.fn() },
+    _world: { castRay: vi.fn(() => null) },
     _playersData: { bot1: { currentWeapon } },
     updateKeys: vi.fn(),
     getPosition: vi.fn(() => [target[0], target[1]]),

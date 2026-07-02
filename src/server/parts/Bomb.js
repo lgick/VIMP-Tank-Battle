@@ -1,5 +1,6 @@
-import { BoxShape, Vec2, AABB } from 'planck';
 import { roundTo2Decimals } from '../../lib/formatters.js';
+import { Vec2 } from '../../lib/vec2.js';
+import RAPIER from '../physics/rapier.js';
 
 class Bomb {
   constructor(data) {
@@ -7,52 +8,62 @@ class Bomb {
 
     const size = this._weaponData.size;
 
-    this._body = data.world.createBody({
-      type: 'static',
-      position: data.position,
-      angle: 0,
-    });
+    this._body = data.world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed().setTranslation(
+        data.position.x,
+        data.position.y,
+      ),
+    );
 
-    this._body.createFixture(new BoxShape(size / 2, size / 2), {
-      isSensor: true,
-    });
+    // сенсор: детектирует контакты, но не участвует в столкновениях;
+    // события контактов собирает Game (для не-explosive снарядов в будущем)
+    data.world.createCollider(
+      RAPIER.ColliderDesc.cuboid(size / 2, size / 2)
+        .setSensor(true)
+        .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
+      this._body,
+    );
 
-    this._body.setUserData(data.userData);
+    this._body.userData = data.userData;
   }
 
   // выполняет детонацию, находит цели,
   // применяет урон/импульс и возвращает данные для клиента
   detonate(world, game, friendlyFire) {
-    const bombPosition = this._body.getPosition();
-    const shooterData = this._body.getUserData();
+    const bombPosition = this._body.translation();
+    const shooterData = this._body.userData;
     const radius = this._weaponData.radius;
     const damage = this._weaponData.damage;
     const impulseMagnitude = this._weaponData.impulseMagnitude;
     const weaponName = shooterData.weaponName;
 
-    const aabb = new AABB(
-      new Vec2(bombPosition.x - radius, bombPosition.y - radius),
-      new Vec2(bombPosition.x + radius, bombPosition.y + radius),
-    );
-
     const potentialTargets = new Set();
 
     // 1. Находим все потенциальные цели в радиусе взрыва
-    world.queryAABB(aabb, fixture => {
-      const body = fixture.getBody();
-      const userData = body.getUserData();
+    world.collidersWithAabbIntersectingAabb(
+      bombPosition,
+      { x: radius, y: radius },
+      collider => {
+        const body = collider.parent();
+        const userData = body?.userData;
 
-      if (body === this._body || !body.isDynamic() || !userData?.type) {
+        if (
+          !body ||
+          body === this._body ||
+          !body.isDynamic() ||
+          !userData?.type
+        ) {
+          return true;
+        }
+
+        const distance = Vec2.distance(bombPosition, body.translation());
+
+        if (distance < radius) {
+          potentialTargets.add({ body, userData, distance });
+        }
         return true;
-      }
-
-      const distance = Vec2.distance(bombPosition, body.getPosition());
-
-      if (distance < radius) {
-        potentialTargets.add({ body, userData, distance });
-      }
-      return true;
-    });
+      },
+    );
 
     // 2. Для каждой цели применяем урон без проверки линии видимости
     for (const target of potentialTargets) {
@@ -75,12 +86,12 @@ class Bomb {
       }
 
       if (actualImpulse > 0 && distance > 0) {
-        const direction = Vec2.sub(targetBody.getPosition(), bombPosition);
+        const direction = Vec2.sub(targetBody.translation(), bombPosition);
         direction.normalize();
         const impulseVector = direction.mul(actualImpulse);
-        targetBody.applyLinearImpulse(
+        targetBody.applyImpulseAtPoint(
           impulseVector,
-          targetBody.getPosition(),
+          targetBody.translation(),
           true,
         );
       }
@@ -101,13 +112,13 @@ class Bomb {
   }
 
   getData() {
-    const pos = this._body.getPosition();
+    const pos = this._body.translation();
     const { size, time } = this._weaponData;
 
     return [
       roundTo2Decimals(pos.x),
       roundTo2Decimals(pos.y),
-      roundTo2Decimals(this._body.getAngle()),
+      roundTo2Decimals(this._body.rotation()),
       size,
       time,
     ];

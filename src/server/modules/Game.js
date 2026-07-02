@@ -1,5 +1,5 @@
-import planck from 'planck';
 import Factory from '../../lib/factory.js';
+import RAPIER from '../physics/rapier.js';
 import constructors from '../parts/index.js';
 
 // Singleton Game
@@ -42,8 +42,6 @@ class Game {
 
     // интервал фиксированного шага физики (в секундах, например 1 / 120)
     this._timeStep = timeStep;
-    this._velocityIterations = 10;
-    this._positionIterations = 8;
     this._accumulator = 0;
     this._maxAccumulatedTime = 0.1;
 
@@ -57,18 +55,11 @@ class Game {
     // очередь тел на удаление
     this._bodiesToDestroy = new Set();
 
-    this._world = new planck.World({
-      gravity: { x: 0, y: 0 },
-      allowSleep: true,
-    });
+    this._world = new RAPIER.World({ x: 0, y: 0 });
+    this._world.timestep = this._timeStep;
 
-    this._world.on('begin-contact', contact => {
-      // контакты, для обработки их после шага физики
-      this._contactEvents.push({
-        fixtureA: contact.getFixtureA(),
-        fixtureB: contact.getFixtureB(),
-      });
-    });
+    // очередь событий физики: контакты собираются после каждого шага
+    this._eventQueue = new RAPIER.EventQueue(true);
 
     // конструктор карт
     this._map = this._Factory(parts.mapConstructor, this._world);
@@ -217,7 +208,7 @@ class Game {
   removePlayer(gameId) {
     // если игрок существует
     if (this._playersData[gameId]) {
-      this._world.destroyBody(this._playersData[gameId].getBody());
+      this._world.removeRigidBody(this._playersData[gameId].getBody());
       delete this._playersData[gameId];
       delete this._cachedPlayersData[gameId];
     }
@@ -232,7 +223,7 @@ class Game {
         const player = this._playersData[gameId];
 
         modelNameSet.add(player.model);
-        this._world.destroyBody(player.getBody());
+        this._world.removeRigidBody(player.getBody());
       }
     }
 
@@ -266,17 +257,15 @@ class Game {
 
   // стирает данные игрового мира
   clear() {
-    // сброс сил
-    this._world.clearForces();
+    // сначала карта удаляет свои тела сама: повторный removeRigidBody
+    // уже удалённого тела крэшит Rapier (в отличие от planck)
+    this._map.destroyMap();
 
-    // процесс удаления всех тел
-    let body = this._world.getBodyList();
+    // удаление остальных тел (сбор в массив: мутировать set во время forEach нельзя)
+    const bodies = [];
 
-    while (body) {
-      const nextBody = body.getNext();
-      this._world.destroyBody(body);
-      body = nextBody;
-    }
+    this._world.bodies.forEach(body => bodies.push(body));
+    bodies.forEach(body => this._world.removeRigidBody(body));
 
     this._playersData = {};
     this._removeShots();
@@ -349,11 +338,21 @@ class Game {
       this._mergeShotOutcomeData(expiredByTimeData);
 
       // шаг физического мира
-      this._world.step(
-        this._timeStep,
-        this._velocityIterations,
-        this._positionIterations,
-      );
+      this._world.step(this._eventQueue);
+
+      // сбор начавшихся контактов из очереди событий
+      this._eventQueue.drainCollisionEvents((handle1, handle2, started) => {
+        if (!started) {
+          return;
+        }
+
+        const colliderA = this._world.getCollider(handle1);
+        const colliderB = this._world.getCollider(handle2);
+
+        if (colliderA && colliderB) {
+          this._contactEvents.push({ colliderA, colliderB });
+        }
+      });
 
       // обработка коллизий
       this._processContactEvents();
@@ -445,39 +444,36 @@ class Game {
   // обрабатывает события контактов, накопленные за шаг физики
   _processContactEvents() {
     for (const contact of this._contactEvents) {
-      const fixtureA = contact.fixtureA;
-      const fixtureB = contact.fixtureB;
+      const bodyA = contact.colliderA.parent();
+      const bodyB = contact.colliderB.parent();
 
-      // проверка на случай, если фикстуры уже невалидны
-      if (!fixtureA || !fixtureB) {
+      // проверка на случай, если тела уже невалидны
+      if (!bodyA || !bodyB) {
         continue;
       }
 
-      const bodyA = fixtureA.getBody();
-      const bodyB = fixtureB.getBody();
-
-      const userDataA = bodyA.getUserData();
-      const userDataB = bodyB.getUserData();
+      const userDataA = bodyA.userData;
+      const userDataB = bodyB.userData;
 
       if (!userDataA || !userDataB) {
         continue;
       }
 
       // логика определения кто в кого попал
-      let playerFixture, shotFixture;
+      let playerBody, shotBody;
 
       if (userDataA.type === 'player' && userDataB.type === 'shot') {
-        playerFixture = fixtureA;
-        shotFixture = fixtureB;
+        playerBody = bodyA;
+        shotBody = bodyB;
       } else if (userDataB.type === 'player' && userDataA.type === 'shot') {
-        playerFixture = fixtureB;
-        shotFixture = fixtureA;
+        playerBody = bodyB;
+        shotBody = bodyA;
       } else {
         continue; // это не контакт между игроком и снарядом
       }
 
-      const playerData = playerFixture.getBody().getUserData();
-      const shotData = shotFixture.getBody().getUserData();
+      const playerData = playerBody.userData;
+      const shotData = shotBody.userData;
 
       // Если это оружие взрывного типа (например, бомба),
       // оно не должно уничтожаться при контакте, а только по таймеру.
@@ -487,14 +483,14 @@ class Game {
       }
 
       // если тело снаряда уже в очереди на удаление, пропускаем
-      if (this._bodiesToDestroy.has(shotFixture.getBody())) {
+      if (this._bodiesToDestroy.has(shotBody)) {
         continue;
       }
 
       this.applyDamage(playerData.gameId, shotData.gameId, shotData.weaponName);
 
       // помечаем снаряд на удаление, а не удаляем сразу
-      this._bodiesToDestroy.add(shotFixture.getBody());
+      this._bodiesToDestroy.add(shotBody);
     }
 
     // очищаем массив для следующего шага
@@ -508,7 +504,7 @@ class Game {
     }
 
     for (const body of this._bodiesToDestroy) {
-      const userData = body.getUserData();
+      const userData = body.userData;
 
       // если это был снаряд, нужно обновить данные для клиентов
       if (userData && userData.type === 'shot') {
@@ -519,7 +515,7 @@ class Game {
         });
       }
 
-      this._world.destroyBody(body);
+      this._world.removeRigidBody(body);
     }
 
     this._bodiesToDestroy.clear();
@@ -571,7 +567,7 @@ class Game {
           this._lastWeaponEffects[shotOutcomeId].push(explosionData);
         }
 
-        this._world.destroyBody(shot.getBody());
+        this._world.removeRigidBody(shot.getBody());
         delete this._shotsData[shotId];
 
         // помечаем исходный снаряд (бомбу) как удаленный
@@ -739,7 +735,7 @@ class Game {
         const shot = this._shotsData[shotId];
 
         weaponNameSet.add(shot.weaponName);
-        this._world.destroyBody(shot.getBody());
+        this._world.removeRigidBody(shot.getBody());
       }
     }
     this._shotsData = {};

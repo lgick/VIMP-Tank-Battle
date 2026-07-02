@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Vec2 } from 'planck';
+import { Vec2 } from '../../src/lib/vec2.js';
 import Pathfinder from '../../src/server/modules/bots/Pathfinder.js';
 
 // строим граф из узлов и рёбер.
