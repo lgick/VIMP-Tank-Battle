@@ -33,6 +33,7 @@ import { validateAuth } from '../lib/validators.js';
 import SoundManager from './SoundManager.js';
 import SnapshotInterpolator from './SnapshotInterpolator.js';
 import TankPredictor from './TankPredictor.js';
+import ShotPredictor from './ShotPredictor.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
 import wsports from '../config/wsports.js';
@@ -102,6 +103,9 @@ let interpolator = null;
 
 // предикшен своего танка (создаётся при получении конфига)
 let predictor = null;
+
+// визуальный спавн снарядов своего танка (создаётся при получении конфига)
+let shotPredictor = null;
 let inputSeq = 0; // номер отправленного ввода (KEYS_DATA)
 let myGameId = null; // id своего танка (из player-блока кадра)
 let myModelName = null; // модель своего танка (из формы авторизации)
@@ -119,6 +123,7 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   // конфиг предикшена добавляет серверный bootstrap (src/server/main.js)
   if (data.prediction) {
     predictor = new TankPredictor(data.prediction);
+    shotPredictor = new ShotPredictor(data.prediction);
   }
 
   // инициализация сущностей игры
@@ -214,9 +219,10 @@ socketMethods[PS_AUTH_DATA] = data => {
   modules.auth = new AuthCtrl(authModel, authView);
 
   authModel.publisher.on('socket', data => {
-    // модель танка пользователя — для реплики движения
+    // модель танка пользователя — для реплик движения и выстрелов
     myModelName = data.model;
     predictor?.setModel(data.model);
+    shotPredictor?.setModel(data.model);
 
     sending(PC_AUTH_RESPONSE, data);
   });
@@ -251,6 +257,7 @@ socketMethods[PS_MAP_DATA] = data => {
 
   interpolator.reset();
   predictor?.reset();
+  shotPredictor?.setMap(data);
 
   // удаление данных карт
   const removeMap = setId => {
@@ -322,6 +329,7 @@ socketMethods[PS_FIRST_SHOT_DATA] = data => {
 // panel data
 socketMethods[PS_PANEL_DATA] = data => {
   modules.panel.update(data);
+  shotPredictor?.syncPanel(data);
 };
 
 // stat data
@@ -343,6 +351,7 @@ socketMethods[PS_VOTE_DATA] = data => {
 socketMethods[PS_KEYSET_DATA] = keySet => {
   modules.controls.changeKeySet(keySet);
   predictor?.setActive(keySet === 1);
+  shotPredictor?.reset();
 };
 
 // sound data
@@ -423,6 +432,7 @@ socketMethods[PS_CLEAR] = function (setIdList) {
 
   interpolator.reset();
   predictor?.reset();
+  shotPredictor?.reset();
   soundManager.reset();
 };
 
@@ -493,11 +503,19 @@ function renderTick() {
 
   frames.forEach(frame => {
     trackOwnTank(frame);
-    applyShot(frame.game, frame.camera);
+
+    // серверные дубли локально заспавненных выстрелов подавляются
+    const frameGame = shotPredictor
+      ? shotPredictor.filterServerSnapshot(frame.game, myGameId, now)
+      : frame.game;
+
+    applyShot(frameGame, frame.camera);
+    shotPredictor?.updateWorld(frameGame);
   });
 
   if (game) {
     applyGameData(game);
+    shotPredictor?.updateWorld(game);
   }
 
   predictor?.update(now);
@@ -659,9 +677,35 @@ function runModules(data) {
   controlsModel.publisher.on('socket', data => {
     // формат wire: 'seq:action:name' (seq — подтверждение ввода сервером)
     const [action, name] = data.split(':');
+    const now = performance.now();
 
     inputSeq = (inputSeq + 1) >>> 0;
-    predictor?.applyInput(action, name, performance.now());
+    predictor?.applyInput(action, name, now);
+
+    // визуальный спавн своего выстрела и локальная смена оружия
+    // (только живой танк: myTankMeta[0] — condition)
+    if (
+      action === 'down' &&
+      shotPredictor &&
+      predictor?.hasState &&
+      myTankMeta &&
+      myTankMeta[0] !== 0
+    ) {
+      if (name === 'fire') {
+        const spawn = shotPredictor.tryFire(
+          predictor.getRenderState(),
+          myGameId,
+          now,
+        );
+
+        if (spawn) {
+          applyGameData(spawn);
+        }
+      } else if (name === 'nextWeapon' || name === 'prevWeapon') {
+        shotPredictor.cycleWeapon(name === 'prevWeapon');
+      }
+    }
+
     sending(PC_KEYS_DATA, `${inputSeq}:${data}`);
   });
   chatModel.publisher.on('socket', data => sending(PC_CHAT_DATA, data));

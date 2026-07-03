@@ -79,7 +79,8 @@ class HitscanService {
         }
       : { x: +endPointRay.x.toFixed(1), y: +endPointRay.y.toFixed(1) };
 
-    // данные для отображения трассера
+    // данные для отображения трассера; shooterId нужен стрелку
+    // для подавления дубля локально предсказанного выстрела (Фаза 5c)
     return [
       roundTo2Decimals(startPoint.x),
       roundTo2Decimals(startPoint.y),
@@ -88,6 +89,7 @@ class HitscanService {
       roundTo2Decimals(bodyPosition.x),
       roundTo2Decimals(bodyPosition.y),
       wasHit,
+      Number(gameId),
     ];
   }
 }

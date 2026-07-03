@@ -50,7 +50,7 @@ const makeBomb = (world, position = new Vec2(0, 0)) =>
     weaponData,
     world,
     position,
-    userData: { gameId: 'shooter', teamId: 1, weaponName: 'w2' },
+    userData: { gameId: '4', teamId: 1, weaponName: 'w2' },
   });
 
 describe('Bomb.detonate: урон', () => {
@@ -66,7 +66,7 @@ describe('Bomb.detonate: урон', () => {
     bomb.detonate(world, game, false);
 
     // distance=10, falloff=1-10/50=0.8, damage=round(70*0.8)=56
-    expect(game.applyDamage).toHaveBeenCalledWith('enemy', 'shooter', 'w2', 56);
+    expect(game.applyDamage).toHaveBeenCalledWith('enemy', '4', 'w2', 56);
   });
 
   it('не задевает цель за пределами радиуса', () => {
@@ -102,7 +102,7 @@ describe('Bomb.detonate: урон', () => {
     const game = { applyDamage: vi.fn() };
 
     makeBomb(world).detonate(world, game, true);
-    expect(game.applyDamage).toHaveBeenCalledWith('mate', 'shooter', 'w2', 56);
+    expect(game.applyDamage).toHaveBeenCalledWith('mate', '4', 'w2', 56);
   });
 
   it('пропускает тела без userData и статические', () => {
@@ -143,10 +143,10 @@ describe('Bomb: данные для клиента', () => {
     expect(data).toEqual([3, 4, 50]);
   });
 
-  it('getData возвращает позицию, угол, размер и время', () => {
+  it('getData возвращает позицию, угол, размер, время и ownerId', () => {
     const world = makeWorld([]);
     const bomb = makeBomb(world, new Vec2(1.5, 2.5));
 
-    expect(bomb.getData()).toEqual([1.5, 2.5, 0, 8, 300]);
+    expect(bomb.getData()).toEqual([1.5, 2.5, 0, 8, 300, 4]);
   });
 });

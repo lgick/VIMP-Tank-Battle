@@ -30,7 +30,7 @@ const makeWorld = hit => ({
 });
 
 const baseParams = () => ({
-  gameId: 'shooter',
+  gameId: '4', // gameId в реестре — числовая строка
   weaponName: 'w1',
   startPoint: new Vec2(0, 0),
   direction: new Vec2(1, 0),
@@ -52,9 +52,10 @@ describe('HitscanService.processShot', () => {
     const hs = new HitscanService({ world, weapons, game });
     const result = hs.processShot(baseParams());
 
-    // [startX, startY, endX, endY, bodyX, bodyY, wasHit]
+    // [startX, startY, endX, endY, bodyX, bodyY, wasHit, shooterId]
     expect(result[6]).toBe(false);
     expect(result[2]).toBe(100); // конец луча: start(0) + dir(1)*range(100)
+    expect(result[7]).toBe(4); // shooterId — числом (для подавления дубля)
     expect(game.applyDamage).not.toHaveBeenCalled();
   });
 
@@ -70,7 +71,7 @@ describe('HitscanService.processShot', () => {
 
     expect(result[6]).toBe(true);
     expect(result[2]).toBe(50); // точка попадания
-    expect(game.applyDamage).toHaveBeenCalledWith('victim', 'shooter', 'w1');
+    expect(game.applyDamage).toHaveBeenCalledWith('victim', '4', 'w1');
   });
 
   it('применяет импульс к динамическому телу', () => {
