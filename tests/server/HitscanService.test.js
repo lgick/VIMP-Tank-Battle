@@ -15,8 +15,8 @@ const makeBody = ({ userData = null, dynamic = true } = {}) => ({
 // (Ray реальный — pointAt считается кодом сервиса)
 const makeWorld = hit => ({
   lastCastArgs: null,
-  castRay(ray, maxToi, solid, filterFlags) {
-    this.lastCastArgs = { ray, maxToi, solid, filterFlags };
+  castRay(ray, maxToi, solid, filterFlags, filterGroups, filterExcludeCollider, filterExcludeRigidBody) {
+    this.lastCastArgs = { ray, maxToi, solid, filterFlags, filterGroups, filterExcludeCollider, filterExcludeRigidBody };
 
     if (!hit) {
       return null;
@@ -112,5 +112,17 @@ describe('HitscanService.processShot', () => {
     hs.processShot(baseParams());
 
     expect(body.applyImpulseAtPoint).not.toHaveBeenCalled();
+  });
+
+  it('тело стреляющего передаётся как filterExcludeRigidBody', () => {
+    const shooterBody = makeBody();
+    const world = makeWorld(null);
+    const game = { applyDamage: vi.fn() };
+    const weapons = { w1: { range: 100 } };
+
+    const hs = new HitscanService({ world, weapons, game });
+    hs.processShot({ ...baseParams(), shooterBody });
+
+    expect(world.lastCastArgs.filterExcludeRigidBody).toBe(shooterBody);
   });
 });
