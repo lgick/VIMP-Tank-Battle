@@ -262,9 +262,10 @@ class Game {
 
   // стирает данные игрового мира
   clear() {
-    // сначала карта удаляет свои тела сама: повторный removeRigidBody
+    // сначала карта и снаряды удаляют свои тела сами: повторный removeRigidBody
     // уже удалённого тела крэшит Rapier (в отличие от planck)
     this._map.destroyMap();
+    this._removeShots();
 
     // удаление остальных тел (сбор в массив: мутировать set во время forEach нельзя)
     const bodies = [];
@@ -273,7 +274,6 @@ class Game {
     bodies.forEach(body => this._world.removeRigidBody(body));
 
     this._playersData = {};
-    this._removeShots();
     this._lastExpiredShotsData = {};
     this._lastWeaponEffects = {};
 
