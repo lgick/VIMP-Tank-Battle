@@ -27,6 +27,7 @@ class HitscanService {
       startPoint, // мировая точка начала луча (например, дуло оружия)
       direction, // нормализованный мировой вектор направления луча
       bodyPosition,
+      shooterBody, // тело стреляющего — исключается из ray cast
     } = params;
 
     const weaponConfig = this._weapons[weaponName];
@@ -49,6 +50,9 @@ class HitscanService {
       1.0, // maxToi = 1: длина луча задана самим rayVector
       true,
       RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,
+      undefined,
+      undefined,
+      shooterBody, // исключаем тело стреляющего (дуло может быть внутри коллайдера)
     );
 
     const wasHit = hit !== null;

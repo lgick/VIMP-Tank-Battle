@@ -319,6 +319,7 @@ class Game {
                 ...shotData,
                 gameId,
                 weaponName,
+                shooterBody: player.getBody(),
               });
 
               this._newShotsData[weaponName].push(shot);
