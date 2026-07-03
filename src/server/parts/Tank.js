@@ -9,30 +9,18 @@ const RIGHT = new Vec2(0, 1);
 const ZERO = new Vec2(0, 0);
 
 class Tank extends BaseModel {
-  // порог скорости для фактора поворота
-  _TURN_SPEED_THRESHOLD = 10;
-
-  // фактор поворота при низкой скорости
-  _BASE_TURN_FACTOR_RATIO = 0.8;
-
-  // множитель эффективности поворота при движении назад
-  // (меньше 1 = менее резкий поворот назад)
-  // например, 0.5 - 0.8
-  _REVERSE_TURN_MULTIPLIER = 0.7;
-
-  // как быстро "нажимается педаль газа" (единиц в секунду)
-  _THROTTLE_INCREASE_RATE = 2.0;
-
-  // как быстро "отпускается педаль газа"
-  _THROTTLE_DECREASE_RATE = 2.5;
-
-  // коэффициент, усиливающий нагрузку при сопротивлении
-  _STRAIN_FACTOR = 1.5;
-
   constructor(data) {
     super(data);
 
     this._modelData = data.modelData;
+
+    // манера вождения (общие с клиентской репликой значения из models.js)
+    this._turnSpeedThreshold = this._modelData.turnSpeedThreshold;
+    this._baseTurnFactorRatio = this._modelData.baseTurnFactorRatio;
+    this._reverseTurnMultiplier = this._modelData.reverseTurnMultiplier;
+    this._throttleIncreaseRate = this._modelData.throttleIncreaseRate;
+    this._throttleDecreaseRate = this._modelData.throttleDecreaseRate;
+    this._strainFactor = this._modelData.strainFactor;
 
     this._width = this._modelData.size * 4;
     this._height = this._modelData.size * 3;
@@ -232,13 +220,13 @@ class Tank extends BaseModel {
       // игрок "давит на газ" - плавное увеличение до 1.0
       this._engineThrottle = Math.min(
         1.0,
-        this._engineThrottle + this._THROTTLE_INCREASE_RATE * dt,
+        this._engineThrottle + this._throttleIncreaseRate * dt,
       );
     } else {
       // игрок "отпустил газ" - плавное уменьшение до 0.0
       this._engineThrottle = Math.max(
         0.0,
-        this._engineThrottle - this._THROTTLE_DECREASE_RATE * dt,
+        this._engineThrottle - this._throttleDecreaseRate * dt,
       );
     }
 
@@ -290,7 +278,7 @@ class Tank extends BaseModel {
     // и тем, насколько быстро танк на самом деле едет
     const strain = Math.max(0, this._engineThrottle - speedRatio);
 
-    this._engineLoad = this._engineThrottle + strain * this._STRAIN_FACTOR;
+    this._engineLoad = this._engineThrottle + strain * this._strainFactor;
 
     // ограничение диапазона от 0.0 до 2.0 (или 1.5)
     // 0.0 - тишина
@@ -305,14 +293,14 @@ class Tank extends BaseModel {
     let turnFactor = 1.0;
 
     // если скорость очень мала, используем базовый фактор
-    if (Math.abs(currentForwardSpeed) < this._TURN_SPEED_THRESHOLD) {
-      turnFactor = this._BASE_TURN_FACTOR_RATIO;
+    if (Math.abs(currentForwardSpeed) < this._turnSpeedThreshold) {
+      turnFactor = this._baseTurnFactorRatio;
     }
 
     // если движение назад,
-    // дополнительно умножение фактора на _REVERSE_TURN_MULTIPLIER
+    // дополнительно умножение фактора на reverseTurnMultiplier
     if (currentForwardSpeed < 0) {
-      turnFactor *= this._REVERSE_TURN_MULTIPLIER;
+      turnFactor *= this._reverseTurnMultiplier;
     }
 
     if (left) {
@@ -435,6 +423,27 @@ class Tank extends BaseModel {
     this._shotData = null;
 
     return data;
+  }
+
+  // состояние для client-side prediction (без округлений — точность
+  // нужна реплике движения на клиенте)
+  getPredictionState() {
+    const pos = this._body.translation();
+    const vel = this._body.linvel();
+
+    return {
+      state: [
+        pos.x,
+        pos.y,
+        this._body.rotation(),
+        vel.x,
+        vel.y,
+        this._body.angvel(),
+        this._body.gunRotation,
+        this._engineThrottle,
+      ],
+      centering: this._centeringGun,
+    };
   }
 
   // возвращение состояния танка

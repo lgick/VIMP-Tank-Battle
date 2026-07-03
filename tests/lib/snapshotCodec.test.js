@@ -206,6 +206,62 @@ describe('snapshotCodec: комбинированный снапшот', () => {
   });
 });
 
+describe('snapshotCodec: player-блок (предикшен, v2)', () => {
+  it('без player в кадре player = null', () => {
+    expect(roundTrip({}).player).toBeNull();
+  });
+
+  it('gameId, inputSeq и состояние переживают round-trip', () => {
+    const packer = new SnapshotPacker(PORT);
+
+    packer.packBody({});
+
+    const state = [105.137, -42.591, 1.5707, 3.2514, -1.759, 0.031, -0.42, 0.87];
+    const frame = unpackFrame(
+      packer.packFrame([1, 2], 1000, 7, {
+        gameId: 3,
+        inputSeq: 4242,
+        state,
+        centering: true,
+      }),
+    );
+
+    expect(frame.player.gameId).toBe(3);
+    expect(frame.player.inputSeq).toBe(4242);
+    expect(frame.player.centering).toBe(true);
+
+    // Float32 без округления до 2 знаков: точность ~1e-6 относительная
+    state.forEach((value, i) => {
+      expect(frame.player.state[i]).toBeCloseTo(value, 4);
+    });
+  });
+
+  it('player совместим с камерой c reset/shake в одном кадре', () => {
+    const packer = new SnapshotPacker(PORT);
+
+    packer.packBody({ m1: { 1: [1, 2, 0, 0, 0, 0, 0, 3, 2, 1] } });
+
+    const camera = [5, 6];
+
+    camera[2] = true;
+    camera[3] = '5:300';
+
+    const frame = unpackFrame(
+      packer.packFrame(camera, 1, 1, {
+        gameId: 1,
+        inputSeq: 0,
+        state: [0, 0, 0, 0, 0, 0, 0, 0],
+        centering: false,
+      }),
+    );
+
+    expect(frame.camera[3]).toBe('5:300');
+    expect(frame.player.gameId).toBe(1);
+    expect(frame.player.centering).toBe(false);
+    expect(frame.snapshot.m1['1']).toBeDefined();
+  });
+});
+
 describe('snapshotCodec: защита от ошибок', () => {
   it('неизвестный ключ снапшота → throw с подсказкой', () => {
     const packer = new SnapshotPacker(PORT);

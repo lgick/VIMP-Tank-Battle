@@ -79,6 +79,13 @@ config.set(
   config.get('game:timers:voteTime'),
 );
 
+// данные для client-side prediction (реплика движения своего танка)
+config.set('client:prediction', {
+  timeStep: config.get('game:timers:timeStep'),
+  playerKeys: config.get('game:playerKeys'),
+  models: config.get('game:parts:models'),
+});
+
 // EXPRESS
 const app = express();
 let server;

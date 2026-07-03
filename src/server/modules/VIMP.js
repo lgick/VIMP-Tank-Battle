@@ -256,9 +256,26 @@ class VIMP {
       const socketId = user.socketId;
 
       const camera = getCamera(user);
+
+      // блок предикшена: authoritative-состояние танка играющего
+      let player = null;
+
+      if (user.isWatching === false) {
+        const prediction = this._game.getPredictionState(gameId);
+
+        if (prediction) {
+          player = {
+            gameId,
+            inputSeq: user.lastInputSeq,
+            state: prediction.state,
+            centering: prediction.centering,
+          };
+        }
+      }
+
       this._socketManager.sendShot(
         socketId,
-        this._snapshotPacker.packFrame(camera, serverTime, seq),
+        this._snapshotPacker.packFrame(camera, serverTime, seq, player),
       );
 
       // панель (персонально)
@@ -448,12 +465,13 @@ class VIMP {
     this._chat.pushSystem('USER_LEFT', [user.name]);
   }
 
-  // обновляет команды
+  // обновляет команды (формат wire: 'seq:action:name')
   updateKeys(gameId, keyStr) {
     const user = this._participants.get(gameId);
-    const [action, name] = keyStr.split(':');
+    const [seq, action, name] = keyStr.split(':');
 
     user.lastActionTime = Date.now();
+    user.lastInputSeq = Number(seq) >>> 0;
 
     if (user.isWatching === true) {
       // если нажатие

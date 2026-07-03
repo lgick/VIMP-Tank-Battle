@@ -13,6 +13,7 @@ class HumanParticipant extends Participant {
     this.forceCameraReset = true;
     this.pendingShake = null;
     this.lastActionTime = Date.now();
+    this.lastInputSeq = 0; // номер последнего обработанного ввода (предикшен)
   }
 
   get isNetworked() {

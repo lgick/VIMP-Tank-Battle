@@ -106,6 +106,17 @@ export class FakeSocketManager {
     return [frame.snapshot, frame.camera, frame.serverTime, frame.seq];
   }
 
+  // последний sendShot целиком (включая player-блок предикшена)
+  lastFrame(socketId) {
+    const shots = this.frames.filter(
+      f => f.method === 'sendShot' && f.socketId === socketId,
+    );
+
+    return shots.length
+      ? unpackFrame(shots[shots.length - 1].args[0])
+      : null;
+  }
+
   clear() {
     this.frames.length = 0;
   }
@@ -155,7 +166,10 @@ export const tick = (vimp, n = 1, dt = 1 / 120) => {
   }
 };
 
-// Нажатие/отпускание клавиши игрока (формат wire: 'down:forward').
+// Нажатие/отпускание клавиши игрока (формат wire: 'seq:down:forward').
+let inputSeq = 0;
+
 export const pressKey = (vimp, gameId, name, action = 'down') => {
-  vimp.updateKeys(gameId, `${action}:${name}`);
+  inputSeq += 1;
+  vimp.updateKeys(gameId, `${inputSeq}:${action}:${name}`);
 };

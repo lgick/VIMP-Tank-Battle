@@ -12,9 +12,14 @@ import { roundTo2Decimals } from './formatters.js';
 //   Uint8   версия формата (SNAPSHOT_FORMAT_VERSION)
 //   Uint32  seq
 //   Float64 serverTime
-//   Uint8   cameraFlags: bit0 hasCamera, bit1 forceReset, bit2 hasShake
+//   Uint8   cameraFlags: bit0 hasCamera, bit1 forceReset, bit2 hasShake,
+//           bit3 hasPlayer
 //   [hasCamera] Float32 x, Float32 y
 //   [hasShake]  Uint8 len + ASCII-байты строки 'intensity:duration'
+//   [hasPlayer] Uint8 gameId, Uint32 inputSeq,
+//               Float32 ×8 (x, y, angle, vx, vy, angvel, gunRotation,
+//               throttle — БЕЗ округления: точность нужна предиктору),
+//               Uint8 centering (центрирование башни)
 //   далее блоки тела до конца буфера: Uint8 keyId + содержимое по kind
 //     (раскладки блоков — в BLOCK_WRITERS/BLOCK_READERS ниже)
 //
@@ -28,6 +33,13 @@ const BODY_BUFFER_SIZE = 65536;
 const CAMERA_FLAG_HAS_CAMERA = 1;
 const CAMERA_FLAG_FORCE_RESET = 2;
 const CAMERA_FLAG_HAS_SHAKE = 4;
+const CAMERA_FLAG_HAS_PLAYER = 8;
+
+// количество Float32-полей player-блока
+const PLAYER_STATE_LENGTH = 8;
+
+// размер player-блока: gameId(1) + inputSeq(4) + state(8×4) + centering(1)
+const PLAYER_BLOCK_SIZE = 1 + 4 + PLAYER_STATE_LENGTH * 4 + 1;
 
 const readFloat = (view, offset) =>
   roundTo2Decimals(view.getFloat32(offset));
@@ -361,9 +373,11 @@ export class SnapshotPacker {
    * @param {Array|0} camera - [x, y, forceReset?, shake?] либо 0.
    * @param {number} serverTime
    * @param {number} seq
+   * @param {Object|null} [player] - Блок предикшена играющего:
+   *   { gameId, inputSeq, state: Float[8], centering: boolean }.
    * @returns {ArrayBuffer}
    */
-  packFrame(camera, serverTime, seq) {
+  packFrame(camera, serverTime, seq, player = null) {
     const hasCamera = camera !== 0;
     const shake = hasCamera && camera[3] ? String(camera[3]) : null;
 
@@ -375,6 +389,10 @@ export class SnapshotPacker {
 
     if (shake) {
       headerSize += 1 + shake.length;
+    }
+
+    if (player) {
+      headerSize += PLAYER_BLOCK_SIZE;
     }
 
     const frame = new ArrayBuffer(headerSize + this._bodyLength);
@@ -401,6 +419,10 @@ export class SnapshotPacker {
       }
     }
 
+    if (player) {
+      flags |= CAMERA_FLAG_HAS_PLAYER;
+    }
+
     view.setUint8(offset, flags);
     offset += 1;
 
@@ -420,6 +442,20 @@ export class SnapshotPacker {
       }
     }
 
+    if (player) {
+      view.setUint8(offset, player.gameId);
+      view.setUint32(offset + 1, player.inputSeq);
+      offset += 5;
+
+      for (let i = 0; i < PLAYER_STATE_LENGTH; i += 1) {
+        view.setFloat32(offset, player.state[i]);
+        offset += 4;
+      }
+
+      view.setUint8(offset, player.centering ? 1 : 0);
+      offset += 1;
+    }
+
     new Uint8Array(frame).set(
       this._bodyBytes.subarray(0, this._bodyLength),
       offset,
@@ -435,7 +471,8 @@ export class SnapshotPacker {
  * Распаковывает бинарный кадр в JSON-формы, идентичные серверным.
  * @param {ArrayBuffer} arrayBuffer
  * @returns {{port: number, seq: number, serverTime: number,
- *   camera: Array|0, snapshot: Object}|null} null при несовпадении версии.
+ *   camera: Array|0, player: Object|null, snapshot: Object}|null}
+ *   null при несовпадении версии.
  */
 export const unpackFrame = arrayBuffer => {
   const view = new DataView(arrayBuffer);
@@ -488,6 +525,28 @@ export const unpackFrame = arrayBuffer => {
     }
   }
 
+  let player = null;
+
+  if (flags & CAMERA_FLAG_HAS_PLAYER) {
+    const gameId = view.getUint8(offset);
+    const inputSeq = view.getUint32(offset + 1);
+
+    offset += 5;
+
+    const state = [];
+
+    for (let i = 0; i < PLAYER_STATE_LENGTH; i += 1) {
+      state.push(view.getFloat32(offset)); // без округления (предикшен)
+      offset += 4;
+    }
+
+    const centering = view.getUint8(offset) === 1;
+
+    offset += 1;
+
+    player = { gameId, inputSeq, state, centering };
+  }
+
   const snapshot = {};
 
   while (offset < view.byteLength) {
@@ -511,5 +570,5 @@ export const unpackFrame = arrayBuffer => {
     offset = nextOffset;
   }
 
-  return { port, seq, serverTime, camera, snapshot };
+  return { port, seq, serverTime, camera, player, snapshot };
 };
