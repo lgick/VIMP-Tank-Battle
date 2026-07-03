@@ -83,7 +83,8 @@ const writeTanks = (view, offset, tanks) => {
   return offset;
 };
 
-// массив [startX, startY, endX, endY, bodyX, bodyY, wasHit]
+// массив [startX, startY, endX, endY, bodyX, bodyY, wasHit, shooterId]
+// shooterId нужен стрелку для подавления дубля локально заспавненного трассера
 const writeTracers = (view, offset, tracers) => {
   view.setUint16(offset, tracers.length);
   offset += 2;
@@ -95,13 +96,15 @@ const writeTracers = (view, offset, tracers) => {
     }
 
     view.setUint8(offset, tracer[6] ? 1 : 0);
-    offset += 1;
+    view.setUint8(offset + 1, tracer[7]);
+    offset += 2;
   }
 
   return offset;
 };
 
-// объект { shotId(base36): данные | null }; null = удаление с полотна
+// объект { shotId(base36): [x, y, angle, size, time, ownerId] | null };
+// null = удаление с полотна; ownerId нужен владельцу для remap на локальную бомбу
 const writeBombs = (view, offset, bombs) => {
   const ids = Object.keys(bombs);
 
@@ -130,7 +133,8 @@ const writeBombs = (view, offset, bombs) => {
 
     view.setUint8(offset, data[3]); // size
     view.setUint16(offset + 1, data[4]); // time (ms)
-    offset += 3;
+    view.setUint8(offset + 3, data[5]); // ownerId
+    offset += 4;
   }
 
   return offset;
@@ -235,7 +239,8 @@ const readTracers = (view, offset) => {
     }
 
     tracer.push(view.getUint8(offset) === 1);
-    offset += 1;
+    tracer.push(view.getUint8(offset + 1)); // shooterId
+    offset += 2;
 
     result.push(tracer);
   }
@@ -266,8 +271,9 @@ const readBombs = (view, offset) => {
       readFloat(view, offset + 8), // angle
       view.getUint8(offset + 12), // size
       view.getUint16(offset + 13), // time (ms)
+      view.getUint8(offset + 15), // ownerId
     ];
-    offset += 15;
+    offset += 16;
   }
 
   return [result, offset];

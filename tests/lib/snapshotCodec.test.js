@@ -121,23 +121,37 @@ describe('snapshotCodec: блок трассеров (w1)', () => {
   });
 
   it('wasHit восстанавливается как boolean', () => {
-    const hit = [1.5, 2.5, 100.1, -200.2, 1.4, 2.4, true];
-    const miss = [0, 0, 50, 50, 0, 0, false];
+    const hit = [1.5, 2.5, 100.1, -200.2, 1.4, 2.4, true, 3];
+    const miss = [0, 0, 50, 50, 0, 0, false, 0];
     const { snapshot } = roundTrip({ w1: [hit, miss] });
 
     expect(snapshot.w1).toEqual([hit, miss]);
     expect(snapshot.w1[0][6]).toBe(true);
     expect(snapshot.w1[1][6]).toBe(false);
   });
+
+  it('shooterId (v3) переживает round-trip', () => {
+    const tracer = [1, 2, 3, 4, 1, 2, true, 7];
+    const { snapshot } = roundTrip({ w1: [tracer] });
+
+    expect(snapshot.w1[0][7]).toBe(7);
+  });
 });
 
 describe('snapshotCodec: блок бомб (w2)', () => {
   it('base36-ключ (многосимвольный) и данные восстанавливаются', () => {
     const shotId = (46655).toString(36); // 'zzz'
-    const bomb = [12.34, -56.78, 0.5, 8, 300];
+    const bomb = [12.34, -56.78, 0.5, 8, 300, 2];
     const { snapshot } = roundTrip({ w2: { [shotId]: bomb } });
 
     expect(snapshot.w2[shotId]).toEqual(bomb);
+  });
+
+  it('ownerId (v3) переживает round-trip', () => {
+    const bomb = [0, 0, 0, 8, 300, 5];
+    const { snapshot } = roundTrip({ w2: { 1: bomb } });
+
+    expect(snapshot.w2['1'][5]).toBe(5);
   });
 
   it('null-запись (бомба взорвалась)', () => {
@@ -179,8 +193,8 @@ describe('snapshotCodec: комбинированный снапшот', () => {
   it('все блоки в одном кадре + камера', () => {
     const snapshot = {
       m1: { 1: [1, 2, 0.5, -0.5, 0, 0, 1, 3, 2, 1], 2: null },
-      w1: [[0, 0, 10, 10, 0.5, 0.5, true]],
-      w2: { 5: [1, 1, 0, 8, 300], 6: null },
+      w1: [[0, 0, 10, 10, 0.5, 0.5, true, 1]],
+      w2: { 5: [1, 1, 0, 8, 300, 1], 6: null },
       w2e: [[3, 4, 50]],
       c1: { d0: [9, 9, 0] },
     };

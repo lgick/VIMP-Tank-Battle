@@ -115,12 +115,14 @@ class Bomb {
     const pos = this._body.translation();
     const { size, time } = this._weaponData;
 
+    // ownerId нужен владельцу для remap на локально предсказанную бомбу
     return [
       roundTo2Decimals(pos.x),
       roundTo2Decimals(pos.y),
       roundTo2Decimals(this._body.rotation()),
       size,
       time,
+      Number(this._body.userData.gameId),
     ];
   }
 

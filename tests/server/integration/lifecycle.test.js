@@ -128,7 +128,7 @@ describe('Интеграция: движение и стрельба (реаль
     expect(moved).toBeGreaterThan(0);
   });
 
-  it('fire (hitscan w1) порождает событие оружия в снапшоте', async () => {
+  it('fire (hitscan w1) порождает событие оружия со shooterId', async () => {
     const gameId = await connectPlayer(vimp, { socketId: 's1' });
     joinTeam(vimp, gameId, 'team1');
     tick(vimp, 1);
@@ -139,6 +139,26 @@ describe('Интеграция: движение и стрельба (реаль
 
     const shot = socket.lastShot('s1');
     expect(shot[0]).toHaveProperty('w1');
+    // автор события — для подавления дубля локального спавна (Фаза 5c)
+    expect(shot[0].w1[0][7]).toBe(Number(gameId));
+  });
+
+  it('смена оружия + fire порождает бомбу (w2) с ownerId', async () => {
+    const gameId = await connectPlayer(vimp, { socketId: 's1' });
+    joinTeam(vimp, gameId, 'team1');
+    tick(vimp, 1);
+    socket.clear();
+
+    pressKey(vimp, gameId, 'nextWeapon', 'down'); // w1 → w2
+    tick(vimp, 1);
+    pressKey(vimp, gameId, 'fire', 'down');
+    tick(vimp, 1);
+
+    const shot = socket.lastShot('s1');
+    const bombs = shot[0].w2;
+    expect(bombs).toBeDefined();
+    const bomb = Object.values(bombs)[0];
+    expect(bomb[5]).toBe(Number(gameId));
   });
 });
 

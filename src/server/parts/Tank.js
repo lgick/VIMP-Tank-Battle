@@ -325,6 +325,8 @@ class Tank extends BaseModel {
     }
   }
 
+  // формулы дула/направления реплицируются клиентом
+  // (ShotPredictor._buildTracer) — менять синхронно
   getMuzzlePosition() {
     const body = this.getBody();
     const totalAngle = body.rotation() + (body.gunRotation || 0);
