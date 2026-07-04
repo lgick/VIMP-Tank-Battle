@@ -97,6 +97,9 @@ describe('ShotPredictor: гейт выстрела', () => {
     predictor.cycleWeapon(); // w2 → w1 (зацикливание)
     expect(predictor.tryFire(restingState(), 1, 1000).w1).toBeDefined();
 
+    // подтвердить первую бомбу, иначе гейт заблокирует следующий w2
+    predictor.filterServerSnapshot({ w2: { a1: [0, 0, 0, 8, 300, 1] } }, 1, 1500);
+
     predictor.syncPanel(['wa:w2']);
     expect(predictor.tryFire(restingState(), 1, 2000).w2).toBeDefined();
   });
@@ -245,25 +248,61 @@ describe('ShotPredictor: подавление серверных дублей', 
     expect(predictor.filterServerSnapshot(game, 1, 0)).toBe(game);
   });
 
-  it('своя бомба: создание подавлено, null перенаправлен на локальный id', () => {
+  it('своя бомба: локальная удаляется при подтверждении, серверная становится авторитетной', () => {
     predictor.syncPanel(['wa:w2']);
 
     const spawn = predictor.tryFire(restingState(), 1, 0);
     const localId = Object.keys(spawn.w2)[0];
 
-    // серверное создание с ownerId=1 → подавить + remap
+    const bombData = [0, 0, 0, 8, 300, 1];
+
+    // серверное создание: локальная бомба зачищается, серверная проходит в game
     const created = predictor.filterServerSnapshot(
-      { w2: { a7: [0, 0, 0, 8, 300, 1] } },
+      { w2: { a7: bombData } },
       1,
       100,
     );
 
-    expect(created.w2).toEqual({});
+    expect(created.w2).toEqual({ [localId]: null, a7: bombData });
 
-    // серверное удаление a7 → уходит локальной бомбе
-    const removed = predictor.filterServerSnapshot({ w2: { a7: null } }, 1, 400);
+    // frame 2+: серверная бомба проходит как апдейт (pending пуст)
+    const game2 = { w2: { a7: bombData } };
+    const frame2 = predictor.filterServerSnapshot(game2, 1, 133);
 
-    expect(removed.w2).toEqual({ [localId]: null });
+    expect(frame2).toBe(game2);
+
+    // взрыв: null от сервера проходит напрямую — удаляет серверную сущность
+    const explosion = predictor.filterServerSnapshot({ w2: { a7: null } }, 1, 400);
+
+    expect(explosion.w2).toEqual({ a7: null });
+  });
+
+  it('гейт: вторая бомба блокируется до подтверждения первой сервером', () => {
+    predictor.syncPanel(['wa:w2']);
+
+    predictor.tryFire(restingState(), 1, 0);
+
+    // кулдаун прошёл, но pending не пуст — выстрел блокируется
+    expect(predictor.tryFire(restingState(), 1, 200)).toBeNull();
+
+    // подтверждение сервером — pending очищен
+    predictor.filterServerSnapshot({ w2: { a1: [0, 0, 0, 8, 300, 1] } }, 1, 300);
+
+    // теперь можно снова
+    expect(predictor.tryFire(restingState(), 1, 400)).not.toBeNull();
+  });
+
+  it('истёкший pending (>2с) инжектирует null для локальной бомбы', () => {
+    predictor.syncPanel(['wa:w2']);
+
+    const spawn = predictor.tryFire(restingState(), 1, 0);
+    const localId = Object.keys(spawn.w2)[0];
+
+    // спустя PENDING_MAX_AGE + 1мс: expired bomb → null инъекция
+    const result = predictor.filterServerSnapshot({}, 1, 2001);
+
+    expect(result.w2).toBeDefined();
+    expect(result.w2[localId]).toBeNull();
   });
 
   it('чужая бомба проходит без изменений', () => {
@@ -276,7 +315,7 @@ describe('ShotPredictor: подавление серверных дублей', 
     expect(result.w2).toEqual(game.w2);
   });
 
-  it('reset очищает pending и remap', () => {
+  it('reset очищает pending и expired', () => {
     predictor.tryFire(restingState(), 1, 0);
     predictor.reset();
 

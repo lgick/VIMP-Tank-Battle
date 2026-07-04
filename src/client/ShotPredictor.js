@@ -48,7 +48,7 @@ export default class ShotPredictor {
     // неподтверждённые локальные выстрелы
     this._pendingTracers = []; // [{ time, weaponName }]
     this._pendingBombs = []; // [{ time, weaponName, localId }]
-    this._bombRemap = {}; // serverShotId → localId
+    this._expiredLocalBombs = []; // [{ localId, weaponName }] — истёкшие без подтверждения
     this._localBombSeq = 0;
   }
 
@@ -220,6 +220,11 @@ export default class ShotPredictor {
     }
 
     if (weapon.type === 'explosive') {
+      // следующий выстрел — только после подтверждения предыдущего сервером
+      if (this._pendingBombs.some(p => p.weaponName === weaponName)) {
+        return null;
+      }
+
       this._localBombSeq += 1;
 
       // 'L' не встречается в base36-ключах сервера (строчные символы)
@@ -268,6 +273,15 @@ export default class ShotPredictor {
       }
     };
 
+    // инъекция null для бомб, чьи pending истекли без серверного подтверждения
+    if (this._expiredLocalBombs.length > 0) {
+      for (const { localId, weaponName: wn } of this._expiredLocalBombs) {
+        ensureCopy();
+        result[wn] = result[wn] ? { ...result[wn], [localId]: null } : { [localId]: null };
+      }
+      this._expiredLocalBombs = [];
+    }
+
     for (const weaponName in this._weapons) {
       if (!Object.hasOwn(game, weaponName)) {
         continue;
@@ -298,8 +312,8 @@ export default class ShotPredictor {
         }
       }
 
-      // бомбы: создание своей — подавить и запомнить remap на локальную;
-      // удаление (null) по remap-ключу — перенаправить на локальную бомбу
+      // бомбы: при первом подтверждении своей — локальная L<n> заменяется
+      // серверной сущностью; null от взрыва проходит напрямую
       if (type === 'explosive' && typeof game[weaponName] === 'object') {
         const source = game[weaponName];
         let bombs = null;
@@ -320,15 +334,7 @@ export default class ShotPredictor {
           const data = source[id];
 
           if (data === null) {
-            const localId = this._bombRemap[id];
-
-            if (localId) {
-              ensureBombs();
-              delete bombs[id];
-              bombs[localId] = null;
-              delete this._bombRemap[id];
-            }
-
+            // null от взрыва проходит напрямую — удаляет серверную сущность
             continue;
           }
 
@@ -340,9 +346,9 @@ export default class ShotPredictor {
             if (index !== -1) {
               const [pending] = this._pendingBombs.splice(index, 1);
 
-              this._bombRemap[id] = pending.localId;
+              // локальная бомба уступает место серверной авторитетной сущности
               ensureBombs();
-              delete bombs[id];
+              bombs[pending.localId] = null;
             }
           }
         }
@@ -356,7 +362,7 @@ export default class ShotPredictor {
   reset() {
     this._pendingTracers = [];
     this._pendingBombs = [];
-    this._bombRemap = {};
+    this._expiredLocalBombs = [];
     this._cooldownUntil = {};
     this._ammo = {};
     this._tanks = {};
@@ -464,8 +470,11 @@ export default class ShotPredictor {
       this._pendingTracers.shift();
     }
 
+    // истёкшие бомбы собираются в очередь на null-инъекцию (очищают холст)
     while (this._pendingBombs.length && this._pendingBombs[0].time < minTime) {
-      this._pendingBombs.shift();
+      const expired = this._pendingBombs.shift();
+
+      this._expiredLocalBombs.push({ localId: expired.localId, weaponName: expired.weaponName });
     }
   }
 }
