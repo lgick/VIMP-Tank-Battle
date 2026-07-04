@@ -305,6 +305,18 @@ describe('Game.getEvents', () => {
     expect(game._lastWeaponEffects).toEqual({});
   });
 
+  it('мёржит создание и удаление снаряда в одном тике без потери создания', () => {
+    const game = makeGame();
+    game._activeWeaponKeys.add('w2');
+    game._newShotsData.w2 = { newId: [1, 2, 0, 2, 3000, 42] };
+    game._lastExpiredShotsData = { w2: { oldId: null } };
+
+    const events = game.getEvents();
+
+    expect(events.w2.newId).toBeDefined();
+    expect(events.w2.oldId).toBeNull();
+  });
+
   it('возвращает null при отсутствии событий', () => {
     const game = makeGame();
     expect(game.getEvents()).toBeNull();
@@ -354,9 +366,10 @@ describe('Game: очистка мира и снарядов', () => {
 
     const removed = game.removePlayersAndShots();
 
-    // включает модель игрока (m1), hitscan-оружие (w1) и эффекты (w2e)
+    // включает модель игрока (m1), все оружия (w1, w2) и эффекты (w2e) — всегда
     expect(removed).toContain('m1');
     expect(removed).toContain('w1');
+    expect(removed).toContain('w2');
     expect(removed).toContain('w2e');
     expect(game._playersData).toEqual({});
   });

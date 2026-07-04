@@ -612,12 +612,23 @@ class Game {
     // очистка набора активных оружий для следующего тика
     this._activeWeaponKeys.clear();
 
-    // исчезновение пуль
-    if (Object.keys(this._lastExpiredShotsData).length > 0) {
-      Object.assign(events, this._lastExpiredShotsData);
-      this._lastExpiredShotsData = {};
-      hasEvents = true;
+    // исчезновение пуль: мёрж по id внутри ключа оружия — затирание ключа
+    // целиком теряло бы создание снаряда в том же тике, что истечение другого
+    for (const weaponName in this._lastExpiredShotsData) {
+      if (Object.hasOwn(this._lastExpiredShotsData, weaponName)) {
+        const removals = this._lastExpiredShotsData[weaponName];
+
+        if (events[weaponName]) {
+          Object.assign(events[weaponName], removals);
+        } else {
+          events[weaponName] = removals;
+        }
+
+        hasEvents = true;
+      }
     }
+
+    this._lastExpiredShotsData = {};
 
     // эффекты взрывов
     if (Object.keys(this._lastWeaponEffects).length > 0) {
@@ -719,12 +730,15 @@ class Game {
     return shot;
   }
 
-  // удаляет данные игроков и пуль и возвращает список удалённых имён
+  // удаляет данные игроков и пуль и возвращает список удалённых имён;
+  // все ключи оружий включаются всегда — клиент должен чистить и те,
+  // по которым на сервере не было живых снарядов (zombie-prediction)
   removePlayersAndShots() {
+    this._removeShots();
+
     return [
       ...this._removePlayers(),
-      ...this._removeShots(),
-      ...Object.keys(this._hitscanWeapons),
+      ...Object.keys(this._weapons),
       ...this._weaponEffectList,
     ];
   }
