@@ -10,6 +10,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 VIMP Tank Battle — a multiplayer 2D real-time online tank game. The server runs an authoritative physics loop; clients render via PixiJS and communicate over WebSocket.
 
+## Documentation
+
+Пользовательская документация проекта — многостраничный `docs/` (на русском, оглавление в `docs/README.md`):
+
+- `docs/getting-started.md` — локальная настройка, запуск, тесты
+- `docs/architecture.md` — обзорная архитектура, игровой цикл, жизненный цикл соединения
+- `docs/gameplay.md` — правила игры: раунды, статистика, голосования, чат-команды, управление, боты
+- `docs/server.md` — серверные модули (VIMP, менеджеры, Game/Rapier, parts, боты, инфраструктура)
+- `docs/client.md` — клиентские модули (MVC, интерполяция, prediction, рендер, звук)
+- `docs/network.md` — WS-протокол: порты, бинарный snapshot, форматы данных, RTT
+- `docs/configuration.md` — `.env`, все `src/config/*`, `src/data/*`
+- `docs/extending.md` — добавление карт, оружия, звуков, клиентских сущностей
+- `docs/deployment.md` — развертывание VPS + CI/CD (перенесено из `.github/deployment/README.md`, там осталась ссылка)
+
+**СТРОГОЕ ПРАВИЛО актуализации**: при изменении функционала обновлять соответствующие страницы `docs/` в том же изменении. Соответствие «что менялось → что править»:
+
+| Изменение | Страница docs/ |
+| --- | --- |
+| порты, бинарный формат кадра, кодек, форматы меты | `network.md` |
+| конфиги `src/config/*`, env-переменные, `src/data/*` (баланс) | `configuration.md` |
+| серверные модули/менеджеры/parts | `server.md` |
+| клиентские модули/parts/предикторы | `client.md` |
+| правила игры (раунды, статистика, голосования, команды чата, управление) | `gameplay.md` |
+| новые карты/оружие/звуки — если изменился сам процесс добавления | `extending.md` |
+| скрипты деплоя, workflows, npm-скрипты | `deployment.md`, `getting-started.md` |
+
+Корневой `README.md` — краткая витрина со ссылками на `docs/`; детали туда не добавлять.
+
 ## Commands
 
 ```bash
