@@ -50,6 +50,15 @@ export default class ShotPredictor {
     this._pendingBombs = []; // [{ time, weaponName, localId }]
     this._expiredLocalBombs = []; // [{ localId, weaponName }] — истёкшие без подтверждения
     this._localBombSeq = 0;
+
+    // оценка (serverTime − localNow) из SnapshotInterpolator; используется
+    // для RTT-компенсации позиции бомбы при спавне
+    this._serverOffset = null;
+  }
+
+  // обновляет оценку задержки сети (вызывается из рендер-тика)
+  setServerOffset(offset) {
+    this._serverOffset = offset;
   }
 
   // модель танка пользователя (известна при авторизации)
@@ -232,11 +241,22 @@ export default class ShotPredictor {
 
       this._pendingBombs.push({ time: localNow, weaponName, localId });
 
+      // RTT/2-компенсация: экстраполируем позицию на время до обработки сервером
+      let spawnX = renderState.x;
+      let spawnY = renderState.y;
+
+      if (this._serverOffset !== null) {
+        const lagMs = -this._serverOffset;
+
+        spawnX += (renderState.vx || 0) * (lagMs / 1000);
+        spawnY += (renderState.vy || 0) * (lagMs / 1000);
+      }
+
       return {
         [weaponName]: {
           [localId]: [
-            renderState.x,
-            renderState.y,
+            spawnX,
+            spawnY,
             0,
             weapon.size,
             weapon.time,

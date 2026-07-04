@@ -214,6 +214,31 @@ describe('ShotPredictor: бомба (w2)', () => {
     expect(localId).toMatch(/^L\d+$/);
     expect(params).toEqual([42, -17, 0, 8, 300, 3]);
   });
+
+  it('RTT-компенсация: позиция экстраполируется на lagMs = −offset', () => {
+    predictor.syncPanel(['wa:w2']);
+    predictor.setServerOffset(-200); // RTT/2 ≈ 200ms
+
+    // танк едет вправо со скоростью 100 юн/с
+    const state = { x: 0, y: 0, vx: 100, vy: 0, angle: 0, gunRotation: 0 };
+    const { w2 } = predictor.tryFire(state, 1, 0);
+    const [, params] = Object.entries(w2)[0];
+
+    // spawnX = 0 + 100 × (200/1000) = 20
+    expect(params[0]).toBeCloseTo(20);
+    expect(params[1]).toBeCloseTo(0);
+  });
+
+  it('без serverOffset позиция не компенсируется', () => {
+    predictor.syncPanel(['wa:w2']);
+
+    const state = { x: 10, y: 20, vx: 100, vy: 50, angle: 0, gunRotation: 0 };
+    const { w2 } = predictor.tryFire(state, 1, 0);
+    const [, params] = Object.entries(w2)[0];
+
+    expect(params[0]).toBe(10);
+    expect(params[1]).toBe(20);
+  });
 });
 
 describe('ShotPredictor: подавление серверных дублей', () => {
