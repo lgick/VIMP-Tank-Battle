@@ -1,8 +1,8 @@
 # Развертывание серверов
 
-Гайд по подготовке чистого VPS, настройке окружения и запуску игровых инстансов через CI/CD GitHub Actions. Скрипты установки лежат в [.github/deployment/](../.github/deployment/).
+Гайд по подготовке чистого VPS, настройке окружения и запуску игровых инстансов через CI/CD GitHub Actions. Скрипты установки лежат в [.github/deployment/](../../.github/deployment/).
 
-**Как это работает**: пуш в `main` → [.github/workflows/deploy.yml](../.github/workflows/deploy.yml) собирает Docker-образ и публикует его в GHCR → по SSH заходит на каждый сервер из `SERVERS_MATRIX`, генерирует `.env` и перезапускает контейнер `vimp-<domain>`. На VPS Nginx терминирует HTTPS и проксирует на порт приложения.
+**Как это работает**: пуш в `main` → [.github/workflows/deploy.yml](../../.github/workflows/deploy.yml) собирает Docker-образ и публикует его в GHCR → по SSH заходит на каждый сервер из `SERVERS_MATRIX`, генерирует `.env` и перезапускает контейнер `vimp-<domain>`. На VPS Nginx терминирует HTTPS и проксирует на порт приложения.
 
 ## 📋 Предварительные требования
 

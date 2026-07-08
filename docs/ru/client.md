@@ -1,6 +1,6 @@
 # Клиентские модули и системы
 
-Клиент — браузерное приложение на PixiJS (сборка Vite, шаблоны Pug в [src/client/views/](../src/client/views/)). Точка входа — [src/client/main.js](../src/client/main.js).
+Клиент — браузерное приложение на PixiJS (сборка Vite, шаблоны Pug в [src/client/views/](../../src/client/views/)). Точка входа — [src/client/main.js](../../src/client/main.js).
 
 ## main.js — диспетчер и рендер-цикл
 
@@ -18,7 +18,7 @@ Publisher-паттерн связей внутри тройки:
 
 - `main.js` или `view` → методы `controller` вызываются **напрямую**;
 - `controller` → методы `model` вызываются **напрямую**;
-- `model` → `view` — **через `Publisher`** ([src/lib/Publisher.js](../src/lib/Publisher.js)): модель публикует событие, view подписана; на модель могут подписываться и внешние подписчики.
+- `model` → `view` — **через `Publisher`** ([src/lib/Publisher.js](../../src/lib/Publisher.js)): модель публикует событие, view подписана; на модель могут подписываться и внешние подписчики.
 
 Назначение компонентов:
 
@@ -35,15 +35,15 @@ Publisher-паттерн связей внутри тройки:
 
 ### SnapshotInterpolator
 
-[src/client/SnapshotInterpolator.js](../src/client/SnapshotInterpolator.js) — кадры порта 5 не применяются немедленно, а буферизуются; мир рендерится в прошлом:
+[src/client/SnapshotInterpolator.js](../../src/client/SnapshotInterpolator.js) — кадры порта 5 не применяются немедленно, а буферизуются; мир рендерится в прошлом:
 
 - серверное время оценивается EMA-оффсетом (`serverTime − localNow`), `renderTime = serverNow − delay` (конфиг `interpolation.delay: 100` мс);
-- `sample()` выдаёт пересечённые `renderTime` кадры **целиком ровно один раз** (события `w1`/`w2e`, создания/удаления, reset/shake камеры), а непрерывные величины интерполирует между соседними кадрами: танки `m1` (x/y/vx/vy/engineLoad — `lerp`, углы — `lerpAngle` из [src/lib/math.js](../src/lib/math.js)), динамика карты `c1`/`c2`, камера;
+- `sample()` выдаёт пересечённые `renderTime` кадры **целиком ровно один раз** (события `w1`/`w2e`, создания/удаления, reset/shake камеры), а непрерывные величины интерполирует между соседними кадрами: танки `m1` (x/y/vx/vy/engineLoad — `lerp`, углы — `lerpAngle` из [src/lib/math.js](../../src/lib/math.js)), динамика карты `c1`/`c2`, камера;
 - классификация ключей — по `kind` из `SNAPSHOT_KEYS` (`opcodes.js`); экстраполяции нет — hold на последнем кадре; буфер сбрасывается при смене карты и `CLEAR`.
 
 ### TankPredictor
 
-[src/client/TankPredictor.js](../src/client/TankPredictor.js) — client-side prediction своего танка:
+[src/client/TankPredictor.js](../../src/client/TankPredictor.js) — client-side prediction своего танка:
 
 - локальная реплика серверной модели движения (`Tank.updateData` без Rapier-коллизий) фикс-шагом `timeStep`; параметры реплики приходят в конфиге порта 0 (`prediction`: timeStep/playerKeys/models/weapons);
 - ввод пишется в локальную историю (`{time, keysMask, oneShotMask}`) и уходит на сервер как `"seq:action:name"`;
@@ -55,11 +55,11 @@ Publisher-паттерн связей внутри тройки:
 
 ### ShotPredictor
 
-[src/client/ShotPredictor.js](../src/client/ShotPredictor.js) — немедленный визуальный спавн снарядов своего танка:
+[src/client/ShotPredictor.js](../../src/client/ShotPredictor.js) — немедленный визуальный спавн снарядов своего танка:
 
 - при нажатии fire трассер (`w1`) и бомба (`w2`) спавнятся сразу (вместе со звуком); физика, урон и взрыв (`w2e`) — серверные;
 - `tryFire` реплицирует серверный гейт: кулдаун `fireRate`, патроны из панели, активное оружие (локальный цикл `nextWeapon`/`prevWeapon` + авторитетный `'wa'`), формулы `Tank.getMuzzlePosition`/`getFireDirection`;
-- конечная точка трассера — приближённый raycast ([src/lib/raycast.js](../src/lib/raycast.js)): `rayVsGrid` (DDA по тайлам стен) + `rayVsBox` (динамика карты и танки) по интерполированным позициям;
+- конечная точка трассера — приближённый raycast ([src/lib/raycast.js](../../src/lib/raycast.js)): `rayVsGrid` (DDA по тайлам стен) + `rayVsBox` (динамика карты и танки) по интерполированным позициям;
 - **гейт для бомбы**: следующий выстрел типа `explosive` разрешается только после подтверждения предыдущего сервером — исключает FIFO-рассинхрон при высоком RTT;
 - **RTT-компенсация позиции**: при спавне бомбы локальная позиция экстраполируется на `velocity × (RTT/2)` (оценка из `interpolator.offset`), чтобы совпасть с серверной позицией в момент обработки команды;
 - **подавление серверных дублей** (`filterServerSnapshot`) по id автора в данных события (`tracers[7]`, `bombs[5]`): свои трассеры — FIFO pending-очередь с таймаутом 2 с; своя бомба — при подтверждении локальная сущность (`L<n>`) убирается, серверная становится авторитетной (локальный ключ `L<n>` не пересекается с base36-ключами сервера).
@@ -68,29 +68,29 @@ Publisher-паттерн связей внутри тройки:
 
 ### parts/ — сущности
 
-[src/client/parts/](../src/client/parts/) — классы, отрисовываемые на PixiJS-полотнах: `Tank` (один класс и для своего, и для чужих танков), `TankRadar`, `Map`, `MapRadar`, `Bomb`, `Smoke`, `Tracks` (+`TrackMark`), `ParticlePool`. Эффекты — в `parts/effects/` (`BaseEffect`, `explosion/` — взрыв/воронка/дым, `shot/` — трассер/попадание), анимируются на `Ticker.shared`.
+[src/client/parts/](../../src/client/parts/) — классы, отрисовываемые на PixiJS-полотнах: `Tank` (один класс и для своего, и для чужих танков), `TankRadar`, `Map`, `MapRadar`, `Bomb`, `Smoke`, `Tracks` (+`TrackMark`), `ParticlePool`. Эффекты — в `parts/effects/` (`BaseEffect`, `explosion/` — взрыв/воронка/дым, `shot/` — трассер/попадание), анимируются на `Ticker.shared`.
 
 Соответствие снапшот-ключей классам и распределение по полотнам — `gameSets`/`entitiesOnCanvas` в `client.js`. Фиксированного контракта у part нет — при создании новой смотреть существующие как образец.
 
 ### Factory
 
-[src/lib/factory.js](../src/lib/factory.js) — реестр имя сущности → класс. `GameCtrl.parse(name, data)` по входным данным создаёт экземпляр, вызывает `update(data)` существующего или удаляет (`null`).
+[src/lib/factory.js](../../src/lib/factory.js) — реестр имя сущности → класс. `GameCtrl.parse(name, data)` по входным данным создаёт экземпляр, вызывает `update(data)` существующего или удаляет (`null`).
 
 ### Провайдеры
 
-- **`BakingProvider`** ([providers/BakingProvider.js](../src/client/providers/BakingProvider.js)) — однократная генерация процедурных текстур при старте по конфигу `bakedAssets`; функции запекания — в [providers/bakers/](../src/client/providers/bakers/) (фиксированного интерфейса нет, ориентироваться на существующие).
+- **`BakingProvider`** ([providers/BakingProvider.js](../../src/client/providers/BakingProvider.js)) — однократная генерация процедурных текстур при старте по конфигу `bakedAssets`; функции запекания — в [providers/bakers/](../../src/client/providers/bakers/) (фиксированного интерфейса нет, ориентироваться на существующие).
 - **`DependencyProvider`** — инъекция сервисов (`renderer`, `soundManager`) в компоненты по карте `componentDependencies`.
 
 ## SoundManager
 
-[src/client/SoundManager.js](../src/client/SoundManager.js) (на Howler.js). Звуки описаны в `src/config/sounds.js`.
+[src/client/SoundManager.js](../../src/client/SoundManager.js) (на Howler.js). Звуки описаны в `src/config/sounds.js`.
 
 - **UI/системные** (без позиции): `playSystemSound(name)` — немедленно, в обход приоритетов (используется и для звуков порта 6).
 - **Пространственные** (позиция в мире): `registerSound(name, { position })` → `processAudibility()` → `updateActiveSounds()` — менеджер сам решает, что слышно, соблюдая лимит голосов (`WORLD_VOICE_LIMIT = 30`) и приоритеты из конфига.
 
 ## InputListener
 
-[src/client/InputListener.js](../src/client/InputListener.js) — низкоуровневый перехват keydown/keyup для Controls; `modes`/`cmds` имеют приоритет над игровым набором клавиш.
+[src/client/InputListener.js](../../src/client/InputListener.js) — низкоуровневый перехват keydown/keyup для Controls; `modes`/`cmds` имеют приоритет над игровым набором клавиш.
 
 ## Иерархия UI (z-index)
 

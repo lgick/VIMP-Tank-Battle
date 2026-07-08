@@ -2,8 +2,8 @@
 
 Клиент и сервер общаются по одному WebSocket-соединению. Используются два формата сообщений:
 
-- **JSON**: `[portId, payload]` — все каналы, кроме снапшота. `portId` — числовой id из [src/config/wsports.js](../src/config/wsports.js) (источник истины).
-- **Бинарный**: кадр игрового снапшота (порт `5`, SHOT_DATA) — `ArrayBuffer`, упакованный кодеком [src/lib/snapshotCodec.js](../src/lib/snapshotCodec.js).
+- **JSON**: `[portId, payload]` — все каналы, кроме снапшота. `portId` — числовой id из [src/config/wsports.js](../../src/config/wsports.js) (источник истины).
+- **Бинарный**: кадр игрового снапшота (порт `5`, SHOT_DATA) — `ArrayBuffer`, упакованный кодеком [src/lib/snapshotCodec.js](../../src/lib/snapshotCodec.js).
 
 Клиент различает форматы по типу `e.data` в `ws.onmessage`: строка → JSON-диспетчер `socketMethods[portId]`, `ArrayBuffer` → `unpackFrame` → буфер интерполятора.
 
@@ -46,7 +46,7 @@
 | 7 | `VOTE_DATA` | Ответ голосования `[voteName, value]` или запрос списка (`'maps'`, `'teams'`) |
 | 8 | `PONG` | Ответ на PING (id пинга) |
 
-Сервер включает обработку клиентских портов поэтапно ([src/server/socket/index.js](../src/server/socket/index.js)): до авторизации активен только `CONFIG_READY`, после — `AUTH_RESPONSE`, после создания пользователя — остальные. Сообщение на неактивный порт игнорируется.
+Сервер включает обработку клиентских портов поэтапно ([src/server/socket/index.js](../../src/server/socket/index.js)): до авторизации активен только `CONFIG_READY`, после — `AUTH_RESPONSE`, после создания пользователя — остальные. Сообщение на неактивный порт игнорируется.
 
 ## Жизненный цикл соединения
 
@@ -69,7 +69,7 @@ connect → origin-проверка (security.origin)
 
 ## Разделение каналов: горячий снапшот и мета
 
-Каждый тик снапшота (`networkSendRate: 4` → 30 пакетов/сек) сервер шлёт **всем готовым** пользователям бинарный кадр порта `5`. Мета-данные идут **своими JSON-каналами и только при изменении** (см. `VIMP._onShotTick` в [src/server/modules/VIMP.js](../src/server/modules/VIMP.js)):
+Каждый тик снапшота (`networkSendRate: 4` → 30 пакетов/сек) сервер шлёт **всем готовым** пользователям бинарный кадр порта `5`. Мета-данные идут **своими JSON-каналами и только при изменении** (см. `VIMP._onShotTick` в [src/server/modules/VIMP.js](../../src/server/modules/VIMP.js)):
 
 - **panel (13)** — per-user; массив строк `'ключ:значение'` (`t` — время раунда, `h` — здоровье, `w1`/`w2` — боезапас, `wa` — активное оружие). Полная панель шлётся при входе в игру, пустая (только ключи) — наблюдателю.
 - **stat (14)** — broadcast, дельта изменений (см. формат ниже).
@@ -79,7 +79,7 @@ connect → origin-проверка (security.origin)
 
 ## Бинарный snapshot-кадр (порт 5)
 
-Кодек: [src/lib/snapshotCodec.js](../src/lib/snapshotCodec.js) (`SnapshotPacker` на сервере, `unpackFrame` на клиенте). Реестр ключей и версия формата: [src/config/opcodes.js](../src/config/opcodes.js) (`SNAPSHOT_FORMAT_VERSION = 3`). `DataView`, big-endian, ручной block-layout без библиотек. При несовпадении версии клиент отбрасывает кадр.
+Кодек: [src/lib/snapshotCodec.js](../../src/lib/snapshotCodec.js) (`SnapshotPacker` на сервере, `unpackFrame` на клиенте). Реестр ключей и версия формата: [src/config/opcodes.js](../../src/config/opcodes.js) (`SNAPSHOT_FORMAT_VERSION = 3`). `DataView`, big-endian, ручной block-layout без библиотек. При несовпадении версии клиент отбрасывает кадр.
 
 Сервер пакует **тело** (broadcast-часть) один раз за тик (`packBody`), затем для каждого пользователя собирает кадр `packFrame` = персональный заголовок + копия тела.
 
@@ -127,7 +127,7 @@ connect → origin-проверка (security.origin)
 
 ## RTT (ping/pong) и кики
 
-`TimerManager` каждые `rttPingInterval` (3 c) рассылает `PING` (порт 10) с id; клиент отвечает `PONG` (порт 8). [RTTManager](../src/server/modules/RTTManager.js) считает задержку, публикует её в статистику (столбец `latency`) и кикает:
+`TimerManager` каждые `rttPingInterval` (3 c) рассылает `PING` (порт 10) с id; клиент отвечает `PONG` (порт 8). [RTTManager](../../src/server/modules/RTTManager.js) считает задержку, публикует её в статистику (столбец `latency`) и кикает:
 
 - при `latency > maxLatency` (300 мс) — код `4003`;
 - при `maxMissedPings` (5) подряд пропущенных ответах — код `4004`.
@@ -140,7 +140,7 @@ connect → origin-проверка (security.origin)
 
 ### Статистика (порт 14)
 
-`statArray = [tBodies, tHead, fullUpdate?]` (формирует [src/server/modules/Stat.js](../src/server/modules/Stat.js)):
+`statArray = [tBodies, tHead, fullUpdate?]` (формирует [src/server/modules/Stat.js](../../src/server/modules/Stat.js)):
 
 - **`statArray[0]`** — строки таблиц: `[id строки, номер таблицы, массив ячеек | null, номер tbody]`. `null` вместо ячеек — удалить строку; пустая строка в ячейке — очистить значение; `undefined`/пропуск — не менять.
 - **`statArray[1]`** — шапки: `[номер таблицы, массив ячеек, номер строки tHead]`.

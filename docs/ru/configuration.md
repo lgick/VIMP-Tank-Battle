@@ -6,11 +6,11 @@
 2. **`src/config/`** — общие конфиги, используемые и сервером (Node.js), и клиентом (Vite-бандл).
 3. **`src/data/`** — статические игровые данные: карты, модели, оружие.
 
-На сервере конфиги собираются в единое хранилище `src/lib/config.js` (доступ по пути с двоеточием, например `config.get('game:timers:roundTime')`) в [src/server/main.js](../src/server/main.js). Клиент получает свой конфиг (`client`) по WebSocket при подключении (порт `0`).
+На сервере конфиги собираются в единое хранилище `src/lib/config.js` (доступ по пути с двоеточием, например `config.get('game:timers:roundTime')`) в [src/server/main.js](../../src/server/main.js). Клиент получает свой конфиг (`client`) по WebSocket при подключении (порт `0`).
 
 ## Переменные окружения (.env)
 
-Читаются в [src/server/main.js](../src/server/main.js) при `NODE_ENV=production` (запуск `npm start` использует `node --env-file .env`). В режиме разработки игнорируются — действуют значения из `src/config/`.
+Читаются в [src/server/main.js](../../src/server/main.js) при `NODE_ENV=production` (запуск `npm start` использует `node --env-file .env`). В режиме разработки игнорируются — действуют значения из `src/config/`.
 
 | Переменная | Назначение | По умолчанию |
 | --- | --- | --- |
@@ -27,7 +27,7 @@
 
 ## src/config/game.js — серверные игровые параметры
 
-Источник: [src/config/game.js](../src/config/game.js). Импортирует карты, модели и оружие из `src/data/`.
+Источник: [src/config/game.js](../../src/config/game.js). Импортирует карты, модели и оружие из `src/data/`.
 
 ### Основные параметры
 
@@ -104,10 +104,10 @@
 
 ## src/config/client.js — конфиг клиента
 
-Источник: [src/config/client.js](../src/config/client.js). Отправляется клиенту при подключении. Перед отправкой сервер дописывает в него:
+Источник: [src/config/client.js](../../src/config/client.js). Отправляется клиенту при подключении. Перед отправкой сервер дописывает в него:
 
 - `modules.vote.params.time` = `game:timers:voteTime`;
-- `prediction` — данные для клиентской реплики движения и стрельбы (`timeStep`, `playerKeys`, `models`, `weapons`) — собирается в [src/server/main.js](../src/server/main.js).
+- `prediction` — данные для клиентской реплики движения и стрельбы (`timeStep`, `playerKeys`, `models`, `weapons`) — собирается в [src/server/main.js](../../src/server/main.js).
 
 ### `parts` — игровые сущности
 
@@ -178,7 +178,7 @@
 
 ## src/config/auth.js
 
-Форма авторизации: id DOM-элементов (`elems`) и параметры формы (`params`). Каждый параметр: `name`, значение по умолчанию, `validator` (функция из [src/lib/validators.js](../src/lib/validators.js): `isValidName`, `isValidModel`) и ключ `storage` для localStorage. Валидация выполняется и на клиенте, и повторно на сервере.
+Форма авторизации: id DOM-элементов (`elems`) и параметры формы (`params`). Каждый параметр: `name`, значение по умолчанию, `validator` (функция из [src/lib/validators.js](../../src/lib/validators.js): `isValidName`, `isValidModel`) и ключ `storage` для localStorage. Валидация выполняется и на клиенте, и повторно на сервере.
 
 ## src/config/sounds.js
 
@@ -193,13 +193,13 @@
 
 ### models.js
 
-Единственная модель — танк `m1` ([src/data/models.js](../src/data/models.js)): конструктор `Tank`, стартовое оружие `w1`, размер (`size: 2`, габариты `size×4 : size×3`), параметры движения (ускорение/торможение, `maxForwardSpeed: 260`, `maxReverseSpeed: −130`, поворотный момент, демпфирование, боковое сцепление), физика (`density`, `friction`, `restitution`), «манера вождения» (пороги и скорости газа/поворота) и башня (`maxGunAngle: 1.4` рад, скорости поворота/центрирования).
+Единственная модель — танк `m1` ([src/data/models.js](../../src/data/models.js)): конструктор `Tank`, стартовое оружие `w1`, размер (`size: 2`, габариты `size×4 : size×3`), параметры движения (ускорение/торможение, `maxForwardSpeed: 260`, `maxReverseSpeed: −130`, поворотный момент, демпфирование, боковое сцепление), физика (`density`, `friction`, `restitution`), «манера вождения» (пороги и скорости газа/поворота) и башня (`maxGunAngle: 1.4` рад, скорости поворота/центрирования).
 
 > ⚠️ Коэффициенты `models.js` используются и сервером, и клиентской репликой движения (`TankPredictor`). Их изменение проверяется паритет-тестом `tests/server/TankPredictorParity.test.js`.
 
 ### weapons.js
 
-Два архитектурно разных типа оружия ([src/data/weapons.js](../src/data/weapons.js)):
+Два архитектурно разных типа оружия ([src/data/weapons.js](../../src/data/weapons.js)):
 
 | | `w1` (пуля) | `w2` (бомба) |
 | --- | --- | --- |
@@ -212,4 +212,4 @@
 
 ### maps/
 
-Три карты: `pool mini` (малая), `canopy`, `garden`. Каждая описывает слои тайлов (`layers`, `tiles`), точки респауна (`respawns`), статическую (`physicsStatic`) и динамическую (`physicsDynamic`) физику. Регистрация — в [src/data/maps/index.js](../src/data/maps/index.js). Как добавить карту — см. [extending.md](extending.md#новая-карта).
+Три карты: `pool mini` (малая), `canopy`, `garden`. Каждая описывает слои тайлов (`layers`, `tiles`), точки респауна (`respawns`), статическую (`physicsStatic`) и динамическую (`physicsDynamic`) физику. Регистрация — в [src/data/maps/index.js](../../src/data/maps/index.js). Как добавить карту — см. [extending.md](extending.md#новая-карта).

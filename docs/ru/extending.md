@@ -4,7 +4,7 @@
 
 ## Новая карта
 
-1. Создайте `src/data/maps/<имя>.js` по образцу существующих (например [pool_mini.js](../src/data/maps/pool_mini.js)). Формат:
+1. Создайте `src/data/maps/<имя>.js` по образцу существующих (например [pool_mini.js](../../src/data/maps/pool_mini.js)). Формат:
    - `setId` — snapshot-ключ конструктора карты (`c1`/`c2`);
    - `scale` — масштаб карты;
    - `spriteSheet` — изображение тайлов и кадры `[x, y, w, h]`;
@@ -14,7 +14,7 @@
    - `step` — размер тайла;
    - `respawns` — точки возрождения по командам: массивы `[x, y, угол]`;
    - `map` — матрица тайлов.
-2. Зарегистрируйте карту в [src/data/maps/index.js](../src/data/maps/index.js) — ключ объекта станет названием в голосованиях и для `VIMP_MAP`.
+2. Зарегистрируйте карту в [src/data/maps/index.js](../../src/data/maps/index.js) — ключ объекта станет названием в голосованиях и для `VIMP_MAP`.
 
 ## Новое оружие
 
@@ -25,17 +25,17 @@
 
 Шаги:
 
-1. Определите оружие в [src/data/weapons.js](../src/data/weapons.js) (тип, урон, кулдаун, расход и т.д.).
+1. Определите оружие в [src/data/weapons.js](../../src/data/weapons.js) (тип, урон, кулдаун, расход и т.д.).
 2. Реализуйте серверную часть в `src/server/parts/` по аналогии с существующим оружием того же типа.
 3. Создайте клиентский рендеринг в `src/client/parts/`.
 4. Зарегистрируйте сущность в `src/config/client.js`: `parts.gameSets` (snapshot-ключ → классы) и `parts.entitiesOnCanvas` (класс → полотно).
-5. Зарегистрируйте snapshot-ключи оружия (и его эффектов) в `SNAPSHOT_KEYS` в [src/config/opcodes.js](../src/config/opcodes.js) — незарегистрированный ключ уронит упаковку кадра (`SnapshotPacker.packBody` бросает ошибку). Если существующие `kind` не подходят под формат данных — добавьте новую раскладку блока в [src/lib/snapshotCodec.js](../src/lib/snapshotCodec.js) и поднимите версию формата.
+5. Зарегистрируйте snapshot-ключи оружия (и его эффектов) в `SNAPSHOT_KEYS` в [src/config/opcodes.js](../../src/config/opcodes.js) — незарегистрированный ключ уронит упаковку кадра (`SnapshotPacker.packBody` бросает ошибку). Если существующие `kind` не подходят под формат данных — добавьте новую раскладку блока в [src/lib/snapshotCodec.js](../../src/lib/snapshotCodec.js) и поднимите версию формата.
 6. Последним элементом данных события/сущности передавайте **id автора** (как `shooterId` у `w1` и `ownerId` у `w2`) — по нему `ShotPredictor` подавляет серверные дубли клиентского спавна; типы `hitscan`/`explosive` он поддерживает автоматически по конфигу оружия.
 7. Добавьте боезапас в `game.js` (`panel`) и ключ панели в `client.js` (`modules.panel`).
 
 ## Новый звук
 
-1. Добавьте запись в [src/config/sounds.js](../src/config/sounds.js): `file`, `priority`, `volume`, опционально `loop`.
+1. Добавьте запись в [src/config/sounds.js](../../src/config/sounds.js): `file`, `priority`, `volume`, опционально `loop`.
 2. Положите аудиофайл в `public/sounds/` в форматах **`.webm` и `.mp3`** (список кодеков — `codecList`).
 3. Воспроизведение: UI/системные — `soundManager.playSystemSound(name)`; пространственные — `registerSound(name, { position })` (лимит голосов и приоритеты соблюдает `SoundManager`, см. [client.md](client.md#soundmanager)).
 
