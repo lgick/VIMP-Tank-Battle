@@ -13,6 +13,15 @@ const FUNNEL_BASE_ALPHA = 0.225;
 // разброс размера воронок относительно базового
 const FUNNEL_SIZE_JITTER = 0.15;
 
+// времена жизни следа и его фаз
+const FUNNEL_DURATION_MS = 20000;
+// проявление: воронка поднимается вместе со вспышкой и под ней же,
+// поэтому фаза короткая - она снимает щелчок, а не читается как анимация
+// 0 - проявление мгновенное
+const FUNNEL_FADE_IN_DURATION_MS = 50;
+const FUNNEL_FADE_DURATION_MS = 4000; // затухание
+const SMOKE_DURATION_MS = 4000; // время дыма
+
 export default class FunnelEffect extends BaseEffect {
   constructor(x, y, radius, onComplete, assets) {
     super(onComplete);
@@ -21,11 +30,11 @@ export default class FunnelEffect extends BaseEffect {
     this._radius = radius;
     this.x = x;
     this.y = y;
-    this._funnelDurationMs = 20000;
-    this._funnelFadeInDurationMs = 50; // проявление
-    this._funnelFadeDurationMs = 4000; // затухание
+    this._funnelDurationMs = FUNNEL_DURATION_MS;
+    this._funnelFadeInDurationMs = FUNNEL_FADE_IN_DURATION_MS;
+    this._funnelFadeDurationMs = FUNNEL_FADE_DURATION_MS;
     this._elapsedMs = 0;
-    this._smokeDurationMs = 4000; // время дыма
+    this._smokeDurationMs = SMOKE_DURATION_MS;
     this._smokeSpawningStopped = false;
 
     this._funnel = this._createFunnelSprite();
@@ -86,8 +95,12 @@ export default class FunnelEffect extends BaseEffect {
 
     const timeLeft = this._funnelDurationMs - this._elapsedMs;
 
-    // воронка проступает после взрыва и затухает к концу жизни
-    const fadeIn = this._elapsedMs / this._funnelFadeInDurationMs;
+    // воронка проступает со вспышкой и затухает к концу жизни
+    // нулевое проявление - деления нет, воронка видна сразу
+    const fadeIn =
+      this._funnelFadeInDurationMs > 0
+        ? this._elapsedMs / this._funnelFadeInDurationMs
+        : 1;
     const fadeOut = timeLeft / this._funnelFadeDurationMs;
 
     this._funnel.alpha =

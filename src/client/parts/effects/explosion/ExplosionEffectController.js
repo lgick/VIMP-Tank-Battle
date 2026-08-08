@@ -21,6 +21,7 @@ export default class ExplosionEffectController extends Container {
 
     this.explosion = null;
     this.funnel = null;
+    this._isStarted = false;
     this._isDestroyed = false;
 
     this._soundId = this._soundManager.registerSound('explosion', {
@@ -31,8 +32,21 @@ export default class ExplosionEffectController extends Container {
     });
   }
 
+  // вспышка и воронка с дымом поднимаются вместе: воронка живёт много дольше
+  // вспышки, и именно её завершение уничтожает контроллер
   run() {
-    if (this._isDestroyed) {
+    // повторный run поднял бы вторую пару эффектов поверх первой,
+    // потеряв ссылки на неё: старая пара осталась бы на сцене и в тикере
+    if (this._isDestroyed || this._isStarted) {
+      return;
+    }
+
+    this._isStarted = true;
+
+    // сцену очистили до старта - поднимать эффекты некуда, а ждать нечего:
+    // уничтожает контроллер только завершение воронки, которой не будет
+    if (!this.parent) {
+      this.destroy();
       return;
     }
 
@@ -40,30 +54,11 @@ export default class ExplosionEffectController extends Container {
       this.originX,
       this.originY,
       this.radius,
-      this._onExplosionBurnout.bind(this),
       this._onExplosionComplete.bind(this),
       this._assets,
     );
 
     this.explosion.zIndex = 4;
-    this.parent.addChild(this.explosion);
-    this.parent.sortChildren();
-
-    this.explosion.run();
-  }
-
-  // огонь отгорел: воронка с дымом поднимаются, пока вспышка догорает
-  _onExplosionBurnout() {
-    if (this._isDestroyed) {
-      return;
-    }
-
-    // сцену очистили между вспышкой и воронкой - ждать больше нечего,
-    // а уничтожает контроллер только завершение воронки
-    if (!this.parent) {
-      this.destroy();
-      return;
-    }
 
     this.funnel = new FunnelEffect(
       this.originX,
@@ -74,11 +69,13 @@ export default class ExplosionEffectController extends Container {
     );
 
     this.funnel.zIndex = 2;
-    this.parent.addChild(this.funnel);
 
-    // воронка добавляется вне GameView.add - порядок слоёв пересчитывается тут
+    // эффекты добавляются вне GameView.add - порядок слоёв пересчитывается тут,
+    // одной сортировкой на оба
+    this.parent.addChild(this.explosion, this.funnel);
     this.parent.sortChildren();
 
+    this.explosion.run();
     this.funnel.run();
   }
 

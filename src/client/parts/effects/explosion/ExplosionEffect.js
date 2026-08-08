@@ -1,12 +1,8 @@
 import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
 
-// доля анимации, после которой поднимается воронка с дымом:
-// 0 - сразу со вспышкой (стартовый _update(0) в BaseEffect.run)
-const BURNOUT_PROGRESS = 0;
-
 export default class ExplosionEffect extends BaseEffect {
-  constructor(x, y, radius, onBurnout, onComplete, assets) {
+  constructor(x, y, radius, onComplete, assets) {
     super(onComplete); // конструктор BaseEffect
 
     // ассет взрыва: текстура + диаметр нарисованного круга
@@ -15,9 +11,6 @@ export default class ExplosionEffect extends BaseEffect {
     this.x = x;
     this.y = y;
     this._radius = radius;
-
-    this.onBurnout = onBurnout;
-    this._burnoutFired = false;
 
     this._durationMs = 1500;
     this._elapsedMs = 0;
@@ -52,29 +45,10 @@ export default class ExplosionEffect extends BaseEffect {
     this._elapsedMs += deltaMs;
 
     if (this._elapsedMs <= this._durationMs) {
-      const progress = this._elapsedMs / this._durationMs;
-      this._draw(progress);
-      this._checkBurnout(progress);
+      this._draw(this._elapsedMs / this._durationMs);
     } else {
-      // страховка: burnout обязан сработать до завершения,
-      // иначе длинный тик оставит контроллер без воронки навсегда
-      this._checkBurnout(1);
-
       // метод из BaseEffect
       this._completeEffect();
-    }
-  }
-
-  // одноразовое уведомление о том, что огонь отгорел
-  _checkBurnout(progress) {
-    if (this._burnoutFired || progress < BURNOUT_PROGRESS) {
-      return;
-    }
-
-    this._burnoutFired = true;
-
-    if (typeof this.onBurnout === 'function') {
-      this.onBurnout();
     }
   }
 

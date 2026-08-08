@@ -120,17 +120,21 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     expect(controller.explosion.destroyed).toBe(false);
   });
 
-  it('воронка поднимается один раз за взрыв', () => {
-    const { controller } = makeController();
+  it('повторный run не поднимает вторую пару эффектов', () => {
+    const { controller, stage } = makeController();
 
     controller.run();
-    advanceExplosion(controller.explosion, 0.5);
 
+    const explosion = controller.explosion;
     const funnel = controller.funnel;
 
-    advanceExplosion(controller.explosion, 0.2);
+    controller.run();
 
+    expect(controller.explosion).toBe(explosion);
     expect(controller.funnel).toBe(funnel);
+
+    // контроллер + вспышка + воронка, без осиротевшего дубля
+    expect(stage.children).toHaveLength(3);
   });
 
   it('завершение вспышки уничтожает её, воронка живёт дальше', () => {
@@ -154,7 +158,6 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     const { controller } = makeController();
 
     controller.run();
-    advanceExplosion(controller.explosion, 0.5);
 
     const funnel = controller.funnel;
     const fadeInMs = funnel._funnelFadeInDurationMs;
@@ -175,6 +178,23 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     expect(funnel._funnel.alpha).toBeCloseTo(fullAlpha, 5);
   });
 
+  it('нулевое проявление показывает воронку сразу, а не гасит её в NaN', () => {
+    const { controller } = makeController();
+
+    controller.run();
+
+    const funnel = controller.funnel;
+
+    funnel._funnelFadeInDurationMs = 0;
+
+    // без защиты это 0/0 на стартовом кадре: alpha уходит в NaN
+    // и воронка молча не рисуется всю свою жизнь
+    funnel._update(0);
+
+    expect(Number.isNaN(funnel._funnel.alpha)).toBe(false);
+    expect(funnel._funnel.alpha).toBeGreaterThan(0);
+  });
+
   it('без радиуса в данных подставляется эталонный, а не NaN', () => {
     const controller = new ExplosionEffectController([100, 200], assets, {
       soundManager,
@@ -183,26 +203,31 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     expect(Number.isFinite(controller.radius)).toBe(true);
   });
 
-  it('длинный тик не съедает burnout: воронка поднимается перед концом', () => {
+  it('длинный тик, перепрыгнувший вспышку, не трогает воронку', () => {
     const { controller } = makeController();
 
     controller.run();
+
+    const funnel = controller.funnel;
+
     // тик перепрыгнул всю вспышку целиком
     advanceExplosion(controller.explosion, 5);
 
-    expect(controller.funnel).not.toBeNull();
+    expect(controller.explosion).toBeNull();
+    expect(controller.funnel).toBe(funnel);
+    expect(funnel.destroyed).toBe(false);
   });
 
-  // страховка: воронка поднимается вместе со вспышкой, но burnout остаётся
-  // колбэком - на очищенной сцене поднимать воронку некуда, и контроллер,
-  // чьё уничтожение висит на завершении воронки, обязан убрать себя сам
-  it('burnout на очищенной сцене уничтожает контроллер', () => {
+  // страховка: уничтожает контроллер только завершение воронки, поэтому
+  // на очищенной сцене, где воронку поднять негде, он обязан убрать себя сам -
+  // иначе звук, снятый с регистрации только в destroy, останется висеть
+  it('run на очищенной сцене уничтожает контроллер и снимает звук', () => {
     const { controller, stage } = makeController();
 
-    controller.run();
     stage.removeChild(controller);
-    controller._onExplosionBurnout();
+    controller.run();
 
+    expect(controller.explosion).toBeNull();
     expect(controller.funnel).toBeNull();
     expect(controller.destroyed).toBe(true);
     expect(soundManager.unregisterSound).toHaveBeenCalledTimes(1);
@@ -212,7 +237,6 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     const { controller } = makeController();
 
     controller.run();
-    advanceExplosion(controller.explosion, 0.5);
 
     // 50 * 0.168 / 66 с разбросом +-15%
     const expected = (50 * 0.168) / assets.funnelTexture.contentSize;
@@ -226,7 +250,6 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     const { controller } = makeController();
 
     controller.run();
-    advanceExplosion(controller.explosion, 0.5);
     controller.funnel._completeEffect();
 
     expect(controller.destroyed).toBe(true);
