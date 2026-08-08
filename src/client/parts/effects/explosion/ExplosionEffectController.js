@@ -33,7 +33,31 @@ export default class ExplosionEffectController extends Container {
       return;
     }
 
-    const parentContainer = this.parent;
+    this.explosion = new ExplosionEffect(
+      this.originX,
+      this.originY,
+      this.radius,
+      this._onExplosionBurnout.bind(this),
+      this._onExplosionComplete.bind(this),
+      this._assets,
+    );
+
+    this.explosion.zIndex = 4;
+    this.parent.addChild(this.explosion);
+
+    this.explosion.run();
+  }
+
+  // огонь отгорел: воронка с дымом поднимаются, пока вспышка догорает
+  _onExplosionBurnout() {
+    if (this._isDestroyed) {
+      return;
+    }
+
+    // контроллер живёт до конца воронки, но сцену могли очистить
+    if (!this.parent) {
+      return;
+    }
 
     this.funnel = new FunnelEffect(
       this.originX,
@@ -43,21 +67,9 @@ export default class ExplosionEffectController extends Container {
     );
 
     this.funnel.zIndex = 2;
-    parentContainer.addChild(this.funnel);
-
-    this.explosion = new ExplosionEffect(
-      this.originX,
-      this.originY,
-      this.radius,
-      this._onExplosionComplete.bind(this),
-      this._assets,
-    );
-
-    this.explosion.zIndex = 4;
-    parentContainer.addChild(this.explosion);
+    this.parent.addChild(this.funnel);
 
     this.funnel.run();
-    this.explosion.run();
   }
 
   _onExplosionComplete() {

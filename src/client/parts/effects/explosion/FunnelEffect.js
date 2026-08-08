@@ -1,10 +1,16 @@
 import { Sprite } from 'pixi.js';
+import { clamp, randomRange } from '../../../../lib/math.js';
 import SmokeEffect from './SmokeEffect.js';
 import BaseEffect from '../BaseEffect.js';
 
 // константы для _createFunnelSprite
-const FUNNEL_SPRITE_BASE_RADIUS_PX = 50;
-const FUNNEL_SPRITE_TARGET_DIAMETER_UNITS = 15;
+// размер всего спрайта (воронка вместе с бортиком и размытием) в игровых юнитах
+// при изменении blur в конфиге запас под размытие растёт - пересчитать
+const FUNNEL_DIAMETER_UNITS = 11.5;
+// базовая прозрачность: след едва читается и не спорит с игровыми объектами
+const FUNNEL_BASE_ALPHA = 0.225;
+// разброс размера воронок относительно базового
+const FUNNEL_SIZE_JITTER = 0.15;
 
 export default class FunnelEffect extends BaseEffect {
   constructor(x, y, onComplete, assets) {
@@ -14,9 +20,9 @@ export default class FunnelEffect extends BaseEffect {
     this.x = x;
     this.y = y;
     this._funnelDurationMs = 20000;
-    this._funnelFadeDurationMs = 4000;
+    this._funnelFadeInDurationMs = 400; // проявление
+    this._funnelFadeDurationMs = 4000; // затухание
     this._elapsedMs = 0;
-    this._isFading = false;
     this._smokeDurationMs = 4000; // время дыма
     this._smokeSpawningStopped = false;
 
@@ -27,15 +33,25 @@ export default class FunnelEffect extends BaseEffect {
   }
 
   _createFunnelSprite() {
-    const funnelTexture = this._assets.funnelTexture;
+    // ассет - набор силуэтов, воронка берёт случайный
+    const variants = this._assets.funnelTexture;
+    const texture = variants[Math.floor(Math.random() * variants.length)];
 
-    const funnelSprite = new Sprite(funnelTexture);
+    // текстура уже двухтоновая, tint не применяется
+    const funnelSprite = new Sprite(texture);
     funnelSprite.anchor.set(0.5);
-    funnelSprite.tint = 0x3a3a3a;
+    funnelSprite.alpha = 0; // проявляется в _update
 
-    const scale =
-      FUNNEL_SPRITE_TARGET_DIAMETER_UNITS / (FUNNEL_SPRITE_BASE_RADIUS_PX * 2);
-    funnelSprite.scale.set(scale);
+    // поворот и разброс размера, чтобы воронки не повторялись
+    funnelSprite.rotation = Math.random() * Math.PI * 2;
+
+    const size =
+      FUNNEL_DIAMETER_UNITS *
+      randomRange(1 - FUNNEL_SIZE_JITTER, 1 + FUNNEL_SIZE_JITTER);
+
+    // масштаб от фактического размера текстуры:
+    // в неё входит прозрачный запас под размытие
+    funnelSprite.scale.set(size / texture.width);
 
     return funnelSprite;
   }
@@ -67,15 +83,12 @@ export default class FunnelEffect extends BaseEffect {
 
     const timeLeft = this._funnelDurationMs - this._elapsedMs;
 
-    if (timeLeft <= this._funnelFadeDurationMs) {
-      if (!this._isFading) {
-        this._isFading = true;
-      }
+    // воронка проступает после взрыва и затухает к концу жизни
+    const fadeIn = this._elapsedMs / this._funnelFadeInDurationMs;
+    const fadeOut = timeLeft / this._funnelFadeDurationMs;
 
-      const fadeProgress = timeLeft / this._funnelFadeDurationMs;
-
-      this._funnel.alpha = Math.max(0, fadeProgress);
-    }
+    this._funnel.alpha =
+      FUNNEL_BASE_ALPHA * clamp(Math.min(fadeIn, fadeOut), 0, 1);
 
     if (timeLeft <= 0) {
       this._completeEffect(); // метод из BaseEffect

@@ -1,4 +1,5 @@
 import { Graphics, BlurFilter, Rectangle } from 'pixi.js';
+import blurMargin from './blurMargin.js';
 
 // создает текстуру размытого круга для частиц от попаданий
 // params.radius - Радиус круга
@@ -9,8 +10,8 @@ export default function impactParticleTexture(params, renderer) {
   const { radius, blur, color } = params;
   const graphics = new Graphics();
 
-  // Добавляем blur к радиусу, чтобы текстура не обрезалась по краям
-  const textureSize = (radius + blur) * 2;
+  // круг остаётся радиусом radius, вокруг него - прозрачный запас под размытие
+  const textureSize = (radius + blurMargin(blur)) * 2;
   const center = textureSize / 2;
 
   graphics.circle(center, center, radius);

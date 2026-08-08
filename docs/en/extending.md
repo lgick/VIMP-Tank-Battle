@@ -43,7 +43,7 @@ Steps:
 
 1. Create a class in `src/client/parts/` following the existing ones (`Tank`, `Bomb`, effects in `parts/effects/`) and export it in `parts/index.js` — it will enter the `Factory` registry.
 2. Declare it in `gameSets`/`entitiesOnCanvas` (`src/config/client.js`).
-3. If a procedural texture is needed — add a baker in `src/client/providers/bakers/` (follow the existing ones) and an entry in `bakedAssets`.
+3. If a procedural texture is needed — add a baker in `src/client/providers/bakers/` (follow the existing ones) and an entry in `bakedAssets`. When using `BlurFilter`, the canvas size must include a `blurMargin(blur)` allowance around the shape (`bakers/blurMargin.js`): otherwise `generateTexture` clips the blur at the frame and the sprite gets a visible rectangular edge.
 4. If services (`renderer`, `soundManager`) are needed — add the class to `componentDependencies`.
 
 Entities can be subclassed and displayed on different canvases: for example, a simplified class is created for the radar (like `MapRadar` from `Map`).

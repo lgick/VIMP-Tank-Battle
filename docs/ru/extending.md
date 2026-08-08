@@ -43,7 +43,7 @@
 
 1. Создайте класс в `src/client/parts/` по образцу существующих (`Tank`, `Bomb`, эффекты в `parts/effects/`) и экспортируйте в `parts/index.js` — он попадёт в реестр `Factory`.
 2. Пропишите её в `gameSets`/`entitiesOnCanvas` (`src/config/client.js`).
-3. Если нужна процедурная текстура — добавьте baker в `src/client/providers/bakers/` (ориентируйтесь на существующие) и запись в `bakedAssets`.
+3. Если нужна процедурная текстура — добавьте baker в `src/client/providers/bakers/` (ориентируйтесь на существующие) и запись в `bakedAssets`. При использовании `BlurFilter` размер холста обязан включать запас `blurMargin(blur)` вокруг фигуры (`bakers/blurMargin.js`): иначе `generateTexture` обрежет размытие рамкой и спрайт получит видимый прямоугольный край.
 4. Если нужны сервисы (`renderer`, `soundManager`) — добавьте класс в `componentDependencies`.
 
 Сущности можно наследовать и отображать на разных полотнах: например, для радара создаётся упрощённый класс (как `MapRadar` от `Map`).

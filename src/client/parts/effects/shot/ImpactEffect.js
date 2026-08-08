@@ -2,8 +2,8 @@ import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
 import { lerp, randomRange } from '../../../../lib/math.js';
 
-// диаметр "запеченной" текстуры частицы
-// рассчитывается как (radius + blur) * 2 из client.js (4 + 1) * 2 = 10
+// нормировочный диаметр осколка: диск текстуры (radius * 2 = 8px из client.js)
+// с небольшим запасом на мягкий край, size частицы делится на него
 const BAKED_PARTICLE_DIAMETER = 10;
 
 export default class ImpactEffect extends BaseEffect {

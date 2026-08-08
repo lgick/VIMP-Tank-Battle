@@ -2,9 +2,12 @@ import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
 
 const EFFECT_BASE_RADIUS_PX = 50; // базовый радиус для расчета масштаба
+// доля анимации, после которой ядро схлопнулось и огонь больше не перебивает
+// след от взрыва: с этого момента можно поднимать воронку с дымом
+const BURNOUT_PROGRESS = 0.4;
 
 export default class ExplosionEffect extends BaseEffect {
-  constructor(x, y, radius, onComplete, assets) {
+  constructor(x, y, radius, onBurnout, onComplete, assets) {
     super(onComplete); // конструктор BaseEffect
 
     // ассет взрыва
@@ -14,7 +17,10 @@ export default class ExplosionEffect extends BaseEffect {
     this.y = y;
     this._radius = radius;
 
-    this._durationMs = 3000;
+    this.onBurnout = onBurnout;
+    this._burnoutFired = false;
+
+    this._durationMs = 1500;
     this._elapsedMs = 0;
 
     // необходимый масштаб спрайта, чтобы он соответствовал радиусу взрыва
@@ -50,9 +56,23 @@ export default class ExplosionEffect extends BaseEffect {
     if (this._elapsedMs <= this._durationMs) {
       const progress = this._elapsedMs / this._durationMs;
       this._draw(progress);
+      this._checkBurnout(progress);
     } else {
       // метод из BaseEffect
       this._completeEffect();
+    }
+  }
+
+  // одноразовое уведомление о том, что огонь отгорел
+  _checkBurnout(progress) {
+    if (this._burnoutFired || progress < BURNOUT_PROGRESS) {
+      return;
+    }
+
+    this._burnoutFired = true;
+
+    if (typeof this.onBurnout === 'function') {
+      this.onBurnout();
     }
   }
 

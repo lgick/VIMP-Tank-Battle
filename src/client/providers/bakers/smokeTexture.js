@@ -1,4 +1,5 @@
 import { Graphics, BlurFilter, Rectangle } from 'pixi.js';
+import blurMargin from './blurMargin.js';
 
 // создает текстуру размытого круга для частицы дыма танка
 // params.radius - Радиус круга
@@ -9,14 +10,18 @@ export default function tankSmokeParticleTexture(params, renderer) {
   const { radius, blur, color } = params;
   const graphics = new Graphics();
 
-  graphics.circle(radius + blur, radius + blur, radius);
+  // круг остаётся радиусом radius, вокруг него - прозрачный запас под размытие
+  const textureSize = (radius + blurMargin(blur)) * 2;
+  const center = textureSize / 2;
+
+  graphics.circle(center, center, radius);
   graphics.fill(color);
 
   graphics.filters = [new BlurFilter({ strength: blur, quality: 40 })];
 
   const texture = renderer.generateTexture({
     target: graphics,
-    frame: new Rectangle(0, 0, (radius + blur) * 2, (radius + blur) * 2),
+    frame: new Rectangle(0, 0, textureSize, textureSize),
   });
 
   graphics.destroy(true);
