@@ -26,3 +26,9 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      # сборка ловит битые импорты и недоступные экспорты, которых не видят
+      # ни eslint, ни vitest (vite-node не линкует именованные экспорты строго)
+      # audio:process не нужен - он требует ffmpeg
+      - name: Build client
+        run: npx vite build

@@ -1,6 +1,7 @@
 import { Container } from 'pixi.js';
 import ExplosionEffect from './ExplosionEffect.js';
 import FunnelEffect from './FunnelEffect.js';
+import { REFERENCE_BLAST_RADIUS } from './SmokeEffect.js';
 
 export default class ExplosionEffectController extends Container {
   constructor(data, assets, dependencies) {
@@ -8,7 +9,9 @@ export default class ExplosionEffectController extends Container {
 
     this.originX = data[0];
     this.originY = data[1];
-    this.radius = data[2];
+    // радиус - единственный источник масштаба для вспышки, воронки и дыма:
+    // гард здесь избавляет всех троих от NaN, если сервер его не прислал
+    this.radius = data[2] ?? REFERENCE_BLAST_RADIUS;
 
     this._assets = assets;
     this._soundManager = dependencies.soundManager;

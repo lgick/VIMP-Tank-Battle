@@ -6,6 +6,7 @@ import BaseEffect from '../BaseEffect.js';
 // константы для _createFunnelSprite
 // диаметр видимой воронки как доля от радиуса взрыва:
 // след масштабируется вместе с мощностью оружия
+// доля подобрана под эталонную бомбу REFERENCE_BLAST_RADIUS
 const FUNNEL_TO_BLAST_RATIO = 0.168;
 // базовая прозрачность: след едва читается и не спорит с игровыми объектами
 const FUNNEL_BASE_ALPHA = 0.225;

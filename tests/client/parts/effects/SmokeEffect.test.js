@@ -72,6 +72,9 @@ const BASE = {
   offset: 15,
   minRiseSpeed: 0.3,
   maxRiseSpeed: 0.7,
+  maxSideSpeed: 0.1,
+  minSwayAmp: 0.025,
+  maxSwayAmp: 0.075,
 };
 
 const makeSmoke = radius => {
@@ -122,13 +125,29 @@ describe('SmokeEffect: геометрия следует радиусу взры
           (BASE.offset * blastScale) / 2,
         );
 
-        const { vy } = particle.customData;
+        const { vx, vy, swayAmp } = particle.customData;
 
         expect(-vy).toBeGreaterThanOrEqual(BASE.minRiseSpeed * blastScale);
         expect(-vy).toBeLessThanOrEqual(BASE.maxRiseSpeed * blastScale);
+
+        expect(Math.abs(vx)).toBeLessThanOrEqual(
+          BASE.maxSideSpeed * blastScale,
+        );
+
+        expect(swayAmp).toBeGreaterThanOrEqual(BASE.minSwayAmp * blastScale);
+        expect(swayAmp).toBeLessThanOrEqual(BASE.maxSwayAmp * blastScale);
       }
     });
   }
+
+  it('без радиуса используется эталонный: частицы не уходят в NaN', () => {
+    const { particles } = makeSmoke(undefined);
+
+    for (const particle of particles) {
+      expect(Number.isFinite(particle.customData.startScale)).toBe(true);
+      expect(Number.isFinite(particle.x)).toBe(true);
+    }
+  });
 
   it('времена жизни от радиуса не зависят: масштабируется только геометрия', () => {
     const reference = makeSmoke(REFERENCE_RADIUS).smoke;

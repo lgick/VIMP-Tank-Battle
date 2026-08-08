@@ -2,12 +2,14 @@ import ParticlePool from '../../ParticlePool.js';
 import BaseEffect from '../BaseEffect.js';
 
 // радиус взрыва, под который подобраны размеры дыма (бомба w2):
+// та же эталонная бомба стоит за FUNNEL_TO_BLAST_RATIO в FunnelEffect
+// (там она записана как доля радиуса)
 // у оружия с другим радиусом геометрия султана масштабируется пропорционально,
 // а времена жизни и прозрачность остаются - они задают характер, не габарит
-const REFERENCE_BLAST_RADIUS = 50;
+export const REFERENCE_BLAST_RADIUS = 50;
 
 export default class SmokeEffect extends BaseEffect {
-  constructor(assets, radius) {
+  constructor(assets, radius = REFERENCE_BLAST_RADIUS) {
     super();
 
     const blastScale = radius / REFERENCE_BLAST_RADIUS;

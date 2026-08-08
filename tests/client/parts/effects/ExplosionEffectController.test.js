@@ -183,6 +183,14 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     expect(funnel._funnel.alpha).toBeCloseTo(fullAlpha, 5);
   });
 
+  it('без радиуса в данных подставляется эталонный, а не NaN', () => {
+    const controller = new ExplosionEffectController([100, 200], assets, {
+      soundManager,
+    });
+
+    expect(Number.isFinite(controller.radius)).toBe(true);
+  });
+
   it('длинный тик не съедает burnout: воронка поднимается перед концом', () => {
     const { controller } = makeController();
 
