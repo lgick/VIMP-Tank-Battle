@@ -62,3 +62,5 @@ npm run test:coverage  # покрытие
 Тесты лежат в `tests/` и зеркалят структуру `src/`. Интеграционные — в `tests/server/integration/` (полный жизненный цикл VIMP с реальными модулями). Правило проекта: **любое изменение кода завершается зелёными `npx eslint .` и `npm test`**; при правке `Tank.updateData`/`models.js` обязателен паритет-тест `tests/server/TankPredictorParity.test.js`.
 
 CI (`.github/workflows/test.yml`) гоняет eslint + тесты на каждый push/PR.
+
+Как здесь пишутся тесты (паттерны, карта покрытия, интеграционный harness) — [testing.md](testing.md).

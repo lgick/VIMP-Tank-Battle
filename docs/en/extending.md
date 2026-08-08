@@ -50,4 +50,4 @@ Entities can be subclassed and displayed on different canvases: for example, a s
 
 ## Tests
 
-New code is covered by tests in `tests/` (the structure mirrors `src/`). The patterns are in CLAUDE.md (the Testing section): singletons via `vi.resetModules()` + dynamic import, physical parts — with `world`/`body` mocks, integration scenarios — in `tests/server/integration/`. When changing the tank movement model, running the parity test `TankPredictorParity` is mandatory.
+New code is covered by tests in `tests/` (the structure mirrors `src/`). The patterns are in [testing.md](testing.md): singletons via `vi.resetModules()` + dynamic import, physical parts — with `world`/`body` mocks, integration scenarios — in `tests/server/integration/`. When changing the tank movement model, running the parity test `TankPredictorParity` is mandatory.

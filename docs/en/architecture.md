@@ -99,3 +99,8 @@ Rendering — MVC components + PixiJS `parts/` entities on two canvases (`vimp`,
 - **Rapier is imported only through** `src/server/physics/rapier.js` (top-level await WASM init).
 - **A single numeric id space** for humans and bots; the distinction is `isBot`/`isNetworked`.
 - All sends to the client go only through `SocketManager`.
+
+## Future work
+
+- **Unifying bots and players**: partially done — a shared `ParticipantManager` registry with a single numeric id space and the `Human`/`BotParticipant` classes. What remains is to merge the behaviour itself (WebSocket input vs AI) into a single abstraction.
+- **Debug mode**: there are no debugging tools; one may need to be implemented.

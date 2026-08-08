@@ -14,6 +14,7 @@
 | [network.md](network.md) | Синхронизация сервер‑клиент: WebSocket-порты, бинарный snapshot-кадр (v3), форматы данных, RTT |
 | [configuration.md](configuration.md) | Конфигурация: переменные `.env`, все файлы `src/config/`, данные `src/data/` |
 | [extending.md](extending.md) | Расширение: новая карта, оружие, звук, клиентская сущность |
+| [testing.md](testing.md) | Тесты: обязательное правило, карта покрытия, паттерны написания |
 | [deployment.md](deployment.md) | Развертывание: подготовка VPS, добавление/удаление серверов, CI/CD |
 
 ## С чего начать
@@ -22,5 +23,6 @@
 - **Хочу понять, как всё устроено** → [architecture.md](architecture.md), затем [server.md](server.md) / [client.md](client.md) / [network.md](network.md)
 - **Хочу поднять свой сервер** → [deployment.md](deployment.md)
 - **Хочу добавить карту/оружие** → [extending.md](extending.md)
+- **Хочу написать тесты к своей правке** → [testing.md](testing.md)
 
 > Документация поддерживается вместе с кодом: при изменении функционала соответствующая страница обновляется в том же изменении (правило зафиксировано в [CLAUDE.md](../../CLAUDE.md)).

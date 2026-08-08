@@ -62,3 +62,5 @@ Stack: **Vitest** + happy-dom (client tests) + coverage-v8. The `vitest.config.j
 Tests live in `tests/` and mirror the `src/` structure. Integration tests are in `tests/server/integration/` (the full VIMP lifecycle with real modules). Project rule: **every code change ends with green `npx eslint .` and `npm test`**; when editing `Tank.updateData`/`models.js` the parity test `tests/server/TankPredictorParity.test.js` is mandatory.
 
 CI (`.github/workflows/test.yml`) runs eslint + tests on every push/PR.
+
+How tests are written here (patterns, coverage map, integration harness) — [testing.md](testing.md).

@@ -14,6 +14,7 @@ A multiplayer 2D real-time online game: an authoritative server (Node.js, Rapier
 | [network.md](network.md) | Server–client synchronization: WebSocket ports, the binary snapshot frame (v3), data formats, RTT |
 | [configuration.md](configuration.md) | Configuration: `.env` variables, all `src/config/` files, `src/data/` data |
 | [extending.md](extending.md) | Extending: a new map, weapon, sound, client entity |
+| [testing.md](testing.md) | Tests: the mandatory rule, the coverage map, the patterns for adding tests |
 | [deployment.md](deployment.md) | Deployment: VPS preparation, adding/removing servers, CI/CD |
 
 ## Where to start
@@ -22,5 +23,6 @@ A multiplayer 2D real-time online game: an authoritative server (Node.js, Rapier
 - **I want to understand how it all works** → [architecture.md](architecture.md), then [server.md](server.md) / [client.md](client.md) / [network.md](network.md)
 - **I want to run my own server** → [deployment.md](deployment.md)
 - **I want to add a map/weapon** → [extending.md](extending.md)
+- **I want to write tests for my change** → [testing.md](testing.md)
 
 > The documentation is maintained alongside the code: when functionality changes, the corresponding page is updated in the same change (the rule is stated in [CLAUDE.md](../../CLAUDE.md)).
