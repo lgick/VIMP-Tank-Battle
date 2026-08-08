@@ -83,7 +83,7 @@ The purpose of the components:
 
 The mapping of snapshot keys to classes and their distribution across canvases — `gameSets`/`entitiesOnCanvas` in `client.js`. A part has no fixed contract — when creating a new one, look at the existing ones as a template.
 
-`ExplosionEffectController` (bomb explosion) starts the `ExplosionEffect` flash and raises the crater with smoke (`FunnelEffect`) from the flash's `onBurnout` callback — at 40 % of its duration. The controller's own destruction hangs on the crater completing, so the burnout must fire on any outcome of the flash, and if the scene was cleared before the crater was created, the controller destroys itself.
+`ExplosionEffectController` (bomb explosion) starts the `ExplosionEffect` flash and raises the crater with smoke (`FunnelEffect`) from the flash's `onBurnout` callback — at 40 % of its duration. The controller's own destruction hangs on the crater completing, so the burnout must fire on any outcome of the flash, and if the scene was cleared before the crater was created, the controller destroys itself. The mark's geometry scales with the blast radius: the crater diameter is a fraction of the radius (`FUNNEL_TO_BLAST_RATIO`), and the sizes/spread/velocities of `SmokeEffect` particles are scaled against a reference radius (`REFERENCE_BLAST_RADIUS`, the `w2` bomb). Lifetimes and alpha do not depend on the radius — they define the effect's character, not its size.
 
 ### Factory
 

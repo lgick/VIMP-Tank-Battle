@@ -1,9 +1,18 @@
 import ParticlePool from '../../ParticlePool.js';
 import BaseEffect from '../BaseEffect.js';
 
+// радиус взрыва, под который подобраны размеры дыма (бомба w2):
+// у оружия с другим радиусом геометрия султана масштабируется пропорционально,
+// а времена жизни и прозрачность остаются - они задают характер, не габарит
+const REFERENCE_BLAST_RADIUS = 50;
+
 export default class SmokeEffect extends BaseEffect {
-  constructor(assets) {
+  constructor(assets, radius) {
     super();
+
+    const blastScale = radius / REFERENCE_BLAST_RADIUS;
+
+    this._blastScale = blastScale;
 
     const { texture, contentSize } = assets.explosionTexture;
 
@@ -20,14 +29,14 @@ export default class SmokeEffect extends BaseEffect {
     this._particleMaxLifeMs = 2000;
 
     // Размеры (в юнитах мира)
-    this._minStartSize = 2.1;
-    this._maxStartSize = 5.2;
-    this._minTargetSize = 8.3;
-    this._maxTargetSize = 16.6;
+    this._minStartSize = 2.1 * blastScale;
+    this._maxStartSize = 5.2 * blastScale;
+    this._minTargetSize = 8.3 * blastScale;
+    this._maxTargetSize = 16.6 * blastScale;
 
     this._startAlpha = 0.1;
-    this._initialOffsetX = 15;
-    this._initialOffsetY = 15;
+    this._initialOffsetX = 15 * blastScale;
+    this._initialOffsetY = 15 * blastScale;
 
     this._lastSpawnTime = 0;
 
@@ -78,13 +87,14 @@ export default class SmokeEffect extends BaseEffect {
       aspectRatioX: aspectX,
       aspectRatioY: aspectY,
 
-      // движение
-      vx: (Math.random() - 0.5) * 0.2,
-      vy: -0.3 - Math.random() * 0.4,
+      // движение (скорости - тоже геометрия: иначе крупный султан
+      // поднимался бы непропорционально медленно)
+      vx: (Math.random() - 0.5) * 0.2 * this._blastScale,
+      vy: (-0.3 - Math.random() * 0.4) * this._blastScale,
 
-      // рыскание (Sway)
+      // рыскание (Sway): амплитуда - смещение, частота - характер
       swaySpeed: 0.002 + Math.random() * 0.003,
-      swayAmp: 0.025 + Math.random() * 0.05,
+      swayAmp: (0.025 + Math.random() * 0.05) * this._blastScale,
       swayOffset: Math.random() * 100,
       rotationSpeed: (Math.random() - 0.5) * 0.05,
       targetScale:

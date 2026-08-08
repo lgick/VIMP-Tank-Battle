@@ -28,7 +28,7 @@ export default class FunnelEffect extends BaseEffect {
     this._smokeSpawningStopped = false;
 
     this._funnel = this._createFunnelSprite();
-    this._smoke = new SmokeEffect(this._assets);
+    this._smoke = new SmokeEffect(this._assets, this._radius);
 
     this.addChild(this._funnel, this._smoke);
   }
