@@ -22,17 +22,8 @@ export default class GameView {
   add(instance) {
     this._app.stage.addChild(instance);
 
-    this._app.stage.sortChildren((a, b) => {
-      if (a.layer < b.layer) {
-        return -1;
-      }
-
-      if (a.layer > b.layer) {
-        return 1;
-      }
-
-      return 0;
-    });
+    // Pixi v8 сортирует по zIndex, компаратор не принимается
+    this._app.stage.sortChildren();
   }
 
   // создаёт эффект и запускает его

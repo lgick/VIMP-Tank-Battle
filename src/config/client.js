@@ -35,6 +35,7 @@ export default {
           params: {
             radius: 50, // радиус круга
             blur: 2, // сила размытия
+            quality: 40, // проходов размытия
             color: 0xffffff, // цвет (белый для удобного tinting)
           },
         },
@@ -44,6 +45,7 @@ export default {
           params: {
             radius: 4,
             blur: 1,
+            quality: 10,
             color: 0xffffff,
           },
         },
@@ -69,6 +71,7 @@ export default {
           params: {
             radius: 3, // базовый радиус частицы дыма
             blur: 1, // размытие для мягкости
+            quality: 40, // проходов размытия
             color: 0xffffff, // цвет для последующего tint'а
           },
         },

@@ -36,7 +36,12 @@ vi.mock('pixi.js', () => {
 
       this.texture = texture;
       this.anchor = { set: () => {} };
-      this.scale = { set: () => {} };
+      this.scaleValue = 1;
+      this.scale = {
+        set: value => {
+          this.scaleValue = value;
+        },
+      };
     }
   }
 
@@ -52,9 +57,13 @@ const { default: ExplosionEffectController } = await import(
   '../../../../src/client/parts/effects/explosion/ExplosionEffectController.js'
 );
 
+// contentSize - диаметр нарисованной фигуры (холст шире на запас под размытие)
 const assets = {
-  funnelTexture: [{ width: 106 }, { width: 106 }],
-  explosionTexture: { width: 116 },
+  funnelTexture: {
+    textures: [{ width: 90 }, { width: 90 }],
+    contentSize: 66,
+  },
+  explosionTexture: { texture: { width: 116 }, contentSize: 100 },
 };
 
 let soundManager;
@@ -170,6 +179,42 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     // дальше альфа не растёт
     funnel._update(1000);
     expect(funnel._funnel.alpha).toBeCloseTo(fullAlpha, 5);
+  });
+
+  it('длинный тик не съедает burnout: воронка поднимается перед концом', () => {
+    const { controller } = makeController();
+
+    controller.run();
+    // тик перепрыгнул всю вспышку целиком
+    advanceExplosion(controller.explosion, 5);
+
+    expect(controller.funnel).not.toBeNull();
+  });
+
+  it('очищенная сцена между вспышкой и воронкой уничтожает контроллер', () => {
+    const { controller, stage } = makeController();
+
+    controller.run();
+    stage.removeChild(controller);
+    advanceExplosion(controller.explosion, 0.5);
+
+    expect(controller.funnel).toBeNull();
+    expect(controller.destroyed).toBe(true);
+    expect(soundManager.unregisterSound).toHaveBeenCalledTimes(1);
+  });
+
+  it('размер воронки нормирован по силуэту и следует радиусу взрыва', () => {
+    const { controller } = makeController();
+
+    controller.run();
+    advanceExplosion(controller.explosion, 0.5);
+
+    // 50 * 0.168 / 66 с разбросом +-15%
+    const expected = (50 * 0.168) / assets.funnelTexture.contentSize;
+    const scale = controller.funnel._funnel.scaleValue;
+
+    expect(scale).toBeGreaterThan(expected * 0.85);
+    expect(scale).toBeLessThan(expected * 1.15);
   });
 
   it('завершение воронки уничтожает контроллер и снимает звук', () => {

@@ -1,10 +1,6 @@
 import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
-import { lerp, randomRange } from '../../../../lib/math.js';
-
-// нормировочный диаметр осколка: диск текстуры (radius * 2 = 8px из client.js)
-// с небольшим запасом на мягкий край, size частицы делится на него
-const BAKED_PARTICLE_DIAMETER = 10;
+import { lerp, pickRandom, randomRange } from '../../../../lib/math.js';
 
 export default class ImpactEffect extends BaseEffect {
   constructor(x, y, impactDirectionX, impactDirectionY, onComplete, assets) {
@@ -14,12 +10,18 @@ export default class ImpactEffect extends BaseEffect {
     this.y = y; // координата Y центра эффекта
 
     this._assets = assets;
-    this._particleTexture = this._assets.impactParticleTexture;
+    const { texture, contentSize } = this._assets.impactParticleTexture;
+
+    this._particleTexture = texture;
+
+    // размер осколка задан в юнитах мира и нормируется
+    // по нарисованному кругу текстуры, а не по холсту с запасом под размытие
+    this._textureContentSize = contentSize;
 
     this.config = {
       particleCount: randomRange(2, 4), // количество осколков
-      particleMinSize: 1, // минимальный размер осколка
-      particleMaxSize: 3, // максимальный размер осколка
+      particleMinSize: 0.8, // минимальный размер осколка
+      particleMaxSize: 2.4, // максимальный размер осколка
 
       // начальная скорость разлета
       minInitialSpeed: 10, // пикселей в секунду
@@ -107,9 +109,7 @@ export default class ImpactEffect extends BaseEffect {
           this.config.particleMaxSize,
         ),
         color: Array.isArray(this.config.color)
-          ? this.config.color[
-              Math.floor(Math.random() * this.config.color.length)
-            ]
+          ? pickRandom(this.config.color)
           : this.config.color,
         lifetime: randomRange(this.config.minLifetime, this.config.maxLifetime),
         age: 0,
@@ -222,7 +222,7 @@ export default class ImpactEffect extends BaseEffect {
       pSprite.alpha = pData.alpha;
       pSprite.visible = pData.active;
 
-      const scale = pData.size / BAKED_PARTICLE_DIAMETER;
+      const scale = pData.size / this._textureContentSize;
 
       pSprite.scale.set(scale);
     }

@@ -83,13 +83,15 @@ Publisher-паттерн связей внутри тройки:
 
 Соответствие снапшот-ключей классам и распределение по полотнам — `gameSets`/`entitiesOnCanvas` в `client.js`. Фиксированного контракта у part нет — при создании новой смотреть существующие как образец.
 
+`ExplosionEffectController` («взрыв бомбы») запускает вспышку `ExplosionEffect`, а воронку с дымом (`FunnelEffect`) поднимает по колбэку `onBurnout` вспышки — на 40 % её длительности. На завершении воронки держится уничтожение самого контроллера, поэтому burnout обязан сработать при любом исходе вспышки, а если сцену очистили до создания воронки, контроллер уничтожает себя сам.
+
 ### Factory
 
 [src/lib/factory.js](../../src/lib/factory.js) — реестр имя сущности → класс. `GameCtrl.parse(name, data)` по входным данным создаёт экземпляр, вызывает `update(data)` существующего или удаляет (`null`).
 
 ### Провайдеры
 
-- **`BakingProvider`** ([providers/BakingProvider.js](../../src/client/providers/BakingProvider.js)) — однократная генерация процедурных текстур при старте по конфигу `bakedAssets`; функции запекания — в [providers/bakers/](../../src/client/providers/bakers/) (фиксированного интерфейса нет, ориентироваться на существующие).
+- **`BakingProvider`** ([providers/BakingProvider.js](../../src/client/providers/BakingProvider.js)) — однократная генерация процедурных текстур при старте по конфигу `bakedAssets`; функции запекания — в [providers/bakers/](../../src/client/providers/bakers/) (фиксированного интерфейса нет, ориентироваться на существующие). Baker с размытием возвращает вместе с текстурой размер самой фигуры (`contentSize`), по которому потребители нормируют масштаб: запас под размытие не должен влиять на видимый размер спрайта.
 - **`DependencyProvider`** — инъекция сервисов (`renderer`, `soundManager`) в компоненты по карте `componentDependencies`.
 
 ## SoundManager

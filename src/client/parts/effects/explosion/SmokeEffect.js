@@ -5,7 +5,13 @@ export default class SmokeEffect extends BaseEffect {
   constructor(assets) {
     super();
 
-    this.explosionTexture = assets.explosionTexture;
+    const { texture, contentSize } = assets.explosionTexture;
+
+    this.explosionTexture = texture;
+
+    // размеры частиц задаются в юнитах мира,
+    // масштаб нормируется по нарисованному кругу (не по холсту с размытием)
+    this._unitScale = 1 / contentSize;
 
     this._particles = [];
     this._isSpawning = true;
@@ -13,9 +19,11 @@ export default class SmokeEffect extends BaseEffect {
     this._particleSpawnRateMs = 50;
     this._particleMaxLifeMs = 2000;
 
-    // Размеры
-    this._minStartScale = 0.02;
-    this._maxStartScale = 0.05;
+    // Размеры (в юнитах мира)
+    this._minStartSize = 2.1;
+    this._maxStartSize = 5.2;
+    this._minTargetSize = 8.3;
+    this._maxTargetSize = 16.6;
 
     this._startAlpha = 0.1;
     this._initialOffsetX = 15;
@@ -47,8 +55,9 @@ export default class SmokeEffect extends BaseEffect {
 
     // размер
     const startScale =
-      this._minStartScale +
-      Math.random() * (this._maxStartScale - this._minStartScale);
+      (this._minStartSize +
+        Math.random() * (this._maxStartSize - this._minStartSize)) *
+      this._unitScale;
 
     // искажение пропорций
     const aspectX = 0.6 + Math.random() * 0.8;
@@ -78,7 +87,10 @@ export default class SmokeEffect extends BaseEffect {
       swayAmp: 0.025 + Math.random() * 0.05,
       swayOffset: Math.random() * 100,
       rotationSpeed: (Math.random() - 0.5) * 0.05,
-      targetScale: 0.08 + Math.random() * 0.08,
+      targetScale:
+        (this._minTargetSize +
+          Math.random() * (this._maxTargetSize - this._minTargetSize)) *
+        this._unitScale,
       startScale,
     };
 

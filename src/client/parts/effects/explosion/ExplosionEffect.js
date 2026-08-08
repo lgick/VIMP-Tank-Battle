@@ -1,7 +1,6 @@
 import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
 
-const EFFECT_BASE_RADIUS_PX = 50; // базовый радиус для расчета масштаба
 // доля анимации, после которой ядро схлопнулось и огонь больше не перебивает
 // след от взрыва: с этого момента можно поднимать воронку с дымом
 const BURNOUT_PROGRESS = 0.4;
@@ -10,8 +9,8 @@ export default class ExplosionEffect extends BaseEffect {
   constructor(x, y, radius, onBurnout, onComplete, assets) {
     super(onComplete); // конструктор BaseEffect
 
-    // ассет взрыва
-    const explosionTexture = assets.explosionTexture;
+    // ассет взрыва: текстура + диаметр нарисованного круга
+    const { texture, contentSize } = assets.explosionTexture;
 
     this.x = x;
     this.y = y;
@@ -23,23 +22,22 @@ export default class ExplosionEffect extends BaseEffect {
     this._durationMs = 1500;
     this._elapsedMs = 0;
 
-    // необходимый масштаб спрайта, чтобы он соответствовал радиусу взрыва
-    // делить на EFFECT_BASE_RADIUS_PX,
-    // так как базовый радиус в текстуре был 50px
-    const desiredScale = this._radius / EFFECT_BASE_RADIUS_PX;
+    // масштаб нормируется по нарисованному кругу, а не по холсту:
+    // запас под размытие не должен влиять на видимый размер
+    this._baseScale = (this._radius * 2) / contentSize;
 
     // спрайты
     // основное тело взрыва (голубое)
-    this._mainBody = new Sprite(explosionTexture);
+    this._mainBody = new Sprite(texture);
     this._mainBody.anchor.set(0.5);
     this._mainBody.tint = 0xadd8e6; // светло-голубой
-    this._mainBody.scale.set(desiredScale);
+    this._mainBody.scale.set(this._baseScale);
 
     // коллапсирующее ядро (серое)
-    this._core = new Sprite(explosionTexture);
+    this._core = new Sprite(texture);
     this._core.anchor.set(0.5);
     this._core.tint = 0xd3d3d3; // светло-серый
-    this._core.scale.set(desiredScale); // начальный размер тот же
+    this._core.scale.set(this._baseScale); // начальный размер тот же
 
     this.addChild(this._mainBody, this._core);
   }
@@ -58,6 +56,10 @@ export default class ExplosionEffect extends BaseEffect {
       this._draw(progress);
       this._checkBurnout(progress);
     } else {
+      // страховка: burnout обязан сработать до завершения,
+      // иначе длинный тик оставит контроллер без воронки навсегда
+      this._checkBurnout(1);
+
       // метод из BaseEffect
       this._completeEffect();
     }
@@ -79,7 +81,6 @@ export default class ExplosionEffect extends BaseEffect {
   // отрисовка
   _draw(progress) {
     const easeInQuad = t => t * t;
-    const baseScale = this._radius / EFFECT_BASE_RADIUS_PX;
 
     // анимация основного тела (затухание)
     this._mainBody.alpha = 0.6 * (1 - easeInQuad(progress));
@@ -87,7 +88,7 @@ export default class ExplosionEffect extends BaseEffect {
     // анимация ядра (затухание и сжатие)
     const coreProgress = Math.min(1, progress * 1.5);
     this._core.alpha = 0.7 - coreProgress;
-    this._core.scale.set(baseScale * (1 - coreProgress));
+    this._core.scale.set(this._baseScale * (1 - coreProgress));
   }
 
   // уничтожение объекта

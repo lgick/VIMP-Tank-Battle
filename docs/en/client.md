@@ -83,13 +83,15 @@ The purpose of the components:
 
 The mapping of snapshot keys to classes and their distribution across canvases — `gameSets`/`entitiesOnCanvas` in `client.js`. A part has no fixed contract — when creating a new one, look at the existing ones as a template.
 
+`ExplosionEffectController` (bomb explosion) starts the `ExplosionEffect` flash and raises the crater with smoke (`FunnelEffect`) from the flash's `onBurnout` callback — at 40 % of its duration. The controller's own destruction hangs on the crater completing, so the burnout must fire on any outcome of the flash, and if the scene was cleared before the crater was created, the controller destroys itself.
+
 ### Factory
 
 [src/lib/factory.js](../../src/lib/factory.js) — a registry of entity name → class. `GameCtrl.parse(name, data)` from incoming data creates an instance, calls `update(data)` on an existing one, or removes it (`null`).
 
 ### Providers
 
-- **`BakingProvider`** ([providers/BakingProvider.js](../../src/client/providers/BakingProvider.js)) — one-time generation of procedural textures at startup per the `bakedAssets` config; the baking functions — in [providers/bakers/](../../src/client/providers/bakers/) (no fixed interface, follow the existing ones).
+- **`BakingProvider`** ([providers/BakingProvider.js](../../src/client/providers/BakingProvider.js)) — one-time generation of procedural textures at startup per the `bakedAssets` config; the baking functions — in [providers/bakers/](../../src/client/providers/bakers/) (no fixed interface, follow the existing ones). A baker that applies blur returns the shape size (`contentSize`) along with the texture, and consumers derive their scale from it: the blur allowance must not affect the visible sprite size.
 - **`DependencyProvider`** — injection of services (`renderer`, `soundManager`) into components per the `componentDependencies` map.
 
 ## SoundManager

@@ -1,22 +1,23 @@
 import { Sprite } from 'pixi.js';
-import { clamp, randomRange } from '../../../../lib/math.js';
+import { clamp, pickRandom, randomRange } from '../../../../lib/math.js';
 import SmokeEffect from './SmokeEffect.js';
 import BaseEffect from '../BaseEffect.js';
 
 // константы для _createFunnelSprite
-// размер всего спрайта (воронка вместе с бортиком и размытием) в игровых юнитах
-// при изменении blur в конфиге запас под размытие растёт - пересчитать
-const FUNNEL_DIAMETER_UNITS = 11.5;
+// диаметр видимой воронки как доля от радиуса взрыва:
+// след масштабируется вместе с мощностью оружия
+const FUNNEL_TO_BLAST_RATIO = 0.168;
 // базовая прозрачность: след едва читается и не спорит с игровыми объектами
 const FUNNEL_BASE_ALPHA = 0.225;
 // разброс размера воронок относительно базового
 const FUNNEL_SIZE_JITTER = 0.15;
 
 export default class FunnelEffect extends BaseEffect {
-  constructor(x, y, onComplete, assets) {
+  constructor(x, y, radius, onComplete, assets) {
     super(onComplete);
 
     this._assets = assets;
+    this._radius = radius;
     this.x = x;
     this.y = y;
     this._funnelDurationMs = 20000;
@@ -34,8 +35,8 @@ export default class FunnelEffect extends BaseEffect {
 
   _createFunnelSprite() {
     // ассет - набор силуэтов, воронка берёт случайный
-    const variants = this._assets.funnelTexture;
-    const texture = variants[Math.floor(Math.random() * variants.length)];
+    const { textures, contentSize } = this._assets.funnelTexture;
+    const texture = pickRandom(textures);
 
     // текстура уже двухтоновая, tint не применяется
     const funnelSprite = new Sprite(texture);
@@ -46,12 +47,13 @@ export default class FunnelEffect extends BaseEffect {
     funnelSprite.rotation = Math.random() * Math.PI * 2;
 
     const size =
-      FUNNEL_DIAMETER_UNITS *
+      this._radius *
+      FUNNEL_TO_BLAST_RATIO *
       randomRange(1 - FUNNEL_SIZE_JITTER, 1 + FUNNEL_SIZE_JITTER);
 
-    // масштаб от фактического размера текстуры:
-    // в неё входит прозрачный запас под размытие
-    funnelSprite.scale.set(size / texture.width);
+    // масштаб нормируется по силуэту, а не по холсту:
+    // запас под размытие не влияет на видимый размер воронки
+    funnelSprite.scale.set(size / contentSize);
 
     return funnelSprite;
   }

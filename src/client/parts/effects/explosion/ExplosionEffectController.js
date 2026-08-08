@@ -45,6 +45,10 @@ export default class ExplosionEffectController extends Container {
     this.explosion.zIndex = 4;
     this.parent.addChild(this.explosion);
 
+    if (typeof this.parent.sortChildren === 'function') {
+      this.parent.sortChildren();
+    }
+
     this.explosion.run();
   }
 
@@ -54,20 +58,28 @@ export default class ExplosionEffectController extends Container {
       return;
     }
 
-    // контроллер живёт до конца воронки, но сцену могли очистить
+    // сцену очистили между вспышкой и воронкой - ждать больше нечего,
+    // а уничтожает контроллер только завершение воронки
     if (!this.parent) {
+      this.destroy();
       return;
     }
 
     this.funnel = new FunnelEffect(
       this.originX,
       this.originY,
+      this.radius,
       this._onFunnelComplete.bind(this),
       this._assets,
     );
 
     this.funnel.zIndex = 2;
     this.parent.addChild(this.funnel);
+
+    // воронка добавляется вне GameView.add, порядок слоёв пересчитывается сам
+    if (typeof this.parent.sortChildren === 'function') {
+      this.parent.sortChildren();
+    }
 
     this.funnel.run();
   }
@@ -119,10 +131,12 @@ export default class ExplosionEffectController extends Container {
       this.parent.removeChild(this);
     }
 
+    // текстуры запекаются один раз за сессию и переиспользуются
+    // всеми взрывами - уничтожать их нельзя
     super.destroy({
       children: true,
-      texture: true,
-      baseTexture: true,
+      texture: false,
+      baseTexture: false,
     });
   }
 }

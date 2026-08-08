@@ -14,25 +14,28 @@ import blurMargin from './blurMargin.js';
 // params.rimWidth - Толщина бортика.
 // params.variants - Количество вариантов силуэта.
 // renderer - Рендерер PIXI.
-// возвращает массив текстур одинакового размера
+// возвращает { textures, contentSize }, где contentSize - диаметр силуэта
+// (без запаса под размытие): по нему потребитель нормирует масштаб
 export default function funnelTexture(params, renderer) {
   const {
     baseRadius,
-    irregularity,
-    blur,
-    numPoints,
+    irregularity = 0,
+    blur = 0,
+    numPoints = 20,
     colorFill,
-    colorRim,
-    rimWidth,
-    variants,
+    colorRim = colorFill,
+    rimWidth = 0,
+    variants = 1,
   } = params;
 
-  const canvasSize =
-    (baseRadius + irregularity + rimWidth + blurMargin(blur)) * 2;
+  // силуэт всегда хотя бы один: пустой набор уронил бы FunnelEffect
+  const variantCount = Math.max(1, Math.floor(variants) || 1);
+  const contentSize = (baseRadius + irregularity + rimWidth) * 2;
+  const canvasSize = contentSize + blurMargin(blur) * 2;
   const center = canvasSize / 2;
   const textures = [];
 
-  for (let variant = 0; variant < variants; variant += 1) {
+  for (let variant = 0; variant < variantCount; variant += 1) {
     const graphics = new Graphics();
     const path = [];
 
@@ -49,7 +52,11 @@ export default function funnelTexture(params, renderer) {
       .fill(colorFill)
       .stroke({ width: rimWidth, color: colorRim, alignment: 1 });
 
-    graphics.filters = [new BlurFilter({ strength: blur, quality: 10 })];
+    const filter = new BlurFilter({ strength: blur, quality: 10 });
+
+    // без явного padding Pixi обрежет размытие раньше рамки холста
+    filter.padding = blurMargin(blur);
+    graphics.filters = [filter];
 
     textures.push(
       renderer.generateTexture({
@@ -61,5 +68,5 @@ export default function funnelTexture(params, renderer) {
     graphics.destroy(true);
   }
 
-  return textures;
+  return { textures, contentSize };
 }

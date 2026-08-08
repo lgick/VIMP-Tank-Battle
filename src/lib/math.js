@@ -73,3 +73,11 @@ export const normalizeAngle = angle => {
  * @returns {number}
  */
 export const randomRange = (min, max) => Math.random() * (max - min) + min;
+
+/**
+ * Случайный элемент массива
+ * @param {Array} items
+ * @returns {*}
+ */
+export const pickRandom = items =>
+  items[Math.floor(Math.random() * items.length)];

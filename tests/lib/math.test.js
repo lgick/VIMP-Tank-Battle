@@ -3,6 +3,7 @@ import {
   lerp,
   lerpAngle,
   clamp,
+  pickRandom,
   degToRad,
   radToDeg,
   normalizeAngle,
@@ -98,5 +99,19 @@ describe('randomRange', () => {
       expect(v).toBeGreaterThanOrEqual(5);
       expect(v).toBeLessThan(10);
     }
+  });
+});
+
+describe('pickRandom', () => {
+  it('возвращает элемент массива', () => {
+    const items = ['a', 'b', 'c'];
+
+    for (let i = 0; i < 100; i += 1) {
+      expect(items).toContain(pickRandom(items));
+    }
+  });
+
+  it('на массиве из одного элемента возвращает его', () => {
+    expect(pickRandom([7])).toBe(7);
   });
 });
