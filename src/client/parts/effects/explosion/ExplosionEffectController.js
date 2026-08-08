@@ -44,10 +44,7 @@ export default class ExplosionEffectController extends Container {
 
     this.explosion.zIndex = 4;
     this.parent.addChild(this.explosion);
-
-    if (typeof this.parent.sortChildren === 'function') {
-      this.parent.sortChildren();
-    }
+    this.parent.sortChildren();
 
     this.explosion.run();
   }
@@ -76,10 +73,8 @@ export default class ExplosionEffectController extends Container {
     this.funnel.zIndex = 2;
     this.parent.addChild(this.funnel);
 
-    // воронка добавляется вне GameView.add, порядок слоёв пересчитывается сам
-    if (typeof this.parent.sortChildren === 'function') {
-      this.parent.sortChildren();
-    }
+    // воронка добавляется вне GameView.add - порядок слоёв пересчитывается тут
+    this.parent.sortChildren();
 
     this.funnel.run();
   }

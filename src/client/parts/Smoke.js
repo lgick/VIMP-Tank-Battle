@@ -3,13 +3,13 @@ import ParticlePool from './ParticlePool.js';
 import { lerp, randomRange } from '../../lib/math.js';
 
 // глобальные переменные для ветра
+const globalWindX = 0;
+const globalWindY = 0;
+
 // размер частицы в юнитах мира = sizeFactor * множитель * этой базы;
 // нормировка по нарисованному кругу текстуры делает вид частиц независимым
 // от запаса под размытие в запечённом ассете
 const SMOKE_PARTICLE_BASE_SIZE = 8;
-
-const globalWindX = 0;
-const globalWindY = 0;
 
 const SMOKE_CONFIG = {
   // размеры и жизнь частиц

@@ -20,6 +20,8 @@ vi.mock('pixi.js', () => {
       }
     }
 
+    sortChildren() {}
+
     removeChild(item) {
       this.children = this.children.filter(child => child !== item);
       item.parent = null;
