@@ -94,26 +94,18 @@ const advanceExplosion = (explosion, progress) =>
   explosion._update(explosion._durationMs * progress);
 
 describe('ExplosionEffectController: порядок эффектов', () => {
-  it('run запускает только вспышку, воронки с дымом ещё нет', () => {
+  it('run поднимает вспышку и воронку с дымом сразу', () => {
     const { controller, stage } = makeController();
 
     controller.run();
 
     expect(controller.explosion).not.toBeNull();
-    expect(controller.funnel).toBeNull();
+    expect(controller.funnel).not.toBeNull();
     expect(stage.children).toContain(controller.explosion);
+    expect(stage.children).toContain(controller.funnel);
   });
 
-  it('пока огонь яркий, воронки нет', () => {
-    const { controller } = makeController();
-
-    controller.run();
-    advanceExplosion(controller.explosion, 0.2);
-
-    expect(controller.funnel).toBeNull();
-  });
-
-  it('воронка с дымом поднимается, когда огонь отгорел', () => {
+  it('воронка с дымом живёт, пока вспышка догорает', () => {
     const { controller, stage } = makeController();
 
     controller.run();
@@ -201,12 +193,15 @@ describe('ExplosionEffectController: порядок эффектов', () => {
     expect(controller.funnel).not.toBeNull();
   });
 
-  it('очищенная сцена между вспышкой и воронкой уничтожает контроллер', () => {
+  // страховка: воронка поднимается вместе со вспышкой, но burnout остаётся
+  // колбэком - на очищенной сцене поднимать воронку некуда, и контроллер,
+  // чьё уничтожение висит на завершении воронки, обязан убрать себя сам
+  it('burnout на очищенной сцене уничтожает контроллер', () => {
     const { controller, stage } = makeController();
 
     controller.run();
     stage.removeChild(controller);
-    advanceExplosion(controller.explosion, 0.5);
+    controller._onExplosionBurnout();
 
     expect(controller.funnel).toBeNull();
     expect(controller.destroyed).toBe(true);

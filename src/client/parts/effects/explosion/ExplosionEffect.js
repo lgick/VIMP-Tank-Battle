@@ -1,9 +1,9 @@
 import { Sprite } from 'pixi.js';
 import BaseEffect from '../BaseEffect.js';
 
-// доля анимации, после которой ядро схлопнулось и огонь больше не перебивает
-// след от взрыва: с этого момента можно поднимать воронку с дымом
-const BURNOUT_PROGRESS = 0.4;
+// доля анимации, после которой поднимается воронка с дымом:
+// 0 - сразу со вспышкой (стартовый _update(0) в BaseEffect.run)
+const BURNOUT_PROGRESS = 0;
 
 export default class ExplosionEffect extends BaseEffect {
   constructor(x, y, radius, onBurnout, onComplete, assets) {

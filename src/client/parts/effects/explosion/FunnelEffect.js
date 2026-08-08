@@ -22,7 +22,7 @@ export default class FunnelEffect extends BaseEffect {
     this.x = x;
     this.y = y;
     this._funnelDurationMs = 20000;
-    this._funnelFadeInDurationMs = 400; // проявление
+    this._funnelFadeInDurationMs = 50; // проявление
     this._funnelFadeDurationMs = 4000; // затухание
     this._elapsedMs = 0;
     this._smokeDurationMs = 4000; // время дыма
