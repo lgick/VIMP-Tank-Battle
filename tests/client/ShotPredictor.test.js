@@ -55,7 +55,11 @@ const makePredictor = () => {
 
   p.setModel('m1');
   p.setMap(emptyMap());
-  mapDynamics.setMap({ physicsDynamic: [], scale: emptyMap().scale });
+  mapDynamics.setMap({
+    physicsDynamic: [],
+    scale: emptyMap().scale,
+    setId: 'c1',
+  });
 
   return { p, mapDynamics };
 };
@@ -180,6 +184,7 @@ describe('ShotPredictor: трассер (w1)', () => {
         { position: [100, -50], angle: 0, width: 40, height: 100 },
       ],
       scale: 2,
+      setId: 'c1',
     });
 
     const { w1 } = predictor.tryFire(restingState(), 1, 0);
@@ -234,6 +239,7 @@ describe('ShotPredictor: трассер (w1)', () => {
         { position: [100, -20], angle: 90, width: 40, height: 60 },
       ],
       scale: 2,
+      setId: 'c1',
     });
 
     const { w1 } = predictor.tryFire(restingState(), 1, 0);

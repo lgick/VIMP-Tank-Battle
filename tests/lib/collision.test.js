@@ -100,6 +100,16 @@ describe('obbVsObb: SAT для двух прямоугольников', () => {
 
     expect(obbVsObb(a, separated)).toBeNull();
   });
+
+  // на этом держится ширина контактного пятна: тело с нулевым габаритом
+  // дало бы нулевой допуск и 0/0 в точке контакта, но сюда не доходит
+  it('вырожденный бокс (нулевой габарит) — промах, а не контакт', () => {
+    const degenerate = { x: 0, y: 0, angle: 0, halfW: 0, halfH: 0 };
+    const box = { x: 0, y: 0, angle: 0, halfW: 5, halfH: 5 };
+
+    expect(obbVsObb(degenerate, box)).toBeNull();
+    expect(obbVsObb(box, degenerate)).toBeNull();
+  });
 });
 
 describe('collectTileContacts: OBB против тайловой сетки стен', () => {

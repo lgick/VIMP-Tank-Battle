@@ -251,12 +251,18 @@ describe('TankPredictor: столкновения', () => {
 
   // минимальный двойник MapDynamics с одним предсказанным ящиком
   const makeBoxDynamics = box => ({
-    capture: () => {},
+    calls: { capture: 0, release: 0 },
+    capture() {
+      this.calls.capture += 1;
+    },
     integratePredicted: () => {},
     getPredictedBodies: () => [box],
     noteContacts: () => {},
     demoteIdle: () => {},
     decayError: () => {},
+    releasePredicted() {
+      this.calls.release += 1;
+    },
   });
 
   const makeBox = (over = {}) => ({
@@ -345,6 +351,38 @@ describe('TankPredictor: столкновения', () => {
     predictor._step(0);
 
     expect(predictor._state.vx).toBeLessThan(200);
+  });
+
+  // регресс: demoteIdle зовётся только из шага симуляции, а рендер
+  // предсказанных тел перекрывает интерполяцию каждый кадр — остановившийся
+  // предиктор оставлял ящик/чужой танк застывшим на экране навсегда
+  it('без шага симуляции подсистемы отпускают предсказанные тела', () => {
+    const set = makeBoxDynamics(makeBox());
+
+    predictor._predictedSets = [set];
+    predictor.setActive(false); // спектатор: шага нет
+
+    predictor.update(1000);
+    predictor.update(1016);
+
+    expect(set.calls.release).toBeGreaterThan(0);
+  });
+
+  it('заморозка (танк уничтожен) снимает контакты и захват тел', () => {
+    const box = makeBox();
+    const set = makeBoxDynamics(box);
+
+    predictor._predictedSets = [set];
+    predictor.freeze(true);
+    predictor._state.x = 26; // правый край танка 30, левая грань ящика 30
+    predictor._state.y = 20;
+    predictor._state.vx = 200;
+
+    predictor._step(0);
+
+    expect(set.calls.capture).toBe(0);
+    expect(box.x).toBe(40);
+    expect(box.vx).toBe(0);
   });
 
   it('ящик вне контакта танк не трогает', () => {

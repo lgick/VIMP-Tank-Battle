@@ -1,6 +1,6 @@
 import { degToRad, normalizeAngle } from '../lib/math.js';
 import { boxCenterFromOrigin, obbVsObb } from '../lib/collision.js';
-import { integrate } from '../lib/rigidBody.js';
+import { boxMassProperties, integrate, MAP_SURFACE } from '../lib/rigidBody.js';
 import { rotateVec } from '../lib/vec2.js';
 
 // Единый источник геометрии динамики карты И её предиктор.
@@ -36,10 +36,6 @@ import { rotateVec } from '../lib/vec2.js';
 // _startRound). Сброс по CLEAR стирал бы боксы навсегда — update() обновляет
 // только уже известные ключи, — и танк с трассером переставали бы видеть
 // динамику карты после первого же раунда.
-
-// параметры поверхности динамики карты — те же дефолты, что у сервера
-const DEFAULT_FRICTION = 0.2;
-const DEFAULT_RESTITUTION = 0;
 
 // насколько раздувается OBB танка при проверке захвата тела в предсказание
 const CAPTURE_MARGIN = 2;
@@ -92,10 +88,6 @@ export default class MapDynamics {
       const originY = item.position[1] * scale;
       const center = boxCenterFromOrigin(originX, originY, angle, halfW, halfH);
 
-      // масса и момент инерции прямоугольника (как у Rapier на сервере)
-      const mass = (item.density ?? 0) * width * height;
-      const inertia = (mass * (width * width + height * height)) / 12;
-
       this._bodies[key] = {
         halfW,
         halfH,
@@ -105,14 +97,13 @@ export default class MapDynamics {
         vx: 0,
         vy: 0,
         angvel: 0,
-        invMass: mass > 0 ? 1 / mass : 0,
-        invInertia: inertia > 0 ? 1 / inertia : 0,
+        // масса и момент инерции прямоугольника (как у Rapier на сервере)
+        ...boxMassProperties(width, height, item.density ?? 0),
         linearDamping: item.linearDamping ?? 0,
         angularDamping: item.angularDamping ?? 0.01,
-        // параметры поверхности ящика (DEFAULT_* в src/server/parts/Map.js);
-        // в контакте комбинируются правилом среднего, как в Rapier
-        friction: DEFAULT_FRICTION,
-        restitution: DEFAULT_RESTITUTION,
+        // поверхность ящика; в контакте комбинируется правилом среднего
+        friction: MAP_SURFACE.friction,
+        restitution: MAP_SURFACE.restitution,
         mode: 'follow',
         error: { x: 0, y: 0, angle: 0 },
         lastContactTime: -Infinity,
@@ -139,34 +130,30 @@ export default class MapDynamics {
   // Состоянием предсказанных тел владеет симуляция, им обновляется только
   // follow — эталон, по которому решается возврат в интерполяцию.
   update(game) {
-    if (!game) {
+    // ключи dN индексные: блок ЧУЖОГО конструктора карт (другой setId) увёл бы
+    // тела текущей карты в чужие координаты, поэтому берётся только свой
+    const items = this._setId === null ? null : game?.[this._setId];
+
+    if (!items) {
       return;
     }
 
-    for (const key in game) {
-      if (!Object.hasOwn(game, key) || !key.startsWith('c')) {
+    for (const dKey in items) {
+      const body = this._bodies[dKey];
+
+      if (!Object.hasOwn(items, dKey) || !body) {
         continue;
       }
 
-      const items = game[key];
+      const [x, y, angle] = items[dKey];
+      const center = boxCenterFromOrigin(x, y, angle, body.halfW, body.halfH);
 
-      for (const dKey in items) {
-        const body = this._bodies[dKey];
+      body.follow = { x: center.x, y: center.y, angle };
 
-        if (!Object.hasOwn(items, dKey) || !body) {
-          continue;
-        }
-
-        const [x, y, angle] = items[dKey];
-        const center = boxCenterFromOrigin(x, y, angle, body.halfW, body.halfH);
-
-        body.follow = { x: center.x, y: center.y, angle };
-
-        if (body.mode === 'follow') {
-          body.x = center.x;
-          body.y = center.y;
-          body.angle = angle;
-        }
+      if (body.mode === 'follow') {
+        body.x = center.x;
+        body.y = center.y;
+        body.angle = angle;
       }
     }
   }
@@ -397,17 +384,26 @@ export default class MapDynamics {
       }
 
       // Возврат безопасен именно потому, что схождение уже проверено:
-      // остаток ограничен эпсилонами, скачка не видно. Ошибку обнуляем —
-      // нарисованное тело дальше ведёт интерполяция, и ненулевая ошибка
-      // развела бы спрайт с боксом трассера.
-      body.error = { x: 0, y: 0, angle: 0 };
-      body.mode = 'follow';
-      body.x = follow.x;
-      body.y = follow.y;
-      body.angle = follow.angle;
-      body.vx = 0;
-      body.vy = 0;
-      body.angvel = 0;
+      // остаток ограничен эпсилонами, скачка не видно.
+      this._demote(body);
+    }
+  }
+
+  /**
+   * Безусловный возврат всех тел в 'follow'.
+   * Шагает предсказанные тела TankPredictor, и когда он перестал (спектатор,
+   * уничтоженный танк, ожидание первого authoritative-кадра), тела иначе
+   * зависли бы предсказанными навсегда: demoteIdle зовётся только из шага
+   * симуляции, а getRenderData() перекрывает интерполяцию каждый кадр.
+   * Схождение здесь не проверяется — ждать его не от кого.
+   */
+  releasePredicted() {
+    for (const key in this._bodies) {
+      const body = this._bodies[key];
+
+      if (Object.hasOwn(this._bodies, key) && body.mode === 'predicted') {
+        this._demote(body);
+      }
     }
   }
 
@@ -597,6 +593,14 @@ export default class MapDynamics {
   _promote(body, localNow) {
     const server = body.hasServer ? body.lastServer : body.follow;
 
+    // едущее тело нарисовано интерполяцией, то есть отстаёт от авторитетного
+    // на задержку интерполяции: подмена состояния без компенсации дёрнула бы
+    // спрайт на delay×v (десятки сантиметров корпуса). Разница уходит в
+    // ошибку и затухает, как всякое другое расхождение подсистемы
+    const renderX = body.x + body.error.x;
+    const renderY = body.y + body.error.y;
+    const renderAngle = body.angle + body.error.angle;
+
     body.mode = 'predicted';
     body.x = server.x;
     body.y = server.y;
@@ -604,7 +608,29 @@ export default class MapDynamics {
     body.vx = server.vx ?? 0;
     body.vy = server.vy ?? 0;
     body.angvel = server.angvel ?? 0;
-    body.error = { x: 0, y: 0, angle: 0 };
     body.lastContactTime = localNow;
+    body.error = {
+      x: renderX - body.x,
+      y: renderY - body.y,
+      angle: normalizeAngle(renderAngle - body.angle),
+    };
+
+    // расхождение больше порога проще снапнуть, чем протаскивать
+    if (Math.hypot(body.error.x, body.error.y) > ERROR_SNAP_DISTANCE) {
+      body.error = { x: 0, y: 0, angle: 0 };
+    }
+  }
+
+  // возврат тела в интерполяцию: ошибку обнуляем — нарисованное тело дальше
+  // ведёт интерполяция, и ненулевая ошибка развела бы спрайт с боксом трассера
+  _demote(body) {
+    body.mode = 'follow';
+    body.x = body.follow.x;
+    body.y = body.follow.y;
+    body.angle = body.follow.angle;
+    body.vx = 0;
+    body.vy = 0;
+    body.angvel = 0;
+    body.error = { x: 0, y: 0, angle: 0 };
   }
 }

@@ -138,6 +138,7 @@ describe('ShotEffectController: попадание в динамику карт�
     mapDynamics.setMap({
       physicsDynamic: [{ position: [0, 0], angle: 0, width: 20, height: 20 }],
       scale: 1,
+      setId: 'c1',
     });
     // угол (0,0) + (halfW10,halfH10) → центр (10,10)
   });
@@ -210,7 +211,7 @@ describe('ShotEffectController: попадание в динамику карт�
     controller.run();
 
     // карта сменилась — getBox('d0') теперь null
-    mapDynamics.setMap({ physicsDynamic: [], scale: 1 });
+    mapDynamics.setMap({ physicsDynamic: [], scale: 1, setId: 'c1' });
 
     finishTracer(controller);
 

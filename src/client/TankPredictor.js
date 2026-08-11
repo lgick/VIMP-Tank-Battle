@@ -1,7 +1,13 @@
 import { lerp, clamp, normalizeAngle } from '../lib/math.js';
 import { Vec2, rotateVec } from '../lib/vec2.js';
 import { collectTileContacts, obbVsObb } from '../lib/collision.js';
-import { separateBodies, applyContactImpulse } from '../lib/rigidBody.js';
+import {
+  applyContactImpulse,
+  boxMassProperties,
+  combineSurfaces,
+  separateBodies,
+  MAP_SURFACE,
+} from '../lib/rigidBody.js';
 
 // Client-side prediction своего танка: реплика серверной модели движения
 // (Tank.updateData) без Rapier-коллизий. Точность реплики фиксируется
@@ -31,17 +37,6 @@ const MAX_ACCUMULATED_TIME = 100;
 // проходов решателя по собранным контактам за один шаг (sequential impulse)
 const SOLVER_ITERATIONS = 4;
 
-// параметры поверхности стены (DEFAULT_* в src/server/parts/Map.js)
-const WALL_FRICTION = 0.2;
-const WALL_RESTITUTION = 0;
-
-// Rapier комбинирует коэффициенты двух тел правилом среднего
-// (CoefficientCombineRule::Average) — реплика обязана делать так же
-const combineSurfaces = (a, b) => ({
-  friction: (a.friction + b.friction) / 2,
-  restitution: (a.restitution + b.restitution) / 2,
-});
-
 // неподвижный партнёр контакта со стеной (обратные массы нулевые, поэтому
 // решатель его не двигает; координаты нужны только как плечо)
 const makeStaticBody = (x, y) => ({
@@ -55,8 +50,8 @@ const makeStaticBody = (x, y) => ({
   invInertia: 0,
   linearDamping: 0,
   angularDamping: 0,
-  friction: WALL_FRICTION,
-  restitution: WALL_RESTITUTION,
+  friction: MAP_SURFACE.friction,
+  restitution: MAP_SURFACE.restitution,
 });
 
 export default class TankPredictor {
@@ -83,6 +78,7 @@ export default class TankPredictor {
     this._stepMs = timeStep;
     this._models = models;
     this._model = null; // выбирается setModel при авторизации
+    this._shape = null; // габариты и масса корпуса (считает setModel)
 
     // подсистемы предсказанных тел: единый утиный контракт
     // (capture/integratePredicted/getPredictedBodies/noteContacts/
@@ -133,6 +129,21 @@ export default class TankPredictor {
   // модель танка пользователя (известна при авторизации)
   setModel(modelName) {
     this._model = this._models[modelName] || null;
+    // габарит 4:3 от size и масс-инерционные свойства корпуса: модель за игру
+    // не меняется, а шагов симуляции (живых плюс replay) сотни в секунду
+    this._shape = null;
+
+    if (this._model) {
+      const width = this._model.size * 4;
+      const height = this._model.size * 3;
+
+      this._shape = {
+        halfW: width / 2,
+        halfH: height / 2,
+        // размер танка, в отличие от динамики карты, картой не масштабируется
+        ...boxMassProperties(width, height, this._model.fixture?.density ?? 0),
+      };
+    }
   }
 
   // стены карты (MAP_DATA) — тайловая сетка для сбора контактов
@@ -242,6 +253,15 @@ export default class TankPredictor {
 
     if (!this.hasState || this._frozen) {
       this._accumulator = 0;
+
+      // симуляция не шагает (спектатор, уничтоженный танк, ожидание первого
+      // authoritative-кадра) — тела предсказанного мира отпускаются: без шага
+      // некому вернуть их в интерполяцию, а их getRenderData() продолжает
+      // перекрывать её каждый кадр, и ящик/танк застыл бы на экране навсегда
+      for (const set of this._predictedSets) {
+        set.releasePredicted();
+      }
+
       return;
     }
 
@@ -533,20 +553,15 @@ export default class TankPredictor {
    * @param {number} dt - Шаг в секундах.
    */
   _resolveWorld(dt) {
-    if (!this._grid && this._predictedSets.length === 0) {
+    // заморожен — танком владеет сервер: уничтоженный корпус ничего не толкает,
+    // а захват тел в предсказание привязал бы их к нему (см. releasePredicted)
+    if (this._frozen || (!this._grid && this._predictedSets.length === 0)) {
       return;
     }
 
     const m = this._model;
     const state = this._state;
     const localNow = this._localNow;
-
-    // масса и момент танка: габарит 4:3 от size, плотность из fixture
-    // (размер танка, в отличие от динамики карты, картой не масштабируется)
-    const width = m.size * 4;
-    const height = m.size * 3;
-    const mass = m.fixture.density * width * height;
-    const inertia = (mass * (width * width + height * height)) / 12;
 
     const tank = {
       x: state.x,
@@ -555,23 +570,28 @@ export default class TankPredictor {
       vx: state.vx,
       vy: state.vy,
       angvel: state.angvel,
-      invMass: 1 / mass,
-      invInertia: 1 / inertia,
+      invMass: this._shape.invMass,
+      invInertia: this._shape.invInertia,
       linearDamping: m.damping.linear,
       angularDamping: m.damping.angular,
       friction: m.fixture.friction,
       restitution: m.fixture.restitution,
-      halfW: width / 2,
-      halfH: height / 2,
+      halfW: this._shape.halfW,
+      halfH: this._shape.halfH,
     };
 
     // захват и шаг предсказанных подсистем (ящики карты, чужие танки)
+    const sets = [];
     const others = [];
 
     for (const set of this._predictedSets) {
       set.capture(tank, localNow);
       set.integratePredicted(dt);
-      others.push(...set.getPredictedBodies());
+
+      const bodies = set.getPredictedBodies();
+
+      sets.push({ set, bodies });
+      others.push(...bodies);
     }
 
     const contacts = [];
@@ -637,10 +657,11 @@ export default class TankPredictor {
       touched.add(b);
     }
 
-    for (const set of this._predictedSets) {
-      const own = set.getPredictedBodies().filter(body => touched.has(body));
-
-      set.noteContacts(own, localNow);
+    for (const { set, bodies } of sets) {
+      set.noteContacts(
+        bodies.filter(body => touched.has(body)),
+        localNow,
+      );
       set.demoteIdle(localNow);
     }
   }

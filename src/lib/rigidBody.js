@@ -4,6 +4,11 @@
 // Это приближение Rapier, а не его копия: остаток расхождения прячет
 // реконсиляция (TankPredictor.onServerState + MapDynamics.finishReconcile).
 //
+// Здесь же — материальные свойства контакта (MAP_SURFACE, combineSurfaces) и
+// масс-инерционные свойства прямоугольного тела (boxMassProperties): их обязаны
+// видеть одинаково обе стороны, иначе реплика тихо разъедется с сервером,
+// поэтому модуль общий для src/server и src/client.
+//
 // Формат тела:
 //   { x, y, angle, vx, vy, angvel,
 //     invMass, invInertia, linearDamping, angularDamping }
@@ -11,6 +16,42 @@
 // x/y — ЦЕНТР бокса (не «угол объекта» снапшота, см. collision.js).
 
 import { clamp, normalizeAngle } from './math.js';
+
+// поверхность геометрии карты (стены и динамика) — дефолты коллайдеров
+// сервера; клиентская реплика обязана брать те же значения
+export const MAP_SURFACE = { friction: 0.2, restitution: 0 };
+
+/**
+ * Комбинирует материальные свойства двух тел в параметры контакта.
+ * Rapier сводит коэффициенты правилом среднего
+ * (CoefficientCombineRule::Average) — реплика делает так же.
+ * @param {{friction: number, restitution: number}} a
+ * @param {{friction: number, restitution: number}} b
+ * @returns {{friction: number, restitution: number}}
+ */
+export const combineSurfaces = (a, b) => ({
+  friction: (a.friction + b.friction) / 2,
+  restitution: (a.restitution + b.restitution) / 2,
+});
+
+/**
+ * Обратные масса и момент инерции прямоугольного тела.
+ * Нулевая плотность или габарит дают статику (нулевые обратные величины),
+ * а не деление на ноль.
+ * @param {number} width - Ширина в мировых единицах.
+ * @param {number} height - Высота в мировых единицах.
+ * @param {number} density - Плотность (fixture моделей / density карты).
+ * @returns {{invMass: number, invInertia: number}}
+ */
+export const boxMassProperties = (width, height, density) => {
+  const mass = density * width * height;
+  const inertia = (mass * (width * width + height * height)) / 12;
+
+  return {
+    invMass: mass > 0 ? 1 / mass : 0,
+    invInertia: inertia > 0 ? 1 / inertia : 0,
+  };
+};
 
 /**
  * Один шаг интеграции тела.
@@ -136,18 +177,4 @@ export const applyContactImpulse = (a, b, contact, { restitution, friction }) =>
   b.vx += tx * jt * b.invMass;
   b.vy += ty * jt * b.invMass;
   b.angvel += rtB * jt * b.invInertia;
-};
-
-/**
- * Полное разрешение контакта: развод по глубине плюс импульс.
- * Удобно для одиночного контакта; решатель с несколькими итерациями
- * должен звать separateBodies и applyContactImpulse раздельно.
- * @param {Object} a - Тело A (нормаль направлена ОТ него).
- * @param {Object} b - Тело B.
- * @param {{nx: number, ny: number, depth: number, cx: number, cy: number}} contact
- * @param {{restitution: number, friction: number}} params
- */
-export const resolveContact = (a, b, contact, params) => {
-  separateBodies(a, b, contact);
-  applyContactImpulse(a, b, contact, params);
 };

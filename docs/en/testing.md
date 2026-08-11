@@ -16,9 +16,9 @@ The build is part of the checklist: it catches broken imports and unavailable ex
 
 ## Coverage map
 
-Covered (~945 tests):
+Covered (~955 tests):
 
-- the whole of `lib/` (including `security`, the round-trip of `snapshotCodec`, `raycast`, `collision` — OBB/tile-grid contacts/origin→center — and `rigidBody`, the two-body sequential-impulse solver shared by `MapDynamics`/`RemoteTanks`/`TankPredictor`);
+- the whole of `lib/` (including `security`, the round-trip of `snapshotCodec`, `raycast`, `collision` — OBB/tile-grid contacts/origin→center — and `rigidBody` — the two-body sequential-impulse solver, box mass properties and surface combination, shared by `MapDynamics`/`RemoteTanks`/`TankPredictor` and the server map colliders);
 - client: `SnapshotInterpolator`, `TankPredictor`, `ShotPredictor`, `MapDynamics`, `RemoteTanks`, `OwnTank`, the models (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager), `InputListener`, `SoundManager`, all 8 controllers and views (DOM through happy-dom);
 - the **parity test** `tests/server/TankPredictorParity.test.js` — the movement replica against real Rapier; mandatory to run on any change to `Tank.updateData`/`models.js`;
 - the **Rapier semantics probe** `tests/server/RapierBodySemantics.test.js` — pins down assumptions the client predictors rely on but Rapier's docs don't spell out explicitly (e.g. `linvel()` being the centre-of-mass velocity, not the origin's) against the real WASM physics, not a mock;

@@ -1,6 +1,6 @@
 import { normalizeAngle } from '../lib/math.js';
 import { obbVsObb } from '../lib/collision.js';
-import { integrate } from '../lib/rigidBody.js';
+import { boxMassProperties, integrate } from '../lib/rigidBody.js';
 
 // Предсказание ЧУЖИХ танков, находящихся в контакте со своим.
 //
@@ -228,9 +228,7 @@ export default class RemoteTanks {
 
   // шаг экстраполяции предсказанных танков (часы — у TankPredictor)
   integratePredicted(dt) {
-    for (const body of this.getPredictedBodies()) {
-      integrate(body, dt);
-    }
+    this._forEachPredicted(body => integrate(body, dt));
   }
 
   // живые (мутируемые) тела для решателя
@@ -265,7 +263,11 @@ export default class RemoteTanks {
       halfH: tankObb.halfH + CAPTURE_MARGIN,
     };
 
-    let predictedCount = this.getPredictedBodies().length;
+    let predictedCount = 0;
+
+    this._forEachPredicted(() => {
+      predictedCount += 1;
+    });
 
     for (const key in this._bodies) {
       const body = this._bodies[key];
@@ -307,9 +309,9 @@ export default class RemoteTanks {
    * @param {number} localNow - performance.now().
    */
   demoteIdle(localNow) {
-    for (const body of this.getPredictedBodies()) {
+    this._forEachPredicted(body => {
       if (localNow - body.lastContactTime <= PREDICTION_HOLD_MS) {
-        continue;
+        return;
       }
 
       const follow = body.follow;
@@ -319,30 +321,32 @@ export default class RemoteTanks {
         Math.abs(normalizeAngle(body.angle - follow.angle)) <
           DEMOTE_ANGLE_EPSILON;
 
-      if (!converged) {
-        continue;
+      if (converged) {
+        this._demote(body);
       }
+    });
+  }
 
-      body.error = { x: 0, y: 0, angle: 0 };
-      body.mode = 'follow';
-      body.x = follow.x;
-      body.y = follow.y;
-      body.angle = follow.angle;
-      body.vx = 0;
-      body.vy = 0;
-      body.angvel = 0;
-    }
+  /**
+   * Безусловный возврат всех танков в 'follow'.
+   * Шагает предсказанные тела TankPredictor, и когда он перестал (спектатор,
+   * уничтоженный свой танк), они иначе зависли бы предсказанными навсегда:
+   * demoteIdle зовётся только из шага симуляции, а getRenderData()
+   * перекрывает интерполяцию каждый кадр.
+   */
+  releasePredicted() {
+    this._forEachPredicted(body => this._demote(body));
   }
 
   // экспоненциальное затухание ошибки (как visualError своего танка)
   decayError(elapsed) {
     const decay = Math.max(0, 1 - (elapsed / 1000) * ERROR_DECAY_RATE);
 
-    for (const body of this.getPredictedBodies()) {
+    this._forEachPredicted(body => {
       body.error.x *= decay;
       body.error.y *= decay;
       body.error.angle *= decay;
-    }
+    });
   }
 
   /**
@@ -414,6 +418,18 @@ export default class RemoteTanks {
     };
   }
 
+  // обход предсказанных тел без промежуточного массива (горячий путь:
+  // зовётся каждый шаг симуляции, включая replay реконсиляции)
+  _forEachPredicted(fn) {
+    for (const key in this._bodies) {
+      const body = this._bodies[key];
+
+      if (Object.hasOwn(this._bodies, key) && body.mode === 'predicted') {
+        fn(body);
+      }
+    }
+  }
+
   // габариты и масса из size кадра (соотношение сторон 4:3, как у Tank)
   _applySize(body, size) {
     if (body.size === size) {
@@ -423,14 +439,11 @@ export default class RemoteTanks {
     const width = size * 4;
     const height = size * 3;
     const density = this._models[body.modelKey]?.fixture?.density ?? 0;
-    const mass = density * width * height;
-    const inertia = (mass * (width * width + height * height)) / 12;
 
     body.size = size;
     body.halfW = width / 2;
     body.halfH = height / 2;
-    body.invMass = mass > 0 ? 1 / mass : 0;
-    body.invInertia = inertia > 0 ? 1 / inertia : 0;
+    Object.assign(body, boxMassProperties(width, height, density));
   }
 
   // OBB для проверки захвата: авторитетная позиция с упреждением
@@ -449,21 +462,17 @@ export default class RemoteTanks {
     };
   }
 
-  // OBB тела по симуляционному состоянию (решателю ошибка не нужна)
-  _toObb(body) {
-    return {
-      x: body.x,
-      y: body.y,
-      angle: body.angle,
-      halfW: body.halfW,
-      halfH: body.halfH,
-    };
-  }
-
   // перевод в предсказание: состояние засевается авторитетным кадром;
   // до первого такого кадра сеем интерполированным — иначе тело
   // телепортировалось бы в начало координат
   _promote(body, localNow) {
+    // едущий танк нарисован там, где был serverNow − delay: подмена состояния
+    // без компенсации дёрнула бы корпус на delay×v (при 60 ю/с — 6 юнитов при
+    // длине корпуса 8). Разница уходит в ошибку и затухает
+    const renderX = body.x + body.error.x;
+    const renderY = body.y + body.error.y;
+    const renderAngle = body.angle + body.error.angle;
+
     if (body.hasServer) {
       Object.assign(body, body.lastServer);
     } else {
@@ -476,7 +485,29 @@ export default class RemoteTanks {
     }
 
     body.mode = 'predicted';
-    body.error = { x: 0, y: 0, angle: 0 };
     body.lastContactTime = localNow;
+    body.error = {
+      x: renderX - body.x,
+      y: renderY - body.y,
+      angle: normalizeAngle(renderAngle - body.angle),
+    };
+
+    // расхождение больше порога проще снапнуть, чем протаскивать
+    if (Math.hypot(body.error.x, body.error.y) > ERROR_SNAP_DISTANCE) {
+      body.error = { x: 0, y: 0, angle: 0 };
+    }
+  }
+
+  // возврат в интерполяцию: ошибка обнуляется — дальше телом владеет
+  // интерполяция, и ненулевая ошибка развела бы спрайт с состоянием
+  _demote(body) {
+    body.mode = 'follow';
+    body.x = body.follow.x;
+    body.y = body.follow.y;
+    body.angle = body.follow.angle;
+    body.vx = 0;
+    body.vy = 0;
+    body.angvel = 0;
+    body.error = { x: 0, y: 0, angle: 0 };
   }
 }

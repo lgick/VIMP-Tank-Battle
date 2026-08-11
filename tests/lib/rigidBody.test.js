@@ -1,14 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
+  boxMassProperties,
+  combineSurfaces,
   integrate,
   separateBodies,
   applyContactImpulse,
-  resolveContact,
+  MAP_SURFACE,
 } from '../../src/lib/rigidBody.js';
 
 // Двухтельный решатель контактов клиентского предсказания. Порядок
 // интеграции обязан совпадать с TankPredictor._step — иначе разъезжается
 // паритет с сервером (tests/server/TankPredictorParity.test.js).
+
+// разрешение одиночного контакта ровно в том порядке, в каком его делает
+// решатель TankPredictor._resolveWorld
+const resolveContact = (a, b, contact, params) => {
+  separateBodies(a, b, contact);
+  applyContactImpulse(a, b, contact, params);
+};
 
 const makeBody = (over = {}) => ({
   x: 0,
@@ -262,16 +271,28 @@ describe('rigidBody: разделение развода и импульса', (
     expect(b.x).toBe(separated.bx);
   });
 
-  it('resolveContact = separateBodies + applyContactImpulse', () => {
-    const combined = { a: makeBody({ x: 0, vx: 10 }), b: makeBody({ x: 8 }) };
-    const split = { a: makeBody({ x: 0, vx: 10 }), b: makeBody({ x: 8 }) };
-    const params = { restitution: 0.05, friction: 0.35 };
+});
 
-    resolveContact(combined.a, combined.b, contact, params);
-    separateBodies(split.a, split.b, contact);
-    applyContactImpulse(split.a, split.b, contact, params);
+describe('rigidBody: масс-инерционные свойства и поверхности', () => {
+  it('масса и момент прямоугольника: m = ρwh, I = m(w²+h²)/12', () => {
+    const { invMass, invInertia } = boxMassProperties(8, 6, 200);
+    const mass = 200 * 8 * 6;
 
-    expect(combined.a).toEqual(split.a);
-    expect(combined.b).toEqual(split.b);
+    expect(1 / invMass).toBeCloseTo(mass, 9);
+    expect(1 / invInertia).toBeCloseTo((mass * (64 + 36)) / 12, 6);
+  });
+
+  it('нулевая плотность или габарит дают статику, а не деление на ноль', () => {
+    expect(boxMassProperties(8, 6, 0)).toEqual({ invMass: 0, invInertia: 0 });
+    expect(boxMassProperties(0, 0, 200)).toEqual({ invMass: 0, invInertia: 0 });
+  });
+
+  it('поверхности комбинируются правилом среднего (как Rapier)', () => {
+    const tank = { friction: 0.5, restitution: 0.1 };
+
+    expect(combineSurfaces(tank, MAP_SURFACE)).toEqual({
+      friction: 0.35,
+      restitution: 0.05,
+    });
   });
 });

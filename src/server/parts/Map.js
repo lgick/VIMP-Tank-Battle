@@ -1,11 +1,10 @@
 import { roundTo2Decimals } from '../../lib/formatters.js';
 import { degToRad } from '../../lib/math.js';
+// параметры поверхности геометрии карты живут в общем модуле: клиентская
+// реплика контактов (MapDynamics/TankPredictor) обязана видеть те же значения,
+// иначе предсказание тихо разъедется с авторитетной физикой
+import { MAP_SURFACE } from '../../lib/rigidBody.js';
 import RAPIER from '../physics/rapier.js';
-
-// параметры поверхности по умолчанию (соответствуют дефолтам planck/Box2D,
-// с которыми сбалансировано ощущение управления)
-const DEFAULT_FRICTION = 0.2;
-const DEFAULT_RESTITUTION = 0;
 
 // порог, ниже которого тело считается покоящимся и отдаётся без скоростей —
 // страховка на случай, если сон Rapier окажется выключен
@@ -125,8 +124,8 @@ class Map {
           // коллайдер-прямоугольник (половинные размеры)
           this._world.createCollider(
             RAPIER.ColliderDesc.cuboid(sizes[0] / 2, sizes[1] / 2)
-              .setFriction(DEFAULT_FRICTION)
-              .setRestitution(DEFAULT_RESTITUTION),
+              .setFriction(MAP_SURFACE.friction)
+              .setRestitution(MAP_SURFACE.restitution),
             body,
           );
 
@@ -157,8 +156,8 @@ class Map {
         RAPIER.ColliderDesc.cuboid(data.width / 2, data.height / 2)
           .setTranslation(data.width / 2, data.height / 2)
           .setDensity(data.density)
-          .setFriction(DEFAULT_FRICTION)
-          .setRestitution(DEFAULT_RESTITUTION),
+          .setFriction(MAP_SURFACE.friction)
+          .setRestitution(MAP_SURFACE.restitution),
         body,
       );
 

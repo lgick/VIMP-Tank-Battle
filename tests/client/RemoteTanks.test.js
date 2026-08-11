@@ -122,6 +122,20 @@ describe('RemoteTanks: захват в предсказание', () => {
     expect(bodyOf(rt, 'm1', '7').mode).toBe('predicted');
   });
 
+  it('захват едущего танка не дёргает корпус: разница уходит в error', () => {
+    // нарисован в (0,0), авторитетно уже проехал 10 юнитов нам навстречу
+    rt.beginReconcile({ m1: { 7: tankData(10, 0, 0, -60, 0) } });
+
+    rt.capture(tankObb(-15, 0), 1000);
+
+    const body = bodyOf(rt, 'm1', '7');
+    const render = rt.getRenderData().m1[7];
+
+    expect(body.x).toBeCloseTo(10, 6); // состояние — авторитетное
+    expect(render[0]).toBeCloseTo(0, 6); // а нарисован там же, где был
+    expect(render[1]).toBeCloseTo(0, 6);
+  });
+
   it('нет транзитивного замыкания: сосед предсказанного не захватывается', () => {
     rt.update({ m1: { 7: tankData(0, 0), 8: tankData(41, 0) } });
 
@@ -273,6 +287,22 @@ describe('RemoteTanks: удержание и возврат в follow', () => {
     rt.demoteIdle(1500); // +100мс от нового contactTime < 300
 
     expect(body.mode).toBe('predicted');
+  });
+
+  // регресс: шагает предсказание TankPredictor, и когда он остановился
+  // (спектатор, уничтоженный свой танк), тело зависало предсказанным навсегда,
+  // а getRenderData продолжал перекрывать им интерполяцию
+  it('releasePredicted возвращает в follow, не дожидаясь схождения', () => {
+    rt.update({ m1: { 7: tankData(500, 500) } }); // follow далеко уехал
+
+    rt.releasePredicted();
+
+    const body = bodyOf(rt, 'm1', '7');
+
+    expect(body.mode).toBe('follow');
+    expect(body.x).toBeCloseTo(500, 6);
+    expect(body.y).toBeCloseTo(500, 6);
+    expect(rt.getRenderData()).toBeNull();
   });
 });
 

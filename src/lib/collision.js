@@ -56,6 +56,8 @@ const obbCorners = ({ x, y, angle, halfW, halfH }) => {
 
 // точка контакта: вершины a вдоль нормали, смешанные по близости к самой
 // глубокой (см. CONTACT_MANIFOLD_RATIO)
+// tolerance строго положителен: тело с нулевыми полуразмерами проецируется
+// в точку, и obbVsObb отсеивает его как промах, не дойдя сюда
 const contactPoint = (corners, nx, ny, tolerance) => {
   let best = -Infinity;
 

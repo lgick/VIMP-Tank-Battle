@@ -74,6 +74,14 @@ describe('MapDynamics: update (снапшот/интерполированный
     expect(md.getBox('d0')).toEqual(before);
   });
 
+  it('игнорирует блок динамики чужой карты (другой setId)', () => {
+    const before = md.getBox('d0');
+
+    md.update({ c2: { d0: [999, 999, 0] } });
+
+    expect(md.getBox('d0')).toEqual(before);
+  });
+
   it('игнорирует неизвестные dN внутри cN', () => {
     md.update({ c1: { d9: [1, 2, 3] } });
 
@@ -244,6 +252,37 @@ describe('MapDynamics: захват тел в предсказание', () => {
     expect(bodyOf(md, 'd2').mode).toBe('predicted');
   });
 
+  it('захват едущего тела не дёргает спрайт: разница уходит в error', () => {
+    const md = setup();
+
+    md.update({ c1: { d0: [100, 0, 0] } }); // нарисован центром (120, 10)
+    md.beginReconcile({ c1: { d0: [110, 0, 0, 40, 0, 0] } }); // сервер впереди
+    md.finishReconcile();
+
+    const before = md.getBox('d0');
+
+    md.capture(tankObb(96, 10), 1000);
+
+    const after = md.getBox('d0');
+
+    // состояние — авторитетное, а нарисовано тело там же, где было
+    expect(bodyOf(md, 'd0').x).toBeCloseTo(130, 6);
+    expect(after.x).toBeCloseTo(before.x, 6);
+    expect(after.y).toBeCloseTo(before.y, 6);
+  });
+
+  it('расхождение больше ERROR_SNAP_DISTANCE при захвате снапится', () => {
+    const md = setup();
+
+    md.update({ c1: { d0: [100, 0, 0] } });
+    md.beginReconcile({ c1: { d0: [150, 0, 0, 40, 0, 0] } }); // +50 юнитов
+    md.finishReconcile();
+    md.capture(tankObb(96, 10), 1000);
+
+    expect(bodyOf(md, 'd0').error).toEqual({ x: 0, y: 0, angle: 0 });
+    expect(md.getBox('d0').x).toBeCloseTo(170, 6);
+  });
+
   it('потолок MAX_PREDICTED_BODIES ограничивает множество', () => {
     const md = new MapDynamics();
 
@@ -388,6 +427,19 @@ describe('MapDynamics: симуляция и возврат в follow', () => {
     md.demoteIdle(2000);
 
     expect(bodyOf(md, 'd0').mode).toBe('predicted');
+  });
+
+  it('releasePredicted возвращает тела в follow, не дожидаясь схождения', () => {
+    const md = setup();
+
+    md.capture(tankObb(96, 10), 1000);
+    md.update({ c1: { d0: [300, 0, 0] } }); // интерполяция ушла далеко вперёд
+
+    md.releasePredicted();
+
+    expect(bodyOf(md, 'd0').mode).toBe('follow');
+    expect(md.getBox('d0').x).toBeCloseTo(320, 6);
+    expect(md.getRenderData()).toBeNull();
   });
 
   it('noteContacts продлевает удержание в предсказании', () => {
