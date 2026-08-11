@@ -141,7 +141,11 @@ socketMethods[PS_CONFIG_DATA] = async data => {
       mapDynamics,
       remoteTanks,
     });
-    shotPredictor = new ShotPredictor({ ...data.prediction, mapDynamics });
+    shotPredictor = new ShotPredictor({
+      ...data.prediction,
+      mapDynamics,
+      remoteTanks,
+    });
     ownTank = new OwnTank(predictor);
   }
 

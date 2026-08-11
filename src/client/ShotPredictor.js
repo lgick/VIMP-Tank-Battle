@@ -31,12 +31,16 @@ export default class ShotPredictor {
    * @param {Object} options.weapons - Конфиги оружия (weapons.js).
    * @param {import('./MapDynamics.js').default} [options.mapDynamics] -
    *   Общий реестр динамики карты (единый источник геометрии с TankPredictor).
+   * @param {import('./RemoteTanks.js').default} [options.remoteTanks] -
+   *   Предиктор чужих танков: даёт корпуса в том виде, в каком их видит
+   *   сервер «сейчас». Без него луч идёт по интерполированным (отстающим).
    */
-  constructor({ models, weapons, mapDynamics }) {
+  constructor({ models, weapons, mapDynamics, remoteTanks }) {
     this._models = models;
     this._weapons = weapons;
     this._weaponList = Object.keys(weapons);
     this._mapDynamics = mapDynamics || null;
+    this._remoteTanks = remoteTanks || null;
 
     this._modelData = null; // выбирается setModel при авторизации
     this._currentWeapon = null;
@@ -472,6 +476,21 @@ export default class ShotPredictor {
       }
     }
 
+    // попадание в чужой танк переносится так же: луч посчитан по корпусу
+    // «сейчас», а нарисован танк там, где был serverNow − delay
+    if (hit && hitResult.target?.gameId !== undefined && this._remoteTanks) {
+      const drawn = this._remoteTanks.toRenderPoint(
+        hitResult.target.gameId,
+        endX,
+        endY,
+      );
+
+      if (drawn) {
+        endX = drawn.x;
+        endY = drawn.y;
+      }
+    }
+
     const tracer = [
       muzzle.x,
       muzzle.y,
@@ -518,21 +537,27 @@ export default class ShotPredictor {
       }
     }
 
+    // корпуса «сейчас», как их видит сервер; интерполированные отстают на
+    // interpolation.delay, и по едущему танку луч ушёл бы мимо — та же
+    // причина, по которой динамика карты идёт через getSimBoxes
+    const simTanks = this._remoteTanks?.getSimBoxes() ?? null;
+
     for (const id in this._tanks) {
       if (Object.hasOwn(this._tanks, id) && Number(id) !== myId) {
         const tank = this._tanks[id];
 
         // габариты танка: width = size·4, height = size·3 (как Tank)
-        consider(
-          rayVsBox(origin, direction, range, {
-            x: tank.x,
-            y: tank.y,
-            angle: tank.angle,
-            halfW: tank.size * 2,
-            halfH: tank.size * 1.5,
-          }),
-          { gameId: Number(id) },
-        );
+        const box = simTanks?.[id] ?? {
+          x: tank.x,
+          y: tank.y,
+          angle: tank.angle,
+          halfW: tank.size * 2,
+          halfH: tank.size * 1.5,
+        };
+
+        consider(rayVsBox(origin, direction, range, box), {
+          gameId: Number(id),
+        });
       }
     }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import ShotPredictor from '../../src/client/ShotPredictor.js';
 import MapDynamics from '../../src/client/MapDynamics.js';
+import RemoteTanks from '../../src/client/RemoteTanks.js';
 
 // логика гейта/спавна/подавления дублей; raycast-примитивы покрыты
 // в tests/lib/raycast.test.js
@@ -255,6 +256,49 @@ describe('ShotPredictor: трассер (w1)', () => {
     predictor.updateWorld({ m1: { 2: null } });
 
     const { w1 } = predictor.tryFire(restingState(), 1, 0);
+
+    expect(w1[0][6]).toBe(false);
+  });
+});
+
+describe('ShotPredictor: трассер по чужому танку', () => {
+  // танк id 2, size 10 → halfW 20, halfH 15; нарисован в (300, 60),
+  // авторитетно уже в (300, 0) — на линии выстрела
+  const drawn = [300, 60, 0, 0, 0, -600, 0, 3, 10, 1, 0];
+  const authoritative = [300, 0, 0, 0, 0, -600, 0, 3, 10, 1, 0];
+
+  const setup = remoteTanks => {
+    const mapDynamics = new MapDynamics();
+    const p = new ShotPredictor({ models, weapons, mapDynamics, remoteTanks });
+
+    p.setModel('m1');
+    p.setMap(emptyMap());
+    mapDynamics.setMap({ physicsDynamic: [], scale: 2, setId: 'c1' });
+    p.updateWorld({ m1: { 2: drawn } });
+
+    return p;
+  };
+
+  it('луч идёт по корпусу «сейчас», а конец — по нарисованному', () => {
+    const remoteTanks = new RemoteTanks(models);
+
+    remoteTanks.setOwnGameId(1);
+    remoteTanks.update({ m1: { 2: drawn } });
+    remoteTanks.beginReconcile({ m1: { 2: authoritative } });
+    remoteTanks.finishReconcile();
+
+    const { w1 } = setup(remoteTanks).tryFire(restingState(), 1, 0);
+
+    // сервер по своей геометрии попадает — попадает и клиент
+    expect(w1[0][6]).toBe(true);
+    // точка удара перенесена на нарисованный корпус: локально это та же
+    // материальная точка (левая грань), иначе трассер обрывался бы в воздухе
+    expect(w1[0][2]).toBeCloseTo(280, 6);
+    expect(w1[0][3]).toBeCloseTo(60, 6);
+  });
+
+  it('без RemoteTanks луч идёт по нарисованному корпусу и мажет', () => {
+    const { w1 } = setup(null).tryFire(restingState(), 1, 0);
 
     expect(w1[0][6]).toBe(false);
   });

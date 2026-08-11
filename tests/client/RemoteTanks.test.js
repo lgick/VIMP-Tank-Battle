@@ -146,14 +146,16 @@ describe('RemoteTanks: захват в предсказание', () => {
     expect(bodyOf(rt, 'm1', '8').mode).toBe('follow');
   });
 
-  it('уничтоженный танк (condition 0) не захватывается', () => {
+  // сервер убирает тело из мира только на выходе/смене команды/раунде
+  // (Game.removePlayer), поэтому обломки остаются твёрдыми и толкаемыми
+  it('уничтоженный танк (condition 0) захватывается: его тело в мире осталось', () => {
     rt.update({
       m1: { 7: [0, 0, 0, 0, 0, 0, 0, 0, 10, 1, 0] }, // condition 0
     });
 
     rt.capture(tankObb(-15, 0), 1000);
 
-    expect(bodyOf(rt, 'm1', '7').mode).toBe('follow');
+    expect(bodyOf(rt, 'm1', '7').mode).toBe('predicted');
   });
 
   it('потолок MAX_PREDICTED_TANKS ограничивает множество', () => {
@@ -374,6 +376,67 @@ describe('RemoteTanks: getRenderData', () => {
     const data = rt.getRenderData();
 
     expect(Object.keys(data).sort()).toEqual(['m1', 'm2']);
+  });
+});
+
+describe('RemoteTanks: симуляционные боксы (raycast)', () => {
+  let rt;
+
+  beforeEach(() => {
+    rt = new RemoteTanks(models);
+    rt.update({ m1: { 7: tankData(0, 0) } }); // halfW 20, halfH 15
+  });
+
+  it('без авторитетного кадра — интерполированный трансформ', () => {
+    expect(rt.getSimBoxes()['7']).toEqual({
+      x: 0,
+      y: 0,
+      angle: 0,
+      halfW: 20,
+      halfH: 15,
+    });
+  });
+
+  it('follow-танк: авторитетный кадр, а не отстающая интерполяция', () => {
+    rt.beginReconcile({ m1: { 7: tankData(40, 0) } });
+    rt.finishReconcile();
+
+    expect(rt.getSimBoxes()['7'].x).toBeCloseTo(40, 6);
+  });
+
+  it('predicted-танк: своё состояние без сглаживающей ошибки', () => {
+    rt.capture(tankObb(-15, 0), 1000);
+
+    const body = bodyOf(rt, 'm1', '7');
+
+    body.x = 12;
+    body.error = { x: 5, y: 7, angle: 0.3 };
+
+    expect(rt.getSimBoxes()['7'].x).toBeCloseTo(12, 6);
+    expect(rt.getSimBoxes()['7'].y).toBeCloseTo(0, 6);
+  });
+
+  it('обломки остаются в выдаче: их коллайдер сервер не убирает', () => {
+    rt.update({ m1: { 7: [0, 0, 0, 0, 0, 0, 0, 0, 10, 1, 0] } }); // condition 0
+
+    expect(rt.getSimBoxes()['7']).toBeDefined();
+  });
+
+  it('toRenderPoint переносит точку на нарисованный корпус', () => {
+    // нарисован в (0, 60), авторитетно уже в (0, 0)
+    rt.update({ m1: { 7: tankData(0, 60) } });
+    rt.beginReconcile({ m1: { 7: tankData(0, 0) } });
+    rt.finishReconcile();
+
+    // левая грань симуляционного корпуса → та же грань нарисованного
+    const drawn = rt.toRenderPoint(7, -20, 0);
+
+    expect(drawn.x).toBeCloseTo(-20, 6);
+    expect(drawn.y).toBeCloseTo(60, 6);
+  });
+
+  it('toRenderPoint для неизвестного танка — null', () => {
+    expect(rt.toRenderPoint(999, 0, 0)).toBeNull();
   });
 });
 
