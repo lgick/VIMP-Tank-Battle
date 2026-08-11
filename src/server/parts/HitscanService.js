@@ -33,12 +33,15 @@ class HitscanService {
     const weaponConfig = this._weapons[weaponName];
     const range = weaponConfig.range || 1000; // дальность
 
-    // величина импульса
+    // величина импульса — не зависит от дальности оружия (см. weapons.js);
+    // раньше умножалась на вектор луча длиной range, из-за чего дальнобойное
+    // оружие расшвыривало динамику карты кратно сильнее ближнего без единой
+    // настраиваемой причины
     const impulseMagnitude = weaponConfig.impulseMagnitude || 0;
 
-    // вектор луча длиной range (direction мутируется — итоговый импульс
-    // пропорционален range; поведение сохранено с planck-версии)
-    const rayVector = direction.mul(range);
+    // вектор луча длиной range; direction остаётся нормализованным — нужен
+    // отдельно (не растянутым) для построения импульса ниже
+    const rayVector = direction.clone().mul(range);
 
     // конечная точка луча при промахе
     const endPointRay = Vec2.add(startPoint, rayVector);
@@ -65,8 +68,9 @@ class HitscanService {
       const hitUserData = hitBody?.userData;
 
       // если тело динамическое, то применение физического импульса
+      // (от нормализованного направления — величина не зависит от range)
       if (impulseMagnitude > 0 && hitBody?.isDynamic()) {
-        const impulseVector = rayVector.clone().mul(impulseMagnitude);
+        const impulseVector = direction.clone().mul(impulseMagnitude);
 
         hitBody.applyImpulseAtPoint(impulseVector, actualImpactPoint, true);
       }

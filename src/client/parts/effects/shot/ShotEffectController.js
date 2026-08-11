@@ -16,8 +16,20 @@ export default class ShotEffectController extends Container {
     this.soundPositionY = data[5];
     this.hit = data[6];
 
+    // якорь попадания в динамику карты — девятый элемент, только у своих
+    // локально предсказанных трассеров (см. ShotPredictor._buildTracer);
+    // серверные трассеры (v3, длина 8) его не несут — data[8] === undefined
+    this.anchorKey = null;
+    this.anchorLocalX = 0;
+    this.anchorLocalY = 0;
+
+    if (Array.isArray(data[8])) {
+      [this.anchorKey, this.anchorLocalX, this.anchorLocalY] = data[8];
+    }
+
     this._assets = assets;
     this._soundManager = dependencies.soundManager;
+    this._mapDynamics = dependencies.mapDynamics || null;
 
     this.tracer = null;
     this.impact = null;
@@ -73,8 +85,28 @@ export default class ShotEffectController extends Container {
     }
 
     if (this.hit) {
-      const dx = this.endPositionX - this.startPositionX;
-      const dy = this.endPositionY - this.startPositionY;
+      let impactX = this.endPositionX;
+      let impactY = this.endPositionY;
+
+      if (this.anchorKey !== null && this._mapDynamics) {
+        const box = this._mapDynamics.getBox(this.anchorKey);
+
+        // ящик мог уехать за 45-80мс анимации трассера (TracerEffect):
+        // точка удара пересчитывается из ТЕКУЩЕГО трансформа ящика, а не из
+        // того, что было в момент выстрела, — иначе облако осколков окажется
+        // позади уехавшего ящика. Дальше осколки остаются лежать на месте:
+        // за ящиком они не следуют (ImpactEffect работает в мире)
+        if (box) {
+          const cos = Math.cos(box.angle);
+          const sin = Math.sin(box.angle);
+
+          impactX = box.x + cos * this.anchorLocalX - sin * this.anchorLocalY;
+          impactY = box.y + sin * this.anchorLocalX + cos * this.anchorLocalY;
+        }
+      }
+
+      const dx = impactX - this.startPositionX;
+      const dy = impactY - this.startPositionY;
       const dist = Math.hypot(dx, dy);
       let impactDirectionX = 0,
         impactDirectionY = 0;
@@ -85,8 +117,8 @@ export default class ShotEffectController extends Container {
       }
 
       this.impact = new ImpactEffect(
-        this.endPositionX,
-        this.endPositionY,
+        impactX,
+        impactY,
         impactDirectionX,
         impactDirectionY,
         this._onImpactComplete.bind(this), // callback

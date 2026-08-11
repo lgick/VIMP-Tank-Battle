@@ -1,4 +1,4 @@
-import { degToRad, randomRange } from '../lib/math.js';
+import { randomRange } from '../lib/math.js';
 import { rayVsGrid, rayVsBox } from '../lib/raycast.js';
 import { Vec2, rotateVec } from '../lib/vec2.js';
 
@@ -29,11 +29,14 @@ export default class ShotPredictor {
    * @param {Object} options
    * @param {Object} options.models - Конфиги моделей танков (models.js).
    * @param {Object} options.weapons - Конфиги оружия (weapons.js).
+   * @param {import('./MapDynamics.js').default} [options.mapDynamics] -
+   *   Общий реестр динамики карты (единый источник геометрии с TankPredictor).
    */
-  constructor({ models, weapons }) {
+  constructor({ models, weapons, mapDynamics }) {
     this._models = models;
     this._weapons = weapons;
     this._weaponList = Object.keys(weapons);
+    this._mapDynamics = mapDynamics || null;
 
     this._modelData = null; // выбирается setModel при авторизации
     this._currentWeapon = null;
@@ -44,10 +47,8 @@ export default class ShotPredictor {
     // патроны из панели: имя оружия → количество (undefined = неизвестно)
     this._ammo = {};
 
-    // мир для raycast трассера
+    // мир для raycast трассера (динамика карты — в this._mapDynamics)
     this._grid = null; // { map, solidTiles, tileSize }
-    this._dynamicSizes = {}; // dN → { halfW, halfH }
-    this._dynamicStates = {}; // dN → { x, y, angle }
     this._tanks = {}; // gameId → { x, y, angle, size }
 
     // неподтверждённые локальные выстрелы
@@ -71,37 +72,20 @@ export default class ShotPredictor {
     this._currentWeapon = this._modelData?.currentWeapon ?? null;
   }
 
-  // данные карты (MAP_DATA): сетка стен и размеры динамических объектов;
-  // мировые координаты = тайлы × step × scale
-  setMap({ map, step, scale, physicsStatic, physicsDynamic }) {
+  // данные карты (MAP_DATA): сетка стен для raycast трассера; динамика карты —
+  // отдельно в MapDynamics (общий источник с TankPredictor, setMap там же)
+  setMap({ map, step, scale, physicsStatic }) {
     this._grid = {
       map,
       solidTiles: physicsStatic || [],
       tileSize: step * scale,
     };
 
-    this._dynamicSizes = {};
-    this._dynamicStates = {};
-
-    (physicsDynamic || []).forEach((item, index) => {
-      const key = `d${index}`;
-
-      this._dynamicSizes[key] = {
-        halfW: (item.width * scale) / 2,
-        halfH: (item.height * scale) / 2,
-      };
-      this._dynamicStates[key] = {
-        x: item.position[0] * scale,
-        y: item.position[1] * scale,
-        angle: degToRad(item.angle),
-      };
-    });
-
     this.reset();
   }
 
-  // обновляет позиции целей raycast из игровых данных
-  // (дискретный кадр или интерполированный сэмпл)
+  // обновляет позиции танков-целей raycast из игровых данных (дискретный
+  // кадр или интерполированный сэмпл); динамику карты обновляет MapDynamics
   updateWorld(game) {
     if (!game) {
       return;
@@ -130,17 +114,6 @@ export default class ShotPredictor {
                 size: data[8],
               };
             }
-          }
-        }
-        // динамика карты: { dN: [x, y, angle] }
-      } else if (key.startsWith('c')) {
-        const items = game[key];
-
-        for (const dKey in items) {
-          if (Object.hasOwn(items, dKey) && this._dynamicStates[dKey]) {
-            const [x, y, angle] = items[dKey];
-
-            this._dynamicStates[dKey] = { x, y, angle };
           }
         }
       }
@@ -468,51 +441,60 @@ export default class ShotPredictor {
     direction.normalize();
 
     const range = weapon.range || 1000;
-    const distance = this._castRay(muzzle, direction, range, shooterId);
-    const hit = distance !== null;
-    const endDistance = hit ? distance : range;
+    const hitResult = this._castRay(muzzle, direction, range, shooterId);
+    const hit = hitResult !== null;
+    const endDistance = hit ? hitResult.distance : range;
+    const endX = muzzle.x + direction.x * endDistance;
+    const endY = muzzle.y + direction.y * endDistance;
 
-    return [
+    const tracer = [
       muzzle.x,
       muzzle.y,
-      muzzle.x + direction.x * endDistance,
-      muzzle.y + direction.y * endDistance,
+      endX,
+      endY,
       renderState.x,
       renderState.y,
       hit,
       shooterId,
     ];
+
+    // якорь попадания в динамику карты (девятый элемент, только локально —
+    // никогда не уходит в сеть): позволяет ShotEffectController привязать
+    // облако осколков к трансформу задетого ящика, а не к мировой точке
+    if (hit && hitResult.target?.key && this._mapDynamics) {
+      const local = this._mapDynamics.toLocal(hitResult.target.key, endX, endY);
+
+      if (local) {
+        tracer.push([hitResult.target.key, local.x, local.y]);
+      }
+    }
+
+    return tracer;
   }
 
   // ближайшее пересечение со стенами, динамикой карты и танками (кроме
   // своего); null = промах в пределах range
+  // @returns {{distance: number, target: {key: string}|{gameId: number}|null}|null}
   _castRay(origin, direction, range, myId) {
     let closest = null;
 
-    const consider = distance => {
-      if (distance !== null && (closest === null || distance < closest)) {
-        closest = distance;
+    const consider = (distance, target) => {
+      if (distance !== null && (closest === null || distance < closest.distance)) {
+        closest = { distance, target };
       }
     };
 
     if (this._grid) {
-      consider(rayVsGrid(origin, direction, range, this._grid));
+      consider(rayVsGrid(origin, direction, range, this._grid), null);
     }
 
-    for (const key in this._dynamicStates) {
-      if (Object.hasOwn(this._dynamicStates, key)) {
-        const state = this._dynamicStates[key];
-        const size = this._dynamicSizes[key];
+    if (this._mapDynamics) {
+      const boxes = this._mapDynamics.getBoxes();
 
-        consider(
-          rayVsBox(origin, direction, range, {
-            x: state.x,
-            y: state.y,
-            angle: state.angle,
-            halfW: size.halfW,
-            halfH: size.halfH,
-          }),
-        );
+      for (const key in boxes) {
+        if (Object.hasOwn(boxes, key)) {
+          consider(rayVsBox(origin, direction, range, boxes[key]), { key });
+        }
       }
     }
 
@@ -529,6 +511,7 @@ export default class ShotPredictor {
             halfW: tank.size * 2,
             halfH: tank.size * 1.5,
           }),
+          { gameId: Number(id) },
         );
       }
     }

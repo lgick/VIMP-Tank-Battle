@@ -71,7 +71,7 @@
 - **`Tank`** — модель движения танка: импульсы газа/торможения, velocity-clamp к `maxForwardSpeed`/`maxReverseSpeed`, боковое сцепление (`lateralGrip`), поворот с учётом скорости, башня (`gunRotation`, центрирование), `getData()` → `[x, y, angle, gunRotation, vx, vy, engineLoad, condition, size, teamId]` (`condition`: 3/2/1/0 — состояние/смерть), `getMuzzlePosition`/`getFireDirection` — реплицируются клиентским `ShotPredictor`. ⚠️ Изменения `Tank.updateData` и коэффициентов `models.js` обязаны сопровождаться обновлением клиентской реплики — это ловит паритет-тест `tests/server/TankPredictorParity.test.js`.
 - **`Bomb`** — физический снаряд `w2`: тело в мире Rapier, таймер детонации, взрыв с уроном по радиусу, данные для снапшота (с `ownerId`).
 - **`Map`** — тела карты: статика из тайлов `physicsStatic`, динамические объекты `physicsDynamic` (передаются в снапшоте `c1`/`c2`), `destroyMap`.
-- **`HitscanService`** — мгновенный расчёт выстрела `w1`: `world.castRay` (сенсоры исключены), урон цели, данные трассера `[startX, startY, endX, endY, bodyX, bodyY, wasHit, shooterId]`.
+- **`HitscanService`** — мгновенный расчёт выстрела `w1`: `world.castRay` (сенсоры исключены), урон цели, данные трассера `[startX, startY, endX, endY, bodyX, bodyY, wasHit, shooterId]`. Попадание в динамическое тело получает импульс вдоль **нормализованного** направления луча × `weapon.impulseMagnitude` — не зависит от `range` (см. [configuration.md](configuration.md#weaponsjs)).
 
 ## Мета-модули
 

@@ -127,6 +127,10 @@ export default {
       renderer: ['Map'],
       // компоненты использующие звук
       soundManager: ['ExplosionEffect', 'ShotEffect', 'Bomb', 'Tank'],
+      // привязка облака осколков к трансформу задетого ящика (якорь
+      // локально предсказанного трассера, см. ShotPredictor/MapDynamics);
+      // сервис доступен только когда включён client-side prediction
+      mapDynamics: ['ShotEffect'],
     },
 
     // звуковые ассеты

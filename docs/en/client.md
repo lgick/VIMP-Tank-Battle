@@ -41,6 +41,14 @@ The purpose of the components:
 - `sample()` emits frames crossed by `renderTime` **in full exactly once** (the `w1`/`w2e` events, creation/removal, camera reset/shake), and interpolates continuous values between adjacent frames: tanks `m1` (x/y/vx/vy/engineLoad — `lerp`, angles — `lerpAngle` from [src/lib/math.js](../../src/lib/math.js)), map dynamics `c1`/`c2`, the camera;
 - keys are classified by `kind` from `SNAPSHOT_KEYS` (`opcodes.js`); there is no extrapolation — hold on the last frame; the buffer is reset on a map change and `CLEAR`.
 
+### MapDynamics
+
+[src/client/MapDynamics.js](../../src/client/MapDynamics.js) — the single source of map-dynamics geometry on the client: the tracer raycast in `ShotPredictor` and the hit-effect anchoring in `ShotEffectController` must see the exact same boxes, otherwise the impact point and the debris cloud diverge from each other.
+
+- `setMap({ physicsDynamic, scale })` builds each box's half-extents from `MAP_DATA`; `update(game)` refreshes transforms from a discrete frame or an interpolated sample (`c1`/`c2` keys);
+- boxes are stored **centered**, unlike the `c1`/`c2` snapshot where `[x, y, angle]` is the object's *origin* (the Rapier body position — the server collider is offset from it by `(width/2, height/2)` in the object's rotated local frame, see `src/server/parts/Map.js`); `boxCenterFromOrigin` ([src/lib/collision.js](../../src/lib/collision.js)) performs the conversion once, here, instead of every consumer repeating (and risking getting wrong) the same offset math;
+- `getBox(key)`/`getBoxes()` expose the centered boxes; `toLocal(key, worldX, worldY)` converts a world point into the box's unrotated local frame — used to anchor a hit effect to the body it struck.
+
 ### TankPredictor
 
 [src/client/TankPredictor.js](../../src/client/TankPredictor.js) — client-side prediction of the own tank:
@@ -70,7 +78,8 @@ The purpose of the components:
 
 - on pressing fire, the tracer (`w1`) and the bomb (`w2`) spawn immediately (together with the sound); physics, damage, and the explosion (`w2e`) are server-side;
 - `tryFire` replicates the server gate: the `fireRate` cooldown, ammo from the panel, the active weapon (the local `nextWeapon`/`prevWeapon` cycle + the authoritative `'wa'`), the `Tank.getMuzzlePosition`/`getFireDirection` formulas;
-- the tracer's end point is an approximate raycast ([src/lib/raycast.js](../../src/lib/raycast.js)): `rayVsGrid` (DDA over wall tiles) + `rayVsBox` (map dynamics and tanks) over interpolated positions;
+- the tracer's end point is an approximate raycast ([src/lib/raycast.js](../../src/lib/raycast.js)): `rayVsGrid` (DDA over wall tiles) + `rayVsBox` over interpolated tank positions and over `MapDynamics` boxes (the shared, correctly-centered geometry — see above; before this the predictor kept its own copy of dynamics using the snapshot's *origin* point as if it were the box center, which shifted the ray target by roughly the box's half-extent on a large crate);
+- **hit anchoring**: when the ray's closest hit is a `MapDynamics` box, `_buildTracer` appends a 9th, purely local element to the tracer array — `[key, localX, localY]` (the point in the box's own frame, via `MapDynamics.toLocal`). It never crosses the wire (server tracers stay 8 fields, protocol version untouched) — `ShotEffectController` reads it only for the shooter's own locally-predicted shot and uses it to keep the impact particles glued to the crate's live transform instead of a stale world point (see the `parts/` section below);
 - **the bomb gate**: the next `explosive` shot is allowed only after the previous one is confirmed by the server — this eliminates FIFO desync under high RTT;
 - **bomb position**: it spawns at the predicted tank position, with no velocity extrapolation (the client does not know its own latency; `interpolator.offset` is a clock difference, not a network delay). The offset from the server (which plants the bomb ~RTT/2 later, further along the movement) is closed by a one-off authoritative correction: the confirming server row is not dropped but moved under the local key, and `Bomb.update` shifts the sprite and its sample position to the authoritative point. The entity is not recreated, so neither the timer nor the sound is interrupted;
 - **suppressing server duplicates** (`filterServerSnapshot`) by the author id in the event data (`tracers[7]`, `bombs[5]`): own tracers — a FIFO pending queue with a 2 s timeout; the own bomb — on confirmation the server row never reaches the client, its id is remembered as an alias of the local one (`L<n>`): the entity lives under the local key from spawn to detonation, and the explosion `null` is renamed to that key too. This way the bomb is never recreated — otherwise its timer and its one-shot planting sound would restart. Aliases are dropped by the detonation `null`, by age (`BOMB_ALIAS_MAX_AGE`) and by a full `reset()`; a keySet change (`resetLocal()`) does **not** touch them, because keySet arrives before the detonation frame. The local key `L<n>` does not collide with the server's base36 keys.
@@ -83,6 +92,8 @@ The purpose of the components:
 
 The mapping of snapshot keys to classes and their distribution across canvases — `gameSets`/`entitiesOnCanvas` in `client.js`. A part has no fixed contract — when creating a new one, look at the existing ones as a template.
 
+`ShotEffectController`/`ImpactEffect` (bullet hit, `w1`): when the tracer array carries a 9th (anchor) element — see `ShotPredictor` above — the debris spawn point is recomputed from the crate's *current* `MapDynamics` transform right when the tracer animation finishes. That closes the tracer's own 45–80 ms flight time, during which the crate keeps moving: without the recompute the cloud would appear behind the crate, in empty space. After spawning the debris **stays put** — `ImpactEffect` works in world space and does not follow the crate: the shards lie where the bullet met the obstacle. If the crate disappeared (map change) `MapDynamics.getBox` returns `null` and the point is taken straight from the tracer data. A shot with no anchor (a wall, or any other player's shot — the server protocol carries no struck-body id, see [network.md](network.md#known-limitation-unanchored-hit-effects-for-non-local-shots)) behaves exactly as before.
+
 `ExplosionEffectController` (bomb explosion) raises the `ExplosionEffect` flash and the crater with smoke (`FunnelEffect`) together in `run()`: the crater appears at the same instant as the flash and underneath it, fading in over `FUNNEL_FADE_IN_DURATION_MS` — a phase short enough to only take the click off the appearance. Both go onto the scene in a single `addChild`, so the layer order is recomputed by one `sortChildren`. The controller's own destruction hangs on the crater completing, so `run()` on an already-cleared scene destroys the controller itself — otherwise the sound registered in the constructor would never be released. A repeated `run()` is ignored: it would raise a second pair of effects over the first and lose the references to it. The mark's geometry scales with the blast radius: the crater diameter is a fraction of the radius (`FUNNEL_TO_BLAST_RATIO`), and the sizes/spread/velocities of `SmokeEffect` particles are scaled against a reference radius (`REFERENCE_BLAST_RADIUS`, the `w2` bomb). Lifetimes and alpha do not depend on the radius — they define the effect's character, not its size.
 
 ### Factory
@@ -92,7 +103,7 @@ The mapping of snapshot keys to classes and their distribution across canvases �
 ### Providers
 
 - **`BakingProvider`** ([providers/BakingProvider.js](../../src/client/providers/BakingProvider.js)) — one-time generation of procedural textures at startup per the `bakedAssets` config; the baking functions — in [providers/bakers/](../../src/client/providers/bakers/) (no fixed interface, follow the existing ones). A baker that applies blur returns the shape size (`contentSize`) along with the texture, and consumers derive their scale from it: the blur allowance must not affect the visible sprite size.
-- **`DependencyProvider`** — injection of services (`renderer`, `soundManager`) into components per the `componentDependencies` map.
+- **`DependencyProvider`** — injection of services (`renderer`, `soundManager`, `mapDynamics`) into components per the `componentDependencies` map; `mapDynamics` is only present in the service pool when the port-0 config carries `prediction` (spectator-only clients never construct it).
 
 ## SoundManager
 

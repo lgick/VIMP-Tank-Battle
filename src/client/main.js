@@ -34,6 +34,7 @@ import SoundManager from './SoundManager.js';
 import SnapshotInterpolator from './SnapshotInterpolator.js';
 import TankPredictor from './TankPredictor.js';
 import ShotPredictor from './ShotPredictor.js';
+import MapDynamics from './MapDynamics.js';
 import OwnTank from './OwnTank.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
@@ -111,6 +112,10 @@ let predictor = null;
 let shotPredictor = null;
 let inputSeq = 0; // номер отправленного ввода (KEYS_DATA)
 
+// единый источник геометрии динамики карты для предикторов
+// (создаётся вместе с ними, см. PS_CONFIG_DATA)
+let mapDynamics = null;
+
 // идентичность и дискретные поля своего танка (создаётся вместе с предиктором)
 let ownTank = null;
 
@@ -125,8 +130,9 @@ socketMethods[PS_CONFIG_DATA] = async data => {
 
   // конфиг предикшена добавляет серверный bootstrap (src/server/main.js)
   if (data.prediction) {
+    mapDynamics = new MapDynamics();
     predictor = new TankPredictor(data.prediction);
-    shotPredictor = new ShotPredictor(data.prediction);
+    shotPredictor = new ShotPredictor({ ...data.prediction, mapDynamics });
     ownTank = new OwnTank(predictor);
   }
 
@@ -172,6 +178,11 @@ socketMethods[PS_CONFIG_DATA] = async data => {
         renderer: app.renderer,
         soundManager,
       };
+
+      // доступен только когда включён client-side prediction (data.prediction)
+      if (mapDynamics) {
+        availableServices.mapDynamics = mapDynamics;
+      }
 
       // если есть данные для запекания компонентов
       if (bakingArr) {
@@ -262,6 +273,7 @@ socketMethods[PS_MAP_DATA] = data => {
   interpolator.reset();
   ownTank?.reset();
   shotPredictor?.setMap(data);
+  mapDynamics?.setMap(data);
 
   // удаление данных карт
   const removeMap = setId => {
@@ -445,6 +457,8 @@ socketMethods[PS_CLEAR] = function (setIdList) {
   interpolator.reset();
   ownTank?.reset();
   shotPredictor?.reset();
+  // mapDynamics намеренно не сбрасывается: CLEAR приходит и на старте раунда,
+  // без MAP_DATA следом, — геометрию карты заменяет только setMap
   soundManager.reset();
   modules.panel?.reset();
 };
@@ -502,11 +516,13 @@ function renderTick() {
 
     applyShot(frameGame, frame.camera);
     shotPredictor?.updateWorld(frameGame);
+    mapDynamics?.update(frameGame);
   });
 
   if (game) {
     applyGameData(game);
     shotPredictor?.updateWorld(game);
+    mapDynamics?.update(game);
   }
 
   predictor?.update(now);

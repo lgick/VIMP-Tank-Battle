@@ -208,8 +208,10 @@ Two architecturally different weapon types ([src/data/weapons.js](../../src/data
 | Damage | 40 | 70 at the epicenter, explosion radius 50 |
 | Range | 1500 units | — (detonation on a `time: 300` ms timer) |
 | Cooldown | 0.01 s | 0.1 s |
-| Other | `spread: 0`, consumes 1 round | `size: 8`, explosion impulse `2000000`, effect `w2e` |
+| Other | `spread: 0`, consumes 1 round, hit impulse `7500000` | `size: 8`, explosion impulse `2000000`, effect `w2e` |
 | Camera shake | 20px / 200ms | 30px / 400ms |
+
+`w1.impulseMagnitude` is applied to `HitscanService`'s **normalized** ray direction — it no longer scales with `range` (it used to, as an artifact of building the impulse from the un-normalized ray vector). The current value equals the old effective force (`5000 × range(1500)`) so default gameplay feel is unchanged; tune it directly if map dynamics should fly off harder or softer on a bullet hit.
 
 ### maps/
 
