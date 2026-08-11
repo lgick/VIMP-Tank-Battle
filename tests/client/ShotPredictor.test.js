@@ -203,6 +203,31 @@ describe('ShotPredictor: трассер (w1)', () => {
     expect(second.w1[0][8]).toEqual(['d0', expect.closeTo(-40), expect.closeTo(0)]);
   });
 
+  it('едущий ящик: луч по авторитетной геометрии, конец трассера — по нарисованной', () => {
+    mapDynamics.setMap({
+      physicsDynamic: [
+        { position: [100, -50], angle: 0, width: 40, height: 100 },
+      ],
+      scale: 2,
+      setId: 'c1',
+    });
+
+    // авторитетно ящик на линии огня (центр 240, 0), а нарисован он
+    // с задержкой интерполяции далеко в стороне (центр 240, 1000)
+    mapDynamics.beginReconcile({ c1: { d0: [200, -100, 0, 300, 0, 0] } });
+    mapDynamics.update({ c1: { d0: [200, 900, 0] } });
+
+    const { w1 } = predictor.tryFire(restingState(), 1, 0);
+
+    // по рендерному боксу луч промахнулся бы вовсе
+    expect(w1[0][6]).toBe(true);
+    expect(w1[0][8]).toEqual(['d0', expect.closeTo(-40), expect.closeTo(0)]);
+
+    // конец трассера — та же материальная точка нарисованного ящика
+    expect(w1[0][2]).toBeCloseTo(200, 6);
+    expect(w1[0][3]).toBeCloseTo(1000, 6);
+  });
+
   it('трассер утыкается в повёрнутый динамический объект (угол объекта учитывает поворот)', () => {
     mapDynamics.setMap({
       physicsDynamic: [

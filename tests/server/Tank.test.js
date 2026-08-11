@@ -19,6 +19,9 @@ const makeBody = () => ({
   linvel() {
     return this._vel;
   },
+  angvel() {
+    return this._angvel ?? 0;
+  },
   setLinvel: vi.fn(),
   setAngvel: vi.fn(),
   setTranslation(p) {
@@ -349,13 +352,15 @@ describe('Tank.updateData: движение и смена оружия', () => {
 });
 
 describe('Tank: данные и респаун', () => {
-  it('getData возвращает состояние с condition, size и teamId', () => {
+  it('getData возвращает состояние с condition, size, teamId и angvel', () => {
     const tank = makeTank();
     const data = tank.getData();
 
     expect(data[7]).toBe(3); // condition
     expect(data[8]).toBe(10); // size
     expect(data[9]).toBe(1); // teamId
+    // угловая скорость (протокол v5) — для предсказания доворота на клиенте
+    expect(data[10]).toBe(0);
   });
 
   it('getPosition округляет до 2 знаков', () => {

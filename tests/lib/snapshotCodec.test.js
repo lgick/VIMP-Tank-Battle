@@ -92,7 +92,7 @@ describe('snapshotCodec: камера', () => {
 
 describe('snapshotCodec: блок танков (m1)', () => {
   it('данные танка восстанавливаются точно', () => {
-    const tank = [105.13, -42.5, 1.57, -0.02, 3.25, -1.75, 0.66, 3, 2, 1];
+    const tank = [105.13, -42.5, 1.57, -0.02, 3.25, -1.75, 0.66, 3, 2, 1, -0.85];
     const { snapshot } = roundTrip({ m1: { 7: tank } });
 
     expect(snapshot.m1['7']).toEqual(tank);
@@ -105,8 +105,8 @@ describe('snapshotCodec: блок танков (m1)', () => {
   });
 
   it('несколько танков, включая удалённых', () => {
-    const t1 = [0, 0, 0, 0, 0, 0, 0, 0, 2, 1];
-    const t2 = [-9.99, 8.5, -3.14, 1.5, 0.1, -0.2, 1, 1, 2, 2];
+    const t1 = [0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0];
+    const t2 = [-9.99, 8.5, -3.14, 1.5, 0.1, -0.2, 1, 1, 2, 2, 2.75];
     const { snapshot } = roundTrip({ m1: { 1: t1, 2: t2, 3: null } });
 
     expect(snapshot.m1['1']).toEqual(t1);
@@ -173,7 +173,7 @@ describe('snapshotCodec: блок взрывов (w2e)', () => {
 });
 
 describe('snapshotCodec: блок динамики карты (c1/c2)', () => {
-  it('ключи dN и координаты восстанавливаются', () => {
+  it('покоящиеся тела: ключи dN и координаты восстанавливаются', () => {
     const dynamics = {
       d0: [1.25, -2.5, 0.79],
       d7: [-100.01, 200.02, -1.57],
@@ -187,12 +187,34 @@ describe('snapshotCodec: блок динамики карты (c1/c2)', () => {
 
     expect(roundTrip({ c2: dynamics }).snapshot.c2).toEqual(dynamics);
   });
+
+  // v4: флаг moving; длина массива и есть признак режима для потребителей
+  it('движущееся тело везёт хвост скоростей (6 чисел)', () => {
+    const dynamics = { d3: [10.5, -20.25, 1.5, 44.5, -12.75, 2.25] };
+
+    expect(roundTrip({ c1: dynamics }).snapshot.c1).toEqual(dynamics);
+  });
+
+  it('движущееся и покоящееся тела в одном блоке', () => {
+    const dynamics = {
+      d0: [1.5, 2.5, 0.5],
+      d1: [3.5, 4.5, -0.5, 100.25, 0, -3.5],
+      d2: [7.5, 8.5, 1.25],
+    };
+
+    const result = roundTrip({ c1: dynamics }).snapshot.c1;
+
+    expect(result).toEqual(dynamics);
+    expect(result.d0).toHaveLength(3);
+    expect(result.d1).toHaveLength(6);
+    expect(result.d2).toHaveLength(3);
+  });
 });
 
 describe('snapshotCodec: комбинированный снапшот', () => {
   it('все блоки в одном кадре + камера', () => {
     const snapshot = {
-      m1: { 1: [1, 2, 0.5, -0.5, 0, 0, 1, 3, 2, 1], 2: null },
+      m1: { 1: [1, 2, 0.5, -0.5, 0, 0, 1, 3, 2, 1, 0.5], 2: null },
       w1: [[0, 0, 10, 10, 0.5, 0.5, true, 1]],
       w2: { 5: [1, 1, 0, 8, 300, 1], 6: null },
       w2e: [[3, 4, 50]],
@@ -209,7 +231,7 @@ describe('snapshotCodec: комбинированный снапшот', () => {
   it('packBody один раз — packFrame даёт независимые кадры разным камерам', () => {
     const packer = new SnapshotPacker(PORT);
 
-    packer.packBody({ m1: { 1: [1, 2, 0, 0, 0, 0, 0, 3, 2, 1] } });
+    packer.packBody({ m1: { 1: [1, 2, 0, 0, 0, 0, 0, 3, 2, 1, 0] } });
 
     const frameA = unpackFrame(packer.packFrame([10, 20], 1, 1));
     const frameB = unpackFrame(packer.packFrame(0, 1, 1));
@@ -253,7 +275,7 @@ describe('snapshotCodec: player-блок (предикшен, v2)', () => {
   it('player совместим с камерой c reset/shake в одном кадре', () => {
     const packer = new SnapshotPacker(PORT);
 
-    packer.packBody({ m1: { 1: [1, 2, 0, 0, 0, 0, 0, 3, 2, 1] } });
+    packer.packBody({ m1: { 1: [1, 2, 0, 0, 0, 0, 0, 3, 2, 1, 0] } });
 
     const camera = [5, 6];
 

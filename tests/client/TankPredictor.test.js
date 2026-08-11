@@ -20,6 +20,9 @@ const playerKeys = {
 
 const models = {
   m1: {
+    // габарит 4:3 от size и плотность — для двухтельных контактов
+    size: 2,
+    fixture: { density: 200, friction: 0.5, restitution: 0.1 },
     accelerationFactor: 1000,
     brakingFactor: 10,
     maxForwardSpeed: 260,
@@ -230,5 +233,133 @@ describe('TankPredictor: reconciliation', () => {
 
     expect(predictor.hasState).toBe(true);
     expect(predictor.getRenderState().x).toBe(7);
+  });
+});
+
+describe('TankPredictor: столкновения', () => {
+  // сетка 3×3 клетки по 40 юнитов; сплошная колонна справа (x >= 80)
+  const wallGrid = {
+    map: [
+      [0, 0, 1],
+      [0, 0, 1],
+      [0, 0, 1],
+    ],
+    step: 40,
+    scale: 1,
+    physicsStatic: [1],
+  };
+
+  // минимальный двойник MapDynamics с одним предсказанным ящиком
+  const makeBoxDynamics = box => ({
+    capture: () => {},
+    integratePredicted: () => {},
+    getPredictedBodies: () => [box],
+    noteContacts: () => {},
+    demoteIdle: () => {},
+    decayError: () => {},
+  });
+
+  const makeBox = (over = {}) => ({
+    x: 40,
+    y: 20,
+    angle: 0,
+    vx: 0,
+    vy: 0,
+    angvel: 0,
+    invMass: 1 / 7373,
+    invInertia: 1 / 452985,
+    linearDamping: 0,
+    angularDamping: 0,
+    halfW: 10,
+    halfH: 10,
+    friction: 0.2,
+    restitution: 0,
+    ...over,
+  });
+
+  it('без setMap и без mapDynamics столкновений нет (инвариант паритета)', () => {
+    // предиктор без карты стоит внутри стены — и всё равно едет как в пустоте
+    const reference = makePredictor();
+
+    reference.setMap({ map: [[0]], step: 40, scale: 1, physicsStatic: [] });
+
+    for (const p of [predictor, reference]) {
+      p._state.x = 85;
+      p._state.vx = 100;
+      p._step(0);
+    }
+
+    expect(predictor._state).toEqual(reference._state);
+  });
+
+  it('упор в стену: танк останавливается и не проникает внутрь', () => {
+    predictor.setMap(wallGrid);
+    predictor._state.x = 74; // правый край танка 78, стена начинается с 80
+    predictor._state.vx = 300;
+
+    for (let i = 0; i < 60; i += 1) {
+      predictor._step(0);
+    }
+
+    // корпус не заходит за грань стены и не улетел сквозь неё
+    expect(predictor._state.x + 4).toBeLessThanOrEqual(80.001);
+    expect(predictor._state.vx).toBeLessThan(1);
+  });
+
+  it('удар углом корпуса о стену разворачивает танк', () => {
+    predictor.setMap(wallGrid);
+    predictor._state.x = 74;
+    predictor._state.y = 20;
+    predictor._state.angle = 0.4; // корпус повёрнут — в стену войдёт угол
+    predictor._state.vx = 300;
+
+    predictor._step(0);
+
+    expect(predictor._state.angvel).not.toBe(0);
+  });
+
+  it('контакт с ящиком двигает ящик (регресс на «бесконечную массу»)', () => {
+    const box = makeBox();
+
+    predictor._predictedSets = [makeBoxDynamics(box)];
+    predictor._state.x = 26; // правый край танка 30, левая грань ящика 30
+    predictor._state.y = 20;
+    predictor._state.vx = 200;
+
+    for (let i = 0; i < 30; i += 1) {
+      predictor._step(0);
+    }
+
+    expect(box.x).toBeGreaterThan(40);
+    expect(box.vx).toBeGreaterThan(0);
+  });
+
+  it('танк теряет скорость, толкая ящик (импульс уходит в тело)', () => {
+    const box = makeBox();
+
+    predictor._predictedSets = [makeBoxDynamics(box)];
+    predictor._state.x = 26;
+    predictor._state.y = 20;
+    predictor._state.vx = 200;
+
+    predictor._step(0);
+
+    expect(predictor._state.vx).toBeLessThan(200);
+  });
+
+  it('ящик вне контакта танк не трогает', () => {
+    const box = makeBox({ x: 400 });
+    const reference = makePredictor();
+
+    predictor._predictedSets = [makeBoxDynamics(box)];
+
+    for (const p of [predictor, reference]) {
+      p._state.vx = 100;
+      p._step(0);
+    }
+
+    expect(box.x).toBe(400);
+    expect(box.vx).toBe(0);
+    expect(predictor._state).toEqual(reference._state);
   });
 });

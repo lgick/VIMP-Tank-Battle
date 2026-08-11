@@ -17,9 +17,11 @@ import { lerp, lerpAngle, clamp } from '../lib/math.js';
 const OFFSET_SMOOTHING = 0.1;
 
 // индексы данных танка: 0,1 x/y; 2 angle; 3 gunRotation; 4,5 vx/vy;
-// 6 engineLoad; 7..9 condition/size/teamId (дискретные, берутся из кадра A)
+// 6 engineLoad; 7..9 condition/size/teamId (дискретные, берутся из кадра A);
+// 10 angvel (протокол v5) — нужен предсказанию чужого танка
 const TANK_ANGLE_INDEXES = new Set([2, 3]);
 const TANK_LERP_LENGTH = 7;
+const TANK_ANGVEL_INDEX = 10;
 
 export default class SnapshotInterpolator {
   /**
@@ -197,6 +199,10 @@ export default class SnapshotInterpolator {
 
       // дискретные поля (condition, size, teamId) — из кадра A
       data.push(dataA[7], dataA[8], dataA[9]);
+
+      data.push(
+        lerp(dataA[TANK_ANGVEL_INDEX], dataB[TANK_ANGVEL_INDEX], alpha),
+      );
 
       result[id] = data;
     }

@@ -1,8 +1,9 @@
 // 2D-примитивы столкновений: угол объекта → центр, OBB против OBB (SAT),
-// OBB против тайловой сетки стен. Общий слой для клиентского предсказания
-// своего танка (TankPredictor) и raycast-предсказания выстрелов
-// (ShotPredictor через MapDynamics) — оба должны видеть геометрию карты
-// одинаково. Чистые функции без зависимостей от Pixi/Rapier.
+// сбор контактов OBB с тайловой сеткой стен. Общий слой для клиентского
+// предсказания своего танка и динамики карты (TankPredictor + MapDynamics)
+// и raycast-предсказания выстрелов (ShotPredictor) — все должны видеть
+// геометрию карты одинаково. Чистые функции без зависимостей от Pixi/Rapier.
+// Разрешение собранных контактов — в src/lib/rigidBody.js.
 
 import { rotateVec } from './vec2.js';
 
@@ -158,110 +159,60 @@ export const obbVsObb = (a, b) => {
 };
 
 /**
- * Суммарное выталкивание OBB из сплошных клеток тайловой сетки.
- * Несколько итераций нужны, чтобы корректно отработать внутренний угол
- * (два соседних тайла), где один проход даёт только частичное разрешение.
+ * Список контактов OBB со сплошными клетками тайловой сетки.
+ * Один проход без внутренних итераций: многократное разрешение — задача
+ * импульсного решателя (src/lib/rigidBody.js), он же естественно
+ * отрабатывает внутренний угол из нескольких тайлов.
  * @param {{x,y,angle,halfW,halfH}} obb
  * @param {Object} grid
  * @param {Array<Array>} grid.map - Двумерный массив тайлов.
  * @param {Array} grid.solidTiles - Значения тайлов, являющихся стеной.
  * @param {number} grid.tileSize - Размер тайла в мировых единицах.
- * @param {number} [iterations=3]
- * @returns {{x: number, y: number, cx: number, cy: number, hit: boolean}}
- *   Суммарный вектор выталкивания и точка контакта (средневзвешенная по
- *   глубине проникновения, если клеток задето несколько).
+ * @returns {Array<{nx: number, ny: number, depth: number, cx: number, cy: number,
+ *   tileX: number, tileY: number}>} Контакты; нормаль направлена от obb
+ *   к клетке, tileX/tileY — центр задетой клетки (плечо статики).
  */
-export const obbVsTileGrid = (obb, { map, solidTiles, tileSize }, iterations = 3) => {
+export const collectTileContacts = (obb, { map, solidTiles, tileSize }) => {
   const rows = map.length;
   const cols = map[0]?.length ?? 0;
+  const contacts = [];
 
   if (rows === 0 || cols === 0 || solidTiles.length === 0) {
-    return { x: 0, y: 0, cx: 0, cy: 0, hit: false };
+    return contacts;
   }
 
-  let totalX = 0;
-  let totalY = 0;
-  let contactX = 0;
-  let contactY = 0;
-  let contactWeight = 0;
-  const current = {
-    x: obb.x,
-    y: obb.y,
-    angle: obb.angle,
-    halfW: obb.halfW,
-    halfH: obb.halfH,
-  };
+  // консервативный AABB OBB (для отбора кандидатных клеток)
+  const cos = Math.abs(Math.cos(obb.angle));
+  const sin = Math.abs(Math.sin(obb.angle));
+  const extentX = obb.halfW * cos + obb.halfH * sin;
+  const extentY = obb.halfW * sin + obb.halfH * cos;
 
-  for (let iter = 0; iter < iterations; iter += 1) {
-    // консервативный AABB текущего OBB (для отбора кандидатных клеток)
-    const cos = Math.abs(Math.cos(current.angle));
-    const sin = Math.abs(Math.sin(current.angle));
-    const extentX = current.halfW * cos + current.halfH * sin;
-    const extentY = current.halfW * sin + current.halfH * cos;
+  const minCellX = Math.max(0, Math.floor((obb.x - extentX) / tileSize));
+  const maxCellX = Math.min(cols - 1, Math.floor((obb.x + extentX) / tileSize));
+  const minCellY = Math.max(0, Math.floor((obb.y - extentY) / tileSize));
+  const maxCellY = Math.min(rows - 1, Math.floor((obb.y + extentY) / tileSize));
 
-    const minCellX = Math.max(0, Math.floor((current.x - extentX) / tileSize));
-    const maxCellX = Math.min(
-      cols - 1,
-      Math.floor((current.x + extentX) / tileSize),
-    );
-    const minCellY = Math.max(0, Math.floor((current.y - extentY) / tileSize));
-    const maxCellY = Math.min(
-      rows - 1,
-      Math.floor((current.y + extentY) / tileSize),
-    );
+  for (let cellY = minCellY; cellY <= maxCellY; cellY += 1) {
+    for (let cellX = minCellX; cellX <= maxCellX; cellX += 1) {
+      if (solidTiles.indexOf(map[cellY][cellX]) === -1) {
+        continue;
+      }
 
-    let pushX = 0;
-    let pushY = 0;
-    let hit = false;
+      const tileX = cellX * tileSize + tileSize / 2;
+      const tileY = cellY * tileSize + tileSize / 2;
+      const result = obbVsObb(obb, {
+        x: tileX,
+        y: tileY,
+        angle: 0,
+        halfW: tileSize / 2,
+        halfH: tileSize / 2,
+      });
 
-    for (let cy = minCellY; cy <= maxCellY; cy += 1) {
-      for (let cx = minCellX; cx <= maxCellX; cx += 1) {
-        if (solidTiles.indexOf(map[cy][cx]) === -1) {
-          continue;
-        }
-
-        const tileBox = {
-          x: cx * tileSize + tileSize / 2,
-          y: cy * tileSize + tileSize / 2,
-          angle: 0,
-          halfW: tileSize / 2,
-          halfH: tileSize / 2,
-        };
-
-        const result = obbVsObb(current, tileBox);
-
-        if (result) {
-          hit = true;
-          // нормаль result направлена от obb к клетке — выталкиваем obb против неё
-          pushX -= result.nx * result.depth;
-          pushY -= result.ny * result.depth;
-
-          contactX += result.cx * result.depth;
-          contactY += result.cy * result.depth;
-          contactWeight += result.depth;
-        }
+      if (result) {
+        contacts.push({ ...result, tileX, tileY });
       }
     }
-
-    if (!hit) {
-      break;
-    }
-
-    current.x += pushX;
-    current.y += pushY;
-    totalX += pushX;
-    totalY += pushY;
   }
 
-  if (contactWeight === 0) {
-    return { x: totalX, y: totalY, cx: 0, cy: 0, hit: false };
-  }
-
-  return {
-    x: totalX,
-    y: totalY,
-    cx: contactX / contactWeight,
-    cy: contactY / contactWeight,
-    hit: true,
-  };
+  return contacts;
 };

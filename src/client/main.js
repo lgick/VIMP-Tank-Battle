@@ -35,6 +35,7 @@ import SnapshotInterpolator from './SnapshotInterpolator.js';
 import TankPredictor from './TankPredictor.js';
 import ShotPredictor from './ShotPredictor.js';
 import MapDynamics from './MapDynamics.js';
+import RemoteTanks from './RemoteTanks.js';
 import OwnTank from './OwnTank.js';
 import BakingProvider from './providers/BakingProvider.js';
 import DependencyProvider from './providers/DependencyProvider.js';
@@ -116,6 +117,9 @@ let inputSeq = 0; // номер отправленного ввода (KEYS_DATA
 // (создаётся вместе с ними, см. PS_CONFIG_DATA)
 let mapDynamics = null;
 
+// предсказание контактирующих чужих танков (создаётся вместе с предиктором)
+let remoteTanks = null;
+
 // идентичность и дискретные поля своего танка (создаётся вместе с предиктором)
 let ownTank = null;
 
@@ -131,7 +135,12 @@ socketMethods[PS_CONFIG_DATA] = async data => {
   // конфиг предикшена добавляет серверный bootstrap (src/server/main.js)
   if (data.prediction) {
     mapDynamics = new MapDynamics();
-    predictor = new TankPredictor(data.prediction);
+    remoteTanks = new RemoteTanks(data.prediction.models);
+    predictor = new TankPredictor({
+      ...data.prediction,
+      mapDynamics,
+      remoteTanks,
+    });
     shotPredictor = new ShotPredictor({ ...data.prediction, mapDynamics });
     ownTank = new OwnTank(predictor);
   }
@@ -274,6 +283,8 @@ socketMethods[PS_MAP_DATA] = data => {
   ownTank?.reset();
   shotPredictor?.setMap(data);
   mapDynamics?.setMap(data);
+  predictor?.setMap(data);
+  remoteTanks?.reset();
 
   // удаление данных карт
   const removeMap = setId => {
@@ -458,7 +469,9 @@ socketMethods[PS_CLEAR] = function (setIdList) {
   ownTank?.reset();
   shotPredictor?.reset();
   // mapDynamics намеренно не сбрасывается: CLEAR приходит и на старте раунда,
-  // без MAP_DATA следом, — геометрию карты заменяет только setMap
+  // без MAP_DATA следом, — геометрию карты заменяет только setMap.
+  // Чужие танки, наоборот, заводятся заново кадрами — их сбросить можно
+  remoteTanks?.reset();
   soundManager.reset();
   modules.panel?.reset();
 };
@@ -517,15 +530,33 @@ function renderTick() {
     applyShot(frameGame, frame.camera);
     shotPredictor?.updateWorld(frameGame);
     mapDynamics?.update(frameGame);
+    remoteTanks?.update(frameGame);
   });
 
   if (game) {
     applyGameData(game);
     shotPredictor?.updateWorld(game);
     mapDynamics?.update(game);
+    remoteTanks?.update(game);
   }
 
   predictor?.update(now);
+
+  // предсказанные ящики рисуются поверх интерполяции — в том же времени,
+  // что и свой танк
+  const dynamicsRender = mapDynamics?.getRenderData();
+
+  if (dynamicsRender) {
+    applyGameData(dynamicsRender);
+  }
+
+  // контактирующие чужие танки — тоже на «сейчас», иначе толкающий и
+  // толкаемый видят контакт в разных временах
+  const tanksRender = remoteTanks?.getRenderData();
+
+  if (tanksRender) {
+    applyGameData(tanksRender);
+  }
 
   const own = ownTank?.getRenderData() ?? null;
 
@@ -682,8 +713,11 @@ function runModules(data) {
     // (только живой танк)
     if (action === 'down' && shotPredictor && ownTank?.canFire()) {
       if (name === 'fire') {
+        // выстрел строится из состояния симуляции, а не из рендерного:
+        // угол visualError разворачивал бы луч, и локальное попадание
+        // расходилось бы с серверным
         const spawn = shotPredictor.tryFire(
-          predictor.getRenderState(),
+          predictor.getSimState(),
           ownTank.gameId,
           now,
         );
@@ -774,12 +808,21 @@ ws.onmessage = e => {
       // authoritative-состояние своего танка → reconciliation предикшена
       if (frame.player && ownTank) {
         ownTank.setGameId(frame.player.gameId);
+        remoteTanks?.setOwnGameId(frame.player.gameId);
+
+        // порядок критичен: replay внутри onServerState двигает и ящики,
+        // и предсказанные чужие танки, поэтому расхождение считается
+        // уже после него
+        mapDynamics?.beginReconcile(frame.snapshot);
+        remoteTanks?.beginReconcile(frame.snapshot);
         predictor.onServerState(
           frame.player,
           frame.serverTime,
           interpolator.offset,
           now,
         );
+        mapDynamics?.finishReconcile();
+        remoteTanks?.finishReconcile();
       }
     }
 

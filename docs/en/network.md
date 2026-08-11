@@ -79,11 +79,17 @@ Each snapshot tick (`networkSendRate: 4` → 30 packets/sec) the server sends a 
 
 ## The binary snapshot frame (port 5)
 
-The codec: [src/lib/snapshotCodec.js](../../src/lib/snapshotCodec.js) (`SnapshotPacker` on the server, `unpackFrame` on the client). The key registry and format version: [src/config/opcodes.js](../../src/config/opcodes.js) (`SNAPSHOT_FORMAT_VERSION = 3`). `DataView`, big-endian, a manual block layout without libraries. On a version mismatch the client drops the frame.
+The codec: [src/lib/snapshotCodec.js](../../src/lib/snapshotCodec.js) (`SnapshotPacker` on the server, `unpackFrame` on the client). The key registry and format version: [src/config/opcodes.js](../../src/config/opcodes.js) (`SNAPSHOT_FORMAT_VERSION = 5`). `DataView`, big-endian, a manual block layout without libraries. On a version mismatch the client drops the frame — both tabs must reload after a format bump.
+
+**Version history** (each bump is additive, driven by client-side dynamics prediction — see [client.md](client.md#mapdynamics)):
+
+- **v3** — the baseline layout below, plus `shooterId`/`ownerId` on weapon events.
+- **v4** — `dynamics` (`c1`/`c2`) entries carry an optional velocity tail for moving bodies (`MapDynamics`'s predictor needs a body's velocity to extrapolate it, not just its last position).
+- **v5** — `tanks` (`m1`) entries carry a trailing `angvel` (`RemoteTanks`'s predictor needs it to extrapolate a turning enemy tank's heading over the interpolation delay).
 
 The server packs the **body** (the broadcast part) once per tick (`packBody`), then for each user assembles the frame `packFrame` = a personal header + a copy of the body.
 
-### Frame layout (v3)
+### Frame layout
 
 | Field | Type | Description |
 | --- | --- | --- |
@@ -103,19 +109,21 @@ The server packs the **body** (the broadcast part) once per tick (`packBody`), t
 
 | Key | id | kind | Data format |
 | :--: | :--: | --- | --- |
-| `m1` | 1 | `tanks` | `{gameId: [x, y, angle, gunRotation, vx, vy, engineLoad, condition, size, teamId] \| null}`; `null` — remove from the canvas |
+| `m1` | 1 | `tanks` | `{gameId: [x, y, angle, gunRotation, vx, vy, engineLoad, condition, size, teamId, angvel] \| null}`; `null` — remove from the canvas |
 | `w1` | 2 | `tracers` | array `[startX, startY, endX, endY, bodyX, bodyY, wasHit, shooterId]` |
 | `w2` | 3 | `bombs` | `{shotId(base36): [x, y, angle, size, time, ownerId] \| null}` |
 | `w2e` | 4 | `explosions` | array `[x, y, radius]` |
-| `c1`/`c2` | 5/6 | `dynamics` | `{'dN': [x, y, angle]}` — dynamic map elements |
+| `c1`/`c2` | 5/6 | `dynamics` | `{'dN': [x, y, angle] \| [x, y, angle, vx, vy, angvel]}` — dynamic map elements |
 
-All floats are initially rounded by the server to 2 decimals; the decoder restores the values by re-rounding to Float32. Weapon events carry the author id (`shooterId`/`ownerId`, added in v3) — by it the shooter suppresses server duplicates of locally spawned shots (`ShotPredictor.filterServerSnapshot`).
+All floats are initially rounded by the server to 2 decimals; the decoder restores the values by re-rounding to Float32. Weapon events carry the author id (`shooterId`/`ownerId`, added in v3) — by it the shooter suppresses server duplicates of locally spawned shots (`ShotPredictor.filterServerSnapshot`). A `tanks` entry's trailing `angvel` (v5) is `Tank._body.angvel()` — same as the player block's, just for every other tank too.
+
+**`dynamics` moving tail (v4).** `Map.getDynamicMapData()` on the server emits the short 3-number form (`[x, y, angle]`) while a body is resting (`isSleeping()` or both linear and angular speed under `REST_VELOCITY_EPSILON`), and the 6-number form (`[..., vx, vy, angvel]`, the body's `linvel()`/`angvel()`) once it's moving. The array's length **is** the mode flag for consumers — a 3-length entry means "no velocity data, treat as at rest." `snapshotCodec`'s `writeDynamics`/`readDynamics` carry an explicit `moving` byte on the wire rather than inferring it from length, so a resting body that happens to still be mid-tail from a previous frame is never misread.
 
 **`c1`/`c2` convention — `[x, y]` is the object's *origin*, not its center.** It mirrors the Rapier body position on the server (`src/server/parts/Map.js`): the collider is offset from the body by `(width/2, height/2)` in the object's own, rotated local frame, and rotation happens around that origin — not around the box's visual center. The client sprite already accounts for this (a `(0,0)` anchor), so it renders correctly; any client code that needs the box's actual geometry (raycasting, collisions) must go through `MapDynamics` ([client.md](client.md#mapdynamics)), which performs the origin→center conversion once (`boxCenterFromOrigin`) instead of leaving every consumer to redo the same offset math — and risk getting it wrong, as `ShotPredictor`'s raycast originally did.
 
 #### Known limitation: unanchored hit effects for non-local shots
 
-A `w1` tracer carries no id of the body it struck — only the impact point. The shooter's own locally-predicted shot works around this: `ShotPredictor` knows exactly which `MapDynamics` box its raycast hit and attaches a client-only 9th array element (`[key, localX, localY]`, never sent over the wire) so the impact effect can track that box's live transform (see [client.md](client.md#shotpredictor)). For every other player's shot — which the client only ever receives as this same 8-field server tracer — there is no such information, so its impact effect stays a fixed world-space point even when it struck a moving crate. Closing this gap for real would mean giving map-dynamics bodies a stable id (`userData.id` in `Map.js`), extending `writeTracers`/`readTracers` with it, and bumping `SNAPSHOT_FORMAT_VERSION` to 4 — deliberately out of scope here, since the original complaint (a visible mismatch between the shot and the world) is specific to the shooter's own view; an observer already renders the authoritative server state and never saw the bug.
+A `w1` tracer carries no id of the body it struck — only the impact point. The shooter's own locally-predicted shot works around this: `ShotPredictor` knows exactly which `MapDynamics` box its raycast hit and attaches a client-only 9th array element (`[key, localX, localY]`, never sent over the wire) so the impact effect can track that box's live transform (see [client.md](client.md#shotpredictor)). For every other player's shot — which the client only ever receives as this same 8-field server tracer — there is no such information, so its impact effect stays a fixed world-space point even when it struck a moving crate. Closing this gap for real would mean giving map-dynamics bodies a stable id (`userData.id` in `Map.js`), extending `writeTracers`/`readTracers` with it, and bumping `SNAPSHOT_FORMAT_VERSION` past 5 — deliberately out of scope here, since the original complaint (a visible mismatch between the shot and the world) is specific to the shooter's own view; an observer already renders the authoritative server state and never saw the bug.
 
 When adding a new weapon/entity, its snapshot key **must** be registered in `SNAPSHOT_KEYS`, otherwise `packBody` throws an error. If the existing `kind`s do not fit — add a new block layout in `snapshotCodec.js` and bump the format version. See [extending.md](extending.md#new-weapon).
 

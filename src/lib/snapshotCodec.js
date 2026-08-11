@@ -78,6 +78,9 @@ const writeTanks = (view, offset, tanks) => {
     view.setUint8(offset + 1, data[8]); // size
     view.setUint8(offset + 2, data[9]); // teamId
     offset += 3;
+
+    view.setFloat32(offset, data[10]); // angvel
+    offset += 4;
   }
 
   return offset;
@@ -155,7 +158,9 @@ const writeExplosions = (view, offset, explosions) => {
   return offset;
 };
 
-// объект { 'dN': [x, y, angle] } — динамические элементы карты
+// объект { 'dN': [x, y, angle] | [x, y, angle, vx, vy, angvel] } —
+// динамические элементы карты; хвост со скоростями пишется только для
+// движущихся тел (флаг moving), покоящиеся от него не дорожают
 const writeDynamics = (view, offset, items) => {
   const keys = Object.keys(items);
 
@@ -164,14 +169,23 @@ const writeDynamics = (view, offset, items) => {
 
   for (const key of keys) {
     const data = items[key];
+    const moving = data.length > 3;
 
     view.setUint8(offset, Number(key.slice(1)));
-    offset += 1;
+    view.setUint8(offset + 1, moving ? 1 : 0);
+    offset += 2;
 
     view.setFloat32(offset, data[0]);
     view.setFloat32(offset + 4, data[1]);
     view.setFloat32(offset + 8, data[2]);
     offset += 12;
+
+    if (moving) {
+      view.setFloat32(offset, data[3]);
+      view.setFloat32(offset + 4, data[4]);
+      view.setFloat32(offset + 8, data[5]);
+      offset += 12;
+    }
   }
 
   return offset;
@@ -217,6 +231,9 @@ const readTanks = (view, offset) => {
       view.getUint8(offset + 2), // teamId
     );
     offset += 3;
+
+    data.push(readFloat(view, offset)); // angvel
+    offset += 4;
 
     result[id] = data;
   }
@@ -305,15 +322,28 @@ const readDynamics = (view, offset) => {
 
   for (let n = 0; n < count; n += 1) {
     const index = view.getUint8(offset);
+    const moving = view.getUint8(offset + 1);
 
-    offset += 1;
+    offset += 2;
 
-    result[`d${index}`] = [
+    const data = [
       readFloat(view, offset),
       readFloat(view, offset + 4),
       readFloat(view, offset + 8),
     ];
+
     offset += 12;
+
+    if (moving === 1) {
+      data.push(
+        readFloat(view, offset),
+        readFloat(view, offset + 4),
+        readFloat(view, offset + 8),
+      );
+      offset += 12;
+    }
+
+    result[`d${index}`] = data;
   }
 
   return [result, offset];

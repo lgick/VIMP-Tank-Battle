@@ -7,6 +7,10 @@ import RAPIER from '../physics/rapier.js';
 const DEFAULT_FRICTION = 0.2;
 const DEFAULT_RESTITUTION = 0;
 
+// порог, ниже которого тело считается покоящимся и отдаётся без скоростей —
+// страховка на случай, если сон Rapier окажется выключен
+const REST_VELOCITY_EPSILON = 0.01;
+
 // Singleton Map
 
 let map;
@@ -177,19 +181,37 @@ class Map {
     }
   }
 
-  // возвращает краткие данные динамических элементов
+  // Возвращает краткие данные динамических элементов.
+  // Движущиеся тела отдают ещё и скорости: клиент предсказывает динамику
+  // карты рядом со своим танком, а оценка скорости конечной разностью между
+  // кадрами 30 Гц сильнее всего врёт именно в момент удара.
   getDynamicMapData() {
     const data = {};
 
     for (let i = 0, len = this._dynamicBodies.length; i < len; i += 1) {
       const [id, body] = this._dynamicBodies[i];
       const pos = body.translation();
-
-      data[id] = [
+      const transform = [
         roundTo2Decimals(pos.x),
         roundTo2Decimals(pos.y),
         roundTo2Decimals(body.rotation()),
       ];
+
+      const linvel = body.linvel();
+      const angvel = body.angvel();
+      const resting =
+        body.isSleeping() ||
+        (Math.hypot(linvel.x, linvel.y) < REST_VELOCITY_EPSILON &&
+          Math.abs(angvel) < REST_VELOCITY_EPSILON);
+
+      data[id] = resting
+        ? transform
+        : [
+            ...transform,
+            roundTo2Decimals(linvel.x),
+            roundTo2Decimals(linvel.y),
+            roundTo2Decimals(angvel),
+          ];
     }
 
     return data;

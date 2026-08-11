@@ -87,6 +87,7 @@ export default class OwnTank {
             predicted.vy,
             predicted.engineLoad,
             ...this._meta,
+            predicted.angvel,
           ],
         },
       },

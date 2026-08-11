@@ -1,5 +1,7 @@
 import { lerp, clamp, normalizeAngle } from '../lib/math.js';
 import { Vec2, rotateVec } from '../lib/vec2.js';
+import { collectTileContacts, obbVsObb } from '../lib/collision.js';
+import { separateBodies, applyContactImpulse } from '../lib/rigidBody.js';
 
 // Client-side prediction своего танка: реплика серверной модели движения
 // (Tank.updateData) без Rapier-коллизий. Точность реплики фиксируется
@@ -26,17 +28,68 @@ const ERROR_SNAP_DISTANCE = 100;
 // защита от «спирали смерти» аккумулятора (мс)
 const MAX_ACCUMULATED_TIME = 100;
 
+// проходов решателя по собранным контактам за один шаг (sequential impulse)
+const SOLVER_ITERATIONS = 4;
+
+// параметры поверхности стены (DEFAULT_* в src/server/parts/Map.js)
+const WALL_FRICTION = 0.2;
+const WALL_RESTITUTION = 0;
+
+// Rapier комбинирует коэффициенты двух тел правилом среднего
+// (CoefficientCombineRule::Average) — реплика обязана делать так же
+const combineSurfaces = (a, b) => ({
+  friction: (a.friction + b.friction) / 2,
+  restitution: (a.restitution + b.restitution) / 2,
+});
+
+// неподвижный партнёр контакта со стеной (обратные массы нулевые, поэтому
+// решатель его не двигает; координаты нужны только как плечо)
+const makeStaticBody = (x, y) => ({
+  x,
+  y,
+  angle: 0,
+  vx: 0,
+  vy: 0,
+  angvel: 0,
+  invMass: 0,
+  invInertia: 0,
+  linearDamping: 0,
+  angularDamping: 0,
+  friction: WALL_FRICTION,
+  restitution: WALL_RESTITUTION,
+});
+
 export default class TankPredictor {
   /**
    * @param {Object} options
    * @param {number} options.timeStep - Шаг симуляции (мс, как на сервере).
    * @param {Object} options.playerKeys - Конфиг клавиш { name: {key, type} }.
    * @param {Object} options.models - Конфиги моделей танков (models.js).
+   * @param {Object} [options.mapDynamics] - Предиктор динамики карты.
+   * @param {Object} [options.remoteTanks] - Предиктор контактирующих чужих
+   *   танков. Обе подсистемы шагает этот предиктор — часы у предсказанного
+   *   мира одни, иначе контакт разрешался бы в разных шагах.
+   *   Без них (и без setMap) проход столкновений — полный no-op, а реплика
+   *   движения остаётся бит-в-бит прежней: на этом инварианте держится
+   *   tests/server/TankPredictorParity.test.js.
    */
-  constructor({ timeStep, playerKeys, models }) {
+  constructor({
+    timeStep,
+    playerKeys,
+    models,
+    mapDynamics = null,
+    remoteTanks = null,
+  }) {
     this._stepMs = timeStep;
     this._models = models;
     this._model = null; // выбирается setModel при авторизации
+
+    // подсистемы предсказанных тел: единый утиный контракт
+    // (capture/integratePredicted/getPredictedBodies/noteContacts/
+    //  demoteIdle/decayError)
+    this._predictedSets = [mapDynamics, remoteTanks].filter(Boolean);
+    this._grid = null; // { map, solidTiles, tileSize } — стены карты
+    this._localNow = 0; // часы симуляции (общие с предсказанным миром)
 
     // биты клавиш и маска one-shot клавиш (как в Game)
     this._keys = {};
@@ -80,6 +133,15 @@ export default class TankPredictor {
   // модель танка пользователя (известна при авторизации)
   setModel(modelName) {
     this._model = this._models[modelName] || null;
+  }
+
+  // стены карты (MAP_DATA) — тайловая сетка для сбора контактов
+  setMap({ map, step, scale, physicsStatic }) {
+    this._grid = {
+      map,
+      solidTiles: physicsStatic || [],
+      tileSize: step * scale,
+    };
   }
 
   // предикт включается для играющего (keySet 1) и выключается у спектатора
@@ -155,6 +217,8 @@ export default class TankPredictor {
    * @param {number} localNow - performance.now().
    */
   update(localNow) {
+    this._localNow = localNow;
+
     if (this._lastUpdateTime === null) {
       this._lastUpdateTime = localNow;
       return;
@@ -170,6 +234,11 @@ export default class TankPredictor {
     this._visualError.x *= decay;
     this._visualError.y *= decay;
     this._visualError.angle *= decay;
+
+    // у всего предсказанного мира одни часы
+    for (const set of this._predictedSets) {
+      set.decayError(elapsed);
+    }
 
     if (!this.hasState || this._frozen) {
       this._accumulator = 0;
@@ -201,6 +270,8 @@ export default class TankPredictor {
     if (!this._active || this._model === null) {
       return;
     }
+
+    this._localNow = localNow;
 
     const old = this._hasState ? { ...this._state } : null;
     const s = player.state;
@@ -274,8 +345,32 @@ export default class TankPredictor {
   }
 
   /**
+   * Состояние симуляции БЕЗ визуальной ошибки — то, что сервер воспроизведёт
+   * у себя. Из него строится выстрел: `visualError` чисто косметическая, и
+   * её угол разворачивал бы луч, из-за чего локальное попадание по ящику не
+   * совпадало бы с серверным (осколки есть, импульса нет).
+   * @returns {{x, y, angle, gunRotation, vx, vy, angvel, engineLoad}|null}
+   */
+  getSimState() {
+    if (!this.hasState) {
+      return null;
+    }
+
+    return {
+      x: this._state.x,
+      y: this._state.y,
+      angle: this._state.angle,
+      gunRotation: this._state.gunRotation,
+      vx: this._state.vx,
+      vy: this._state.vy,
+      angvel: this._state.angvel,
+      engineLoad: this._engineLoad,
+    };
+  }
+
+  /**
    * Состояние для рендера (со сглаживающей визуальной ошибкой).
-   * @returns {{x, y, angle, gunRotation, vx, vy, engineLoad}|null}
+   * @returns {{x, y, angle, gunRotation, vx, vy, angvel, engineLoad}|null}
    */
   getRenderState() {
     if (!this.hasState) {
@@ -289,6 +384,7 @@ export default class TankPredictor {
       gunRotation: this._state.gunRotation,
       vx: this._state.vx,
       vy: this._state.vy,
+      angvel: this._state.angvel,
       engineLoad: this._engineLoad,
     };
   }
@@ -425,6 +521,128 @@ export default class TankPredictor {
     state.vx *= 1 / (1 + dt * m.damping.linear);
     state.vy *= 1 / (1 + dt * m.damping.linear);
     state.angvel *= 1 / (1 + dt * m.damping.angular);
+
+    this._resolveWorld(dt);
+  }
+
+  /**
+   * Столкновения одного шага: свой танк, предсказанные ящики динамики карты
+   * и стены разрешаются в ОДНОЙ симуляции — потому нарисованный танк и
+   * нарисованный ящик не выдавливают друг друга.
+   * Без карты и без mapDynamics — полный no-op (см. инвариант в конструкторе).
+   * @param {number} dt - Шаг в секундах.
+   */
+  _resolveWorld(dt) {
+    if (!this._grid && this._predictedSets.length === 0) {
+      return;
+    }
+
+    const m = this._model;
+    const state = this._state;
+    const localNow = this._localNow;
+
+    // масса и момент танка: габарит 4:3 от size, плотность из fixture
+    // (размер танка, в отличие от динамики карты, картой не масштабируется)
+    const width = m.size * 4;
+    const height = m.size * 3;
+    const mass = m.fixture.density * width * height;
+    const inertia = (mass * (width * width + height * height)) / 12;
+
+    const tank = {
+      x: state.x,
+      y: state.y,
+      angle: state.angle,
+      vx: state.vx,
+      vy: state.vy,
+      angvel: state.angvel,
+      invMass: 1 / mass,
+      invInertia: 1 / inertia,
+      linearDamping: m.damping.linear,
+      angularDamping: m.damping.angular,
+      friction: m.fixture.friction,
+      restitution: m.fixture.restitution,
+      halfW: width / 2,
+      halfH: height / 2,
+    };
+
+    // захват и шаг предсказанных подсистем (ящики карты, чужие танки)
+    const others = [];
+
+    for (const set of this._predictedSets) {
+      set.capture(tank, localNow);
+      set.integratePredicted(dt);
+      others.push(...set.getPredictedBodies());
+    }
+
+    const contacts = [];
+    const add = (a, b, contact) => {
+      contacts.push({ a, b, contact, surface: combineSurfaces(a, b) });
+    };
+
+    // контакты со стенами (партнёр — статика в точке задетого тайла)
+    if (this._grid) {
+      for (const body of [tank, ...others]) {
+        for (const hit of collectTileContacts(body, this._grid)) {
+          add(body, makeStaticBody(hit.tileX, hit.tileY), hit);
+        }
+      }
+    }
+
+    // свой танк ↔ каждое предсказанное тело и все пары между собой
+    for (let i = 0; i < others.length; i += 1) {
+      const body = others[i];
+      const tankHit = obbVsObb(tank, body);
+
+      if (tankHit) {
+        add(tank, body, tankHit);
+      }
+
+      for (let j = i + 1; j < others.length; j += 1) {
+        const pairHit = obbVsObb(body, others[j]);
+
+        if (pairHit) {
+          add(body, others[j], pairHit);
+        }
+      }
+    }
+
+    if (contacts.length > 0) {
+      // развод по глубине — ровно один раз на контакт: повтор на каждой
+      // итерации расталкивал бы тела кратно числу итераций
+      for (const { a, b, contact } of contacts) {
+        separateBodies(a, b, contact);
+      }
+
+      // контакты собраны один раз, импульсы проходят по ним несколько раз —
+      // это же заменяет внутренние итерации выталкивания из тайловой сетки
+      for (let iter = 0; iter < SOLVER_ITERATIONS; iter += 1) {
+        for (const { a, b, contact, surface } of contacts) {
+          applyContactImpulse(a, b, contact, surface);
+        }
+      }
+
+      state.x = tank.x;
+      state.y = tank.y;
+      state.angle = normalizeAngle(tank.angle);
+      state.vx = tank.vx;
+      state.vy = tank.vy;
+      state.angvel = tank.angvel;
+    }
+
+    // тела, реально участвовавшие в контакте, держатся предсказанными дольше
+    const touched = new Set();
+
+    for (const { a, b } of contacts) {
+      touched.add(a);
+      touched.add(b);
+    }
+
+    for (const set of this._predictedSets) {
+      const own = set.getPredictedBodies().filter(body => touched.has(body));
+
+      set.noteContacts(own, localNow);
+      set.demoteIdle(localNow);
+    }
   }
 
   // доля текущей скорости от максимальной (как Tank._getSpeedRatio)

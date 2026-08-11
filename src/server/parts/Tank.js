@@ -464,6 +464,9 @@ class Tank extends BaseModel {
       this._condition,
       this._modelData.size,
       this.teamId,
+      // угловая скорость нужна клиенту, чтобы предсказать доворот чужого
+      // корпуса за задержку интерполяции (см. RemoteTanks)
+      roundTo2Decimals(this._body.angvel()),
     ];
   }
 }

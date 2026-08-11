@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   boxCenterFromOrigin,
   obbVsObb,
-  obbVsTileGrid,
+  collectTileContacts,
 } from '../../src/lib/collision.js';
 
 describe('boxCenterFromOrigin: угол объекта → центр', () => {
@@ -102,62 +102,52 @@ describe('obbVsObb: SAT для двух прямоугольников', () => {
   });
 });
 
-describe('obbVsTileGrid: OBB против тайловой сетки стен', () => {
+describe('collectTileContacts: OBB против тайловой сетки стен', () => {
   const tileSize = 10;
 
-  it('без стен (пустой solidTiles) — нулевое выталкивание', () => {
+  it('без стен (пустой solidTiles) — контактов нет', () => {
     const grid = { map: [[0, 0], [0, 0]], solidTiles: [], tileSize };
     const obb = { x: 5, y: 5, angle: 0, halfW: 3, halfH: 3 };
 
-    expect(obbVsTileGrid(obb, grid).hit).toBe(false);
+    expect(collectTileContacts(obb, grid)).toEqual([]);
   });
 
-  it('без пересечений — нулевое выталкивание', () => {
+  it('без пересечений — контактов нет', () => {
     const grid = { map: [[0, 0], [0, 1]], solidTiles: [1], tileSize };
     // клетка (1,1) — мир [10,20]×[10,20]; бокс далеко от неё
     const obb = { x: 100, y: 100, angle: 0, halfW: 3, halfH: 3 };
 
-    const push = obbVsTileGrid(obb, grid);
-
-    expect(push.hit).toBe(false);
-    expect(push.x).toBe(0);
-    expect(push.y).toBe(0);
+    expect(collectTileContacts(obb, grid)).toEqual([]);
   });
 
-  it('грань одной стены: выталкивает по кратчайшей оси', () => {
+  it('грань одной стены: один контакт с нормалью по кратчайшей оси', () => {
     // клетка (1,1) солид — мир [10,20]×[10,20], центр (15,15)
     const grid = { map: [[0, 0], [0, 1]], solidTiles: [1], tileSize };
     // бокс снизу, глубже въехал по Y (overlap 2), чем по X (overlap 6)
     const obb = { x: 15, y: 22, angle: 0, halfW: 3, halfH: 4 };
 
-    const push = obbVsTileGrid(obb, grid);
+    const contacts = collectTileContacts(obb, grid);
 
-    expect(push.x).toBeCloseTo(0, 6);
-    expect(push.y).toBeCloseTo(2, 6);
+    expect(contacts).toHaveLength(1);
+    // нормаль направлена от obb к клетке, то есть вверх (−Y)
+    expect(contacts[0].nx).toBeCloseTo(0, 6);
+    expect(contacts[0].ny).toBeCloseTo(-1, 6);
+    expect(contacts[0].depth).toBeCloseTo(2, 6);
+    expect(contacts[0].tileX).toBe(15);
+    expect(contacts[0].tileY).toBe(15);
 
-    // после применения выталкивания пересечения со стеной больше нет
-    const resolved = { ...obb, x: obb.x + push.x, y: obb.y + push.y };
+    // выталкивание против нормали разрешает пересечение
+    const resolved = {
+      ...obb,
+      x: obb.x - contacts[0].nx * contacts[0].depth,
+      y: obb.y - contacts[0].ny * contacts[0].depth,
+    };
     const tileBox = { x: 15, y: 15, angle: 0, halfW: 5, halfH: 5 };
 
     expect(obbVsObb(resolved, tileBox)).toBeNull();
   });
 
-  it('танк целиком внутри одной клетки: выталкивается наружу без остатка пересечения', () => {
-    const grid = { map: [[1]], solidTiles: [1], tileSize };
-    // клетка (0,0) — мир [0,10]×[0,10]; маленький бокс внутри, смещён от центра
-    const obb = { x: 7, y: 5, angle: 0, halfW: 1, halfH: 1 };
-
-    const push = obbVsTileGrid(obb, grid);
-
-    expect(push.hit).toBe(true);
-
-    const resolved = { ...obb, x: obb.x + push.x, y: obb.y + push.y };
-    const tileBox = { x: 5, y: 5, angle: 0, halfW: 5, halfH: 5 };
-
-    expect(obbVsObb(resolved, tileBox)).toBeNull();
-  });
-
-  it('внутренний угол (три соседние стены): итеративное выталкивание разрешает все пересечения', () => {
+  it('внутренний угол: контакт на каждую задетую клетку', () => {
     // L-форма: (0,0),(0,1),(1,0) солид; (1,1) — пустая клетка-«ниша»
     const grid = {
       map: [
@@ -170,19 +160,25 @@ describe('obbVsTileGrid: OBB против тайловой сетки стен',
     // бокс прижат в угол ниши (10,10), пересекает все три стены сразу
     const obb = { x: 12, y: 12, angle: 0, halfW: 4, halfH: 4 };
 
-    const push = obbVsTileGrid(obb, grid);
+    const contacts = collectTileContacts(obb, grid);
 
-    expect(push.hit).toBe(true);
+    expect(contacts).toHaveLength(3);
 
-    const resolved = { ...obb, x: obb.x + push.x, y: obb.y + push.y };
-    const solidBoxes = [
-      { x: 5, y: 5, angle: 0, halfW: 5, halfH: 5 }, // (0,0)
-      { x: 15, y: 5, angle: 0, halfW: 5, halfH: 5 }, // (0,1)
-      { x: 5, y: 15, angle: 0, halfW: 5, halfH: 5 }, // (1,0)
-    ];
+    // каждый контакт несёт свою клетку и положительную глубину
+    const tiles = contacts.map(c => `${c.tileX},${c.tileY}`).sort();
 
-    for (const tileBox of solidBoxes) {
-      expect(obbVsObb(resolved, tileBox)).toBeNull();
-    }
+    expect(tiles).toEqual(['15,5', '5,15', '5,5']);
+    expect(contacts.every(c => c.depth > 0)).toBe(true);
+  });
+
+  it('повёрнутый бокс: кандидатные клетки отбираются по консервативному AABB', () => {
+    const grid = { map: [[1, 0], [0, 0]], solidTiles: [1], tileSize };
+    // бокс повёрнут на 45°, углом заходит в клетку (0,0) — мир [0,10]×[0,10]
+    const obb = { x: 13, y: 13, angle: Math.PI / 4, halfW: 5, halfH: 2 };
+
+    const contacts = collectTileContacts(obb, grid);
+
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0].depth).toBeGreaterThan(0);
   });
 });

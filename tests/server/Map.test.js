@@ -14,11 +14,25 @@ const makeWorld = () => {
         desc,
         colliders: [],
         userData: null,
+        // состояние движения задаётся тестом (getDynamicMapData отдаёт
+        // скорости только для движущихся тел)
+        sleeping: true,
+        velocity: { x: 0, y: 0 },
+        angular: 0,
         translation() {
           return desc.translation;
         },
         rotation() {
           return desc.rotation;
+        },
+        isSleeping() {
+          return this.sleeping;
+        },
+        linvel() {
+          return this.velocity;
+        },
+        angvel() {
+          return this.angular;
         },
       };
       created.push(body);
@@ -139,9 +153,10 @@ describe('Map.createDynamic', () => {
     expect(dyn[0].userData).toEqual({ type: 'map_object' });
   });
 
-  it('getDynamicMapData возвращает позицию и угол по id', () => {
-    const world = makeWorld();
+  // тело динамики карты, созданное фейковым миром
+  const makeDynamicMap = world => {
     const map = new Map(world);
+
     map.createMap(
       mapData([[0]], {
         physicsDynamic: [
@@ -156,8 +171,42 @@ describe('Map.createDynamic', () => {
       }),
     );
 
+    return map;
+  };
+
+  it('покоящееся тело: только позиция и угол (3 числа)', () => {
+    const world = makeWorld();
+    const map = makeDynamicMap(world);
+
     const data = map.getDynamicMapData();
     expect(data.d0).toEqual([1.23, 5.68, 0]);
+  });
+
+  it('движущееся тело: позиция, угол и скорости (6 чисел)', () => {
+    const world = makeWorld();
+    const map = makeDynamicMap(world);
+    const body = world.created[world.created.length - 1];
+
+    body.sleeping = false;
+    body.velocity = { x: 12.345, y: -6.789 };
+    body.angular = 0.567;
+
+    const data = map.getDynamicMapData();
+    expect(data.d0).toEqual([1.23, 5.68, 0, 12.35, -6.79, 0.57]);
+  });
+
+  // страховка на случай выключенного сна в Rapier: почти нулевые скорости
+  // не должны каждый кадр раздувать блок динамики
+  it('не спящее, но почти неподвижное тело считается покоящимся', () => {
+    const world = makeWorld();
+    const map = makeDynamicMap(world);
+    const body = world.created[world.created.length - 1];
+
+    body.sleeping = false;
+    body.velocity = { x: 0.001, y: 0.002 };
+    body.angular = 0.001;
+
+    expect(map.getDynamicMapData().d0).toHaveLength(3);
   });
 });
 

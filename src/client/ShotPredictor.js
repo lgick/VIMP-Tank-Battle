@@ -444,8 +444,33 @@ export default class ShotPredictor {
     const hitResult = this._castRay(muzzle, direction, range, shooterId);
     const hit = hitResult !== null;
     const endDistance = hit ? hitResult.distance : range;
-    const endX = muzzle.x + direction.x * endDistance;
-    const endY = muzzle.y + direction.y * endDistance;
+    let endX = muzzle.x + direction.x * endDistance;
+    let endY = muzzle.y + direction.y * endDistance;
+
+    // якорь попадания в динамику карты (девятый элемент, только локально —
+    // никогда не уходит в сеть): позволяет ShotEffectController привязать
+    // облако осколков к трансформу задетого ящика, а не к мировой точке
+    let anchor = null;
+
+    if (hit && hitResult.target?.key && this._mapDynamics) {
+      const key = hitResult.target.key;
+      const local = this._mapDynamics.toLocal(key, endX, endY);
+
+      if (local) {
+        anchor = [key, local.x, local.y];
+
+        // луч шёл по симуляционной геометрии, а ящик нарисован в другом
+        // фрейме (сглаживание/интерполяция) — конец трассера переносится
+        // в ту же материальную точку нарисованного ящика, иначе на едущем
+        // ящике он обрывался бы в воздухе
+        const drawn = this._mapDynamics.toWorld(key, local.x, local.y);
+
+        if (drawn) {
+          endX = drawn.x;
+          endY = drawn.y;
+        }
+      }
+    }
 
     const tracer = [
       muzzle.x,
@@ -458,15 +483,8 @@ export default class ShotPredictor {
       shooterId,
     ];
 
-    // якорь попадания в динамику карты (девятый элемент, только локально —
-    // никогда не уходит в сеть): позволяет ShotEffectController привязать
-    // облако осколков к трансформу задетого ящика, а не к мировой точке
-    if (hit && hitResult.target?.key && this._mapDynamics) {
-      const local = this._mapDynamics.toLocal(hitResult.target.key, endX, endY);
-
-      if (local) {
-        tracer.push([hitResult.target.key, local.x, local.y]);
-      }
+    if (anchor) {
+      tracer.push(anchor);
     }
 
     return tracer;
@@ -489,7 +507,9 @@ export default class ShotPredictor {
     }
 
     if (this._mapDynamics) {
-      const boxes = this._mapDynamics.getBoxes();
+      // симуляционные, а не рендерные боксы: попадание должно совпасть
+      // с серверным, а не с картинкой (см. MapDynamics)
+      const boxes = this._mapDynamics.getSimBoxes();
 
       for (const key in boxes) {
         if (Object.hasOwn(boxes, key)) {
