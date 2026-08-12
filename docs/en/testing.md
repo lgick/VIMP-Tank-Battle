@@ -16,16 +16,17 @@ The build is part of the checklist: it catches broken imports and unavailable ex
 
 ## Coverage map
 
-Covered (~815 tests):
+Covered (~967 tests):
 
-- the whole of `lib/` (including `security`, the round-trip of `snapshotCodec` and `raycast`);
-- client: `SnapshotInterpolator`, `TankPredictor`, `ShotPredictor`, `OwnTank`, the models (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager), `InputListener`, `SoundManager`, all 8 controllers and views (DOM through happy-dom);
+- the whole of `lib/` (including `security`, the round-trip of `snapshotCodec`, `raycast`, `collision` — OBB/tile-grid contacts/origin→center — and `rigidBody` — the two-body sequential-impulse solver, box mass properties and surface combination, shared by `MapDynamics`/`RemoteTanks`/`TankPredictor` and the server map colliders);
+- client: `SnapshotInterpolator`, `TankPredictor`, `ShotPredictor`, `MapDynamics`, `RemoteTanks` (their shared base `PredictedSet` is covered through both subsystems — it has no tests of its own), `OwnTank`, the models (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager), `InputListener`, `SoundManager`, all 8 controllers and views (DOM through happy-dom);
 - the **parity test** `tests/server/TankPredictorParity.test.js` — the movement replica against real Rapier; mandatory to run on any change to `Tank.updateData`/`models.js`;
+- the **Rapier semantics probe** `tests/server/RapierBodySemantics.test.js` — pins down assumptions the client predictors rely on but Rapier's docs don't spell out explicitly (e.g. `linvel()` being the centre-of-mass velocity, not the origin's) against the real WASM physics, not a mock;
 - server modules with logic: Stat, Vote, RTTManager, SnapshotManager, Panel, Chat, TimerManager, Pathfinder, SpatialManager, NavigationSystem, HitscanService, BaseModel, Bomb, Map, Tank, BotManager, BotController, SocketManager, Game, VIMP;
 - the participant registry (`ParticipantManager`) and the `core/` managers (`VoteCoordinator`, `RoundManager`, `CommandProcessor`);
 - the **integration layer** (`tests/server/integration/`): the full VIMP lifecycle with real modules + the protocol layer `socket/index.js`.
 
-Not covered (low ROI for unit tests): the Pixi `parts/` and `parts/effects/`, the providers (`BakingProvider`/`DependencyProvider`). The exception is applying data inside a part (not the drawing): `Bomb.update` is covered by `tests/client/parts/Bomb.test.js` with a `pixi.js` mock.
+Not covered (low ROI for unit tests): the Pixi `parts/` and `parts/effects/` drawing itself, the providers (`BakingProvider`/`DependencyProvider`). The exception is orchestration logic — not drawing — behind a `pixi.js` mock: `Bomb.update` (`tests/client/parts/Bomb.test.js`), `ExplosionEffectController`'s effect sequencing (`tests/client/parts/effects/ExplosionEffectController.test.js`), and `ShotEffectController`/`ImpactEffect`'s hit-anchor handling — data[8]'s `[key, localX, localY]`, the fallback when `mapDynamics` is unavailable, and the per-tick transform sync (`tests/client/parts/effects/ShotEffectController.test.js`).
 
 ## Patterns
 

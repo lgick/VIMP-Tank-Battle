@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import ShotPredictor from '../../src/client/ShotPredictor.js';
+import MapDynamics from '../../src/client/MapDynamics.js';
+import RemoteTanks from '../../src/client/RemoteTanks.js';
 
 // логика гейта/спавна/подавления дублей; raycast-примитивы покрыты
 // в tests/lib/raycast.test.js
@@ -49,18 +51,25 @@ const emptyMap = () => ({
 });
 
 const makePredictor = () => {
-  const p = new ShotPredictor({ models, weapons });
+  const mapDynamics = new MapDynamics();
+  const p = new ShotPredictor({ models, weapons, mapDynamics });
 
   p.setModel('m1');
   p.setMap(emptyMap());
+  mapDynamics.setMap({
+    physicsDynamic: [],
+    scale: emptyMap().scale,
+    setId: 'c1',
+  });
 
-  return p;
+  return { p, mapDynamics };
 };
 
 let predictor;
+let mapDynamics;
 
 beforeEach(() => {
-  predictor = makePredictor();
+  ({ p: predictor, mapDynamics } = makePredictor());
 });
 
 describe('ShotPredictor: гейт выстрела', () => {
@@ -167,30 +176,79 @@ describe('ShotPredictor: трассер (w1)', () => {
     expect(endX).toBeCloseTo(500 - 32, 6);
   });
 
-  it('трассер утыкается в динамический объект карты', () => {
-    predictor.setMap({
-      ...emptyMap(),
+  it('трассер утыкается в динамический объект карты (угол объекта → центр)', () => {
+    // угол объекта (сервер) (100,-50); мир ×scale(2) → (200,-100)
+    // halfW = width(40)·scale/2 = 40, halfH = height(100)·scale/2 = 100
+    // центр = угол + (halfW, halfH) = (240, 0) — НЕ (200,-100)
+    mapDynamics.setMap({
       physicsDynamic: [
-        {
-          position: [100, 0], // мир: ×scale(2) → (200, 0)
-          angle: 0,
-          width: 20, // мир: 40, halfW 20
-          height: 100,
-        },
+        { position: [100, -50], angle: 0, width: 40, height: 100 },
       ],
+      scale: 2,
+      setId: 'c1',
     });
 
     const { w1 } = predictor.tryFire(restingState(), 1, 0);
 
     expect(w1[0][6]).toBe(true);
-    expect(w1[0][2]).toBeCloseTo(180, 6);
+    // луч (y=0) входит в левую грань бокса (центр 240 − halfW 40 = 200),
+    // а не в точку, которая была бы центром при ошибочной семантике «угол = центр»
+    expect(w1[0][2]).toBeCloseTo(200, 6);
 
-    // объект сдвинулся снапшотом — луч бьёт по новой позиции
-    predictor.updateWorld({ c1: { d0: [400, 0, 0] } });
+    // якорь: попадание в d0, локальная точка — левая грань относительно центра
+    expect(w1[0][8][0]).toBe('d0');
+    expect(w1[0][8][1]).toBeCloseTo(-40, 6);
+    expect(w1[0][8][2]).toBeCloseTo(0, 6);
+
+    // объект сдвинулся снапшотом — луч бьёт по новой позиции (та же геометрия)
+    mapDynamics.update({ c1: { d0: [400, -100, 0] } });
 
     const second = predictor.tryFire(restingState(), 1, 1000);
 
-    expect(second.w1[0][2]).toBeCloseTo(380, 6);
+    expect(second.w1[0][2]).toBeCloseTo(400, 6);
+    expect(second.w1[0][8]).toEqual(['d0', expect.closeTo(-40), expect.closeTo(0)]);
+  });
+
+  it('едущий ящик: луч по авторитетной геометрии, конец трассера — по нарисованной', () => {
+    mapDynamics.setMap({
+      physicsDynamic: [
+        { position: [100, -50], angle: 0, width: 40, height: 100 },
+      ],
+      scale: 2,
+      setId: 'c1',
+    });
+
+    // авторитетно ящик на линии огня (центр 240, 0), а нарисован он
+    // с задержкой интерполяции далеко в стороне (центр 240, 1000)
+    mapDynamics.beginReconcile({ c1: { d0: [200, -100, 0, 300, 0, 0] } });
+    mapDynamics.update({ c1: { d0: [200, 900, 0] } });
+
+    const { w1 } = predictor.tryFire(restingState(), 1, 0);
+
+    // по рендерному боксу луч промахнулся бы вовсе
+    expect(w1[0][6]).toBe(true);
+    expect(w1[0][8]).toEqual(['d0', expect.closeTo(-40), expect.closeTo(0)]);
+
+    // конец трассера — та же материальная точка нарисованного ящика
+    expect(w1[0][2]).toBeCloseTo(200, 6);
+    expect(w1[0][3]).toBeCloseTo(1000, 6);
+  });
+
+  it('трассер утыкается в повёрнутый динамический объект (угол объекта учитывает поворот)', () => {
+    mapDynamics.setMap({
+      physicsDynamic: [
+        { position: [100, -20], angle: 90, width: 40, height: 60 },
+      ],
+      scale: 2,
+      setId: 'c1',
+    });
+
+    const { w1 } = predictor.tryFire(restingState(), 1, 0);
+
+    expect(w1[0][6]).toBe(true);
+    expect(w1[0][2]).toBeCloseTo(80, 6);
+    expect(w1[0][3]).toBeCloseTo(0, 6);
+    expect(w1[0][8][0]).toBe('d0');
   });
 
   it('удалённый танк (null) исключается из raycast', () => {
@@ -198,6 +256,49 @@ describe('ShotPredictor: трассер (w1)', () => {
     predictor.updateWorld({ m1: { 2: null } });
 
     const { w1 } = predictor.tryFire(restingState(), 1, 0);
+
+    expect(w1[0][6]).toBe(false);
+  });
+});
+
+describe('ShotPredictor: трассер по чужому танку', () => {
+  // танк id 2, size 10 → halfW 20, halfH 15; нарисован в (300, 60),
+  // авторитетно уже в (300, 0) — на линии выстрела
+  const drawn = [300, 60, 0, 0, 0, -600, 0, 3, 10, 1, 0];
+  const authoritative = [300, 0, 0, 0, 0, -600, 0, 3, 10, 1, 0];
+
+  const setup = remoteTanks => {
+    const mapDynamics = new MapDynamics();
+    const p = new ShotPredictor({ models, weapons, mapDynamics, remoteTanks });
+
+    p.setModel('m1');
+    p.setMap(emptyMap());
+    mapDynamics.setMap({ physicsDynamic: [], scale: 2, setId: 'c1' });
+    p.updateWorld({ m1: { 2: drawn } });
+
+    return p;
+  };
+
+  it('луч идёт по корпусу «сейчас», а конец — по нарисованному', () => {
+    const remoteTanks = new RemoteTanks(models);
+
+    remoteTanks.setOwnGameId(1);
+    remoteTanks.update({ m1: { 2: drawn } });
+    remoteTanks.beginReconcile({ m1: { 2: authoritative } });
+    remoteTanks.finishReconcile();
+
+    const { w1 } = setup(remoteTanks).tryFire(restingState(), 1, 0);
+
+    // сервер по своей геометрии попадает — попадает и клиент
+    expect(w1[0][6]).toBe(true);
+    // точка удара перенесена на нарисованный корпус: локально это та же
+    // материальная точка (левая грань), иначе трассер обрывался бы в воздухе
+    expect(w1[0][2]).toBeCloseTo(280, 6);
+    expect(w1[0][3]).toBeCloseTo(60, 6);
+  });
+
+  it('без RemoteTanks луч идёт по нарисованному корпусу и мажет', () => {
+    const { w1 } = setup(null).tryFire(restingState(), 1, 0);
 
     expect(w1[0][6]).toBe(false);
   });

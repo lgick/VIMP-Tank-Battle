@@ -1,11 +1,14 @@
 import { roundTo2Decimals } from '../../lib/formatters.js';
 import { degToRad } from '../../lib/math.js';
+// параметры поверхности геометрии карты живут в общем модуле: клиентская
+// реплика контактов (MapDynamics/TankPredictor) обязана видеть те же значения,
+// иначе предсказание тихо разъедется с авторитетной физикой
+import { MAP_SURFACE } from '../../lib/rigidBody.js';
 import RAPIER from '../physics/rapier.js';
 
-// параметры поверхности по умолчанию (соответствуют дефолтам planck/Box2D,
-// с которыми сбалансировано ощущение управления)
-const DEFAULT_FRICTION = 0.2;
-const DEFAULT_RESTITUTION = 0;
+// порог, ниже которого тело считается покоящимся и отдаётся без скоростей —
+// страховка на случай, если сон Rapier окажется выключен
+const REST_VELOCITY_EPSILON = 0.01;
 
 // Singleton Map
 
@@ -121,8 +124,8 @@ class Map {
           // коллайдер-прямоугольник (половинные размеры)
           this._world.createCollider(
             RAPIER.ColliderDesc.cuboid(sizes[0] / 2, sizes[1] / 2)
-              .setFriction(DEFAULT_FRICTION)
-              .setRestitution(DEFAULT_RESTITUTION),
+              .setFriction(MAP_SURFACE.friction)
+              .setRestitution(MAP_SURFACE.restitution),
             body,
           );
 
@@ -145,7 +148,11 @@ class Map {
           .setTranslation(posX, posY)
           .setRotation(angle)
           .setLinearDamping(data.linearDamping ?? 0)
-          .setAngularDamping(data.angularDamping ?? 0.01),
+          .setAngularDamping(data.angularDamping ?? 0.01)
+          // предиктивные контакты на толщину ящика — та же причина, что и
+          // у танка (Tank.js): дефолтная дистанция предсказания Rapier
+          // рассчитана на метры и на порядки меньше пути тела за шаг
+          .setSoftCcdPrediction(Math.min(data.width, data.height)),
       );
 
       // коллайдер со смещённым центром (позиция тела — угол объекта)
@@ -153,8 +160,8 @@ class Map {
         RAPIER.ColliderDesc.cuboid(data.width / 2, data.height / 2)
           .setTranslation(data.width / 2, data.height / 2)
           .setDensity(data.density)
-          .setFriction(DEFAULT_FRICTION)
-          .setRestitution(DEFAULT_RESTITUTION),
+          .setFriction(MAP_SURFACE.friction)
+          .setRestitution(MAP_SURFACE.restitution),
         body,
       );
 
@@ -177,19 +184,37 @@ class Map {
     }
   }
 
-  // возвращает краткие данные динамических элементов
+  // Возвращает краткие данные динамических элементов.
+  // Движущиеся тела отдают ещё и скорости: клиент предсказывает динамику
+  // карты рядом со своим танком, а оценка скорости конечной разностью между
+  // кадрами 30 Гц сильнее всего врёт именно в момент удара.
   getDynamicMapData() {
     const data = {};
 
     for (let i = 0, len = this._dynamicBodies.length; i < len; i += 1) {
       const [id, body] = this._dynamicBodies[i];
       const pos = body.translation();
-
-      data[id] = [
+      const transform = [
         roundTo2Decimals(pos.x),
         roundTo2Decimals(pos.y),
         roundTo2Decimals(body.rotation()),
       ];
+
+      const linvel = body.linvel();
+      const angvel = body.angvel();
+      const resting =
+        body.isSleeping() ||
+        (Math.hypot(linvel.x, linvel.y) < REST_VELOCITY_EPSILON &&
+          Math.abs(angvel) < REST_VELOCITY_EPSILON);
+
+      data[id] = resting
+        ? transform
+        : [
+            ...transform,
+            roundTo2Decimals(linvel.x),
+            roundTo2Decimals(linvel.y),
+            roundTo2Decimals(angvel),
+          ];
     }
 
     return data;

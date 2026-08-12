@@ -102,6 +102,32 @@ describe('HitscanService.processShot', () => {
     expect(world.lastCastArgs.maxToi).toBe(1.0); // длина задана вектором луча
   });
 
+  it('импульс не зависит от дальности оружия (range)', () => {
+    const body = makeBody({ userData: { type: 'wall' }, dynamic: true });
+    const world = makeWorld({ body, timeOfImpact: 0.5 });
+    const game = { applyDamage: vi.fn() };
+    const impulseMagnitude = 10;
+    const weapons = {
+      wShort: { range: 50, impulseMagnitude },
+      wLong: { range: 1000, impulseMagnitude },
+    };
+
+    const hs = new HitscanService({ world, weapons, game });
+
+    hs.processShot({ ...baseParams(), weaponName: 'wShort' });
+    hs.processShot({ ...baseParams(), weaponName: 'wLong' });
+
+    const [shortImpulse] = body.applyImpulseAtPoint.mock.calls[0];
+    const [longImpulse] = body.applyImpulseAtPoint.mock.calls[1];
+
+    // импульс строится от нормализованного direction·impulseMagnitude —
+    // одинаков для короткого и длинного range при равном impulseMagnitude
+    expect(shortImpulse.x).toBeCloseTo(impulseMagnitude, 6);
+    expect(shortImpulse.y).toBeCloseTo(0, 6);
+    expect(longImpulse.x).toBeCloseTo(shortImpulse.x, 6);
+    expect(longImpulse.y).toBeCloseTo(shortImpulse.y, 6);
+  });
+
   it('не применяет импульс к статике', () => {
     const body = makeBody({ userData: { type: 'wall' }, dynamic: false });
     const world = makeWorld({ body, timeOfImpact: 0.3 });

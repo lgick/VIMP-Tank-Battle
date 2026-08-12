@@ -5,7 +5,10 @@
 // увеличивать при любом изменении байтовой раскладки в snapshotCodec.js
 // v2: per-user player-блок (gameId, inputSeq, состояние своего танка) — Фаза 5b
 // v3: id автора в событиях оружия (tracers +shooterId, bombs +ownerId) — Фаза 5c
-export const SNAPSHOT_FORMAT_VERSION = 3;
+// v4: скорости динамики карты (блок dynamics: флаг moving + vx/vy/angvel)
+// v5: угловая скорость танка (блок tanks: +angvel) — предсказание доворота
+//     чужого корпуса при контакте (RemoteTanks)
+export const SNAPSHOT_FORMAT_VERSION = 5;
 
 // реестр ключей снапшота: строковый ключ → числовой id + тип блока (kind);
 // kind определяет байтовую раскладку блока в src/lib/snapshotCodec.js;

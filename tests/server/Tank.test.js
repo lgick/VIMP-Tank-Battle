@@ -19,6 +19,9 @@ const makeBody = () => ({
   linvel() {
     return this._vel;
   },
+  angvel() {
+    return this._angvel ?? 0;
+  },
   setLinvel: vi.fn(),
   setAngvel: vi.fn(),
   setTranslation(p) {
@@ -87,6 +90,39 @@ const makeTank = (body = makeBody(), panel = makePanel()) =>
     position: [0, 0],
     angle: 0,
   });
+
+describe('Tank: тело в мире', () => {
+  it('включает предиктивные контакты на толщину корпуса', () => {
+    let desc = null;
+    const body = makeBody();
+
+    // дескриптор перехватывается отдельным миром: обычный мок его отбрасывает
+    new Tank({
+      model: 'm1',
+      name: 'Alice',
+      gameId: 'g1',
+      teamId: 1,
+      currentWeapon: 'w1',
+      weapons: { w1: { type: 'hitscan', fireRate: 0.1, spread: 0 } },
+      playerKeys: { keys: { forward: 1, fire: 128 }, oneShotMask: 128 },
+      services: { panel: makePanel() },
+      modelData,
+      world: {
+        createRigidBody: d => {
+          desc = d;
+          return body;
+        },
+        createCollider: vi.fn(),
+      },
+      position: [0, 0],
+      angle: 0,
+    });
+
+    // корпус 4:3 от size 10 → 40 × 30, меньшая сторона 30: без предсказания
+    // контакт рождался бы уже по факту перекрытия
+    expect(desc.softCcdPrediction).toBe(30);
+  });
+});
 
 describe('Tank.takeDamage: автомат состояний', () => {
   it('новый танк жив и в норме (condition 3)', () => {
@@ -349,13 +385,15 @@ describe('Tank.updateData: движение и смена оружия', () => {
 });
 
 describe('Tank: данные и респаун', () => {
-  it('getData возвращает состояние с condition, size и teamId', () => {
+  it('getData возвращает состояние с condition, size, teamId и angvel', () => {
     const tank = makeTank();
     const data = tank.getData();
 
     expect(data[7]).toBe(3); // condition
     expect(data[8]).toBe(10); // size
     expect(data[9]).toBe(1); // teamId
+    // угловая скорость (протокол v5) — для предсказания доворота на клиенте
+    expect(data[10]).toBe(0);
   });
 
   it('getPosition округляет до 2 знаков', () => {

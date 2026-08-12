@@ -16,16 +16,17 @@ npx vite build
 
 ## Карта покрытия
 
-Покрыто (~815 тестов):
+Покрыто (~967 тестов):
 
-- вся логика `lib/` (включая `security`, round-trip `snapshotCodec` и `raycast`);
-- клиент: `SnapshotInterpolator`, `TankPredictor`, `ShotPredictor`, `OwnTank`, модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager), `InputListener`, `SoundManager`, все 8 контроллеров и view (DOM через happy-dom);
+- вся логика `lib/` (включая `security`, round-trip `snapshotCodec`, `raycast`, `collision` — OBB/контакты тайловой сетки/угол→центр — и `rigidBody` — двухтельный sequential-impulse решатель, масс-инерционные свойства бокса и комбинирование поверхностей, общие для `MapDynamics`/`RemoteTanks`/`TankPredictor` и серверных коллайдеров карты);
+- клиент: `SnapshotInterpolator`, `TankPredictor`, `ShotPredictor`, `MapDynamics`, `RemoteTanks` (общая база `PredictedSet` покрывается через обе подсистемы — своих тестов у неё нет), `OwnTank`, модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager), `InputListener`, `SoundManager`, все 8 контроллеров и view (DOM через happy-dom);
 - **паритет-тест** `tests/server/TankPredictorParity.test.js` — реплика движения против реального Rapier; обязателен к прогону при любой правке `Tank.updateData`/`models.js`;
+- **пробный тест семантики Rapier** `tests/server/RapierBodySemantics.test.js` — закрепляет допущения, на которые опираются клиентские предикторы, но которые явно не задокументированы в Rapier (например, что `linvel()` — это скорость центра масс, а не начала координат), против реальной WASM-физики, а не мока;
 - серверные модули с логикой: Stat, Vote, RTTManager, SnapshotManager, Panel, Chat, TimerManager, Pathfinder, SpatialManager, NavigationSystem, HitscanService, BaseModel, Bomb, Map, Tank, BotManager, BotController, SocketManager, Game, VIMP;
 - реестр участников (`ParticipantManager`) и менеджеры из `core/` (`VoteCoordinator`, `RoundManager`, `CommandProcessor`);
 - **интеграционный слой** (`tests/server/integration/`): полный жизненный цикл VIMP с реальными модулями + протокольный слой `socket/index.js`.
 
-Не покрыто (низкий ROI для юнит-тестов): Pixi-`parts/` и `parts/effects/`, провайдеры (`BakingProvider`/`DependencyProvider`). Исключение — применение данных внутри part'а (не отрисовка): `Bomb.update` покрыт `tests/client/parts/Bomb.test.js` с моком `pixi.js`.
+Не покрыто (низкий ROI для юнит-тестов): сама отрисовка Pixi-`parts/` и `parts/effects/`, провайдеры (`BakingProvider`/`DependencyProvider`). Исключение — оркестрация (не отрисовка) за моком `pixi.js`: `Bomb.update` (`tests/client/parts/Bomb.test.js`), последовательность эффектов `ExplosionEffectController` (`tests/client/parts/effects/ExplosionEffectController.test.js`) и обработка якоря попадания `ShotEffectController`/`ImpactEffect` — `data[8]` (`[key, localX, localY]`), откат при недоступном `mapDynamics`, синхронизация трансформа каждый тик (`tests/client/parts/effects/ShotEffectController.test.js`).
 
 ## Паттерны
 

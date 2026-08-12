@@ -12,6 +12,7 @@ const makePredictor = (overrides = {}) => ({
     gunRotation: 0.25,
     vx: 1,
     vy: 2,
+    angvel: 0.75,
     engineLoad: 3,
   })),
   reset: vi.fn(),
@@ -58,13 +59,13 @@ describe('OwnTank', () => {
   });
 
   describe('getRenderData', () => {
-    it('собирает 7 предсказанных полей + мету и позицию камеры', () => {
+    it('собирает 7 предсказанных полей + мету, angvel и позицию камеры', () => {
       ownTank.track(makeFrame([0, 0, 0, 0, 0, 0, 0, 100, 50, 10]));
 
       const own = ownTank.getRenderData();
 
       expect(own.game).toEqual({
-        m1: { 7: [10, 20, 0.5, 0.25, 1, 2, 3, 100, 50, 10] },
+        m1: { 7: [10, 20, 0.5, 0.25, 1, 2, 3, 100, 50, 10, 0.75] },
       });
       expect(own.position).toEqual([10, 20]);
     });
@@ -106,7 +107,9 @@ describe('OwnTank', () => {
       ownTank.track(makeFrame([0, 0, 0, 0, 0, 0, 0, 100, 50, 10]));
 
       expect(predictor.freeze).toHaveBeenCalledWith(false);
-      expect(ownTank.getRenderData().game.m1[7].slice(7)).toEqual([100, 50, 10]);
+      expect(ownTank.getRenderData().game.m1[7].slice(7, 10)).toEqual([
+        100, 50, 10,
+      ]);
     });
 
     it('уничтоженный танк замораживает предикт', () => {
