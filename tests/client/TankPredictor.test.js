@@ -24,7 +24,7 @@ const models = {
     size: 2,
     fixture: { density: 200, friction: 0.5, restitution: 0.1 },
     accelerationFactor: 1000,
-    brakingFactor: 10,
+    brakingFactor: 0.3,
     maxForwardSpeed: 260,
     maxReverseSpeed: -130,
     baseTurnTorqueFactor: 215,

@@ -148,7 +148,11 @@ class Map {
           .setTranslation(posX, posY)
           .setRotation(angle)
           .setLinearDamping(data.linearDamping ?? 0)
-          .setAngularDamping(data.angularDamping ?? 0.01),
+          .setAngularDamping(data.angularDamping ?? 0.01)
+          // предиктивные контакты на толщину ящика — та же причина, что и
+          // у танка (Tank.js): дефолтная дистанция предсказания Rapier
+          // рассчитана на метры и на порядки меньше пути тела за шаг
+          .setSoftCcdPrediction(Math.min(data.width, data.height)),
       );
 
       // коллайдер со смещённым центром (позиция тела — угол объекта)

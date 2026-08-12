@@ -153,6 +153,33 @@ describe('Map.createDynamic', () => {
     expect(dyn[0].userData).toEqual({ type: 'map_object' });
   });
 
+  it('включает предиктивные контакты на толщину ящика', () => {
+    const world = makeWorld();
+    const map = new Map(world);
+
+    map.createMap(
+      mapData([[0]], {
+        physicsDynamic: [
+          {
+            angle: 0,
+            position: [100, 200],
+            width: 20,
+            height: 10,
+            density: 1,
+          },
+        ],
+      }),
+    );
+
+    const dyn = world.created.filter(
+      b => b.desc.status === RAPIER.RigidBodyType.Dynamic,
+    );
+
+    // без предсказания контакт рождается уже по факту перекрытия: за шаг
+    // 1/120 тело проходит на порядки больше дефолтных 0.002 юнита
+    expect(dyn[0].desc.softCcdPrediction).toBe(10);
+  });
+
   // тело динамики карты, созданное фейковым миром
   const makeDynamicMap = world => {
     const map = new Map(world);

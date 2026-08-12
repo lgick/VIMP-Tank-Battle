@@ -91,6 +91,39 @@ const makeTank = (body = makeBody(), panel = makePanel()) =>
     angle: 0,
   });
 
+describe('Tank: тело в мире', () => {
+  it('включает предиктивные контакты на толщину корпуса', () => {
+    let desc = null;
+    const body = makeBody();
+
+    // дескриптор перехватывается отдельным миром: обычный мок его отбрасывает
+    new Tank({
+      model: 'm1',
+      name: 'Alice',
+      gameId: 'g1',
+      teamId: 1,
+      currentWeapon: 'w1',
+      weapons: { w1: { type: 'hitscan', fireRate: 0.1, spread: 0 } },
+      playerKeys: { keys: { forward: 1, fire: 128 }, oneShotMask: 128 },
+      services: { panel: makePanel() },
+      modelData,
+      world: {
+        createRigidBody: d => {
+          desc = d;
+          return body;
+        },
+        createCollider: vi.fn(),
+      },
+      position: [0, 0],
+      angle: 0,
+    });
+
+    // корпус 4:3 от size 10 → 40 × 30, меньшая сторона 30: без предсказания
+    // контакт рождался бы уже по факту перекрытия
+    expect(desc.softCcdPrediction).toBe(30);
+  });
+});
+
 describe('Tank.takeDamage: автомат состояний', () => {
   it('новый танк жив и в норме (condition 3)', () => {
     const tank = makeTank();

@@ -51,7 +51,12 @@ class Tank extends BaseModel {
         .setTranslation(data.position[0], data.position[1])
         .setRotation(degToRad(data.angle))
         .setAngularDamping(this._modelData.damping.angular)
-        .setLinearDamping(this._modelData.damping.linear),
+        .setLinearDamping(this._modelData.damping.linear)
+        // предиктивные контакты на толщину корпуса: дефолтная дистанция
+        // предсказания Rapier — 0.002 юнита, а танк за шаг 1/120 проходит до
+        // 2.2, поэтому контакт рождался уже по факту перекрытия (замер: пик
+        // 1.26 юнита в кадр удара против 0.03 с предсказанием)
+        .setSoftCcdPrediction(Math.min(this._width, this._height)),
     );
 
     this._body.gunRotation = 0;

@@ -16,7 +16,7 @@ The build is part of the checklist: it catches broken imports and unavailable ex
 
 ## Coverage map
 
-Covered (~965 tests):
+Covered (~967 tests):
 
 - the whole of `lib/` (including `security`, the round-trip of `snapshotCodec`, `raycast`, `collision` — OBB/tile-grid contacts/origin→center — and `rigidBody` — the two-body sequential-impulse solver, box mass properties and surface combination, shared by `MapDynamics`/`RemoteTanks`/`TankPredictor` and the server map colliders);
 - client: `SnapshotInterpolator`, `TankPredictor`, `ShotPredictor`, `MapDynamics`, `RemoteTanks` (their shared base `PredictedSet` is covered through both subsystems — it has no tests of its own), `OwnTank`, the models (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager), `InputListener`, `SoundManager`, all 8 controllers and views (DOM through happy-dom);

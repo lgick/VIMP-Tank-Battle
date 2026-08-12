@@ -16,7 +16,7 @@ npx vite build
 
 ## Карта покрытия
 
-Покрыто (~965 тестов):
+Покрыто (~967 тестов):
 
 - вся логика `lib/` (включая `security`, round-trip `snapshotCodec`, `raycast`, `collision` — OBB/контакты тайловой сетки/угол→центр — и `rigidBody` — двухтельный sequential-impulse решатель, масс-инерционные свойства бокса и комбинирование поверхностей, общие для `MapDynamics`/`RemoteTanks`/`TankPredictor` и серверных коллайдеров карты);
 - клиент: `SnapshotInterpolator`, `TankPredictor`, `ShotPredictor`, `MapDynamics`, `RemoteTanks` (общая база `PredictedSet` покрывается через обе подсистемы — своих тестов у неё нет), `OwnTank`, модели (Chat, Vote, Controls, Stat, Panel, Auth, Game, CanvasManager), `InputListener`, `SoundManager`, все 8 контроллеров и view (DOM через happy-dom);
