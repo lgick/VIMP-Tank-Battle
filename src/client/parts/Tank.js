@@ -5,24 +5,29 @@ import { lerp, clamp } from '../../lib/math.js';
 const MIN_ENGINE_RATE = 1;
 
 // скорость при движении
-const MAX_ENGINE_RATE = 1.1;
+const MAX_ENGINE_RATE = 1.15;
 
 // повышенная скорость при напряжении (газ в стену)
-const STRAIN_ENGINE_RATE = 1.18;
+const STRAIN_ENGINE_RATE = 1.25;
 
-// множитель громкости на холостом ходу (90% от базовой)
-const MIN_ENGINE_VOLUME_FACTOR = 0.9;
+// множитель громкости на холостом ходу (60% от базовой)
+const MIN_ENGINE_VOLUME_FACTOR = 0.6;
 
 // множитель на полном ходу (100% от базовой)
 const MAX_ENGINE_VOLUME_FACTOR = 1.0;
 
+// глубина и частота покачивания питча на холостом ходу
+const IDLE_WOBBLE_DEPTH = 0.015;
+const IDLE_WOBBLE_HZ = 2.5;
+
 /**
  * Вычисляет параметры звука двигателя на основе нагрузки на двигатель.
  * @param {number} load - Нагрузка на двигатель (от 0.0 до > 1.0).
+ * @param {number} [timeMs] - Время для покачивания питча на холостых.
  * @returns {{rate: number, volumeFactor: number}} -
  * Объект со скоростью (pitch) и множителем громкости.
  */
-function calculateEngineSoundParams(load) {
+export function calculateEngineSoundParams(load, timeMs = 0) {
   // load 0.0 -> холостой ход
   // load 1.0 -> движение на полной скорости
   // load > 1.0 -> напряжение (газ в стену)
@@ -30,8 +35,9 @@ function calculateEngineSoundParams(load) {
   // интерполяция скорости (pitch) и громкости,
   // разделение базовой нагрузки (до 1.0)
   // и нагрузки от напряжения (свыше 1.0).
-  const baseLoad = clamp(load, 0, 1);
-  const strainLoad = Math.max(0, load - 1.0);
+  const safeLoad = Number.isFinite(load) ? load : 0;
+  const baseLoad = clamp(safeLoad, 0, 1);
+  const strainLoad = Math.max(0, safeLoad - 1.0);
 
   const rate =
     lerp(MIN_ENGINE_RATE, MAX_ENGINE_RATE, baseLoad) +
@@ -43,7 +49,16 @@ function calculateEngineSoundParams(load) {
     baseLoad,
   );
 
-  return { rate, volumeFactor };
+  // Неизменная высота тона у баса читается ухом как гул, а не как двигатель:
+  // на холостых питч слегка покачивается, с ростом нагрузки покачивание
+  // сходит на нет — там за характер отвечает сама нагрузка.
+  const wobble =
+    1 +
+    IDLE_WOBBLE_DEPTH *
+      (1 - baseLoad) *
+      Math.sin(2 * Math.PI * IDLE_WOBBLE_HZ * (timeMs / 1000));
+
+  return { rate: rate * wobble, volumeFactor };
 }
 
 export default class Tank extends Container {
@@ -124,7 +139,10 @@ export default class Tank extends Container {
   }
 
   _getSoundData() {
-    const { rate, volumeFactor } = calculateEngineSoundParams(this._engineLoad);
+    const { rate, volumeFactor } = calculateEngineSoundParams(
+      this._engineLoad,
+      performance.now(),
+    );
 
     return {
       position: { x: this.x, y: this.y },
@@ -174,7 +192,7 @@ export default class Tank extends Container {
     this.y = data[1];
     this.rotation = data[2];
     this.gun.rotation = data[3];
-    this._engineLoad = data[6];
+    this._engineLoad = data[6] || 0;
 
     // обновление звуковой логики
     if (this._soundId && this._condition > 0) {

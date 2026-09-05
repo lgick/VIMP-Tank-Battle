@@ -367,6 +367,9 @@ export default class SoundManager {
       sound,
       ownerId: id,
       loop,
+
+      // паннер создаётся ленивo, при первом sound.pos() — см. _updateSpatialSound
+      panned: false,
     });
 
     if (!loop) {
@@ -429,11 +432,34 @@ export default class SoundManager {
 
     sound.volume(volume, soundId);
 
+    const instance = this._activeInstances.get(soundId);
+
     // если дистанция позволяет панорамировать звук
     if (distance > MIN_SPATIAL_DISTANCE) {
       sound.pos(x - this._listenerX, 0, y - this._listenerY, soundId);
-    } else {
-      sound.pos(0, 0, 0, soundId); // отключение панорамирования
+
+      if (instance) {
+        instance.panned = true;
+      }
+
+      return;
+    }
+
+    // Источник в точке слушателя (всегда — свой танк: слушатель ставится
+    // ровно в его предсказанную позицию). Первый sound.pos() создаёт
+    // PannerNode с HRTF, а нулевое направление для HRTF вырождено: вместо
+    // панорамы получается фронтальная свёртка, срезающая верх, — басовый
+    // сэмпл двигателя превращается в ровный гул. Плюс howler на создании
+    // паннера делает pause/play, то есть щелчок ровно при появлении танка.
+    // Пока паннера нет, звук идёт прямо в gain — этого и добиваемся.
+    // Флаг односторонний: снять уже созданный PannerNode нельзя, он живёт до
+    // конца инстанса. Если своему танку паннер всё же достался (узкое окно
+    // после респавна, когда предсказанного состояния ещё нет и слушатель
+    // отстаёт от танка больше чем на MIN_SPATIAL_DISTANCE), гул вернётся до
+    // ближайшего reset() — тот останавливает звук, и владелец
+    // перерегистрируется уже на чистый узел.
+    if (instance && instance.panned) {
+      sound.pos(0, 0, 0, soundId); // паннер уже создан — возврат в центр
     }
   }
 

@@ -270,3 +270,57 @@ describe('SoundManager.updateSoundData', () => {
     expect(ctx.updateSoundData(id, { volume: 0.5 })).toBe(false);
   });
 });
+
+// Источник в точке слушателя (это всегда свой танк) не должен получать
+// PannerNode: нулевое направление у HRTF вырождено и красит звук в гул.
+describe('SoundManager._updateSpatialSound', () => {
+  const makeSpatialCtx = (instance = { loop: true, panned: false }) => {
+    const sound = { volume: vi.fn(), pos: vi.fn() };
+
+    return {
+      sound,
+      instance,
+      ctx: {
+        _listenerX: 0,
+        _listenerY: 0,
+        _activeInstances: new Map([[1, { sound, ...instance }]]),
+        _updateSpatialSound: P._updateSpatialSound,
+      },
+    };
+  };
+
+  it('не создаёт паннер, пока источник в точке слушателя', () => {
+    const { sound, ctx } = makeSpatialCtx();
+
+    ctx._updateSpatialSound(sound, 1, 0, 0, 0.4);
+
+    expect(sound.volume).toHaveBeenCalledWith(0.4, 1);
+    expect(sound.pos).not.toHaveBeenCalled();
+  });
+
+  it('панорамирует удалённый источник и запоминает наличие паннера', () => {
+    const { sound, ctx } = makeSpatialCtx();
+
+    ctx._updateSpatialSound(sound, 1, 30, -40, 0.4);
+
+    expect(sound.pos).toHaveBeenCalledWith(30, 0, -40, 1);
+    expect(ctx._activeInstances.get(1).panned).toBe(true);
+  });
+
+  it('возвращает в центр уже созданный паннер', () => {
+    const { sound, ctx } = makeSpatialCtx({ loop: true, panned: true });
+
+    ctx._updateSpatialSound(sound, 1, 0, 0, 0.4);
+
+    expect(sound.pos).toHaveBeenCalledWith(0, 0, 0, 1);
+  });
+
+  it('глушит источник за пределами maxDistance', () => {
+    const { sound, ctx } = makeSpatialCtx();
+
+    ctx._updateSpatialSound(sound, 1, 5000, 0, 0.4);
+
+    expect(sound.volume).toHaveBeenCalledWith(0, 1);
+    expect(sound.pos).not.toHaveBeenCalled();
+  });
+});

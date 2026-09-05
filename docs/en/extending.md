@@ -36,8 +36,9 @@ Steps:
 ## New sound
 
 1. Add an entry in [src/config/sounds.js](../../src/config/sounds.js): `file`, `priority`, `volume`, optionally `loop`.
-2. Place the audio file in `public/sounds/` in the **`.webm` and `.mp3`** formats (the codec list is `codecList`).
-3. Playback: UI/system — `soundManager.playSystemSound(name)`; spatial — `registerSound(name, { position })` (the voice limit and priorities are respected by `SoundManager`, see [client.md](client.md#soundmanager)).
+2. Put the source file in [src/assets/audio-raw/](../../src/assets/audio-raw/) — `npm run audio:process` (part of `npm run build`) generates the **`.webm` and `.mp3`** from it into `public/sounds/` (the codec list is `codecList`; `public/sounds/` is generated and is not committed).
+3. The `loop` flag also picks the filter chain in [scripts/process-audio.js](../../scripts/process-audio.js): a looping sample is normalized with a **two-pass** `loudnorm` and skips `silenceremove` — a single pass is a dynamic normalizer and head trimming shifts the seam, so both make the ends of the loop stop matching and the loop audibly pulses.
+4. Playback: UI/system — `soundManager.playSystemSound(name)`; spatial — `registerSound(name, { position })` (the voice limit and priorities are respected by `SoundManager`, see [client.md](client.md#soundmanager)).
 
 ## New client entity (part)
 

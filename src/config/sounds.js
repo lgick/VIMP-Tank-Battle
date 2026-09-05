@@ -26,7 +26,9 @@ const sounds = {
   },
 
   // https://freesound.org/people/monosfera/sounds/572294/
-  tankEngine: { file: 'tank-engine', priority: 50, loop: true, volume: 0.5 },
+  // громкость снижена под нормализованный сэмпл (loudnorm теперь применяется
+  // и к webm — см. scripts/process-audio.js), на ходу уровень прежний
+  tankEngine: { file: 'tank-engine', priority: 50, loop: true, volume: 0.3 },
 };
 
 export default {

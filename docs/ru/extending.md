@@ -36,8 +36,9 @@
 ## Новый звук
 
 1. Добавьте запись в [src/config/sounds.js](../../src/config/sounds.js): `file`, `priority`, `volume`, опционально `loop`.
-2. Положите аудиофайл в `public/sounds/` в форматах **`.webm` и `.mp3`** (список кодеков — `codecList`).
-3. Воспроизведение: UI/системные — `soundManager.playSystemSound(name)`; пространственные — `registerSound(name, { position })` (лимит голосов и приоритеты соблюдает `SoundManager`, см. [client.md](client.md#soundmanager)).
+2. Положите исходный файл в [src/assets/audio-raw/](../../src/assets/audio-raw/) — `npm run audio:process` (входит в `npm run build`) соберёт из него **`.webm` и `.mp3`** в `public/sounds/` (список кодеков — `codecList`; `public/sounds/` генерируется и не коммитится).
+3. Флаг `loop` выбирает и цепочку фильтров в [scripts/process-audio.js](../../scripts/process-audio.js): зацикленный сэмпл нормализуется **двухпроходным** `loudnorm` и не проходит через `silenceremove` — однопроходный нормализатор динамический, а обрезка головы сдвигает стык, и в обоих случаях концы петли перестают совпадать, отчего петля слышимо пульсирует.
+4. Воспроизведение: UI/системные — `soundManager.playSystemSound(name)`; пространственные — `registerSound(name, { position })` (лимит голосов и приоритеты соблюдает `SoundManager`, см. [client.md](client.md#soundmanager)).
 
 ## Новая клиентская сущность (part)
 
